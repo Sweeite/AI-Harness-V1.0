@@ -26,6 +26,8 @@ is not `Ready`.
   - AC-<id>.1 — Given <state>, When <action>, Then <observable result>.
   - AC-<id>.2 — ...
 - **Open decisions:** OD-<...> (must be empty before Status = Ready)
+- **Feasibility assumptions:** AF-<...> (anything in this FR that must be proven by testing,
+  not just specified). Tag `⚠️ FEASIBILITY` inline where relevant.
 - **Notes:** <implementation hints that are NOT requirements — clearly marked>
 ```
 

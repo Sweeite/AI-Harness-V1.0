@@ -26,6 +26,11 @@ next session reads the top entry to know exactly where to resume.
 left: ADR-002 (coverage metric), ADR-003 (cost model). Draft-approve: ADR-004 (concurrency),
 ADR-005 (provisioning/deploy), ADR-006 (RLS), ADR-007 (injection), OD-008 (pill count).
 
+**Added (post-ADR-001):** Feasibility track — `spec/00-foundations/feasibility-register.md`
+(AF-* IDs, seeded with 4 priority spikes + vendor/behavioural/cost/scale assumptions). Wired
+into CLAUDE.md (feasibility flagging rule), id-conventions (AF- type), requirement template
+(Feasibility field), README (parallel track). ACRONYMS.md added at repo root.
+
 **Next step:** Grill ADR-002 — define "memory coverage %" (the metric behind cold-start
 gating, the [Building] pill, proactive suppression). Currently a percentage with no
-denominator.
+denominator. When defined, link it to AF-034 (is the metric actually meaningful — EVAL).

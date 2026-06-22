@@ -59,6 +59,13 @@ recommendation, and stays open until you resolve it.
 **Standing verification gate:** after each component, an independent agent re-extracts FRs
 from the design prose and confirms no design line is orphaned. Mechanizes "nothing left out."
 
+**Parallel feasibility track:** a spec proves the design is *coherent*, not that it *works*.
+Assumptions that can only be confirmed by testing are logged in
+`spec/00-foundations/feasibility-register.md` (IDs `AF-*`) with a verification method
+(DOCS / SPIKE / EVAL / LOAD), and tagged `⚠️ FEASIBILITY` wherever they're relied on. Four
+priority spikes (cost, memory retrieval, vendor-claims, provisioning) run alongside the ADR
+phase because they can invalidate the architecture. Paper-vs-proven is always stated openly.
+
 ## Working rhythm (per component)
 
 1. **I draft** the FR set + the OD list (decisions needed from you), each OD with a recommendation.

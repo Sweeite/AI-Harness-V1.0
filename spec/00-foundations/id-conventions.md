@@ -16,6 +16,7 @@ retired, not recycled.
 | `PERM-` | Permission node | `PERM-<category>.<action>` | `PERM-memory.write` |
 | `AC-` | Acceptance criterion | `AC-<FR-id>.<n>` | `AC-2.MEM.014.2` |
 | `OD-` | Open decision | `OD-<nnn>` | `OD-003` |
+| `AF-` | Assumption / feasibility item (must be tested) | `AF-<nnn>` | `AF-001` |
 | `ADR-` | Architecture decision record | `ADR-<nnn>` | `ADR-001` |
 | `ISSUE-` | GitHub issue (assigned at Phase 6) | `#<n>` | `#142` |
 

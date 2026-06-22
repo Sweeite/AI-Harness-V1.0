@@ -28,6 +28,16 @@ Do not load the whole spec. Load the minimum set for the task in front of you.
 - **When unsure if something was decided, grep the repo. Do not guess.**
 - **Verify file/line references before relying on them** — the design doc can move; re-check.
 
+## Feasibility flagging (say paper-vs-proven out loud, always)
+
+- A spec proves the design is *coherent*, not that it *works*. Many claims can only be
+  confirmed by testing — never present those as proven.
+- **When a requirement or ADR rests on an unproven assumption, tag it `⚠️ FEASIBILITY: AF-NNN`
+  at the point of use and log it in `spec/00-foundations/feasibility-register.md`** with a
+  verification method (DOCS / SPIKE / EVAL / LOAD).
+- In conversation, explicitly call out which parts are decided-on-paper vs need-testing, both
+  now and whenever new ones surface. The user expects these and wants them surfaced, not hidden.
+
 ## Context-window management
 
 - **One component or one ADR per working session.** Bounded scope keeps context sharp.
