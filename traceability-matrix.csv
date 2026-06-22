@@ -1,0 +1,5 @@
+fr_id,title,component,status,priority,source_lines,permissions,config_deps,surfaces,data_touched,acceptance_criteria,open_decisions,issue,pr,test
+# This is the master index. One row per FR. Populated during Phase 1+.
+# Walk any row end-to-end: design intent -> requirement -> config/UI/data/perm -> AC -> issue -> PR -> test.
+# Example row (delete once real rows exist):
+# FR-2.MEM.001,Write semantic memory from event,2,Draft,Must,L1604-1658,PERM-memory.write,CFG-memory.confidence_floor,UI-OPS-MEM-03,DATA-memories,AC-2.MEM.001.1;AC-2.MEM.001.2,,,,
