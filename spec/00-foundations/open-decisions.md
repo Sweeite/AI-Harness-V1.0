@@ -71,4 +71,17 @@ detection. Affects the guardrails component.
 Sufficiency + per-entity Maturity below proactive threshold), **not** a fourth pill. Settled as
 a consequence of ADR-002.
 
-> Next OD number: OD-009.
+## OD-009 — Backup & disaster recovery (whose job, what strategy) 🔴
+**Why it matters:** Nothing in the design doc or ADRs addresses **data loss or corruption** of a
+client's Supabase. For a "business brain," losing the memory layer is catastrophic — and ADR-001
+makes it thornier: the **client owns the Supabase project**, so the operator may be managing a
+system whose backups they don't control or can't verify.
+**Scope to resolve (Phase 5 / non-functional):** point-in-time recovery + backup cadence;
+retention; a *tested* restore procedure (a backup you've never restored is a guess); **who owns
+and who verifies** backups under client-owned Supabase; whether backup-health is part of the
+management-plane push so the operator can see if a client's backups lapse.
+**Recommendation:** Draft → approve in Phase 5; may spawn a small ADR if the ownership question
+is contentious. Log a feasibility item that restore *actually works* (SPIKE/LOAD), not just that
+backups exist.
+
+> Next OD number: OD-010.

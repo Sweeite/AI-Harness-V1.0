@@ -5,6 +5,41 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 4 — 2026-06-22 — Process hardening (5 additions) + retrofit pass
+
+(Side chat, after ADR-003 committed `411364a`. This chat became the writer; working tree was
+clean/synced first.) Added five process improvements the user requested:
+
+1. **Backup & disaster recovery** — logged **OD-009** (whose job + strategy; ADR-001's
+   client-owned Supabase makes backup ownership/verification ambiguous) and added it to Phase 5
+   scope in README. Net-new gap, not a retrofit.
+2. **out-of-scope.md created** (OOS-001..009) — seeded by **retrofitting deferrals already made**
+   in ADR-001/002/003: region v2, confidence-weighted slot-fill v2, re-rank/HyDE off-by-default,
+   self-host Inngest, full Model-A (client compute) exception-only, Pooled fallback, weekly cost
+   auto-throttle out, HR ingestion off, cost reconcile deferred.
+3. **Build-order / dependency map** — added to Phase 6 (README).
+4. **Change-control standard** (`standards/change-control.md`) — Accepted ADRs immutable
+   (supersede via new ADR); Ready/Approved FRs change via a new OD. Wired into CLAUDE.md +
+   requirement-template.
+5. **Component sign-off** — added `Approved` to the FR status lifecycle (requirement-template),
+   the end-of-session ritual (CLAUDE.md), and the Definition of Done (README).
+
+**Retrofit check — result: nothing needs reopening.** ADRs 001–003 stand as-is; they were
+signed off via grilling, so the new `Approved` status applies to Phase-1 component FRs going
+forward, not retroactively. The only retrofit was capturing their already-made deferrals into
+out-of-scope.md (#2 above). Accepted ADRs are now under change-control from here on.
+
+**Files changed:** `out-of-scope.md` (new), `standards/change-control.md` (new),
+`open-decisions.md` (OD-009; next = OD-010), `requirement-template.md` (Approved status +
+rules 7–8), `CLAUDE.md` (change-control + sign-off ritual), `README.md` (repo map, Phase 5
+backup/DR, Phase 6 build-order, DoD).
+
+**Next step:** unchanged — **ADR-004 (concurrency model for memory writes)**, draft→approve.
+Lock against the ADR-003 write-path (code filter → Haiku gate → Haiku pre-check → Sonnet writer)
+and the `memory_writes_per_minute:30` cap (per Session 3 note).
+
+---
+
 ## Session 3 — 2026-06-22 — ADR-003 ACCEPTED (cost model — client-side viability + cost ladder)
 
 **Decided (grill complete, all forks resolved; closes OD-003):**

@@ -10,6 +10,11 @@ or an FR). If it is not written down, it has not been decided — do not assert 
 on it. When a decision is made in conversation, **write it to the repo immediately** before
 moving on. Never reconstruct prior decisions from memory; read them.
 
+**Changing a locked decision** (an Accepted ADR or a Ready/Approved FR) is never a silent edit
+— it goes through change control: supersede the ADR / open a new OD. See
+`spec/00-foundations/standards/change-control.md`. A decision to *exclude* or *defer* something
+is logged in `spec/00-foundations/out-of-scope.md`.
+
 ## Start every session by reading (in this order)
 
 1. `README.md` — the status table (where we are, what's next).
@@ -53,6 +58,8 @@ Do not load the whole spec. Load the minimum set for the task in front of you.
 ## End every session by
 
 1. Updating `README.md` status, `open-decisions.md`, and `traceability-matrix.csv`.
-2. Appending a `spec/SESSION-LOG.md` entry (decisions made, files changed, next step, new
+2. Logging any new exclusions/deferrals in `out-of-scope.md`, and capturing the user's
+   **sign-off** on any completed component (header + SESSION-LOG).
+3. Appending a `spec/SESSION-LOG.md` entry (decisions made, files changed, next step, new
    open questions). The `handoff` skill can generate this if the session was long.
-3. Committing (branch first unless it's an initial/baseline commit; never push unasked).
+4. Committing (branch first unless it's an initial/baseline commit; never push unasked).

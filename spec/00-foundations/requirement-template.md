@@ -9,7 +9,8 @@ is not `Ready`.
 
 - **Statement:** The system shall <single, atomic, testable behaviour>.
 - **Source:** design-doc-v4.md L<line(s)> [+ other origins]
-- **Status:** Draft | Review | Ready | Built | Verified
+- **Status:** Draft | Review | Ready | Approved | Built | Verified
+            (`Approved` = you explicitly signed it off; only Approved work proceeds to build)
 - **Priority:** Must | Should | Could  (MoSCoW)
 - **Actor / trigger:** <who or what initiates — role, event, loop, schedule>
 - **Preconditions:** <what must be true before this can run>
@@ -40,3 +41,8 @@ is not `Ready`.
 4. **Every branch explicit** — happy path is never enough. Enumerate every conditional and failure.
 5. **Default-deny permissions** — if a role isn't listed, it's denied. State it.
 6. **No `???` in a Ready requirement** — any unknown is an OD, and an open OD blocks Ready.
+7. **Sign-off is explicit.** A component is not `Approved` until you green-light it. Record the
+   sign-off (who, when) in the component file header and the SESSION-LOG. Only `Approved`
+   components move to Phase 6 / build.
+8. **Locked requirements change only via change control** — see `standards/change-control.md`
+   (changing a `Ready`/`Approved` FR goes through a new OD, never a silent edit).

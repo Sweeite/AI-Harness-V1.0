@@ -18,8 +18,10 @@ spec/
     id-conventions.md    The ID scheme (FR/CFG/UI/DATA/PERM/AC/OD/ADR)
     requirement-template.md  The shape every functional requirement takes
     open-decisions.md    The OD log — every unresolved question (the anti-ambiguity gate)
+    out-of-scope.md      Things consciously NOT built / deferred to v2 (OOS-*)
+    feasibility-register.md  Assumptions that can only be proven by testing (AF-*)
     adr/                 Architecture Decision Records (the 7 load-bearing decisions + more)
-    standards/           Cross-cutting patterns (config edit taxonomy, RBAC, audit, UI states)
+    standards/           Cross-cutting patterns (config edit taxonomy, change control, RBAC, UI states)
   01-requirements/     Functional requirements, one file per component (0..10)
   02-config/           Config registry (every tunable, classified + surfaced)
   03-surfaces/         Dashboard/UI specs (every surface, all states)
@@ -53,8 +55,8 @@ recommendation, and stays open until you resolve it.
 | 2 | Config registry: classify + surface every key | Every CFG has surface + edit-mechanism + validation; zero `???` |
 | 3 | Dashboard/UI specs: every surface, all states | Every UI- surface fully specified |
 | 4 | Data model: schema, RLS, indexes, migrations | Every DATA- ref consolidated + consistent |
-| 5 | Non-functional: security, infra, observability, cost, compliance, test strategy | All NFRs explicit |
-| 6 | Issue decomposition: vertical slices → GitHub issues | Every FR maps to an issue; every issue back to FRs |
+| 5 | Non-functional: security, infra, observability, cost, compliance, **backup & disaster recovery**, test strategy | All NFRs explicit |
+| 6 | Issue decomposition: vertical slices → GitHub issues **+ build-order / dependency map** | Every FR maps to an issue; every issue back to FRs; build sequence defined |
 
 **Standing verification gate:** after each component, an independent agent re-extracts FRs
 from the design prose and confirms no design line is orphaned. Mechanizes "nothing left out."
@@ -78,7 +80,9 @@ phase because they can invalidate the architecture. Paper-vs-proven is always st
 - Every FR is atomic, has acceptance criteria, has zero open decisions.
 - Every config: captured, classified, surfaced, edit-mechanism defined, validated.
 - Every surface: fully specified with all states.
-- Every FR → a GitHub issue; every issue → back to FRs.
+- Every component explicitly **signed off by you** before it proceeds to build.
+- Every exclusion / deferral logged in `out-of-scope.md` (no silent scope drift).
+- Every FR → a GitHub issue; every issue → back to FRs, in a defined build order.
 
 ---
 
