@@ -14,6 +14,8 @@ where every built artifact traces back to a requirement you signed off on.
 spec/
   source/              The original design doc + extraction scaffolding (read-only reference)
   00-foundations/      Decide-once layer: conventions, glossary, ADRs, standards, decision log
+    process-overview.md  Full optics — what/want/goal/why/how (read after CLAUDE.md)
+    phase-playbooks.md   The repeatable procedure for every phase (0→6)
     glossary.md          Every load-bearing term, defined once
     id-conventions.md    The ID scheme (FR/CFG/UI/DATA/PERM/AC/OD/ADR)
     requirement-template.md  The shape every functional requirement takes

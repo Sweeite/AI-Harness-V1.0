@@ -18,12 +18,18 @@ is logged in `spec/00-foundations/out-of-scope.md`.
 ## Start every session by reading (in this order)
 
 1. `README.md` — the status table (where we are, what's next).
-2. `spec/SESSION-LOG.md` — the last session's handoff.
-3. `spec/00-foundations/open-decisions.md` — what's unresolved.
-4. `spec/00-foundations/glossary.md` — agreed terms (do not redefine them).
-5. The specific ADR(s) and component file for today's task only.
+2. `spec/00-foundations/process-overview.md` — full optics: what/want/goal/why/how.
+3. `spec/00-foundations/phase-playbooks.md` — the procedure for the current phase.
+4. `spec/SESSION-LOG.md` — the last session's handoff (resume point).
+5. `spec/00-foundations/open-decisions.md` — what's unresolved.
+6. `spec/00-foundations/glossary.md` — agreed terms (do not redefine them).
+7. The specific ADR(s) and component file for today's task only.
 
 Do not load the whole spec. Load the minimum set for the task in front of you.
+
+**Self-sufficiency test:** the repo alone (these docs + registers) must be enough to act
+correctly with **zero** access to any prior conversation. If something needed to act is only in
+a chat, that's a bug — write it down before proceeding.
 
 ## Anti-hallucination rules
 

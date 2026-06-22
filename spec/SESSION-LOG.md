@@ -5,6 +5,33 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 5 — 2026-06-22 — Process fully externalized (full-optics docs)
+
+User wanted the entire operating model written down now (not just-in-time), with full optics —
+what/want/goal/why/how — so any future chat inherits the complete picture and never has to
+*invent* methodology (only *follow* it).
+
+**Created:**
+- `spec/00-foundations/process-overview.md` — the optics bible: WHAT we're doing, WHAT the user
+  wants, the GOAL (Point B / DoD), WHY (first principles), HOW (the machine), ID system,
+  artifacts map, who-decides-what, current-state pointer.
+- `spec/00-foundations/phase-playbooks.md` — repeatable procedure for all 6 phases. Phase 0 + 1
+  at full mechanical detail (Phase 1 is the engine: 10-step per-component loop incl. parking
+  cross-phase CFG/UI/DATA/PERM stubs, verification gate, sign-off). Phases 2–6 at goal+approach+
+  done-when altitude, each finalized right before entry (living docs, change-controlled).
+
+**Wired:** CLAUDE.md start-of-session reading list now includes both, + the **self-sufficiency
+test** (repo alone must suffice, zero conversation). README repo map updated.
+
+**Principle locked:** *author methodology where context is richest (now); future chats execute,
+never invent.* The repo-self-sufficiency test is the guard against drift across chats.
+
+**Next step:** unchanged — **ADR-004 (concurrency model for memory writes)**, draft→approve.
+Then ADR-005/006/007, priority spikes (esp. AF-001 cost, AF-002 retrieval), then Phase 1
+(component 0 Login as the golden exemplar).
+
+---
+
 ## Session 4 — 2026-06-22 — Process hardening (5 additions) + retrofit pass
 
 (Side chat, after ADR-003 committed `411364a`. This chat became the writer; working tree was
