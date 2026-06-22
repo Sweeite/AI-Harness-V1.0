@@ -5,6 +5,38 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 2 (IN PROGRESS) — 2026-06-22 — ADR-002 started (memory coverage %)
+
+**Status: mid-grill. Awaiting the user's answer to Q1.** Resume by presenting/confirming Q1
+below, then proceed to Q2.
+
+**Key reframe already established (carry this forward):** the design doc's single "coverage %"
+is overloaded across two different jobs, so we are splitting it into **two metrics**:
+- **Maturity** — knowledge-base completeness. Computed periodically, per-entity AND aggregated.
+  Drives feature gating (cold-start 20/50/80 unlocks) + onboarding progress indicator.
+- **Retrieval Sufficiency** — computed at query time, per request. Drives the `[Building]`
+  flag ("thin on *this* topic right now").
+- Consequence: `[Building]` becomes a flag driven by low Retrieval Sufficiency, **not** a 4th
+  answer-mode → this resolves OD-008 (pill count stays at 3: Cited/Inferred/Unknown).
+
+**Q1 (asked, awaiting decision):** Split coverage into the two metrics above (RECOMMENDED) vs
+force one number to do both jobs. My rec: split — different questions, clocks, denominators.
+
+**Planned grill tree after Q1:**
+- Q2 — define **Maturity**. Leaning: "expected knowledge slots" per entity type →
+  Maturity = filled slots / expected slots (per-entity + aggregate); graduate to
+  confidence-weighted later. Actionable ("we know 6 of 10 key things about Acme"), gives a
+  real denominator, drives onboarding interview directly.
+- Q3 — define **Retrieval Sufficiency** (query-time: did we retrieve enough relevant,
+  high-confidence memory for THIS query?).
+- Q4 — thresholds: keep 20/50/80 for Maturity, or change? What's "important entity" weighting?
+- Q5 — computation + cadence (when Maturity recomputes; how Sufficiency is scored per query).
+
+**Feasibility:** AF-034 (is the metric actually meaningful?) — validate against real data in the
+AF-002 retrieval spike. Flag whatever Q2/Q3 define as paper-pending-test.
+
+---
+
 ## Session 1 — 2026-06-22 — Foundations + ADR-001
 
 **Decided:**

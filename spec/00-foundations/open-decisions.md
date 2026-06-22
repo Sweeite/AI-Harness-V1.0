@@ -19,9 +19,12 @@ tables; client identity lives only in the management plane's `client_registry`. 
 = push-based operational-metadata snapshots; no client business data crosses the boundary.
 See ADR-001 for full detail and downstream consequences.
 
-## OD-002 — Definition of "memory coverage %" 🟡 → ADR-002
+## OD-002 — Definition of "memory coverage %" 🟡 IN PROGRESS → ADR-002
 **Why it matters:** Drives cold-start gating (20/50/80%), the `[Building]` pill, proactive
 suppression, read-only mode. Currently undefined — a percentage with no denominator.
+**Progress (Session 2):** Grilling started. Working direction: split into two metrics —
+**Maturity** (gating/onboarding) and **Retrieval Sufficiency** (per-query, drives `[Building]`).
+Awaiting user decision on Q1. See SESSION-LOG Session 2 for the live grill state.
 **Recommendation:** Resolve via grilling (load-bearing). → ADR-002.
 
 ## OD-003 — Cost model & economic viability 🟡 → ADR-003
