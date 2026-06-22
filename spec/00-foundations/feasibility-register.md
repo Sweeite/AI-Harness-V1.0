@@ -20,7 +20,7 @@ safety mechanism, not a problem.
 
 | ID | Spike | Why it's priority | Method | Status |
 |---|---|---|---|---|
-| AF-001 | **Cost spike** — run one real multi-agent task + memory write, measure actual tokens/$ | Sonnet on every agent + up to 3 Sonnet calls per memory write could blow the cost model. Most likely thing to invalidate the design. Feeds ADR-003. | SPIKE+EVAL | 🔴 |
+| AF-001 | **Cost spike** — run one real multi-agent task + memory write, measure actual tokens/$ | Validates the ADR-003 viability target (typical-volume deployment ≤ ~$20/day, under the $50 soft alert). Also measures memory-write cost (now corrected to ≤1 Sonnet + Haiku, AF-043) and feeds AF-042. Most likely thing to invalidate the design. | SPIKE+EVAL | 🔴 |
 | AF-002 | **Memory retrieval spike** — load ~100 real memories, run dual-search + ranking, judge relevance | If retrieval surfaces noise, the whole "business brain" premise is shaky. Validates ranking weights. | SPIKE+EVAL | 🔴 |
 | AF-003 | **Vendor-claims verification** — confirm every external limit/capability the doc asserts | Several are checkable and possibly stale; they shape rate-limit, token, and Realtime design. | DOCS | 🔴 |
 | AF-004 | **Provisioning/deploy spike** — operator Railway app deploying from the shared repo, connected to a client-owned Supabase | Proves the ADR-001 hybrid + ADR-005 deploy model actually wires up before we spec it in full. | SPIKE | 🔴 |
@@ -53,14 +53,16 @@ safety mechanism, not a problem.
 | AF-032 | Prompt-injection defenses (regex + embedding similarity + boundary tags) actually hold — and don't over-quarantine legit content | 🔴 |
 | AF-033 | Answer-mode classification (Cited/Inferred/Unknown) is accurate enough to trust | 🔴 |
 | AF-034 | Slot-fill **Maturity** predicts "system is useful" for gating, **and** the Retrieval Sufficiency threshold cleanly separates `[Building]` from `[Unknown]` (ADR-002). Validate in AF-002 spike; if slot-fill doesn't predict retrieval adequacy, revisit the one-substrate coupling. | 🔴 |
-| AF-035 | Two-model routing (Haiku for classification, Sonnet for reasoning) saves enough to matter | 🔴 |
+| AF-035 | Two-model routing (Haiku for classification, Sonnet for reasoning) saves enough to matter **AND the cheap model is good enough** — i.e. Haiku's classification/gate decisions and Sonnet's routing don't lose quality. **Standing dual-track telemetry (not a one-off):** every routed call records model + task type + tokens/$ (**cost track**) and a correctness signal — gate false-drops, mis-routes, classifier errors (**quality track**) — so routing config is tuned with evidence. Cost win is worthless if quality silently degrades. | 🔴 |
 
 ## C. Cost feasibility (verify by measurement — AF-001 umbrella)
 
 | ID | Assumption | Status |
 |---|---|---|
-| AF-040 | A real task's end-to-end cost (orchestrator + research + specialists + memory writes) is acceptable | 🔴 |
-| AF-041 | The $50/day daily cost-alert default is realistic for a working deployment | 🔴 |
+| AF-040 | A real task's end-to-end cost (orchestrator + research + specialists + memory writes) is acceptable — sits under the ADR-003 viability target (≤ ~$20/day typical) | 🔴 |
+| AF-041 | The $50/day soft-alert + $100/day hard-ceiling defaults (ADR-003 cost ladder) are realistic for a working deployment | 🔴 |
+| AF-042 | The **token-derived cost estimate** (ADR-003) stays close to — and biased above — the real vendor invoice. The fail-safe round-up must keep drift conservative so the hard ceiling fires early, not late. Validate by reconciling estimate vs a real Anthropic/OpenAI bill. | 🔴 |
+| AF-043 | The **Haiku selective-writing gate** (ADR-003 §4/§6) filters enough events to pay for its own Haiku cost vs running the Sonnet writer unfiltered, **and is accurate enough to trust** (low operator disagree-rate). Validated by the **Haiku decision log + 3-week shadow-retain trust window** (ADR-003 §8) — manual review is the gate to autonomy. If it fails either bar, drop or retune it (controls-before-gates). | 🔴 |
 
 ## D. Performance / scale feasibility (verify by LOAD)
 
@@ -72,5 +74,6 @@ safety mechanism, not a problem.
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-060.
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-060
+> (cost block C now uses AF-040–043; 044–049 reserved for cost overflow).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

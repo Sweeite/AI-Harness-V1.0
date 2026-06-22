@@ -10,7 +10,7 @@ Phase 0 because downstream requirements assume their answers. Each ADR follows
 |---|---|---|---|
 | ADR-001 | Isolation model (isolated-per-client vs shared multi-tenant) | Grill (load-bearing) | 🟢 Accepted |
 | ADR-002 | "Coverage %" → Maturity + Retrieval Sufficiency | Grill (load-bearing) | 🟢 Accepted |
-| ADR-003 | Cost model & economic viability | Grill (load-bearing) | 🔴 open |
+| ADR-003 | Cost model & economic viability (client-side; estimate-grade; cost ladder) | Grill (load-bearing) | 🟢 Accepted |
 | ADR-004 | Concurrency model for memory writes | Draft → approve | 🔴 open |
 | ADR-005 | Deploy fan-out & provisioning automation | Draft → approve | 🔴 open |
 | ADR-006 | Dynamic roles vs static RLS | Draft → approve | 🔴 open |

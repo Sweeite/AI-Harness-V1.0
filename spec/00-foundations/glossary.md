@@ -37,7 +37,13 @@ until resolved.
 | Trigger | What wakes the system: event-driven / scheduled / human / chained. | ✅ |
 | Approval gate | Auto / soft / hard tiers of human oversight on an action. | ✅ |
 | Hard limit | A never-do action enforced in both prompt and code. | ✅ |
-| Guardrail | Any safety mechanism: hard limit / approval / anomaly / rate limit / injection. | ✅ |
+| Guardrail | Any safety mechanism: hard limit / approval / anomaly / rate limit / injection / **cost ladder**. | ✅ |
+| Estimated cost | The only cost figure the system has: event-log token counts × an operator-editable price table (all vendors — Sonnet, Haiku, OpenAI embeddings), **rounded up (fail-safe)**. It is **estimate-grade, not the vendor invoice** — the ADR-001 boundary forbids reading the real bill. Drives dashboards and the cost ladder. | ✅ ADR-003 |
+| Cost ladder | The tiered cost guardrail (per deployment, operator-tunable): soft alert → throttle non-critical work → hard-ceiling kill switch. Modelled on the rate-limit ladder; triggers on **Estimated cost**. | ✅ ADR-003 |
+| Critical work | Work never stopped by the cost ladder: human-initiated requests, urgent fast-loop triggers, human-approved actions, guardrails. Its complement (proactive, insight, self-improvement, consolidation, batch) is **non-critical** and is throttled then halted as the ladder escalates. | ✅ ADR-003 |
+| Haiku decision log | The audit trail of every Haiku decision in the memory write path (selective gate, contradiction pre-check, sensitivity) — input snapshot + verdict + outcome, with operator agree/disagree. The evidence base for trusting the cheap model (AF-035/AF-043). | ✅ ADR-003 |
+| Trust window | The initial period (default ~3 weeks, config) during which the Haiku gate is human-reviewed and runs in **shadow-retain** mode before going autonomous. | ✅ ADR-003 |
+| Shadow-retain | Gate mode during the trust window: a "would-drop" memory is **written anyway and tagged**, never deleted — so no silent data loss and every drop is reviewable. | ✅ ADR-003 |
 | Tunable / Config key | A value that changes behaviour without code change. | ✅ |
 | Config edit class | SECRET / BOOT / LIVE / REBUILD — how a config takes effect. | ✅ see standards/config-edit-taxonomy.md |
 | Surface | Any UI view, panel, modal, banner, or queue. | ✅ |

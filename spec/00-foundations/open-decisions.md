@@ -29,11 +29,18 @@ one-time (off permanently at 80%); the `[Building]` flag recurs per-entity for n
 Confidence-weighted slot-fill deferred to v2. ⚠️ AF-034 validates the metric in the AF-002 spike.
 See ADR-002.
 
-## OD-003 — Cost model & economic viability 🟡 → ADR-003
-**Why it matters:** Every agent is Sonnet; memory writes fire up to 3 Sonnet calls/event.
-No back-of-envelope shows whether real volume fits the $50/day default. Could invalidate
-the architecture.
-**Recommendation:** Resolve via grilling (load-bearing). → ADR-003.
+## OD-003 — Cost model & economic viability 🟢 RESOLVED → ADR-003
+**Resolution (2026-06-22):** Reframed by ADR-001 — opex is client-borne, operator marginal cost
+≈ $0, so "viability" is **client-side**: keep a deployment's bill low enough that the retainer is
+worth paying, and stop a runaway from burning unbounded client money. Decisions: (1) cost tracking
+is **estimate-grade** (token counts × an operator-editable price table, all vendors incl. OpenAI
+embeddings, fail-safe rounded **up**) — never the vendor invoice (boundary forbids it). (2) Breach =
+a **tiered ladder** (soft alert $50/day + $200/week → throttle non-critical at $75 → hard kill at
+$100), per-deployment tunable, modelled on the rate-limit ladder. (3) Memory write = **≤1 Sonnet
+call** (writer) + Haiku pre-checks; OD-003's "3 Sonnet calls" corrected. (4) Loops **short-circuit
+in code** before the Sonnet orchestrator. (5) Principle **"controls before gates"** — structural/code
+limits first, one self-funding Haiku gate (selective-writing) only; re-rank/HyDE not mandated.
+(6) Viability target ≤ ~$20/day typical, **validated by AF-001** (also AF-040/041/042/043). See ADR-003.
 
 ## OD-004 — Concurrency model for memory writes 🔴 → ADR-004
 **Why it matters:** Contradiction-check-then-write is a TOCTOU race under parallel agents /
