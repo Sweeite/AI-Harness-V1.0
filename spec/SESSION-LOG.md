@@ -5,35 +5,36 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
-## Session 2 (IN PROGRESS) — 2026-06-22 — ADR-002 started (memory coverage %)
+## Session 2 — 2026-06-22 — ADR-002 ACCEPTED (coverage % → Maturity + Retrieval Sufficiency)
 
-**Status: mid-grill. Awaiting the user's answer to Q1.** Resume by presenting/confirming Q1
-below, then proceed to Q2.
+**Decided (grill complete, 5 forks resolved):**
+- **Q1 — split** the overloaded "coverage %" into two metrics (vs one number for both jobs).
+- **Q2 — denominator = expected knowledge slots** per entity type (vs volume / confidence-only).
+  Binary slot-fill at v1.
+- **Q2b — one slot substrate, two read-paths** (vs two independent engines) + three anti-bloat
+  guardrails: thin Sufficiency (no bespoke model), 5–8 operator-editable slots/type, defer
+  confidence-weighted fill to v2.
+- **`[Building]` recurs per-entity:** deployment cold-start *mode* is one-time (off at 80%
+  permanently); the `[Building]` *flag* reappears for new/thin entities (e.g. a year-two client).
+  Resolved the doc's two self-contradictions (per-entity vs overall; "permanent" vs recurring).
+- **OD-008 closed:** `[Building]` is a flag, not a 4th pill → 3 pills (Cited/Inferred/Unknown).
 
-**Key reframe already established (carry this forward):** the design doc's single "coverage %"
-is overloaded across two different jobs, so we are splitting it into **two metrics**:
-- **Maturity** — knowledge-base completeness. Computed periodically, per-entity AND aggregated.
-  Drives feature gating (cold-start 20/50/80 unlocks) + onboarding progress indicator.
-- **Retrieval Sufficiency** — computed at query time, per request. Drives the `[Building]`
-  flag ("thin on *this* topic right now").
-- Consequence: `[Building]` becomes a flag driven by low Retrieval Sufficiency, **not** a 4th
-  answer-mode → this resolves OD-008 (pill count stays at 3: Cited/Inferred/Unknown).
+**Model:** Maturity = `filled slots / expected slots` (stored, daily + on-write, aggregate gates
+cold-start 20/50/80). Retrieval Sufficiency = query-time threshold over existing retrieval
+signals (slots-touched filled AND surfaced above relevance×confidence bar). Pill rule:
+low Sufficiency + entity Maturity < proactive(50) → `[Building]`; else `[Unknown]`.
 
-**Q1 (asked, awaiting decision):** Split coverage into the two metrics above (RECOMMENDED) vs
-force one number to do both jobs. My rec: split — different questions, clocks, denominators.
+**Files changed:** `adr/ADR-002-coverage-metric.md` (new, Accepted); glossary (retired Coverage %,
+added Maturity / Retrieval Sufficiency / Expected knowledge slot, resolved Answer mode + Cold
+start); open-decisions (OD-002, OD-008 → 🟢); adr/README (ADR-002 Accepted); feasibility-register
+(AF-034 sharpened); README (ADR status line).
 
-**Planned grill tree after Q1:**
-- Q2 — define **Maturity**. Leaning: "expected knowledge slots" per entity type →
-  Maturity = filled slots / expected slots (per-entity + aggregate); graduate to
-  confidence-weighted later. Actionable ("we know 6 of 10 key things about Acme"), gives a
-  real denominator, drives onboarding interview directly.
-- Q3 — define **Retrieval Sufficiency** (query-time: did we retrieve enough relevant,
-  high-confidence memory for THIS query?).
-- Q4 — thresholds: keep 20/50/80 for Maturity, or change? What's "important entity" weighting?
-- Q5 — computation + cadence (when Maturity recomputes; how Sufficiency is scored per query).
+**Feasibility:** ⚠️ AF-034 — slot-fill Maturity predicting "useful" + the Sufficiency threshold
+separating `[Building]`/`[Unknown]` are **paper-only**, validated in the AF-002 retrieval spike.
 
-**Feasibility:** AF-034 (is the metric actually meaningful?) — validate against real data in the
-AF-002 retrieval spike. Flag whatever Q2/Q3 define as paper-pending-test.
+**Next step:** Grill **ADR-003** (cost model & economic viability — last load-bearing grill).
+Note from ADR-001: opex is client-borne, so cost tracking is *visibility-grade, not
+invoice-grade* — fold that into the ADR-003 framing. AF-001 cost spike runs alongside.
 
 ---
 

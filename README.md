@@ -95,3 +95,5 @@ phase because they can invalidate the architecture. Paper-vs-proven is always st
 | 6 — Issues | ⚪ not started |
 
 Decisions chosen: spec home = git markdown repo · big decisions = grill load-bearing, fast-track rest · start = foundations then components in order.
+
+ADRs: 🟢 ADR-001 (isolation) · 🟢 ADR-002 (coverage → Maturity + Retrieval Sufficiency; closes OD-008) · next load-bearing grill = ADR-003 (cost model).

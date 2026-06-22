@@ -52,7 +52,7 @@ safety mechanism, not a problem.
 | AF-031 | Memory writer produces clean semantic/episodic/procedural splits with sensible confidence | 🔴 |
 | AF-032 | Prompt-injection defenses (regex + embedding similarity + boundary tags) actually hold — and don't over-quarantine legit content | 🔴 |
 | AF-033 | Answer-mode classification (Cited/Inferred/Unknown) is accurate enough to trust | 🔴 |
-| AF-034 | The "coverage %" metric (once defined in ADR-002) is actually meaningful for gating | 🔴 |
+| AF-034 | Slot-fill **Maturity** predicts "system is useful" for gating, **and** the Retrieval Sufficiency threshold cleanly separates `[Building]` from `[Unknown]` (ADR-002). Validate in AF-002 spike; if slot-fill doesn't predict retrieval adequacy, revisit the one-substrate coupling. | 🔴 |
 | AF-035 | Two-model routing (Haiku for classification, Sonnet for reasoning) saves enough to matter | 🔴 |
 
 ## C. Cost feasibility (verify by measurement — AF-001 umbrella)

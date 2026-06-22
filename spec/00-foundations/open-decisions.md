@@ -19,13 +19,15 @@ tables; client identity lives only in the management plane's `client_registry`. 
 = push-based operational-metadata snapshots; no client business data crosses the boundary.
 See ADR-001 for full detail and downstream consequences.
 
-## OD-002 — Definition of "memory coverage %" 🟡 IN PROGRESS → ADR-002
-**Why it matters:** Drives cold-start gating (20/50/80%), the `[Building]` pill, proactive
-suppression, read-only mode. Currently undefined — a percentage with no denominator.
-**Progress (Session 2):** Grilling started. Working direction: split into two metrics —
-**Maturity** (gating/onboarding) and **Retrieval Sufficiency** (per-query, drives `[Building]`).
-Awaiting user decision on Q1. See SESSION-LOG Session 2 for the live grill state.
-**Recommendation:** Resolve via grilling (load-bearing). → ADR-002.
+## OD-002 — Definition of "memory coverage %" 🟢 RESOLVED → ADR-002
+**Resolution (2026-06-22):** "Coverage %" retired and split into two metrics over one slot
+substrate. **Maturity** (`filled slots / expected slots`, binary at v1, stored, daily + on-write)
+drives cold-start gating (20/50/80) and onboarding. **Retrieval Sufficiency** (query-time, thin
+threshold over existing retrieval signals) drives the `[Building]` flag. Denominator = 5–8
+operator-editable expected knowledge slots per entity type. Deployment cold-start *mode* is
+one-time (off permanently at 80%); the `[Building]` flag recurs per-entity for new/thin entities.
+Confidence-weighted slot-fill deferred to v2. ⚠️ AF-034 validates the metric in the AF-002 spike.
+See ADR-002.
 
 ## OD-003 — Cost model & economic viability 🟡 → ADR-003
 **Why it matters:** Every agent is Sonnet; memory writes fire up to 3 Sonnet calls/event.
@@ -56,10 +58,10 @@ detection. Affects the guardrails component.
 
 ---
 
-## OD-008 — Answer-mode pill count: three vs four 🔴
-**Why it matters:** Doc says "always exactly three (Cited/Inferred/Unknown), without
-exception" then adds a fourth `[Building]` in cold start. Minor but must be settled before
-the pill becomes a requirement.
-**Recommendation:** I draft; you approve. (Fast-track.)
+## OD-008 — Answer-mode pill count: three vs four 🟢 RESOLVED → ADR-002
+**Resolution (2026-06-22):** Three pills, no exception — Cited / Inferred / Unknown.
+`[Building]` is a **flag** overlaid on a thin/`[Unknown]` response (driven by low Retrieval
+Sufficiency + per-entity Maturity below proactive threshold), **not** a fourth pill. Settled as
+a consequence of ADR-002.
 
 > Next OD number: OD-009.

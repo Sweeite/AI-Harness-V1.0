@@ -17,9 +17,12 @@ until resolved.
 | Visibility | Access scope of a memory: global / team / private. Orthogonal to sensitivity. | ✅ |
 | Sensitivity | Handling class of a memory: standard / confidential / personal / restricted. | ✅ |
 | Clearance | A role's granted access to sensitivity levels. | ✅ |
-| Answer mode | The provenance pill on every AI output: Cited / Inferred / Unknown (/ Building?). | ⚠️ Building pill conflicts with "always exactly three" — see OD |
-| **Coverage %** | The metric driving cold-start gating, the Building pill, and feature unlocks. | 🔴 OPEN — never defined; **ADR-002** |
-| Cold start | The period from deployment to "sufficient" memory coverage. | ⚠️ depends on Coverage % |
+| Answer mode | The provenance pill on every AI output: **exactly three** — Cited / Inferred / Unknown. `[Building]` is a *flag* overlaid on a thin/`[Unknown]` response, not a fourth pill. | ✅ ADR-002 (closes OD-008) |
+| ~~Coverage %~~ | **Retired.** Was overloaded across two jobs; split into **Maturity** + **Retrieval Sufficiency**. | ✅ ADR-002 |
+| Maturity | Knowledge-base completeness. `filled slots / expected slots` per entity (binary fill at v1), rolled up to aggregate. Stored, recomputed daily + on-write. Drives cold-start gating (20/50/80) and the onboarding indicator. | ✅ ADR-002 |
+| Retrieval Sufficiency | Query-time adequacy: were the slots this query touches filled **and** surfaced by retrieval above a relevance×confidence bar? Computed inline, not stored. Drives the `[Building]` flag. | ✅ ADR-002 |
+| Expected knowledge slot | One of the 5–8 things an entity *type* is expected to know (operator-editable). The denominator of Maturity; empty slots seed the onboarding interview. | ✅ ADR-002 |
+| Cold start | Deployment phase while **aggregate Maturity** is below `full_threshold`. The *mode* deactivates permanently at 80%; the per-entity `[Building]` flag still recurs for new/thin entities afterward. | ✅ ADR-002 |
 | Confidence | A memory's 0.0–1.0 trust score, set at write and moved over its life. | ✅ |
 | Decay | Scheduled downward drift of confidence for stale, unconfirmed memories. | ✅ |
 | Supersede | Marking an old memory replaced by a newer one (chain preserved, not deleted). | ✅ |
