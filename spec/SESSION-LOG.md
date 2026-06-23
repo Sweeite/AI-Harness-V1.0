@@ -19,6 +19,8 @@ never do something it shouldn't, never fail (silently). Affirmed coherent: the t
 - `process-overview.md` — added the three to "what the user wants."
 - **OD-009 (backup/DR) ELEVATED** — it underpins non-negotiable #1, so it's now top-bar, not a
   Phase-5 nicety; resolve early.
+- `CLAUDE.md` — added a binding **"three non-negotiables"** section right after Rule 0 (they were
+  only transitively reachable via process-overview; now every chat treats them as the ranking rule).
 
 **Consequence to remember:** invariant #1 leans on OD-009 (backup/DR — still a gap); invariant #2
 leans on ADR-007 (injection — still open, next up). So the two open items both touch a non-negotiable.

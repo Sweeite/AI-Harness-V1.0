@@ -15,6 +15,15 @@ moving on. Never reconstruct prior decisions from memory; read them.
 `spec/00-foundations/standards/change-control.md`. A decision to *exclude* or *defer* something
 is logged in `spec/00-foundations/out-of-scope.md`.
 
+## The three non-negotiables (the operator's top bar — the ranking rule)
+
+The system must, above all: **(1) never lose or corrupt knowledge · (2) never do something it
+shouldn't · (3) never fail silently.** Failure is allowed; *silent* failure is not. These are
+inviolable: **when a trade-off pits one of these against convenience, speed, or scope, the
+invariant wins** — flag the shortfall as an OD rather than quietly taking the cheap option. Every
+component is checked against them in Phase 1. Full definitions + what upholds/threatens each:
+`spec/00-foundations/what-makes-it-great.md`.
+
 ## Grounding mode — when the user feels overwhelmed (priority)
 
 If the user shows anxiety/overwhelm, or says **"ground me"** / **"work with me"** (or *scared,
