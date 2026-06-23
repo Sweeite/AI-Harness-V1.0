@@ -74,10 +74,23 @@ smoke battery** now, maturing into **operator dogfooding**. **Must be tested** �
 the canary/promotion branch model), AF-065 (expand-contract keeps a mixed-version fleet safe),
 AF-066 (synthetic canary corpus is representative enough). See ADR-005.
 
-## OD-006 — Dynamic roles vs static RLS 🔴 → ADR-006
-**Why it matters:** Roles are editable at runtime, but RLS policies are authored at migration
-time. Data-driven RLS is much harder/slower. Need one coherent model.
-**Recommendation:** I draft ADR-006; you approve.
+## OD-006 — Dynamic roles vs static RLS 🟢 RESOLVED → ADR-006
+**Resolution (2026-06-23):** False fork — the model keeps **both** via **static, data-driven RLS
+policies over live permission data**. Permissions live in **tables** (`roles`, `role_permissions`,
+`user_roles`, `sensitivity_clearances` with entity-type scope, `restricted_grants`), edited from the
+dashboard with **no migration**. RLS policies are authored once, are **generic** (never name a role),
+and look up the acting user's *current* permissions **live** each query via `STABLE SECURITY DEFINER`
+helper functions keyed on `auth.uid()` — so editing a role is just a row write and **every change,
+grant or revoke, is instant** (no JWT snapshot, no staleness window, no propagation rule). Rejected:
+one-policy-per-role (needs a migration per edit) and JWT-cached claims (imports a staleness problem we
+don't need at ≤20 users; kept only as a documented future optimisation, OOS-012). Division of labor:
+**RLS** owns the visibility/sensitivity/Restricted **row-access** subset as the DB backstop; the
+**harness** owns the full permission matrix in code — both read the same tables. Two ADR-001
+reconciliations baked in: RLS is **intra-client only** (the doc's `client_slug` clause is deleted —
+cross-client isolation is physical), and RLS guards the **user-session** path only (the Memory Agent /
+backend run as the **service role**, which bypasses RLS — governed by harness RBAC + ADR-004). **Must
+be tested** — ⚠️ AF-067 (live data-driven RLS performs on the hot retrieval path; D2 JWT-cache is the
+fallback if not). See ADR-006.
 
 ## OD-007 — Prompt-injection posture 🔴 → ADR-007
 **Why it matters:** Regex + embedding-similarity detection is partly theater and risks

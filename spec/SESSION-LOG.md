@@ -5,6 +5,60 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 10 — 2026-06-23 — ADR-006 ACCEPTED (dynamic roles vs static RLS)
+
+Third **draft→approve** ADR. Closes OD-006 — roles are editable at runtime but RLS is authored at
+migration time. User asked to "simplify" and worked through it interactively (anchored on "aren't we
+using Supabase for login/OAuth?" — yes, and ADR-006 sits on top of it). The keycard analogy landed;
+user pushed "why not make both [grant + revoke] instant?" — which pushed the design to the *simpler*
+pole and removed a whole sub-problem.
+
+**Decided (6 binding parts):**
+- **False fork — keep both via static, data-driven RLS over *live* permission data.** Permissions
+  live in **tables** (`roles`, `role_permissions`, `user_roles`, `sensitivity_clearances` w/
+  entity-type scope, `restricted_grants`), edited from the dashboard with **no migration**. RLS
+  policies are authored once, **generic** (never name a role), and look up the user's *current*
+  permissions **live** each query via `STABLE SECURITY DEFINER` helpers keyed on `auth.uid()`.
+- **Every change is instant** — grant *and* revoke — because nothing is cached on the token. This
+  deleted the original "propagation latency" fork entirely (no JWT snapshot → no staleness window →
+  no split grant-lazy/revoke-forced rule, no forced-logout machinery).
+- **Division of labor:** RLS owns the visibility/sensitivity/Restricted **row-access** subset (DB
+  backstop); the **harness** owns the full permission matrix in code. Both read the same tables →
+  can't drift.
+- **Two ADR-001 reconciliations baked in** (so nothing re-reads stale doc text): RLS is
+  **intra-client only** — the doc's `client_slug` clause (`L724`) is **deleted**, cross-client
+  isolation is physical; and RLS guards the **user-session** path only — the Memory Agent (sole
+  writer, ADR-004) + backend run as the **service role**, which **bypasses RLS** (governed by harness
+  RBAC). No requirement may assume RLS guards an agent write.
+- **Rejected:** D1 one-policy-per-role (migration per edit, breaks `L471`/`L639`); D2 JWT-cached
+  permission claims (faster reads but imports a staleness/propagation problem not worth it at ≤20
+  users — kept only as the documented fallback, OOS-012).
+
+**Captured as MUST-TEST:** new feasibility block **G** —
+- **AF-067 (SPIKE+LOAD)** — live data-driven RLS performs on the **hot retrieval path** (the `STABLE`
+  helper lookup, once per statement over tiny indexed tables, composing with pgvector ranking of a
+  large memory batch). The whole D3 choice rests on this; D2 JWT-cache is the fallback if it fails.
+
+**Files changed:** `adr/ADR-006-rls-dynamic-roles.md` (new, Accepted); `open-decisions.md`
+(OD-006 → 🟢); `adr/README.md` (ADR-006 Accepted); `feasibility-register.md` (new block G AF-067;
+next AF-068); `out-of-scope.md` (OOS-012 JWT-cached claims deferred; next OOS-013); `glossary.md`
+(+Data-driven RLS, +Permission tables, +Restricted grant, +Entity-type-scoped clearance,
++Service-role bypass); `README.md` (ADR status line).
+
+**Still owed (deferred to where context is richest, not now):** the new binding standard
+`standards/rbac.md` (two-level RBAC + RLS model, default-deny, RLS-vs-harness division, service-role
+caveat, `PERMISSION_NODES.md` convention) — write it when component 7 (RBAC/Guardrails) or the data
+model is specced, per the ADR's Consequences. ADR-006 is the source of truth meanwhile.
+
+**Next step:** **ADR-007 (prompt-injection posture)** — draft→approve (OD-007). The last load-bearing
+ADR. Decide how much to lean on code-level hard limits vs regex/embedding detection (the doc calls the
+latter "partly theater" + false-positive-quarantine risk); affects the Guardrails component. Note the
+ADR-003 hard-limit precedent ("controls before gates") and `L2066` ("no user role, no agent
+instruction, no config change can override a hard limit") as the lock-points. Then priority spikes
+(AF-001 cost, AF-002 retrieval, AF-004 provisioning), then Phase 1 (component 0 Login).
+
+---
+
 ## Session 9 — 2026-06-23 — Quality bar + failure overlay + honest "is it great?" audit
 
 User pushed: the happy-path map looked too simple and lacked the finer detail separating a good vs

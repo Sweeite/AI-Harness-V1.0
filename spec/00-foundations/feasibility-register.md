@@ -88,9 +88,15 @@ safety mechanism, not a problem.
 | AF-065 | **Expand-contract migrations keep a mixed-version fleet safe** (ADR-005 §3/§4): a `vN` and a `vN-1` deployment both run correctly against their own schema through a rollout, **and prior code runs against the newer schema** (the rollback premise). Parts 3 + 4 of ADR-005 rest entirely on this. | SPIKE | 🔴 |
 | AF-066 | **The synthetic canary corpus + smoke battery is representative enough** (ADR-005 §6/C2) to catch behavioral/data-dependent regressions (retrieval, memory contradiction, agent routing) before promotion — i.e. the canary is not a false sense of safety. Honest limit: it only catches what its fixtures + assertions cover. Shares the AF-001/AF-002 corpus. | EVAL | 🔴 |
 
+## G. RLS / dynamic-roles feasibility (ADR-006 — verify by SPIKE / LOAD)
+
+| ID | Assumption | Method | Status |
+|---|---|---|---|
+| AF-067 | **Live data-driven RLS performs on the hot retrieval path** (ADR-006 §D3/Axis 3): a `STABLE SECURITY DEFINER` permission lookup keyed on `auth.uid()`, evaluated **once per statement** over the (tiny, fully-indexed) permission tables, composes with **pgvector** ranking of a large memory batch without unacceptable latency. The whole D3 "read permissions live, no token cache" choice rests on this. **Fallback if it fails at scale:** denormalise permissions into JWT claims (the rejected D2), accepting a staleness window — logged as OOS-012. | SPIKE+LOAD | 🔴 |
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-067
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-068
 > (cost block C uses AF-040–043, 044–049 reserved for cost overflow; concurrency block E uses
-> AF-061–063; deploy block F uses AF-064–066).
+> AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

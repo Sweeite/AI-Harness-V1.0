@@ -22,4 +22,6 @@ make us revisit it. Adding something here is a *decision*, not a gap.
 | OOS-010 | Automated plugin distribution / versioning | Deferred v2 | v1 `/plugins` is per-deployment, manually updated, out of the core release train; only version **visibility** (per-deployment) is in v1 | ADR-005 §7, design L19-27 | If plugin churn across many clients makes manual updates painful |
 | OOS-011 | Full IaC (Terraform) provisioning | Rejected (v1) | v1 uses a scripted CLI + runbook; full IaC is gold-plating a ≤~20-run path, and the client-owned/consent steps can't be IaC'd | ADR-005 §B (Axis 2) | If client count materially exceeds the ~20 ceiling |
 
-> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-012.
+| OOS-012 | JWT-cached permission claims (denormalise roles/clearances onto the token) | Deferred (perf optimisation) | v1 reads permissions **live** from the tables each query (ADR-006 D3) — instant grant/revoke, no staleness. Caching on the JWT (D2) is faster but imports a stale-access window + propagation machinery not worth it at ≤20 users; kept as the documented **fallback** only if AF-067 shows the live lookup can't keep up at scale | ADR-006 §Axis 1 (D2), AF-067 | If a deployment's permission-check latency on the retrieval path proves unacceptable |
+
+> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-013.
