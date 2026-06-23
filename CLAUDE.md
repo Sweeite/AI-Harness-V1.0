@@ -70,6 +70,29 @@ a chat, that's a bug — write it down before proceeding.
 - In conversation, explicitly call out which parts are decided-on-paper vs need-testing, both
   now and whenever new ones surface. The user expects these and wants them surfaced, not hidden.
 
+## Adding a new tool / connector (research-first — this triggers research)
+
+The tool set is **open-ended and client-driven** — new tools/connectors/APIs arrive per client,
+vertical, and use case. **No tool is specced into a requirement until a dated, primary-source
+research dossier exists for it.** When a new tool comes up (any client, any use case), or an existing
+tool's vendor changes something, **stop and follow
+`spec/00-foundations/standards/tool-integration-research.md`** — the repeatable 5-step gate:
+
+1. Open a dossier from `spec/00-foundations/tool-integrations/_TEMPLATE.md` → `<tool-slug>.md`.
+2. **Run the research fan-out** — parallel subagents over the 12 dimensions (auth/token lifecycle,
+   rate limits, API surface, webhooks, data/sensitivity, provisioning, isolation, cost, failure
+   modes, versioning), **primary vendor docs only, date-stamped**, always asking *"what changed in
+   the last 12–18 months?"*
+3. File outputs into the registers (Rule 0): `AF-NNN` for anything DOCS can't prove, `OD-NNN` for
+   every fork, glossary terms, `OOS-NNN` for deferrals.
+4. Independent verification re-check on stale/refuted/load-bearing claims.
+5. **Only then** spec the connector FRs — citing the **dossier**, not the design doc, for vendor facts.
+
+**Vendor facts go stale** — the AF-003 spike caught 3 stale/refuted claims and 1 design fork (OD-011).
+Every dossier is dated with a `Re-verify by`; a stale dossier can't be cited as current. This is the
+connector-level expression of the three non-negotiables (a mis-read token rule loses access → #1; an
+over-scoped grant does something it shouldn't → #2; an unhandled rate limit fails silently → #3).
+
 ## Context-window management
 
 - **One component or one ADR per working session.** Bounded scope keeps context sharp.

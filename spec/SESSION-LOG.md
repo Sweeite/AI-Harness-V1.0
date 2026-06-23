@@ -44,6 +44,20 @@ vendor docs.
 verification findings" subsection F1–F12 with corrected values + sources + design impacts); `open-decisions.md`
 (new **OD-011** Slack app class, 🟡 rec (a); next OD-012); `README.md` (status line — spike progress + OD-011).
 
+**Also built (user request) — the tool-integration research-first gate.** The tool set is open-ended and
+client-driven; new connectors arrive per client/use case, and AF-003 just proved vendor facts go stale. So we
+made a **repeatable research trigger**: no tool is specced until a dated, primary-source dossier exists.
+- `standards/tool-integration-research.md` (new, **Binding**) — the 5-step procedure (open dossier → parallel
+  research fan-out over 12 dimensions, primary docs only, date-stamped → file AF/OD/glossary outputs →
+  verification re-check → only then spec the connector FRs) + the 12 research dimensions (auth/token lifecycle,
+  rate limits, API, webhooks, data/sensitivity, provisioning, isolation, cost, failure, versioning) each tied to
+  an ADR / non-negotiable, with the AF-003 finding that proves it matters + a **staleness / `Re-verify by`** rule.
+- `tool-integrations/_TEMPLATE.md` (new) — the per-tool dossier shape.
+- `tool-integrations/README.md` (new) — index; **pre-seeded** with Google/Gmail, GHL, Slack rows pointing at the
+  AF-003 F1–F6 findings + OD-011 (so the spike work feeds the dossiers when those connectors are specced).
+- `CLAUDE.md` — new section **"Adding a new tool / connector (research-first — this triggers research)"** after
+  the feasibility rules; `README.md` repo map (+standard, +`tool-integrations/` folder).
+
 **Next step:** **OD-009 (backup/DR — elevated, top-bar)** is now the last actionable Phase-0 item before
 Phase 1 (the 3 SPIKE/EVAL priority spikes are build-time, deferred). Resolve OD-009 draft→approve (may spawn a
 small ADR on the ownership question — client owns the Supabase, so backup ownership/verification is ambiguous;

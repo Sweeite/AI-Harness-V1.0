@@ -27,7 +27,8 @@ spec/
     out-of-scope.md      Things consciously NOT built / deferred to v2 (OOS-*)
     feasibility-register.md  Assumptions that can only be proven by testing (AF-*)
     adr/                 Architecture Decision Records (the 7 load-bearing decisions + more)
-    standards/           Cross-cutting patterns (config edit taxonomy, change control, migration discipline, RBAC, UI states)
+    standards/           Cross-cutting patterns (config edit taxonomy, change control, migration discipline, tool-integration research, RBAC, UI states)
+    tool-integrations/   Per-tool research dossiers (research-first gate for every new connector) + template + index
   01-requirements/     Functional requirements, one file per component (0..10)
   02-config/           Config registry (every tunable, classified + surfaced)
   03-surfaces/         Dashboard/UI specs (every surface, all states)
