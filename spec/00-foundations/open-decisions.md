@@ -92,11 +92,20 @@ backend run as the **service role**, which bypasses RLS — governed by harness 
 be tested** — ⚠️ AF-067 (live data-driven RLS performs on the hot retrieval path; D2 JWT-cache is the
 fallback if not). See ADR-006.
 
-## OD-007 — Prompt-injection posture 🔴 → ADR-007
-**Why it matters:** Regex + embedding-similarity detection is partly theater and risks
-false-positive quarantine. Need to decide how much to lean on code-level hard limits vs
-detection. Affects the guardrails component.
-**Recommendation:** I draft ADR-007; you approve.
+## OD-007 — Prompt-injection posture 🟢 RESOLVED → ADR-007
+**Resolution (2026-06-23):** **Containment-first.** A successful prompt injection is made
+**harmless by capability limits in code** — not reliably **caught** by detection. The security
+boundary is the controls that ignore prompt content entirely: hard limits (`L2053`/`L2066`),
+default-deny RBAC + RLS (ADR-006), approval gates, rate limits, physical isolation (ADR-001),
+sole-writer memory (ADR-004). Detection is **demoted to a signal**: keep the cheap deterministic
+layers always on (boundary tagging, regex tripwires, webhook HMAC auth) for logging/alerting; ship
+the **embedding-similarity scan off by default** (`injection_semantic_detection`, the operator
+on/off switch) — observability-only when on, never an autonomous gate. Fail-safe = **retain + route
+to human**: flagged content is held, never machine-discarded (discard is a human-only logged
+decision — protects non-negotiable #1); every event is logged loudly (#3). The injection thresholds
+(0.85/0.95) are signal-tuning knobs, **not** safety dials. **Must be tested** — ⚠️ AF-068 (the
+containment boundary holds end-to-end: no authorized-but-dangerous autonomous action path; red-team
+with live payloads). See ADR-007.
 
 ---
 

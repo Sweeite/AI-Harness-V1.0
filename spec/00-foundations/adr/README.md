@@ -14,7 +14,7 @@ Phase 0 because downstream requirements assume their answers. Each ADR follows
 | ADR-004 | Concurrency model for memory writes (per-entity serialize + optimistic validate-and-commit) | Draft → approve | 🟢 Accepted |
 | ADR-005 | Deploy fan-out & provisioning automation (canary + release-train; scripted provisioning; bounded version skew) | Draft → approve | 🟢 Accepted |
 | ADR-006 | Dynamic roles vs static RLS (static data-driven policies over live permission tables; intra-client only) | Draft → approve | 🟢 Accepted |
-| ADR-007 | Prompt-injection posture | Draft → approve | 🔴 open |
+| ADR-007 | Prompt-injection posture (containment-first; detection-as-signal; embedding scan off by default) | Draft → approve | 🟢 Accepted |
 
 More ADRs will be added if component work surfaces further cross-cutting decisions.
 

@@ -5,6 +5,59 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 12 — 2026-06-23 — ADR-007 ACCEPTED (prompt-injection posture) — last load-bearing ADR
+
+Fourth **draft→approve** ADR, and the **last** of the seven. Closes OD-007. User was confused by the
+first draft and asked to simplify — worked it through in plain language (Option A "spot the fakes" vs
+Option B "lock the doors"; bank-teller-and-vault analogy landed). He then raised two sharp instincts
+that *validated* the design: (1) detection is unreliable → that's why we lock the doors; (2) scanning
+everything is expensive → that's why the one paid scanner is off by default. Approved, and explicitly
+asked to "make sure to have the on/off switch for the smoke alarm" → captured as config
+`injection_semantic_detection` (default **off**).
+
+**Decided (6 binding parts):**
+- **Containment-first, not detection-first.** The security boundary is the controls that **ignore
+  prompt content entirely** — hard limits in code (`L2053`/`L2066`), default-deny RBAC + RLS (ADR-006),
+  approval gates (`L2772`), rate limits (`L2809`), physical cross-client isolation (ADR-001),
+  sole-writer + sensitivity-gated memory (ADR-004). A successful injection is **contained, not
+  necessarily caught**. This is "controls before gates" (ADR-003) applied to injection, and the only
+  posture consistent with non-negotiable #2.
+- **Keep the cheap deterministic layers, always on:** external-data **boundary tagging** (`L2965`),
+  high-precision **regex tripwires** (`L2943`, log/alert only — not a gate), **webhook HMAC auth**
+  (`L742–809`, a real hard control = authentication, not content-detection).
+- **Detection-as-signal:** the **embedding-similarity classifier** (`L2959`, the "partly theater" part)
+  ships **off by default**; when on it may only flag for triage — **never** auto-quarantine/discard/
+  block. Promotion past off-by-default is EVAL-gated.
+- **Fail-safe = retain + route to human.** Quarantine **holds** content (shadow-retain) and never
+  machine-discards it; **discard is a human-only logged decision** (protects non-negotiable #1). Every
+  match logged loudly; every quarantine alerts (protects #3).
+- **Thresholds (0.85/0.95) are signal-tuning knobs, not safety dials** — config registry must document
+  them as such so no future requirement mistakes a threshold for the boundary.
+- **Rejected:** A1 detection-primary (the review's "theater"; unbounded false-negatives + false-positive
+  quarantine drops knowledge); mandating the embedding scan on the hot ingest path (read-path cost,
+  unproven payoff); machine auto-discard (violates #1).
+
+**Captured as MUST-TEST:** new feasibility block **H** —
+- **AF-068 (SPIKE / red-team)** — the containment boundary holds end-to-end: **no authorized-but-
+  dangerous autonomous action path** reaches a consequential side effect (external comm / financial /
+  cross-client read / destructive write / memory poisoning) without hitting a code gate that ignores
+  prompt content. The whole posture rests on this; a bypass must be **closed in code**, not patched with
+  a detection rule.
+
+**Files changed:** `adr/ADR-007-injection-posture.md` (new, Accepted); `open-decisions.md` (OD-007 →
+🟢); `adr/README.md` (ADR-007 Accepted); `feasibility-register.md` (new block H AF-068; next AF-069);
+`glossary.md` (+Containment-first injection posture, +External-data boundary tag, +Detection-as-signal);
+`what-makes-it-great.md` (#2 ⚠️ flag cleared → now points at AF-068 red-team residual); `README.md`
+(ADR status line — **all seven ADRs landed**).
+
+**Next step:** **Phase 0 ADRs are done.** Remaining before Phase 1: the **priority feasibility spikes**
+(AF-001 cost, AF-002 retrieval, AF-004 provisioning) and **OD-009 (backup/DR — elevated, top-bar)**.
+Then **Phase 1 component 0 (Login)** as the golden exemplar, building its `system-map/` zoom-in
+alongside. Note still-owed from ADR-006: the `standards/rbac.md` standard (write it when component 7 or
+the data model is specced). OD-010 (compensation/rollback) is a Phase-1 Harness/Guardrails item.
+
+---
+
 ## Session 11 — 2026-06-23 — The three non-negotiables captured (operator's top bar)
 
 User noted (correctly, applying Rule 0) that the "what does *great* mean to you?" question lived

@@ -94,9 +94,15 @@ safety mechanism, not a problem.
 |---|---|---|---|
 | AF-067 | **Live data-driven RLS performs on the hot retrieval path** (ADR-006 §D3/Axis 3): a `STABLE SECURITY DEFINER` permission lookup keyed on `auth.uid()`, evaluated **once per statement** over the (tiny, fully-indexed) permission tables, composes with **pgvector** ranking of a large memory batch without unacceptable latency. The whole D3 "read permissions live, no token cache" choice rests on this. **Fallback if it fails at scale:** denormalise permissions into JWT claims (the rejected D2), accepting a staleness window — logged as OOS-012. | SPIKE+LOAD | 🔴 |
 
+## H. Prompt-injection / containment feasibility (ADR-007 — verify by SPIKE / red-team)
+
+| ID | Assumption | Method | Status |
+|---|---|---|---|
+| AF-068 | **The containment boundary holds end-to-end** (ADR-007 part 1): there is **no authorized-but-dangerous autonomous action path** by which injected instructions reach a consequential side effect — external communication, financial action, cross-client read, destructive write of a system of record, or memory poisoning — **without** passing a code-enforced hard limit / RBAC check / approval gate that **ignores prompt content**. Verified by red-teaming the harness with live injection payloads and confirming none escalate. This is the load-bearing claim of the whole posture; if a bypass path exists it must be **closed in code**, not patched with a detection rule. | SPIKE (red-team) | 🔴 |
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-068
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-069
 > (cost block C uses AF-040–043, 044–049 reserved for cost overflow; concurrency block E uses
-> AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067).
+> AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection block H uses AF-068).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.
