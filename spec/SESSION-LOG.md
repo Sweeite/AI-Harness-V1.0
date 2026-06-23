@@ -5,6 +5,56 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 13 — 2026-06-23 — AF-003 vendor-claims spike (DOCS pass) — first feasibility item verified
+
+User asked "what's next," chose feasibility spikes, then asked whether "priority spikes" = "feasibility
+spikes" (yes — priority = the run-first subset that can invalidate the architecture; same `AF-` register).
+**Honest constraint surfaced:** 3 of the 4 priority spikes (AF-001 cost, AF-002 retrieval, AF-004
+provisioning) are SPIKE/EVAL and **need a runnable prototype that doesn't exist** — can't run from inside a
+spec repo without fabricating results (would violate non-negotiable #3 + anti-hallucination rule). The **one
+doable now** is **AF-003 (vendor-claims, method DOCS)** — pure documentation verification. Ran it: 4 parallel
+research agents over Google/Gmail, GHL+Slack, Supabase+pgvector, Inngest+Railway, all against current primary
+vendor docs.
+
+**Result — 3 claims stale/refuted, 1 design fork, rest verified:**
+- ⛔ **AF-011 (GHL rate limit) REFUTED** — not "120/min, no burst"; real = **100 req/10s burst + 200k/day, per
+  app per location**. No per-minute limit. Daily cap is the real ceiling.
+- ⛔ **AF-014 (GHL OAuth refresh) PARTLY REFUTED** — refresh token is **NOT indefinite**; it **rotates per use**
+  + dies after **1 yr unused**. ⚠️ **#1 risk:** harness must persist the new refresh token every refresh or
+  silently lose access.
+- 🟠 **AF-010 (Gmail quota) STALE** — "250/sec" gone → **6,000 QU/min/user**, and **date-dependent** on GCP
+  project activation (pre/post 2026-05-01). Pin per-environment. +100-token-per-account cap.
+- 🟠 **AF-017 (Edge Functions) STALE** — "150s" is Free-only; paid = 400s; real constraint = **2s CPU cap (all
+  plans)**. Cite that, not 150s.
+- 🔴 **AF-012 (Slack) → DESIGN FORK, logged OD-011** — since 2025-05-29 non-Marketplace apps have
+  `conversations.history/.replies` throttled to **Tier 1 (1 call/min × 15 msgs)** = lethal for history ingest.
+  **Exempt: Marketplace apps + internal custom apps.** OD-011 recommends **(a) internal custom app per client
+  workspace** (fits ADR-001/005), EVAL-gated on a live workspace.
+- 🟢 **Verified:** AF-013 (Google OAuth — sharper: Testing=7d expiry, 6mo-unused death, password-reset
+  revoke, CASA annual reassessment ~weeks = onboarding critical path), AF-015 (Slack xoxb), AF-016 (Realtime —
+  soft quotas + msgs/sec & joins/sec ceilings), AF-018 (Inngest — **per-key concurrency ✓ confirms ADR-004**;
+  wording fixes: per-step ≤2h, `onFailure`/`inngest/function.failed` not "DLQ"; Free concurrency=5), AF-020
+  (Railway — pre-deploy command blocks-on-fail ✓ confirms migrate-on-release + **branch-per-env corroborates
+  AF-064 canary model**), AF-021 (cross-account Supabase works; ⚠️ service-role key = god-mode bypass-RLS, +
+  static-egress-IP assumption for allowlisting).
+- 🟡 **AF-019 (pgvector HNSW)** — HNSW verified, but **kept SPIKE/LOAD-open**: RLS/WHERE filters apply *after*
+  the ANN scan, so per-client RLS (ADR-006) can starve recall; must LOAD-test **with RLS predicates applied**.
+
+**Files changed:** `feasibility-register.md` (AF-003 row → 🟡; Block A all 12 statuses set; new "AF-003 DOCS
+verification findings" subsection F1–F12 with corrected values + sources + design impacts); `open-decisions.md`
+(new **OD-011** Slack app class, 🟡 rec (a); next OD-012); `README.md` (status line — spike progress + OD-011).
+
+**Next step:** **OD-009 (backup/DR — elevated, top-bar)** is now the last actionable Phase-0 item before
+Phase 1 (the 3 SPIKE/EVAL priority spikes are build-time, deferred). Resolve OD-009 draft→approve (may spawn a
+small ADR on the ownership question — client owns the Supabase, so backup ownership/verification is ambiguous;
+underpins non-negotiable #1). **Then Phase 1 component 0 (Login)** as the golden exemplar + its `system-map/`
+zoom-in. Corrected vendor values (F1–F12) must propagate into the Phase-1/2 connector, token-lifecycle, and
+rate-limit FRs — esp. GHL refresh-token persistence (F5), Gmail per-env quota (F1), Slack app class (OD-011).
+Carry-over from ADR-006: write `standards/rbac.md` when component 7 / data model is specced. OD-010
+(compensation/rollback) is a Phase-1 Harness/Guardrails item.
+
+---
+
 ## Session 12 — 2026-06-23 — ADR-007 ACCEPTED (prompt-injection posture) — last load-bearing ADR
 
 Fourth **draft→approve** ADR, and the **last** of the seven. Closes OD-007. User was confused by the

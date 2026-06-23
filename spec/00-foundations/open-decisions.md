@@ -143,4 +143,25 @@ components 5/6/8 (harness / guardrails / agent design).
 **Recommendation:** draft→approve during the Harness/Guardrails component work in Phase 1; promote
 to an ADR only if it proves cross-cutting. Not a Phase-0 blocker.
 
-> Next OD number: OD-011.
+## OD-011 — Slack app registration class (Marketplace / internal-custom) for history ingest 🟡
+**Surfaced by:** AF-003 vendor-claims verification (finding F3), 2026-06-23.
+**Why it matters:** As of **2025-05-29** Slack throttles `conversations.history` and
+`conversations.replies` to **Tier 1 (1 call/min, `limit` max 15 objects)** for **non-Marketplace
+apps** — about **15 messages/minute per token**. Any Slack channel-history ingest/backfill (a core
+"business brain" source) is **non-viable** at that rate. **Exempt:** Slack-Marketplace-approved apps
+**and internal custom apps** (these keep Tier 3, 50+/min × up to 1,000 objects). So the throttle is a
+function of *how the Slack app is registered*, not of our code — and it directly gates ingest throughput.
+**Options:**
+- **(a) Internal custom app per client workspace** — each Silo's Slack integration is a custom app
+  created inside the client's own workspace (fits the ADR-001 per-client / client-owned-account model
+  and the ADR-005 per-client OAuth-app pattern). Exempt from the throttle; no Slack review. **Recommended.**
+- **(b) One Slack-Marketplace-approved app** — a single distributed app, but requires passing Slack's
+  Marketplace review (lead time + ongoing compliance) and conflicts with the per-client account model.
+- **(c) Accept Tier 1 + design around it** — incremental/event-driven sync only (Events API push instead
+  of history pull), no bulk backfill. Lossy for cold-start ingest of existing history.
+**Recommendation:** **(a)** — aligns with ADR-001 (client owns the connector accounts) and ADR-005
+(per-client OAuth apps live in the client's accounts); internal custom apps are the documented exempt
+path. Confirm the exemption holds with an **EVAL against a live test workspace** (the AF-012 follow-up)
+before locking. Resolve when we spec the Slack connector / ingestion component in Phase 1.
+
+> Next OD number: OD-012.
