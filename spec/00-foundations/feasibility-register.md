@@ -72,8 +72,17 @@ safety mechanism, not a problem.
 | AF-051 | Vector search latency stays acceptable as memories grow | 🔴 |
 | AF-052 | Consolidation/summarise jobs complete within Inngest comfortably at volume | 🔴 |
 
+## E. Concurrency feasibility (ADR-004 — verify by SPIKE / LOAD / DOCS)
+
+| ID | Assumption | Method | Status |
+|---|---|---|---|
+| AF-061 | The **optimistic validate-and-commit closes the TOCTOU window** (ADR-004 §3): running the Sonnet writer unlocked, then a short locked transaction that re-checks a per-entity watermark and re-runs only the cheap DB contradiction check on change, actually catches same-entity races **without livelock or excessive re-runs**. The whole correctness claim rests on this — it is the core thing that can only be proven by testing. | SPIKE+EVAL | 🔴 |
+| AF-062 | **Sorted per-entity Postgres advisory locks + short commit transactions don't bottleneck under fan-out at scale** (`L2115`, ~20 concurrent deployments), and multi-entity writes (locking 2–3 entities each, in sorted order) stay **deadlock-free** and contention-light. | LOAD | 🔴 |
+| AF-063 | **Inngest per-key concurrency serializes same-entity steps** as ADR-004 §2 assumes — and if it doesn't, the design **degrades safely** to "advisory lock alone" (the lock, not the queue, is the correctness boundary). | DOCS+SPIKE | 🔴 |
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-060
-> (cost block C now uses AF-040–043; 044–049 reserved for cost overflow).
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-064
+> (cost block C uses AF-040–043, 044–049 reserved for cost overflow; concurrency block E uses
+> AF-061–063, 064 free).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

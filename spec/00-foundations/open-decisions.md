@@ -42,10 +42,18 @@ in code** before the Sonnet orchestrator. (5) Principle **"controls before gates
 limits first, one self-funding Haiku gate (selective-writing) only; re-rank/HyDE not mandated.
 (6) Viability target ≤ ~$20/day typical, **validated by AF-001** (also AF-040/041/042/043). See ADR-003.
 
-## OD-004 — Concurrency model for memory writes 🔴 → ADR-004
-**Why it matters:** Contradiction-check-then-write is a TOCTOU race under parallel agents /
-fan-out. No per-entity locking defined.
-**Recommendation:** I draft ADR-004 with a recommendation; you approve.
+## OD-004 — Concurrency model for memory writes 🟢 RESOLVED → ADR-004
+**Resolution (2026-06-23):** The contradiction-check-then-write TOCTOU is closed by **per-entity
+serialization + optimistic validate-and-commit**. Only **same-entity** writes serialize (disjoint
+writes stay parallel, preserving fan-out); the slow Sonnet writer runs **unlocked**, then a short
+transaction under **sorted per-entity Postgres advisory locks** re-checks a per-entity watermark
+and commits — locks held for milliseconds, never across an LLM call. Backed by three supports: the
+**Memory Agent is the sole writer** (invariant, locks `L3435`), a **unique idempotency constraint**
+(kills retry double-writes), and a **CAS supersede** (`WHERE superseded_by IS NULL`, kills lost
+supersession). Daily/weekly jobs demoted to hygiene. `memory_writes_per_minute:30` makes
+serialization effectively free. **Must be tested** before/while building — ⚠️ AF-061 (the
+validate-and-commit actually closes the window, no livelock), AF-062 (locks don't bottleneck at
+scale, deadlock-free), AF-063 (Inngest per-key concurrency behaves as assumed). See ADR-004.
 
 ## OD-005 — Deploy fan-out & provisioning automation 🔴 → ADR-005
 **Why it matters:** "Push deploys to all N Railway projects" + per-client Supabase/OAuth

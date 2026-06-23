@@ -102,4 +102,4 @@ phase because they can invalidate the architecture. Paper-vs-proven is always st
 
 Decisions chosen: spec home = git markdown repo · big decisions = grill load-bearing, fast-track rest · start = foundations then components in order.
 
-ADRs: 🟢 ADR-001 (isolation) · 🟢 ADR-002 (coverage → Maturity + Retrieval Sufficiency; closes OD-008) · 🟢 ADR-003 (cost model — client-side viability + cost ladder; closes OD-003). All three load-bearing grills done; next = draft-approve ADR-004 (concurrency).
+ADRs: 🟢 ADR-001 (isolation) · 🟢 ADR-002 (coverage → Maturity + Retrieval Sufficiency; closes OD-008) · 🟢 ADR-003 (cost model — client-side viability + cost ladder; closes OD-003) · 🟢 ADR-004 (concurrency — per-entity serialize + optimistic validate-and-commit; closes OD-004). All load-bearing grills done + first draft-approve ADR landed; next = draft-approve ADR-005 (deploy/provisioning fan-out).

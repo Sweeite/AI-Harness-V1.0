@@ -5,6 +5,51 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 6 — 2026-06-23 — ADR-004 ACCEPTED (memory-write concurrency)
+
+First **draft→approve** ADR (not a grill). Closes OD-004 — the contradiction-check-then-write
+TOCTOU race under `parallel_execution`/fan-out.
+
+**Decided:** **Per-entity serialization + optimistic validate-and-commit.**
+- Serialize only **same-entity** writes (disjoint writes stay parallel → fan-out preserved). A
+  contradiction is always same-entity, so that's the only race that matters.
+- **Core insight:** can't hold a DB lock across the multi-second Sonnet writer (pool exhaustion +
+  ADR-003 waste). So LLM work runs **unlocked**; then a **short** transaction under **sorted
+  per-entity Postgres advisory locks** (`pg_advisory_xact_lock`, sorted = deadlock-free) re-checks
+  a per-entity watermark `max(updated_at)` — unchanged → commit; changed → re-run only the cheap
+  **DB** contradiction check (no LLM) and commit/re-target/bounce. Locks held ~ms.
+- Three supports: **Memory Agent = sole writer** (invariant, locks design `L3435`); **unique
+  idempotency constraint** `hash(source_ref, sorted entity_ids, content_hash)` kills retry
+  double-writes; **CAS supersede** (`WHERE superseded_by IS NULL`) kills lost supersession.
+- Daily supersede / weekly merge **demoted** from correctness to hygiene. `memory_writes_per_minute:30`
+  makes serialization effectively free.
+- **Rejected:** A do-nothing/daily-job (wrong for hours), B global-serialize (kills fan-out),
+  C pessimistic-lock-across-LLM (wrong granularity + hold time), D optimistic-only (misses the
+  duplicate-insert case — folded in as a support instead).
+- **User-flagged knob (left as-is):** on a detected race the re-check re-runs the **DB** check, not
+  a full Sonnet re-decision — deliberate "good enough" to avoid LLM livelock. User approved.
+
+**Captured as MUST-TEST (user explicitly asked):** new feasibility block **E** —
+- **AF-061 (SPIKE+EVAL)** — the validate-and-commit actually closes the window, no livelock. *The
+  whole correctness claim rests on this.*
+- **AF-062 (LOAD)** — advisory locks + short txns don't bottleneck at scale; multi-entity locks
+  deadlock-free.
+- **AF-063 (DOCS+SPIKE)** — Inngest per-key concurrency behaves as assumed; degrades safely to
+  advisory-lock-only.
+
+**Files changed:** `adr/ADR-004-concurrency-model.md` (new, Accepted); `open-decisions.md`
+(OD-004 → 🟢); `adr/README.md` (ADR-004 Accepted); `feasibility-register.md` (new block E
+AF-061–063; next AF-064); `glossary.md` (+TOCTOU race, +Per-entity serialization, +Advisory lock,
++Optimistic validate-and-commit, +Idempotency key); `README.md` (ADR status line).
+
+**Next step:** **ADR-005 (deploy fan-out & provisioning automation)** — draft→approve (OD-005).
+Push-deploy to N Railway projects + per-client Supabase/OAuth provisioning + version skew across
+clients. Builds on ADR-001 (hybrid ownership). Priority spike AF-004 (provisioning) is its
+companion. Remaining draft-approve ADRs after that: ADR-006 (RLS/dynamic roles, OD-006),
+ADR-007 (injection posture, OD-007). Then priority spikes, then Phase 1 (component 0 Login).
+
+---
+
 ## Session 5 — 2026-06-22 — Process fully externalized (full-optics docs)
 
 User wanted the entire operating model written down now (not just-in-time), with full optics —

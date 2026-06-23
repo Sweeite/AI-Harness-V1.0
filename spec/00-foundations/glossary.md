@@ -26,6 +26,11 @@ until resolved.
 | Confidence | A memory's 0.0–1.0 trust score, set at write and moved over its life. | ✅ |
 | Decay | Scheduled downward drift of confidence for stale, unconfirmed memories. | ✅ |
 | Supersede | Marking an old memory replaced by a newer one (chain preserved, not deleted). | ✅ |
+| TOCTOU race | Time-of-check-to-time-of-use: two parallel memory writers both pass the contradiction check before either writes, so neither sees the other → duplicate or self-contradicting memory. The hazard ADR-004 closes. | ✅ ADR-004 |
+| Per-entity serialization | ADR-004's concurrency model: writes touching the **same** entity are forced single-file; writes touching **disjoint** entities run in parallel. Only same-entity writes can contradict, so only they are serialized. | ✅ ADR-004 |
+| Advisory lock (transaction-scoped) | A Postgres lock keyed on an entity (`pg_advisory_xact_lock`), taken on each of a write's entities in **sorted order** (deadlock-free) inside the short commit transaction. The correctness boundary for per-entity serialization. | ✅ ADR-004 |
+| Optimistic validate-and-commit | ADR-004's write shape: run the Haiku/Sonnet writer **unlocked**, then in a short locked transaction re-check a per-entity watermark (`max(updated_at)`); if unchanged commit, else re-run only the cheap DB contradiction check. Keeps locks at milliseconds — never held across an LLM call. | ✅ ADR-004 |
+| Idempotency key (memory write) | `hash(source_ref, sorted entity_ids, content_hash)` with a **unique constraint**, so a retried Inngest step can't double-insert a memory (`ON CONFLICT DO NOTHING`). | ✅ ADR-004 |
 | Consolidation | Merge / supersede / summarise jobs that keep memory healthy. | ✅ |
 | System of record | The external system that owns a piece of data (GHL, Drive, Slack). | ✅ |
 | Pointer | A memory that references data owned by a system of record, not a copy of it. | ✅ |
