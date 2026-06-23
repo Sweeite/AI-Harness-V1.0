@@ -11,7 +11,7 @@
 
 ---
 
-## Phase 0 — Foundations  *(in progress)*
+## Phase 0 — Foundations  *(complete — 2026-06-23)*
 
 **Goal:** Lock the decide-once layer so nothing downstream is built on sand: conventions,
 glossary, the load-bearing ADRs, cross-cutting standards, and the parallel tracks.

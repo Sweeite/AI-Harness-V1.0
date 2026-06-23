@@ -134,5 +134,7 @@ Full reference: `id-conventions.md`. Plain-English: `/ACRONYMS.md`.
 ## Current state pointer
 
 Authoritative status lives in `README.md` (phase table + ADR line) and the top of `SESSION-LOG.md`.
-As of writing: Phase 0 in progress — ADR-001/002/003 Accepted; ADR-004–007 pending (draft-approve);
-priority spikes pending; Phase 1 not started.
+As of 2026-06-23: **Phase 0 complete** — all 8 ADRs (ADR-001…008) Accepted; AF-003 vendor-claims DOCS
+pass done (3 claims stale/refuted, 1 design fork → OD-011); the 3 SPIKE/EVAL priority spikes
+(AF-001/002/004) deferred to build-time. **Phase 1 not yet started** (next: component 0 — Login). Open
+items, both Phase-1: OD-010 (compensation/rollback) and OD-011 (Slack app class).

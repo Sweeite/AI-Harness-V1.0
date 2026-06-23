@@ -97,7 +97,7 @@ phase because they can invalidate the architecture. Paper-vs-proven is always st
 
 | Phase | Status |
 |---|---|
-| 0 — Foundations | 🟡 in progress |
+| 0 — Foundations | 🟢 complete |
 | 1 — Requirements | ⚪ not started |
 | 2 — Config | ⚪ not started |
 | 3 — Surfaces | ⚪ not started |
