@@ -106,4 +106,17 @@ management-plane push so the operator can see if a client's backups lapse.
 is contentious. Log a feasibility item that restore *actually works* (SPIKE/LOAD), not just that
 backups exist.
 
-> Next OD number: OD-010.
+## OD-010 — Compensation / rollback for partially-completed task chains 🔴
+**Why it matters (surfaced by the "what makes it great" audit):** a task graph can act on the
+outside world mid-chain (e.g. update the CRM at step 7) and then halt at a later step. The current
+failure model is retry / skip / halt-escalate + idempotent re-run — but there is **no defined story
+for undoing or compensating external side effects already applied** when a chain halts. For
+external comms / records this is a real great-harness concern.
+**Options:** (a) halt + human + idempotent resume only (current implicit) — simplest, leans on
+"prefer reversible" + approval gates making partial side effects rare; (b) compensating actions
+(saga-style) per reversible step; (c) explicit cleanup tasks queued on halt. Likely touches
+components 5/6/8 (harness / guardrails / agent design).
+**Recommendation:** draft→approve during the Harness/Guardrails component work in Phase 1; promote
+to an ADR only if it proves cross-cutting. Not a Phase-0 blocker.
+
+> Next OD number: OD-011.

@@ -17,7 +17,8 @@ spec/
     process-overview.md  Full optics — what/want/goal/why/how (read after CLAUDE.md)
     phase-playbooks.md   The repeatable procedure for every phase (0→6)
     system-map.md        Top-down view: how it all fits + the e2e request route
-    system-map/          Per-component zoom-in maps (built as each is specced)
+    system-map/          Per-component zoom-ins + failure-overlay (the shadow map)
+    what-makes-it-great.md  The quality bar + honest coverage audit (great vs good)
     working-with-me.md   Grounding mode — how to support the user when overwhelmed
     glossary.md          Every load-bearing term, defined once
     id-conventions.md    The ID scheme (FR/CFG/UI/DATA/PERM/AC/OD/ADR)

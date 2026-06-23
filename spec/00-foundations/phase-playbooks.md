@@ -68,6 +68,11 @@ decisions, signed off by the user.
 8. **Run the verification gate:** an independent subagent re-extracts FRs from the component's
    design prose and flags (a) orphaned design lines (intent with no FR) and (b) contradictions
    with locked ADRs/glossary. Reconcile every finding.
+8a. **Quality-bar check:** check the component against the relevant rows of
+   `what-makes-it-great.md`. If a great-harness dimension applies and we only specced the
+   "good-enough" version, that's a flagged shortfall (an OD), not a silent choice. Also probe the
+   `system-map/failure-overlay.md` failure modes for this component — any with no mechanism is an
+   FR we still owe.
 9. **Update `traceability-matrix.csv`** — one row per FR with its links.
 10. **User sign-off** → set component FRs to `Approved`. Record sign-off (file header + SESSION-LOG).
     Commit. Append SESSION-LOG entry with next component as the resume point.

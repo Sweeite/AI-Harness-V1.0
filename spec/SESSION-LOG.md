@@ -5,6 +5,36 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 9 — 2026-06-23 — Quality bar + failure overlay + honest "is it great?" audit
+
+User pushed: the happy-path map looked too simple and lacked the finer detail separating a good vs
+great harness, and asked whether the "great" stuff is actually in our system — capture it if not.
+
+**Created:**
+- `what-makes-it-great.md` — the great-vs-good quality bar across 12 dimensions, **plus an honest
+  coverage audit** (where each lives in the design doc / ADRs + status: designed / ADR-hardened /
+  paper-pending-test / gap). Headline: most great dimensions ARE designed in or ADR-hardened; the
+  rest is "great on paper, must be tested" (AF register). Becomes a Phase-1 gate.
+- `system-map/failure-overlay.md` — the shadow map: per step, what goes wrong + the mechanism that
+  catches it (with cites). This is where the real depth/complexity lives.
+- Rendered both as live visuals.
+
+**Gaps surfaced & tracked:** **OD-010** (compensation/rollback of partially-completed task chains —
+no undo story for external side effects when a chain halts; the one genuinely new gap from the
+audit). OD-009 (backup/DR) reaffirmed. Everything else either designed, ADR-hardened, or in the AF
+register as paper-pending-test.
+
+**Wired:** README repo map; phase-playbooks Phase 1 step 8a (quality-bar + failure-overlay check
+per component). 
+
+**Answer to "is the great stuff in our system?":** mostly yes (dimensions 1–10 designed/hardened);
+2 real gaps now tracked (OD-009, OD-010); the residual risk is paper-pending-test items, all logged.
+
+**Next step:** unchanged — **ADR-006 (dynamic roles vs static RLS)**, draft→approve; then ADR-007;
+then spikes; then Phase 1.
+
+---
+
 ## Session 8 — 2026-06-23 — System map + per-component zoom-ins + grounding mode
 
 User hit real anxiety: couldn't picture the system end-to-end ("blank in my head"), feared he
