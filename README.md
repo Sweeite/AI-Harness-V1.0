@@ -16,6 +16,9 @@ spec/
   00-foundations/      Decide-once layer: conventions, glossary, ADRs, standards, decision log
     process-overview.md  Full optics — what/want/goal/why/how (read after CLAUDE.md)
     phase-playbooks.md   The repeatable procedure for every phase (0→6)
+    system-map.md        Top-down view: how it all fits + the e2e request route
+    system-map/          Per-component zoom-in maps (built as each is specced)
+    working-with-me.md   Grounding mode — how to support the user when overwhelmed
     glossary.md          Every load-bearing term, defined once
     id-conventions.md    The ID scheme (FR/CFG/UI/DATA/PERM/AC/OD/ADR)
     requirement-template.md  The shape every functional requirement takes

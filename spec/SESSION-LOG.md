@@ -5,6 +5,34 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 8 — 2026-06-23 — System map + per-component zoom-ins + grounding mode
+
+User hit real anxiety: couldn't picture the system end-to-end ("blank in my head"), feared he
+couldn't explain it / that the build won't match the vision stuck in his head. **Root cause = a
+missing top-down VIEW** (we'd only ever built bottom-up: decisions/ADRs/requirements). Fix = make
+the system visible, and build support for the user into the repo.
+
+**Created:**
+- `system-map.md` — top-down end-to-end route (8-stage "drive"), the continuous layer
+  (loops/observability/proactive), the infra/compliance foundation, component legend C0–C10, and
+  the **simulation technique** (walk a scenario down the map → each gap becomes an OD/requirement)
+  with a worked GHL-lead example.
+- `system-map/` — per-component zoom-in folder + index (all 11). **Build policy:** each zoom-in is
+  built when we spec that component in Phase 1, so maps never drift from requirements. `02-memory.md`
+  built now as the **exemplar** (reflects ADR-002/003/004). Out-of-order builds allowed if a
+  component is causing anxiety.
+- `working-with-me.md` — **grounding mode**: recognise the pattern (anxiety = missing-view signal,
+  not a defect), do/don't list, and a 7-step "ground me" protocol.
+
+**Wired:** CLAUDE.md now opens with a priority **grounding-mode** section + map pointers; README
+repo map updated. Rendered the e2e map and the Memory zoom-in as live visuals in chat.
+
+**Next step:** unchanged — **ADR-006 (dynamic roles vs static RLS)**, draft→approve; then ADR-007;
+then priority spikes; then Phase 1 (component 0 Login as golden exemplar). When we spec each
+component, build its `system-map/` zoom-in alongside it.
+
+---
+
 ## Session 7 — 2026-06-23 — ADR-005 ACCEPTED (deploy fan-out & provisioning)
 
 Second **draft→approve** ADR. Closes OD-005 — deploy fan-out, per-client provisioning, and version

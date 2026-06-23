@@ -15,6 +15,18 @@ moving on. Never reconstruct prior decisions from memory; read them.
 `spec/00-foundations/standards/change-control.md`. A decision to *exclude* or *defer* something
 is logged in `spec/00-foundations/out-of-scope.md`.
 
+## Grounding mode — when the user feels overwhelmed (priority)
+
+If the user shows anxiety/overwhelm, or says **"ground me"** / **"work with me"** (or *scared,
+blank, can't see it, in my head, overwhelmed*), **stop and follow
+`spec/00-foundations/working-with-me.md` before anything else.** Short version: the anxiety is
+almost always a *missing-view* signal, not a defect — make it concrete and visible (pull up
+`system-map.md`), anchor in what's already locked, narrow to one thing, externalise every worry
+into a tracked OD/AF, end with one next action. Show, don't reassure. Never yes-man him.
+
+The big-picture view lives in `spec/00-foundations/system-map.md` (end-to-end route) and
+`spec/00-foundations/system-map/` (per-component zoom-ins) — use them to make the system visible.
+
 ## Start every session by reading (in this order)
 
 1. `README.md` — the status table (where we are, what's next).
