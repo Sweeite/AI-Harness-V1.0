@@ -17,6 +17,23 @@ designed in**, and several are hardened by our ADRs. The real gaps are few and n
 
 ---
 
+## The three non-negotiables (the operator's top bar)
+
+Chosen explicitly by the operator (Austin). Failure is allowed; **silent** failure is not. These
+three are inviolable: **when a Phase-1 trade-off pits one of these against convenience, speed, or
+scope, the invariant wins.** They don't conflict with each other (they're integrity, safety,
+observability) — they only cost rigor. This is the *ranking rule* for trade-offs, not just a wish.
+
+| Invariant | Means | Held up by | Watch (what threatens it) |
+|---|---|---|---|
+| **1 · Never lose or corrupt knowledge** | memory integrity — nothing silently dropped, overwritten, or scrambled | supersede-not-delete · contradiction check · idempotency + per-entity serialize (ADR-004) · shadow-retain keeps a would-drop (ADR-003) · dims #2,#3 | 🔴 **OD-009 backup/DR** — this invariant *depends* on it, so OD-009 is now top-bar, not a Phase-5 nicety |
+| **2 · Never do something it shouldn't** | bounded action — never acts outside its authority or the hard limits | hard limits enforced in **code** (L2053, L2066) · approval gates by risk · default-deny RBAC + RLS (ADR-006) · dims #9,#10 | ⚠️ **ADR-007 (injection)** still open — the code hard-limit holds regardless, but the detection posture is undecided |
+| **3 · Never fail silently** | observable failure — every failure surfaces to a human | heartbeats · amber zones · said-vs-did cross-checks · failure-health dashboard · every job logs its outcome · dim #5 | well-covered; the bar is keeping it true as each component is built |
+
+These map onto the dimensions table below. Every component in Phase 1 is checked against them first.
+
+---
+
 | # | Dimension | The *great* bar | Where it lives | Status |
 |---|---|---|---|---|
 | 1 | **Failure handling** | per-step failure modes decided upfront (retry/skip/halt) · idempotent retries · graceful degradation (partial results) · detects *silent* failures | failure-mode map L2821 · per-step retry/skip/halt L3483 · DLQ L2585 · graceful degradation L2109 · silent-failure prevention L2857; idempotency ADR-004 | ✅🔵 |

@@ -5,6 +5,30 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 11 — 2026-06-23 — The three non-negotiables captured (operator's top bar)
+
+User noted (correctly, applying Rule 0) that the "what does *great* mean to you?" question lived
+only in chat, never the repo. He answered: **wants all three** — never lose/corrupt knowledge,
+never do something it shouldn't, never fail (silently). Affirmed coherent: the three don't conflict
+(integrity / safety / observability), they only cost rigor.
+
+**Captured:**
+- `what-makes-it-great.md` — new top section **"The three non-negotiables (the operator's top bar)"**:
+  each invariant + what upholds it + what threatens it. Framed as the **ranking rule** for Phase-1
+  trade-offs (invariant wins over convenience/speed/scope).
+- `process-overview.md` — added the three to "what the user wants."
+- **OD-009 (backup/DR) ELEVATED** — it underpins non-negotiable #1, so it's now top-bar, not a
+  Phase-5 nicety; resolve early.
+
+**Consequence to remember:** invariant #1 leans on OD-009 (backup/DR — still a gap); invariant #2
+leans on ADR-007 (injection — still open, next up). So the two open items both touch a non-negotiable.
+
+**Next step:** unchanged — **ADR-007 (prompt-injection posture)**, draft→approve (last load-bearing
+ADR); then priority spikes (AF-001/002/004); then Phase 1 (component 0 Login). Resolve OD-009 early
+given its elevation.
+
+---
+
 ## Session 10 — 2026-06-23 — ADR-006 ACCEPTED (dynamic roles vs static RLS)
 
 Third **draft→approve** ADR. Closes OD-006 — roles are editable at runtime but RLS is authored at

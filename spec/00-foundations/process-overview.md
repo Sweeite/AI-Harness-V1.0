@@ -37,6 +37,9 @@ and most decisions are the user's** (it's their vision and use case).
 - **Nothing ambiguous, assumed, or half-baked.** No "figure it out while building."
 - **Full optics** — the system (and every future chat) must understand what we want, the goal,
   the why, and the how. That is the purpose of this document.
+- **Three non-negotiables (the top bar):** never lose/corrupt knowledge · never do something it
+  shouldn't · never fail silently. When a trade-off hits one of these, the invariant wins. Full
+  definitions + how each is upheld: `what-makes-it-great.md`.
 
 **Business context (locked):** Operator = Transpera AI (Austin). Charges a **retainer** for
 building + managing; the **client pays all operating costs** (Supabase, API, connector SaaS) on

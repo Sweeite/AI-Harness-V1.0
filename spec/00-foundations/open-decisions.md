@@ -115,9 +115,11 @@ system whose backups they don't control or can't verify.
 retention; a *tested* restore procedure (a backup you've never restored is a guess); **who owns
 and who verifies** backups under client-owned Supabase; whether backup-health is part of the
 management-plane push so the operator can see if a client's backups lapse.
-**Recommendation:** Draft → approve in Phase 5; may spawn a small ADR if the ownership question
-is contentious. Log a feasibility item that restore *actually works* (SPIKE/LOAD), not just that
-backups exist.
+**Priority — ELEVATED:** this directly underpins **non-negotiable #1 (never lose or corrupt
+knowledge)** in `what-makes-it-great.md`. It is a top-bar gap, not a Phase-5 nicety; resolve early.
+**Recommendation:** Draft → approve in Phase 5 (or sooner); may spawn a small ADR if the ownership
+question is contentious. Log a feasibility item that restore *actually works* (SPIKE/LOAD), not just
+that backups exist.
 
 ## OD-010 — Compensation / rollback for partially-completed task chains 🔴
 **Why it matters (surfaced by the "what makes it great" audit):** a task graph can act on the
