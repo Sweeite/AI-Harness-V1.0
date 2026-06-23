@@ -170,9 +170,19 @@ Phase-1/2 rate-limit, token-lifecycle, and Realtime requirements.
 |---|---|---|---|
 | AF-068 | **The containment boundary holds end-to-end** (ADR-007 part 1): there is **no authorized-but-dangerous autonomous action path** by which injected instructions reach a consequential side effect — external communication, financial action, cross-client read, destructive write of a system of record, or memory poisoning — **without** passing a code-enforced hard limit / RBAC check / approval gate that **ignores prompt content**. Verified by red-teaming the harness with live injection payloads and confirming none escalate. This is the load-bearing claim of the whole posture; if a bypass path exists it must be **closed in code**, not patched with a detection rule. | SPIKE (red-team) | 🔴 |
 
+## I. Backup & disaster-recovery feasibility (ADR-008 — verify by SPIKE / DOCS / LOAD)
+
+| ID | Assumption | Method | Status |
+|---|---|---|---|
+| AF-069 | **A restore actually works end-to-end** (ADR-008 part 4): a recent backup — in-project PITR target *and* the off-platform `pg_dump` — restored into a throwaway project comes back **complete and queryable**, including **pgvector memory** and **`auth` user rows**, within acceptable downtime. Supabase makes **no backup-verification claim**, so "a backup exists" ≠ "a restore works" — the entire tested-restore guarantee (and thus non-negotiable #1) rests on this. Verified by a periodic restore rehearsal, logged. | SPIKE | 🔴 |
+| AF-070 | **The Supabase Management API exposes the backup-health fields** the management-plane push needs (ADR-008 part 5): `GET /v1/projects/{ref}/database/backups` (+ project status) returns a **last-backup timestamp**, **`pitr_enabled` / retention**, and **project status (active / paused / billing-at-risk)** — enough to drive remote health monitoring **without** crossing any business data. Endpoint *existence* is DOCS-verified (2026-06-23); the **exact response payload is not** — confirm against the live API. If a field is missing, the monitor degrades to what *is* exposed + a coarser pause alert. | SPIKE | 🔴 |
+| AF-071 | **Backup + off-platform region locality satisfies AU data residency** (ap-southeast-2 / Sydney). Supabase primary docs state backups live "in S3" but **do not pin the backup storage region** relative to the project, nor confirm cross-region behaviour — DOCS were **insufficient** (2026-06-23). Confirm via Supabase support / SLA before asserting any residency guarantee; the off-platform copy's region is operator-chosen and controllable. | DOCS (vendor confirmation) | 🔴 |
+| AF-072 | **The off-platform `pg_dump` completes within its window — and restore time scales acceptably — for a large mature brain** (ADR-008 part 2/4). Supabase moves DBs >15 GB to physical backups (not dashboard-downloadable), so the portable off-platform copy is a scripted logical dump whose duration grows with the memory corpus; confirm it fits a ≥-daily cadence and that restore downtime stays acceptable at volume. | LOAD | 🔴 |
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-069
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-073
 > (cost block C uses AF-040–043, 044–049 reserved for cost overflow; concurrency block E uses
-> AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection block H uses AF-068).
+> AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection block H uses AF-068;
+> backup/DR block I uses AF-069–072).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

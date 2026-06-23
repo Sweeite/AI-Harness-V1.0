@@ -26,7 +26,7 @@ observability) — they only cost rigor. This is the *ranking rule* for trade-of
 
 | Invariant | Means | Held up by | Watch (what threatens it) |
 |---|---|---|---|
-| **1 · Never lose or corrupt knowledge** | memory integrity — nothing silently dropped, overwritten, or scrambled | supersede-not-delete · contradiction check · idempotency + per-entity serialize (ADR-004) · shadow-retain keeps a would-drop (ADR-003) · dims #2,#3 | 🔴 **OD-009 backup/DR** — this invariant *depends* on it, so OD-009 is now top-bar, not a Phase-5 nicety |
+| **1 · Never lose or corrupt knowledge** | memory integrity — nothing silently dropped, overwritten, or scrambled | supersede-not-delete · contradiction check · idempotency + per-entity serialize (ADR-004) · shadow-retain keeps a would-drop (ADR-003) · **backup/DR: PITR + independent client-owned off-platform copy + tested restore (ADR-008)** · dims #2,#3 | ⚠️ **AF-069** — the *restore* must be proven to work (a backup you've never restored is a guess); ADR-008 decided the posture, this is the paper-until-proven residual |
 | **2 · Never do something it shouldn't** | bounded action — never acts outside its authority or the hard limits | hard limits enforced in **code** (L2053, L2066) · approval gates by risk · default-deny RBAC + RLS (ADR-006) · **containment-first injection posture (ADR-007)** — a tricked agent still can't escalate capability · dims #9,#10 | ⚠️ **AF-068** — the containment boundary must be **red-teamed** (no authorized-but-dangerous autonomous action path); the posture is decided, this is the paper-until-proven residual |
 | **3 · Never fail silently** | observable failure — every failure surfaces to a human | heartbeats · amber zones · said-vs-did cross-checks · failure-health dashboard · every job logs its outcome · dim #5 | well-covered; the bar is keeping it true as each component is built |
 
@@ -47,15 +47,16 @@ These map onto the dimensions table below. Every component in Phase 1 is checked
 | 8 | **Proactivity** | anticipates risk & opportunity, acting by risk tier (suggest/prepare/act) | component 9 (L3650+) | ✅ + ⚠️ depends on memory quality / AF-034 |
 | 9 | **Determinism where it matters** | task graphs (deterministic orchestration) · structural limits in code, not prompts · hard limits can't be overridden | task graphs L2541 · hard limits in code L2053 · controls-before-gates ADR-003 | ✅🔵 |
 | 10 | **Human-in-the-loop done right** | approval tiers matched to risk · escalations always resolve, never silently abandoned | approval tiers L2772 · escalation always resolves L2881 | ✅ |
-| 11 | **Backup / disaster recovery** | tested restore · defined ownership under client-owned Supabase | not addressed | 🔴 **OD-009** |
+| 11 | **Backup / disaster recovery** | tested restore · defined ownership under client-owned Supabase | PITR default + independent client-owned off-platform copy + operator-verified restore rehearsal + backup-health on the mgmt-plane push (ADR-008) | 🔵 + ⚠️ AF-069/070/071/072 |
 | 12 | **Continuous quality evaluation** | systematic eval of prompt/agent output quality over time, not just ad-hoc | partial: self-improvement + AF flags + Phase 5 test strategy; no eval harness yet | ⚠️ firm up in Phase 5 |
 
 ## So — is the great stuff in our system?
 
 **Mostly yes, and on purpose.** Dimensions 1–10 are designed in and several are ADR-hardened. The
 *honest* picture:
-- **🔴 Two genuine gaps, both now tracked:** backup/DR (OD-009) and compensation/rollback of
-  partial chains (OD-010, newly logged from this audit).
+- **🔴 One genuine gap left, tracked:** compensation/rollback of partial chains (OD-010). Backup/DR
+  (was OD-009) is now decided — ADR-008 (PITR + independent client-owned off-platform copy + tested
+  restore), residual is the paper-until-proven restore (AF-069).
 - **⚠️ The rest of the risk is "great on paper, must be proven":** retrieval quality, writer
   quality, concurrency under load, cost envelope, pill accuracy — all in the feasibility register,
   to be tested by spikes. Greatness here is *claimed*, not yet *proven* — and that's stated, not hidden.

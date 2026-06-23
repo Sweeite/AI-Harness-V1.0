@@ -5,6 +5,64 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 14 — 2026-06-23 — ADR-008 ACCEPTED (backup & disaster recovery) — last Phase-0 blocker closed
+
+User asked "what's next," chose **OD-009 (backup/DR)** — the last actionable Phase-0 item (the 3 SPIKE/EVAL
+priority spikes are build-time, deferred). Then delegated the three forks to me ("what do you recommend and
+why, explain simply"). Drafted → he probed two points (why PITR ~$100, the Storage-bucket caveat) → resolved
+both → wrote **ADR-008**, closing OD-009. Phase 0 now has **no blockers left**.
+
+**Research-first, per the AF-003 lesson (vendor facts go stale):** ran a dated primary-source pass on Supabase
+backup/DR before asserting anything. It **reframed the whole decision** — the dominant loss path is **the
+client's credit card, not a crash**: because ADR-001 puts the project on the client's account, a billing lapse
+pauses it after ~7 days → restorable 90 days → then **the project AND all in-project backups (daily + PITR) are
+permanently deleted together**. PITR alone can't save you (it lives inside the doomed project).
+
+**Decided (6 binding parts):**
+- **PITR on by default** per silo (~2-min RPO); client-borne (~$100+/mo + required compute add-on, ADR-001);
+  *replaces* daily backups. Daily-only is a **logged downgrade exception**, never a silent default.
+- **Independent off-platform `pg_dump` to a client-owned destination** (different region), independent of the
+  primary project lifecycle — the **only** defense against the deletion path. **Client-owned** so the operator
+  never holds business data (preserves the ADR-001 boundary). Operator-held copy = logged per-client exception.
+- **Ownership split:** client owns + pays; **operator operates + verifies** (the OD's core "whose job" ambiguity).
+- **Tested restore rehearsal** to a throwaway project (Supabase verifies nothing; we do) — confirms DB + pgvector
+  + auth rows come back queryable. ⚠️ AF-069.
+- **Backup-health joins the management-plane push** (ADR-001 §7) — operational metadata only: `pitr_enabled`/
+  retention, last-backup time, **project status incl. pause/billing-at-risk**, off-platform-dump + rehearsal
+  results; read via Supabase Management API (⚠️ AF-070); **loud Super Admin alert on lapse** → a failing client
+  backup is *seen* before the deletion window (protects #1 + #3).
+- **Storage buckets out of scope** (OOS-013): v1 Storage holds only **regenerable offboarding exports** (`L97`),
+  checked against the design doc — not source-of-truth. DR posture = restore-with-downtime, not hot failover
+  (Enterprise-only; OOS-014).
+
+**Vendor facts that drove it (primary-source, 2026-06-23):** PITR = paid add-on, 2-min RPO, replaces daily,
+not Spend-Cap-covered; free daily = Pro 7d/Team 14d, can lose ~24h; backups cover **DB only (incl. pgvector +
+auth), NOT Storage buckets**; **Management API can read backup status** without business data; **no platform
+restore-verification**; **no auto-failover** on Pro/Team. Could NOT verify from primary docs (→ AFs): backup
+**region locality / AU residency** (AF-071), exact **Management-API payload fields** (AF-070).
+
+**Captured as MUST-TEST:** new feasibility **block I** — AF-069 (restore actually works, SPIKE — the load-
+bearing one), AF-070 (Management API exposes the health fields, SPIKE), AF-071 (backup region/AU residency,
+DOCS/vendor confirmation — primary docs insufficient), AF-072 (off-platform dump completes in-window at scale,
+LOAD).
+
+**Files changed:** `adr/ADR-008-backup-dr.md` (new, Accepted); `open-decisions.md` (OD-009 → 🟢);
+`adr/README.md` (ADR-008 row); `feasibility-register.md` (new block I AF-069–072; next AF-073);
+`out-of-scope.md` (OOS-013 Storage buckets, OOS-014 HA/failover; next OOS-015); `what-makes-it-great.md`
+(non-negotiable #1 watch + dimension-11 row cleared 🔴→🔵 + "one gap left" summary); `README.md` (ADR status
+line — ADR-008, no Phase-0 blockers, next = Phase 1 component 0).
+
+**Next step:** **Phase 0 is done — start Phase 1, component 0 (Login)** as the golden exemplar, building its
+`system-map/` zoom-in alongside it (per the per-component map-build policy). Phase-1 carry-ins to honor:
+**propagate the AF-003 corrected vendor values** into connector/token/rate-limit FRs (esp. GHL refresh-token
+persistence F5, Gmail per-env quota F1, Slack app class **OD-011**); **OD-011** (Slack app registration,
+🟡 rec (a) internal-custom-app) resolves when the Slack connector/ingestion component is specced;
+**OD-010** (compensation/rollback) is a Phase-1 Harness/Guardrails item; write **`standards/rbac.md`** when
+component 7 / data model is specced (owed from ADR-006). The 3 SPIKE/EVAL priority spikes (AF-001/002/004)
+plus the new AF-069/070/072 are build-time, run on a runnable prototype.
+
+---
+
 ## Session 13 — 2026-06-23 — AF-003 vendor-claims spike (DOCS pass) — first feasibility item verified
 
 User asked "what's next," chose feasibility spikes, then asked whether "priority spikes" = "feasibility
