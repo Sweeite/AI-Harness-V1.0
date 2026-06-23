@@ -23,7 +23,7 @@ safety mechanism, not a problem.
 | AF-001 | **Cost spike** — run one real multi-agent task + memory write, measure actual tokens/$ | Validates the ADR-003 viability target (typical-volume deployment ≤ ~$20/day, under the $50 soft alert). Also measures memory-write cost (now corrected to ≤1 Sonnet + Haiku, AF-043) and feeds AF-042. Most likely thing to invalidate the design. | SPIKE+EVAL | 🔴 |
 | AF-002 | **Memory retrieval spike** — load ~100 real memories, run dual-search + ranking, judge relevance | If retrieval surfaces noise, the whole "business brain" premise is shaky. Validates ranking weights. | SPIKE+EVAL | 🔴 |
 | AF-003 | **Vendor-claims verification** — confirm every external limit/capability the doc asserts | Several are checkable and possibly stale; they shape rate-limit, token, and Realtime design. | DOCS | 🔴 |
-| AF-004 | **Provisioning/deploy spike** — operator Railway app deploying from the shared repo, connected to a client-owned Supabase | Proves the ADR-001 hybrid + ADR-005 deploy model actually wires up before we spec it in full. | SPIKE | 🔴 |
+| AF-004 | **Provisioning/deploy spike** — run the ADR-005 §5 path end-to-end: operator Railway app deploying from the shared repo against a **client-owned** Supabase, with env + secrets + `internal_token` minted/dual-stored + `client_registry` row + first-boot seed all green | Proves the ADR-001 hybrid + ADR-005 provisioning script actually wire up before we spec it in full. | SPIKE | 🔴 |
 
 ---
 
@@ -41,7 +41,7 @@ safety mechanism, not a problem.
 | AF-017 | Supabase Edge Functions 150s execution limit (the reason to use Inngest) | L2630 | 🔴 |
 | AF-018 | Inngest: no execution-time limit, step-level retries, DLQ, generous free tier | L2632-2662 | 🔴 |
 | AF-019 | pgvector HNSW maintains fast/accurate search at millions of vectors | L1477-1489 | 🔴 |
-| AF-020 | Railway native GitHub auto-deploy + can run drizzle migrations on release | ADR-001 §6 | 🔴 |
+| AF-020 | Railway native per-project GitHub auto-deploy + running `drizzle-kit migrate` on release behave as assumed (ADR-005 §1) | ADR-001 §6 | 🔴 |
 | AF-021 | Operator Railway can securely connect to a client-owned Supabase (hybrid model) | ADR-001 §5 | 🔴 |
 
 ## B. Behavioral / quality feasibility (verify by EVAL / SPIKE — unprovable on paper)
@@ -80,9 +80,17 @@ safety mechanism, not a problem.
 | AF-062 | **Sorted per-entity Postgres advisory locks + short commit transactions don't bottleneck under fan-out at scale** (`L2115`, ~20 concurrent deployments), and multi-entity writes (locking 2–3 entities each, in sorted order) stay **deadlock-free** and contention-light. | LOAD | 🔴 |
 | AF-063 | **Inngest per-key concurrency serializes same-entity steps** as ADR-004 §2 assumes — and if it doesn't, the design **degrades safely** to "advisory lock alone" (the lock, not the queue, is the correctness boundary). | DOCS+SPIKE | 🔴 |
 
+## F. Deploy / provisioning / version-skew feasibility (ADR-005 — verify by SPIKE / DOCS / EVAL)
+
+| ID | Assumption | Method | Status |
+|---|---|---|---|
+| AF-064 | **Railway supports the branch-based canary/release-train + promotion model** (ADR-005 §2): a canary deployment tracking a `release` branch, the fleet tracking `main`, promotion by fast-forward, and **build-history rollback** (§4). If Railway's branch/environment model differs, the *mechanism* changes but the *decision* (a canary gate before the fleet) stands. | DOCS+SPIKE | 🔴 |
+| AF-065 | **Expand-contract migrations keep a mixed-version fleet safe** (ADR-005 §3/§4): a `vN` and a `vN-1` deployment both run correctly against their own schema through a rollout, **and prior code runs against the newer schema** (the rollback premise). Parts 3 + 4 of ADR-005 rest entirely on this. | SPIKE | 🔴 |
+| AF-066 | **The synthetic canary corpus + smoke battery is representative enough** (ADR-005 §6/C2) to catch behavioral/data-dependent regressions (retrieval, memory contradiction, agent routing) before promotion — i.e. the canary is not a false sense of safety. Honest limit: it only catches what its fixtures + assertions cover. Shares the AF-001/AF-002 corpus. | EVAL | 🔴 |
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-064
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-067
 > (cost block C uses AF-040–043, 044–049 reserved for cost overflow; concurrency block E uses
-> AF-061–063, 064 free).
+> AF-061–063; deploy block F uses AF-064–066).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

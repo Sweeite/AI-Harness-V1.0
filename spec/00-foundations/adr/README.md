@@ -12,7 +12,7 @@ Phase 0 because downstream requirements assume their answers. Each ADR follows
 | ADR-002 | "Coverage %" → Maturity + Retrieval Sufficiency | Grill (load-bearing) | 🟢 Accepted |
 | ADR-003 | Cost model & economic viability (client-side; estimate-grade; cost ladder) | Grill (load-bearing) | 🟢 Accepted |
 | ADR-004 | Concurrency model for memory writes (per-entity serialize + optimistic validate-and-commit) | Draft → approve | 🟢 Accepted |
-| ADR-005 | Deploy fan-out & provisioning automation | Draft → approve | 🔴 open |
+| ADR-005 | Deploy fan-out & provisioning automation (canary + release-train; scripted provisioning; bounded version skew) | Draft → approve | 🟢 Accepted |
 | ADR-006 | Dynamic roles vs static RLS | Draft → approve | 🔴 open |
 | ADR-007 | Prompt-injection posture | Draft → approve | 🔴 open |
 

@@ -19,5 +19,7 @@ make us revisit it. Adding something here is a *decision*, not a gap.
 | OOS-007 | Weekly cost **auto-throttle** | Out (v1) | v1 weekly cost rung is human-attention only; auto-actions are daily-anchored | ADR-003 §2 | If sustained just-under-ceiling burn becomes a real incident |
 | OOS-008 | HR email / content ingestion | Off by default | Per-client decision requiring jurisdiction-specific legal review before enabling | design-doc L889, L1420 | Per client, with legal sign-off |
 | OOS-009 | Hybrid cost reconcile (estimate → real invoice) | Deferred | Reconciling against the real bill needs invoice access, which the ADR-001 boundary forbids | ADR-003 §3 (C3) | Only if a boundary-safe invoice feed becomes possible |
+| OOS-010 | Automated plugin distribution / versioning | Deferred v2 | v1 `/plugins` is per-deployment, manually updated, out of the core release train; only version **visibility** (per-deployment) is in v1 | ADR-005 §7, design L19-27 | If plugin churn across many clients makes manual updates painful |
+| OOS-011 | Full IaC (Terraform) provisioning | Rejected (v1) | v1 uses a scripted CLI + runbook; full IaC is gold-plating a ≤~20-run path, and the client-owned/consent steps can't be IaC'd | ADR-005 §B (Axis 2) | If client count materially exceeds the ~20 ceiling |
 
-> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-010.
+> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-012.

@@ -55,10 +55,24 @@ serialization effectively free. **Must be tested** before/while building — ⚠
 validate-and-commit actually closes the window, no livelock), AF-062 (locks don't bottleneck at
 scale, deadlock-free), AF-063 (Inngest per-key concurrency behaves as assumed). See ADR-004.
 
-## OD-005 — Deploy fan-out & provisioning automation 🔴 → ADR-005
-**Why it matters:** "Push deploys to all N Railway projects" + per-client Supabase/OAuth
-provisioning is asserted, not designed. Version skew across clients is implied but unhandled.
-**Recommendation:** I draft ADR-005; you approve.
+## OD-005 — Deploy fan-out & provisioning automation 🟢 RESOLVED → ADR-005
+**Resolution (2026-06-23):** Three gaps closed. (1) **Fan-out** — there is no custom CI fan-out;
+ADR-001 §6 already made each client's Railway project natively track the shared repo, so fan-out is
+N independent subscriptions, not an orchestrator. Blast radius is bounded by a **canary +
+release-train**: a canary deployment tracks a `release` branch ahead of `main`, must pass a
+smoke-test battery + soak, then promotion fast-forwards `main` and the fleet auto-deploys.
+(2) **Provisioning** — a **two-party** process: client creates the cost-bearing accounts (Supabase
++ keys + connectors) on their card and grants delegated access; the operator runs a **provisioning
+script** (Railway link, env + `DEPLOYMENT_CONFIG`, `internal_token`, `client_registry` row,
+first-deploy → seed) plus a **runbook** for consent-gated steps (incl. per-client OAuth apps in the
+client's own accounts, with Google production verification as a schedule dependency). Registration
+is operator-side (no self-registration). (3) **Version skew** is a normal, bounded condition made
+safe by **expand-contract migrations**; rollback = code-redeploy + roll-forward (never destructive
+down-migration); a max-skew alert catches laggards. The canary is a **seeded synthetic client +
+smoke battery** now, maturing into **operator dogfooding**. **Must be tested** — ⚠️ AF-004
+(provisioning wires up), AF-020 (Railway auto-deploy + migrate-on-release), AF-064 (Railway supports
+the canary/promotion branch model), AF-065 (expand-contract keeps a mixed-version fleet safe),
+AF-066 (synthetic canary corpus is representative enough). See ADR-005.
 
 ## OD-006 — Dynamic roles vs static RLS 🔴 → ADR-006
 **Why it matters:** Roles are editable at runtime, but RLS policies are authored at migration

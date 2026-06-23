@@ -5,6 +5,56 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 7 — 2026-06-23 — ADR-005 ACCEPTED (deploy fan-out & provisioning)
+
+Second **draft→approve** ADR. Closes OD-005 — deploy fan-out, per-client provisioning, and version
+skew, all asserted-not-designed in the doc. User chose the two forks in plain-language terms after I
+explained them; then flagged a real gap (a brand-new business has no data to test a canary on), which
+became a third decision axis.
+
+**Decided (7 binding parts):**
+- **Fan-out is already solved by ADR-001 §6** — no custom CI; each Railway project natively tracks the
+  shared repo. `client_registry` is the observability map, not the deploy driver. Also re-stated
+  ADR-001 §7 (push, not pull) for version/health reporting.
+- **Blast radius = canary + release-train** (chose A3 over instant-global / per-deployment-manual):
+  feature → `release` (canary tracks) → promote (fast-forward) → `main` (fleet auto-deploys). Promotion
+  gated on tests + clean migration + green smoke battery + soak. Per-deployment migration-failure
+  isolation retained (`L1141-1160`).
+- **Version skew is normal + bounded, not an error** — made safe by **expand-contract migrations**
+  (new binding standard `standards/migration-discipline.md`); rollback = code-redeploy + roll-forward,
+  **never destructive down-migration**; `deploy_max_version_skew`/`deploy_max_skew_days` alert catches
+  laggards.
+- **Provisioning = scripted CLI + runbook** (chose B3 over full-IaC / pure-manual), **two-party** per
+  ADR-001 hybrid: client creates cost-bearing accounts + card + delegated access (runbook); operator
+  script does Railway link + env/`DEPLOYMENT_CONFIG` + `internal_token` mint/dual-store + `client_registry`
+  insert + first-deploy→seed. **Operator-side registration** (no self-registration → no token chicken-and-egg).
+- **OAuth apps per-client in the client's own accounts** (ADR-001 §5), redirect URIs → that deployment's
+  Railway domain. ⚠️ Google **production verification** (AF-013) is a real onboarding **schedule dependency**.
+- **Canary test method** (user's gap): **seeded synthetic client + deterministic smoke battery** now
+  (catches boot/migration/connector + behavioral checks; shares the AF-001/AF-002 corpus), maturing into
+  **operator dogfooding** its own deployment. Honest limit flagged: catches only what fixtures cover.
+- **Plugins stay out of the release train** (per-deployment, manual; version-visibility only).
+
+**Captured as MUST-TEST:** new feasibility block **F** —
+- **AF-064 (DOCS+SPIKE)** — Railway supports the branch-based canary/promotion + build-history rollback model.
+- **AF-065 (SPIKE)** — expand-contract keeps a mixed-version fleet safe (the skew + rollback premise). *Parts 3+4 rest on this.*
+- **AF-066 (EVAL)** — the synthetic canary corpus is representative enough to catch behavioral regressions.
+- Sharpened **AF-004** (full provisioning path) and **AF-020** (Railway auto-deploy + migrate-on-release).
+
+**Files changed:** `adr/ADR-005-deploy-provisioning.md` (new, Accepted); `open-decisions.md` (OD-005 → 🟢);
+`adr/README.md` (ADR-005 Accepted); `feasibility-register.md` (new block F AF-064–066; AF-004/020 sharpened;
+next AF-067); `glossary.md` (+Canary deployment, +Release train/promotion, +Version skew, +Expand-contract
+migration, +Provisioning script vs runbook, +Synthetic canary corpus/smoke battery); `out-of-scope.md`
+(OOS-010 automated plugin distribution, OOS-011 full-IaC; next OOS-012); `standards/migration-discipline.md`
+(new, Binding); `README.md` (ADR status line, repo map standards).
+
+**Next step:** **ADR-006 (dynamic roles vs static RLS)** — draft→approve (OD-006). Roles are editable at
+runtime but RLS is authored at migration time; ADR-001 made RLS **intra-client only** (role/visibility/
+sensitivity, never client separation) — lock against that. Then ADR-007 (injection posture, OD-007), then
+priority spikes (AF-001 cost, AF-002 retrieval, AF-004 provisioning), then Phase 1 (component 0 Login).
+
+---
+
 ## Session 6 — 2026-06-23 — ADR-004 ACCEPTED (memory-write concurrency)
 
 First **draft→approve** ADR (not a grill). Closes OD-004 — the contradiction-check-then-write

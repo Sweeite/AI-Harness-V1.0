@@ -23,7 +23,7 @@ spec/
     out-of-scope.md      Things consciously NOT built / deferred to v2 (OOS-*)
     feasibility-register.md  Assumptions that can only be proven by testing (AF-*)
     adr/                 Architecture Decision Records (the 7 load-bearing decisions + more)
-    standards/           Cross-cutting patterns (config edit taxonomy, change control, RBAC, UI states)
+    standards/           Cross-cutting patterns (config edit taxonomy, change control, migration discipline, RBAC, UI states)
   01-requirements/     Functional requirements, one file per component (0..10)
   02-config/           Config registry (every tunable, classified + surfaced)
   03-surfaces/         Dashboard/UI specs (every surface, all states)
@@ -102,4 +102,4 @@ phase because they can invalidate the architecture. Paper-vs-proven is always st
 
 Decisions chosen: spec home = git markdown repo · big decisions = grill load-bearing, fast-track rest · start = foundations then components in order.
 
-ADRs: 🟢 ADR-001 (isolation) · 🟢 ADR-002 (coverage → Maturity + Retrieval Sufficiency; closes OD-008) · 🟢 ADR-003 (cost model — client-side viability + cost ladder; closes OD-003) · 🟢 ADR-004 (concurrency — per-entity serialize + optimistic validate-and-commit; closes OD-004). All load-bearing grills done + first draft-approve ADR landed; next = draft-approve ADR-005 (deploy/provisioning fan-out).
+ADRs: 🟢 ADR-001 (isolation) · 🟢 ADR-002 (coverage → Maturity + Retrieval Sufficiency; closes OD-008) · 🟢 ADR-003 (cost model — client-side viability + cost ladder; closes OD-003) · 🟢 ADR-004 (concurrency — per-entity serialize + optimistic validate-and-commit; closes OD-004) · 🟢 ADR-005 (deploy/provisioning — canary + release-train, scripted provisioning, bounded version skew; closes OD-005). All load-bearing grills + two draft-approve ADRs landed; next = draft-approve ADR-006 (dynamic roles vs static RLS, OD-006), then ADR-007 (injection posture, OD-007), then priority spikes, then Phase 1 (component 0 Login).
