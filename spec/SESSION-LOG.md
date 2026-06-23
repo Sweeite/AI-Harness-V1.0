@@ -18,22 +18,37 @@ client's credit card, not a crash**: because ADR-001 puts the project on the cli
 pauses it after ~7 days → restorable 90 days → then **the project AND all in-project backups (daily + PITR) are
 permanently deleted together**. PITR alone can't save you (it lives inside the doomed project).
 
-**Decided (6 binding parts):**
-- **PITR on by default** per silo (~2-min RPO); client-borne (~$100+/mo + required compute add-on, ADR-001);
-  *replaces* daily backups. Daily-only is a **logged downgrade exception**, never a silent default.
-- **Independent off-platform `pg_dump` to a client-owned destination** (different region), independent of the
-  primary project lifecycle — the **only** defense against the deletion path. **Client-owned** so the operator
-  never holds business data (preserves the ADR-001 boundary). Operator-held copy = logged per-client exception.
+**Decided (6 binding parts):** *(Decision part 1 was revised later in the same session — see "In-session
+revision" below; the entry reflects the final state.)*
+- **Default = free daily in-project backups + an hourly off-platform snapshot** (~1-hour RPO, near-zero cost,
+  AF-072-bounded). **PITR is an opt-in upsell** (off by default, ~$100+/mo on the client's card, for
+  minute-level RPO or brains too big for an hourly logical dump). Running below hourly is a **logged downgrade
+  exception**, never a silent default.
+- **Independent off-platform `pg_dump` to a client-owned destination** (different region), run **hourly**,
+  independent of the primary project lifecycle — the **only** defense against the deletion path. **Client-owned**
+  so the operator never holds business data (preserves the ADR-001 boundary). Operator-held copy = logged
+  per-client exception.
 - **Ownership split:** client owns + pays; **operator operates + verifies** (the OD's core "whose job" ambiguity).
 - **Tested restore rehearsal** to a throwaway project (Supabase verifies nothing; we do) — confirms DB + pgvector
   + auth rows come back queryable. ⚠️ AF-069.
-- **Backup-health joins the management-plane push** (ADR-001 §7) — operational metadata only: `pitr_enabled`/
-  retention, last-backup time, **project status incl. pause/billing-at-risk**, off-platform-dump + rehearsal
-  results; read via Supabase Management API (⚠️ AF-070); **loud Super Admin alert on lapse** → a failing client
-  backup is *seen* before the deletion window (protects #1 + #3).
-- **Storage buckets out of scope** (OOS-013): v1 Storage holds only **regenerable offboarding exports** (`L97`),
-  checked against the design doc — not source-of-truth. DR posture = restore-with-downtime, not hot failover
-  (Enterprise-only; OOS-014).
+- **Backup-health joins the management-plane push** (ADR-001 §7) — operational metadata only: recovery tier
+  (daily+hourly, or PITR), last-backup time, **project status incl. pause/billing-at-risk**, off-platform-
+  snapshot + rehearsal results; read via Supabase Management API (⚠️ AF-070); **loud Super Admin alert on
+  lapse** → a failing client backup is *seen* before the deletion window (protects #1 + #3).
+- **Golden rule governs scope + Storage buckets out of scope** (OOS-013): per `L1634` source files live in
+  their system of record, **referenced (`source_ref`) not copied into Supabase**; v1 Storage holds only
+  **regenerable offboarding exports** (`L97`), checked against the design doc — not source-of-truth. DR posture
+  = restore-with-downtime, not hot failover (Enterprise-only; OOS-014).
+
+**In-session revision (operator's call):** Austin pushed that ~$100/mo PITR-on-by-default is overkill, and
+(correctly, citing the golden rule) that files should be **referenced in their system of record, not stored in
+Supabase**. Both confirmed: (1) **default flipped to hourly off-platform snapshots + free daily; PITR demoted
+to a documented opt-in upsell** — cheaper, and acceptable because memory is re-derivable from systems of record
+that survive any incident (so AF-072 now gates the *default* hourly cadence). (2) The **golden rule (`L1634`)**
+was already the design's law (only Storage use is the transient offboarding export); lifted it into the glossary
+as a **binding principle** so no future component copies source files into Supabase. ADR-008 carries a dated
+**Revision** note (Accepted-but-ink-wet, transparent amendment per change-control). Glossary +Golden rule,
++Off-platform snapshot, +RPO, +PITR upsell, +Restore rehearsal.
 
 **Vendor facts that drove it (primary-source, 2026-06-23):** PITR = paid add-on, 2-min RPO, replaces daily,
 not Spend-Cap-covered; free daily = Pro 7d/Team 14d, can lose ~24h; backups cover **DB only (incl. pgvector +

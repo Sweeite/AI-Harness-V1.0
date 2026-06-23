@@ -15,7 +15,7 @@ Phase 0 because downstream requirements assume their answers. Each ADR follows
 | ADR-005 | Deploy fan-out & provisioning automation (canary + release-train; scripted provisioning; bounded version skew) | Draft → approve | 🟢 Accepted |
 | ADR-006 | Dynamic roles vs static RLS (static data-driven policies over live permission tables; intra-client only) | Draft → approve | 🟢 Accepted |
 | ADR-007 | Prompt-injection posture (containment-first; detection-as-signal; embedding scan off by default) | Draft → approve | 🟢 Accepted |
-| ADR-008 | Backup & disaster recovery (PITR default + independent client-owned off-platform copy + operator-verified restore + backup-health on the management-plane push) | Draft → approve | 🟢 Accepted |
+| ADR-008 | Backup & disaster recovery (hourly client-owned off-platform snapshot default + PITR opt-in upsell + operator-verified restore + backup-health on the management-plane push; golden rule = reference source data, don't copy it) | Draft → approve | 🟢 Accepted |
 
 More ADRs will be added if component work surfaces further cross-cutting decisions.
 

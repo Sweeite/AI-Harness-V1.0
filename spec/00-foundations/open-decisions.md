@@ -120,21 +120,26 @@ a consequence of ADR-002.
 risk: the biggest loss path is **the client's credit card, not a crash** — a billing lapse pauses the
 client-owned project after ~7 days, leaves it restorable for 90, then **permanently deletes the project
 *and all its in-project backups* (daily and PITR) together**. So invariant #1 needs a copy that lives
-*outside* the project lifecycle. Six binding parts: (1) **PITR on by default** per silo (~2-min RPO,
-client-borne ~$100+/mo, downgrade is a logged exception); (2) an **independent off-platform `pg_dump`**
-to a **client-owned** second location in a different region, independent of the primary project — the
-only defense against the deletion path, and client-owned so the operator never holds business data
-(preserves the ADR-001 boundary; operator-held copy is a logged per-client exception only); (3)
-**ownership split** — client owns + pays, **operator operates + verifies**; (4) a **tested restore
+*outside* the project lifecycle. The **golden rule** (`L1634`) shrinks the problem: the brain stores only
+pointers + enrichment over systems of record that survive any incident, so recent loss is re-derivable by
+re-ingestion → an ~1-hour RPO is acceptable. Six binding parts: (1) **default = free daily in-project
+backups + an hourly off-platform snapshot** (~1-hour RPO, near-zero cost, AF-072-bounded); **PITR is an
+opt-in upsell** (off by default, ~$100+/mo on the client's card, for minute-level RPO / brains too big for
+hourly dumps); running below hourly is a logged exception; (2) an **independent off-platform `pg_dump`**
+(the thing run hourly) to a **client-owned** second location in a different region, independent of the
+primary project — the only defense against the deletion path, and client-owned so the operator never holds
+business data (preserves the ADR-001 boundary; operator-held copy is a logged per-client exception only);
+(3) **ownership split** — client owns + pays, **operator operates + verifies**; (4) a **tested restore
 rehearsal** to a throwaway project (Supabase verifies nothing; we do) — ⚠️ AF-069; (5) **backup-health
-joins the management-plane push** (operational metadata only: `pitr_enabled`/retention, last-backup time,
-**project status incl. pause/billing-at-risk**, off-platform-dump + rehearsal results) read via the
-Supabase Management API (⚠️ AF-070), with a **loud Super Admin alert** if any lapse — so a client's
-failing backups are *seen* before the deletion window (protects #1 + #3); (6) **Storage buckets out of
-scope** (OOS-013 — v1 Storage holds only regenerable offboarding exports). DR is backup-restore-with-
-downtime, not hot failover (Enterprise-only; OOS-014). **Must be tested** — ⚠️ AF-069 (restore actually
-works), AF-070 (Management API exposes the health fields), AF-071 (backup region / AU residency —
-unconfirmed in primary docs), AF-072 (off-platform dump completes in-window at scale). See ADR-008.
+joins the management-plane push** (operational metadata only: recovery tier, last-backup time, **project
+status incl. pause/billing-at-risk**, off-platform-snapshot + rehearsal results) read via the Supabase
+Management API (⚠️ AF-070), with a **loud Super Admin alert** if any lapse — so a client's failing backups
+are *seen* before the deletion window (protects #1 + #3); (6) **golden rule governs scope** — source files
+live in their system of record, referenced not copied; **Storage buckets out of scope** (OOS-013 — v1
+Storage holds only regenerable offboarding exports). DR is backup-restore-with-downtime, not hot failover
+(Enterprise-only; OOS-014). **Must be tested** — ⚠️ AF-069 (restore actually works), AF-070 (Management API
+exposes the health fields), AF-071 (backup region / AU residency — unconfirmed in primary docs), AF-072
+(**hourly** off-platform dump completes in-window at scale — gates the default cadence). See ADR-008.
 
 ## OD-010 — Compensation / rollback for partially-completed task chains 🔴
 **Why it matters (surfaced by the "what makes it great" audit):** a task graph can act on the

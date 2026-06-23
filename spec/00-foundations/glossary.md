@@ -45,6 +45,11 @@ until resolved.
 | Consolidation | Merge / supersede / summarise jobs that keep memory healthy. | ✅ |
 | System of record | The external system that owns a piece of data (GHL, Drive, Slack). | ✅ |
 | Pointer | A memory that references data owned by a system of record, not a copy of it. | ✅ |
+| Golden rule (systems of record) | **Binding principle (`L1634`):** source files/records live in their system of record (GHL/Drive/Slack); the memory layer stores **pointers (`source_ref`) + enrichment**, **never a copy of the source binary/record**. Consequences: nothing copies ingested files into Supabase Storage; the backup scope is just the derived DB layer; recent loss is **re-derivable by re-ingestion** (which is why an ~1-hour RPO is tolerable, ADR-008). | ✅ ADR-008 (design L1634) |
+| Off-platform snapshot | The independent backup that defeats the catastrophic loss path: a scheduled, **encrypted** `pg_dump` of a client's DB to a **client-owned** second location (different region), **independent of the primary Supabase project's lifecycle** so it survives a paused/deleted project. Run **hourly** as the default RPO mechanism (ADR-008 part 1/2). | ✅ ADR-008 |
+| RPO (recovery point objective) | The worst-case amount of recent data a restore can lose. v1 default ≈ **1 hour** (hourly off-platform snapshot); the **PITR upsell** tightens it to ~2 minutes. | ✅ ADR-008 |
+| PITR upsell | Supabase Point-in-Time Recovery (continuous WAL, ~2-min RPO) offered as a **documented opt-in add-on** (~$100+/mo on the client's card), **off by default** — for clients needing minute-level RPO or whose brain is too large for an hourly logical dump (AF-072). Not the default tier. | ✅ ADR-008 |
+| Restore rehearsal | The operator's periodic **tested restore**: restore a recent snapshot into a throwaway project and confirm the DB (incl. pgvector + auth) comes back complete and queryable — because "a backup exists" ≠ "a restore works" (Supabase verifies neither). Logged. ⚠️ AF-069. | ✅ ADR-008 |
 | Orchestrator | The routing agent; plans and delegates, never does the work itself. | ✅ |
 | Specialist agent | A focused agent owning one domain (research, client, campaign, ...). | ✅ |
 | Context envelope | The structured package passed through every agent in a task graph. | ✅ |
