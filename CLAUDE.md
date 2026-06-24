@@ -104,6 +104,17 @@ over-scoped grant does something it shouldn't → #2; an unhandled rate limit fa
 - **Standing verification gate:** after drafting a component's FRs, run an independent
   subagent to re-extract FRs from the design prose and flag any orphaned design lines or
   contradictions with locked ADRs. This is the per-component hallucination check.
+- **Repo self-sufficiency test — the context-handoff gate (required, not optional).** Before
+  any chat handoff — whenever the user asks to switch / start a new chat, **or** when context is
+  filling, **or** when you judge a handoff is near (a major work unit is wrapping) — you must
+  *actively run* the self-sufficiency test, not merely assert it. Spawn an independent subagent
+  with **zero conversation context** that reads **only the repo** (following this file's
+  start-of-session order) and tries to resume the next action: it reports the next step, whether it
+  can act **without guessing**, and **every** gap, dangling ID, or unrecorded "we decided X in chat."
+  **Patch every gap in the repo before handing off**, then the handoff is safe. Trigger it when the
+  user asks *or* on your own judgment — and propose it yourself when you sense a handoff coming.
+  **Never hand off on "it's probably all written down" — prove it with the test.** This is the
+  active, enforced form of the self-sufficiency test named in the reading-order section.
 
 ## End every session by
 
@@ -113,3 +124,6 @@ over-scoped grant does something it shouldn't → #2; an unhandled rate limit fa
 3. Appending a `spec/SESSION-LOG.md` entry (decisions made, files changed, next step, new
    open questions). The `handoff` skill can generate this if the session was long.
 4. Committing (branch first unless it's an initial/baseline commit; never push unasked).
+5. **If the session is ending in a handoff** (new chat next, or context filling), run the
+   **repo self-sufficiency test** (see Context-window management) *before* you hand off — a
+   zero-context subagent must be able to resume from the repo alone; patch any gap it finds first.
