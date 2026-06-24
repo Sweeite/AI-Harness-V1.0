@@ -5,6 +5,81 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 15 — 2026-06-24 — PHASE 1 ENTERED · component-0 scope finalized · Supabase Auth research-first gate run
+
+User asked to confirm Phase 0 done + whether to reason about Phase 1 before starting (yes to both). Read the
+whole repo + had subagents map the design-doc Login section and re-read every foundation file. **Phase 0 is
+confirmed complete** (all 8 ADRs Accepted; the 3 SPIKE/EVAL priority spikes AF-001/002/004 are build-time by
+design). **Phase 1 is now entered.** No FRs drafted yet — this session did the "finalize before entry" pass +
+the research gate. **Nothing here is a code change; it's spec scaffolding for component 0 (the golden exemplar).**
+
+**Two scope decisions locked (user-approved), recorded in `phase-playbooks.md` → "Component 0 — entry
+finalization":**
+1. **C0 = authentication only ("who you are").** In scope: dashboard login (Google/Microsoft as a *login-identity
+   provider* via Supabase Auth), email+password, **2FA** (TOTP enroll+challenge), **sessions** (JWT, TTLs,
+   cookies, expiry/re-auth), **invite-based account creation**, **first-boot Super Admin seed**, **"trouble
+   signing in"** recovery + support-request handling, **inbound webhook authentication** (HMAC/JWT verify of
+   GHL/Google/Slack webhooks — a hard control per ADR-007). Out of C0: roles/permissions/clearances/RLS → **C1**;
+   **connector OAuth + token lifecycle** (the AI's data access to Gmail/Drive/GHL/Slack, AF-013/014) → **C3 Tool
+   Layer**. The **seam** is the session establishing `auth.uid()`. NOTE: the design doc places much auth content
+   **structurally under the `## 1.` RBAC header** (L643–816: app auth flow, sessions, webhook security) — we
+   re-home it to C0 by semantics. C0's own header is only L358–390.
+2. **Supabase Auth research-first gate done BEFORE drafting C0 FRs** (Supabase is a *platform* dep, so findings
+   live in `feasibility-register.md`, not `tool-integrations/`).
+
+**Supabase Auth research pass (2026-06-24, 4 parallel primary-source agents) → `feasibility-register.md` Block J
+(findings SA1–SA17) + new AF-073–077 + sharpened AF-067.** It **refuted/corrected 6 design-doc claims** — these
+MUST be cited from Block J, not the design doc, in C0 FRs:
+- ⛔ **Refresh-token "7-day TTL" REFUTED** — Supabase refresh tokens **never expire**; single-use rotating, 10s
+  reuse interval, reuse-detection revokes the whole session. Session bounds = optional time-box/inactivity
+  (Pro+, no default, lazily enforced). The design's `auth.session_refresh_days:7` maps to **no native setting**.
+- 🟠 **HTTP-only cookies** — NOT the documented default (`@supabase/ssr` says HttpOnly "not necessary") → AF-073.
+- ⛔ **"Server-side session continues mid-task"** — no such object; either middleware refreshes the JWT or
+  background runs as `service_role` (bypasses RLS, no `auth.uid()`).
+- ⛔ **`two_factor_required` as a config flag** — no org-wide end-user MFA toggle exists; must be **built** via
+  restrictive `aal2` RLS on every protected resource + post-login app gating → AF-076.
+- ⛔ **72h invite links** — hard cap **24h (86400s)**, global setting, not per-link → AF-074 + custom-token fork.
+- ⬜ **Microsoft Authenticator** — unnamed by Supabase; compat rests on open RFC-6238 → AF-075.
+- ✅ Verified & useful: TOTP default-on; Google+Azure login IdP (pin tenant, require `email` scope, `xms_edov`);
+  invite-only supported (admin API bypasses the signup toggle); **custom SMTP mandatory for prod** (built-in
+  2/hr); **no per-account login lockout** (platform Cloudflare/fail2ban + CAPTCHA + leaked-pw Pro+) → AF-077;
+  **asymmetric JWT (RS256/ES256) default since 2025-10-01** → local JWKS verification (`getClaims`), but
+  `getUser` where revocation matters; API-key rename anon→`sb_publishable`, service_role→`sb_secret`.
+- **AF-067 SHARPENED (load-bearing for C1/ADR-006):** `STABLE` alone ≠ once-per-statement; helper calls MUST be
+  wrapped `(select …)` to force the initPlan (Supabase benchmark **178,000ms→12ms**), index policy cols, scope
+  `TO authenticated`, wire the `auth_rls_initplan` lint. Now a binding implementation rule, not an open risk.
+
+**Files changed:** `phase-playbooks.md` (Component 0 entry finalization), `feasibility-register.md` (Block J,
+AF-073–077, AF-067 sharpened, next-AF→AF-078), `README.md` (Phase-1 row 🟡 + status line), this log.
+
+**NEXT STEP — draft `spec/01-requirements/component-00-login.md`** (per Phase-1 playbook steps 1–5), as the golden
+exemplar. Open with a **Context Manifest** (ADR-001 §2/§5 Supabase+secrets custody, ADR-006 §6 service-role
+bypass, ADR-007 webhook-auth-as-hard-control; standards: config-edit-taxonomy, migration-discipline; glossary
+auth terms; **feasibility Block J + AF-073–077**; design-doc **L358–390 + L643–816**). **Area codes:**
+AUTH (login/OAuth/2FA), SESS (sessions/tokens), INV (invites), SEED (first-boot Super Admin), REC (recovery/
+support), WHK (webhook auth). Decompose into atomic FRs citing **Block J** for vendor facts. Build
+`system-map/00-login.md` zoom-in alongside (per-component map policy). Then user resolves ODs → ACs → verification
+gate → sign-off.
+
+**Component-0 OD candidates to LOG when drafting** (4 research forks + ~8 from the design-doc mapping — none
+logged yet; will be OD-012+): (a) **session-lifetime model** — adopt Supabase rotating-never-expiring + inactivity
+vs custom bounds [SA3]; (b) **mid-task continuation** — middleware JWT-refresh vs service_role [SA5]; (c) **invite/
+setup-link expiry** — re-spec ≤24h vs custom invite-token layer [SA11/12, AF-074]; (d) **HttpOnly** — hard
+requirement (spike AF-073) vs accept default [SA4]; (e) **2FA delivery UX** (same-page vs redirect) + wrong-code
+rate-limiting; (f) **per-user 2FA override** vs deployment-wide; (g) **support-request notification** — who's
+alerted on submit + phone capture/lookup + call logging + unreachable-user escalation; (h) **invite edge cases** —
+expired→re-request? admin revoke-early? OAuth+password dual setup?; (i) **Super Admin seed** — OAuth option? bounced-
+email recovery path?; (j) **RLS every-table coverage** discipline (ties to AF-076); (k) **webhook** — secret
+rotation, replay beyond timestamp, accept-rate limits; (l) **webhook failure alert** — recipient, source-id,
+escalation action.
+
+**Carry-ins (unchanged):** GHL/Gmail/Slack connector findings (F1–F6, AF-013/014) are for **C3**, not C0; **OD-011**
+(Slack app class) resolves at the C3 Slack connector; **`standards/rbac.md`** owed when C1/data-model specced
+(from ADR-006); **OD-010** (compensation/rollback) is a C5/C6 item. Build-time spikes AF-001/002/004 + the new
+AF-073–077 run on a runnable prototype.
+
+---
+
 ## Session 14 — 2026-06-23 — ADR-008 ACCEPTED (backup & disaster recovery) — last Phase-0 blocker closed
 
 User asked "what's next," chose **OD-009 (backup/DR)** — the last actionable Phase-0 item (the 3 SPIKE/EVAL
