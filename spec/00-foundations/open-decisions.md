@@ -348,4 +348,137 @@ only, no active throttle.
 clear source identification, and an auto-throttle on the offending source so a forged-webhook flood can't
 hammer the endpoint (protects #2/#3). The throttle action may share machinery with the rate-limit ladder.
 
-> Next OD number: OD-024.
+---
+
+## OD-024 — Audit store & schema for Personal/Restricted access + RBAC changes 🟢 RESOLVED
+**Resolution (2026-06-24, delegated C0-style):** (a) **a dedicated append-only `access_audit` table** — immutable, distinct from `guardrail_log` (security events) and `event_log` (operational) — capturing subject/actor (user **or** agent identity)/tier/entity/path/time/outcome for access events, and actor/action/target/before-after/time/reason for RBAC-change events. **C1 owns the completeness + content requirement (across both the human and `service_role` paths); C7 / Phase 5 owns storage, retention, tamper-evidence, and export.** Unblocks FR-1.AUD.001/002/003, FR-1.RST.002.
+**Surfaced by:** Component 1 (RBAC) drafting, 2026-06-24. Blocks **FR-1.AUD.001/002/003, FR-1.RST.002**.
+**Why it matters:** the design mandates that "all Personal and Restricted memory access is fully
+audited — every read, write, or injection produces a permanent audit record" (L456) and that every
+Restricted grant logs who/when/why (L452), but it never names the store, the schema, or the
+retention. There are already adjacent sinks — `guardrail_log` (security events) and `event_log`
+(operational) — so the question is whether access-audit is a third dedicated table or rides one of
+those. Getting this wrong risks either a silent gap (#1/#3) or audit data lost in a high-volume
+operational log.
+**Options:** (a) **a dedicated append-only `access_audit` table** (subject/actor/tier/entity/path/
+time/outcome), immutable, distinct from `guardrail_log`/`event_log`; C7 owns retention/export;
+(b) reuse `guardrail_log` with an access-audit event type; (c) reuse `event_log`.
+**Recommendation:** **(a)** — Personal/Restricted access audit is compliance-grade and must be
+immutable + queryable independently of operational noise; a dedicated table keeps it clean and lets
+C7 set its own retention/tamper-evidence/export (L597). C1 fixes *what is captured + that it is
+complete across both the human and agent paths*; C7 fixes *where it lives + how long + how it's
+protected*.
+
+## OD-025 — "Role removed if unused" criterion + which roles are protected 🟢 RESOLVED
+**Resolution (2026-06-24, delegated):** (a) a role is **deletable iff zero users are assigned AND it is not protected**; deletion of a role with ≥1 assigned user is **blocked** with a reassign-first message naming the count. **Super Admin is always protected** (un-deletable). The other five defaults are **un-deletable while in use** but removable once empty (they are "defaults," not system roles — L471 "all are editable"). All deletes/blocked-deletes audited. Unblocks FR-1.ROLE.004.
+**Surfaced by:** Component 1 drafting, 2026-06-24. Blocks **FR-1.ROLE.004**.
+**Why it matters:** the design says roles "can be removed if unused" (L471) but never defines
+"unused" or which roles (if any) are undeletable. A loose criterion risks orphaning users into a
+no-role state (#1/#3); a missing protection risks deleting Super Admin.
+**Options:** (a) **deletable iff zero assigned users AND not a protected role** (Super Admin always
+protected), with deletion blocked + a reassign-first message otherwise; (b) allow deletion with
+cascade-reassign to a default role; (c) soft-delete/disable instead of hard delete.
+**Recommendation:** **(a)** — block deletion of any role with ≥1 assigned user (force explicit
+reassignment first) and protect Super Admin outright. *Open sub-question for your call:* are the
+other five defaults (Admin/Finance/HR/Account Manager/Standard User) also protected from deletion,
+or merely un-deletable while in use? (Rec: un-deletable while in use, otherwise removable — they're
+"defaults," not "system roles," per L471 "all are editable.")
+
+## OD-026 — Denied-access runtime semantics for direct/API attempts 🟢 RESOLVED
+**Resolution (2026-06-24, delegated):** (a) for an authenticated user, a denied direct/API attempt returns an **explicit 403-equivalent authorization error** + a **security-level log**; the surface is simply **absent** in the UI (L462). **Never a silent empty-200 / partial render / swallowed denial** (#3). The 404-to-avoid-enumeration variant is available per-endpoint only where enumeration is a concrete concern (not the default). Unblocks FR-1.PERM.006.
+**Surfaced by:** Component 1 drafting, 2026-06-24. Blocks **FR-1.PERM.006**.
+**Why it matters:** the design says denied dashboard views "do not exist in their UI" (L462) but is
+silent on what a **direct** programmatic attempt returns. A silent empty-200 or an info-level
+swallow would be a silent failure (#3); an over-informative error could enable endpoint enumeration.
+**Options:** (a) **explicit 403-equivalent authorization error + security-level log**; (b) **404 to
+avoid enumeration** + security log; (c) 403 for known users, 404 for unauthenticated.
+**Recommendation:** **(a)** for authenticated users (clear, auditable), with the surface simply
+absent in the UI; consider (b)/(c) only where endpoint enumeration is a real concern. Never a silent
+empty success. Log every denied direct attempt at security level.
+
+## OD-027 — Entity-type clearance-scope representation + the L438/L452 Restricted contradiction 🟢 RESOLVED
+**Resolution (2026-06-24, delegated):** **Scope = (a)** an `entity_type_scope` column on `sensitivity_clearances` (`NULL` = global). **Contradiction = (i): L452 governs** — no role, including Super Admin, holds Restricted as a default clearance; L438's "Restricted" for Super Admin reads as the **authority to grant** Restricted (`PERM-user.grant_restricted`), with any actual Restricted access being a per-individual, logged, self-grant. This preserves the invariant that every Restricted access traces to a who/when/why grant. Unblocks FR-1.CLR.002/004, FR-1.RST.001, FR-1.USR.005.
+**Surfaced by:** Component 1 drafting, 2026-06-24. Blocks **FR-1.CLR.002/004, FR-1.RST.001, FR-1.USR.005**.
+**Why it matters:** two coupled gaps. (1) Clearance is "scoped by entity type" (L450) — Finance sees
+Confidential *finance* memories, not Confidential *client-strategy* — but the representation isn't
+specified. (2) **Contradiction:** L438 lists "Restricted" among Super Admin's role clearances, while
+L452/L620 say Restricted is **per named individual, never per role**.
+**Options (scope):** (a) an `entity_type_scope` column on `sensitivity_clearances` (null = global);
+(b) a separate scope table. **Options (contradiction):** (i) **L452 governs** — no role, including
+Super Admin, holds Restricted as a default; Super Admin holds the *authority to grant* it
+(`PERM-user.grant_restricted`) and may self-grant per-entity with logging; (ii) treat Super Admin's
+Restricted as a true global role clearance (contradicts L452/L620).
+**Recommendation:** scope = **(a)**; contradiction = **(i)** — Restricted is always a per-individual,
+logged grant; L438's "Restricted" for Super Admin = grant authority, not an automatic clearance.
+This keeps the audit invariant (every Restricted access traceable to a who/when/why grant) intact.
+
+## OD-028 — Un-actioned clearance-review handling 🟢 RESOLVED
+**Resolution (2026-06-24, delegated):** (a) an overdue, un-actioned review is **flagged + escalated (Super Admin alert + dashboard badge)** — the access **persists** but is loudly surfaced until actioned. **Not auto-revoked** (avoids silently losing legitimate access, #1) and **not silently retained as if reviewed** (avoids silent staleness, #3). A client wanting fail-closed sets it as a **per-deployment config**, not the default. Unblocks FR-1.CLR.005.
+**Surfaced by:** Component 1 drafting, 2026-06-24. Blocks **FR-1.CLR.005**.
+**Why it matters:** clearances are "reviewed on a configurable cadence" with a Super Admin
+confirm/revoke (L454), but the design doesn't say what happens when a review is **not actioned** in
+time. Auto-revoking risks silently losing legitimate access (#1); silently keeping it risks stale
+over-clearance (#3). This is a direct three-non-negotiables tension.
+**Options:** (a) **flag + escalate (alert), neither auto-revoke nor silently retain** — the access
+persists but is loudly surfaced as overdue until actioned; (b) auto-revoke on overdue (fail-closed);
+(c) silently keep until actioned (fail-open).
+**Recommendation:** **(a)** — escalate an overdue review (alert the Super Admin, badge it) so it
+can't be silently ignored, but don't auto-revoke working access. If a client wants fail-closed, make
+it a per-deployment config rather than the default.
+
+## OD-029 — RBAC-change audit scope + single-vs-multi role per user + last-Super-Admin protection 🟢 RESOLVED
+**Resolution (2026-06-24, delegated):** (a) **audit every RBAC mutation** (role edit, matrix toggle, clearance, Restricted grant, role assignment, deactivation, 2FA reset) with actor/target/before-after/time; a **reason is mandatory for Restricted** grants (L452) and captured-where-supplied elsewhere. **One role per user in v1** (matches the role→default-view routing, C0 FR-0.INV.005; a real multi-role need is revisited as a future OOS, not built now). **The last Super Admin is protected across all three removal paths** — deactivate, role-change, role-delete — guarded atomically (ADR-004). Unblocks FR-1.AUD.002, FR-1.USR.001, FR-1.ROLE.005.
+**Surfaced by:** Component 1 drafting, 2026-06-24. Blocks **FR-1.AUD.002, FR-1.USR.001, FR-1.ROLE.005**.
+**Why it matters:** three coupled model questions the design leaves implicit. (1) Only Restricted
+grants have an explicit who/when/why (L452); is **every** RBAC mutation (role edit, matrix toggle,
+clearance, role assignment, deactivation, 2FA reset) audited, and which require a mandatory reason?
+(2) May a user hold **multiple roles** or exactly one? (3) Is the "one Super Admin minimum" (L474)
+enforced across deactivate + role-change + role-delete?
+**Options:** (a) **audit all RBAC mutations** (reason mandatory for Restricted, optional-but-captured
+elsewhere) · **one role per user** in v1 (matches role-default-view routing, C0 FR-0.INV.005) ·
+**protect the last Super Admin across all three removal paths** (atomic guard, ADR-004); (b) audit
+only Restricted + clearances; multi-role users; protect only at deactivation.
+**Recommendation:** **(a)** — full RBAC-mutation audit (the privilege-escalation surface must be
+fully traceable, #2/#3); one role per user for v1 (simpler, matches routing; revisit if a real
+multi-role need appears → OOS); last-Super-Admin protection on every removal path.
+
+## OD-030 — Default permission-matrix seed mechanism 🟢 RESOLVED
+**Resolution (2026-06-24, delegated):** (a) **seed the default role→node rows once at provisioning** from `PERMISSION_NODES.md` defaults, then treat operator edits as authoritative — later deploys **do not** overwrite edits; a newly-added node arrives **default-deny** until a Super Admin grants it (FR-1.PERM.002). Honours both "ships with sensible defaults" (L471) and "no code change to adjust" (L639). Unblocks FR-1.ROLE.001, FR-1.PERM.004.
+**Surfaced by:** Component 1 drafting, 2026-06-24. Blocks **FR-1.ROLE.001, FR-1.PERM.004**.
+**Why it matters:** the matrix is "tracked during the build, not finalised before it" (L504) and
+becomes editable data with "no code change required" (L639) — so the six default roles' node
+assignments must be **seeded** somewhere, then live as editable rows. The question is the seed
+source and whether defaults re-assert on later deploys.
+**Options:** (a) **seed default role→node rows at provisioning from `PERMISSION_NODES.md` defaults**,
+then fully editable; later deploys **do not** overwrite operator edits (new nodes default-deny until
+granted, FR-1.PERM.002); (b) defaults re-asserted every deploy (overwrites edits — rejected, breaks
+runtime-editable promise); (c) no seed, Super Admin configures from scratch (poor first-run UX).
+**Recommendation:** **(a)** — seed once at provisioning; treat operator edits as authoritative
+thereafter; a newly-added node arrives default-deny and is granted explicitly. This honours both the
+"ships with sensible defaults" (L471) and "no code change to adjust" (L639) promises.
+
+---
+
+## OD-031 — Mid-task authorization revocation on the service-role path 🟢 RESOLVED
+**Surfaced by:** Component 1 verification gate (quality pass), 2026-06-24. Blocks **FR-1.RLS.007**.
+**Why it matters:** ADR-006 part 6 runs background/agent work as `service_role`, which **bypasses RLS
+and has no `auth.uid()`** — so the "every change is instant" guarantee (FR-1.RLS.006) covers only the
+human path. If the originating user is **deactivated** or a relied-on **clearance is revoked** *while*
+their task is mid-flight as `service_role`, nothing re-checks it: the task rides a stale snapshot to a
+consequential side effect (external comm / financial / cross-entity write). This is a direct #2/#3
+exposure on the one path the design deliberately leaves off RLS. It must be distinguished from a
+**benign session-expiry**, which C0 FR-0.SESS.006 *intentionally* lets continue.
+**Options:** (a) **re-check the originating user's active status + relied-on clearances at each
+step/injection boundary; on deactivation/revocation, halt + quarantine the in-flight task for human
+review** (never silently drop the work, #1), treating session-expiry as benign (continue); already-
+applied side effects → compensation (OD-010); the interception/quarantine **mechanism** seamed to
+C5/C6/C8; (b) finish the current step, then stop; (c) let the task run to completion (status quo —
+rejected, #2).
+**Recommendation / Resolution (2026-06-24, delegated C0-style):** **(a)** — the authorization rule is
+fixed in C1 (FR-1.RLS.007): a service-role task binds its originating identity and may not perform a
+further consequential side effect once that user is deactivated or a relied-on grant is revoked;
+expiry ≠ revocation. The step-boundary + quarantine machinery is a Harness/Guardrails/Agent-Design
+(C5/C6/C8) concern; compensation of already-applied effects is OD-010. Tied to **AF-068** (containment
+red-team).
+
+> Next OD number: OD-032.

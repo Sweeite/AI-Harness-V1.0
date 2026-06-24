@@ -5,6 +5,67 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 17 — 2026-06-24 — COMPONENT 1 (RBAC) DRAFTED, RESOLVED, VERIFIED & APPROVED + `standards/rbac.md` written
+
+Second Phase-1 component, pattern-matched to the C0 exemplar. Output: `spec/01-requirements/component-01-rbac.md`
+(**37 FRs**, all `Approved`), the owed `standards/rbac.md`, `system-map/01-rbac.md`, 37 matrix rows, OD-024…031
+resolved, AF-079/080/081 logged.
+
+**C1 = authorization ("what you may do/see")** — the question C0 left open once `auth.uid()` is established.
+**ADR-006 is the spine** (its 6 binding parts map ~1:1 onto the RLS/PERM/CLR FRs). Area codes: ROLE ×5 · PERM ×7 ·
+CLR ×6 · RST ×3 · RLS ×8 · USR ×5 · AUD ×3. Every vendor/architecture fact cites ADR-006 or the design doc.
+
+**Drafting:** offloaded the design-doc RBAC map (L397–639 + L717–736) to an Explore subagent; verified load-bearing
+line anchors before citing. Homed the C0 PERM stubs (`PERM-user.invite`, `PERM-auth.provider_toggle`, support nodes)
++ the role tables (`user_roles`/`roles`) C0 read. **Caught a real design contradiction:** L438 lists "Restricted" as
+a Super Admin *role* clearance, but L452/L620 make it strictly per-named-individual — resolved in favour of L452
+(Restricted is never a role default; Super Admin holds the *authority to grant*).
+
+**8 ODs resolved (OD-024…OD-031, all 🟢, delegated C0-style):** dedicated append-only `access_audit` table, C7 owns
+retention (OD-024); role deletable iff zero users + not protected, Super Admin always protected (OD-025); denied
+direct access = explicit 403 + security log, never silent empty (OD-026); `entity_type_scope` column + Restricted-
+per-individual (OD-027); overdue clearance review = escalate, neither auto-revoke nor silently keep (OD-028); audit
+every RBAC mutation + one-role-per-user v1 + last-Super-Admin protected on all removal paths (OD-029); seed default
+matrix once at provisioning, edits authoritative after (OD-030); **OD-031** (gate-raised) mid-task revocation policy.
+
+**Verification gate (2 independent zero-context subagents):**
+- Orphan/contradiction pass **CLEAN** — all 27 design intents mapped; the 4 traps all avoided (no `client_slug` in
+  policies; no FR assumes RLS guards the agent path; Restricted never a role-default; no role-name inside a policy);
+  all 6 seams (C0/C2/C3/C7) acknowledged.
+- Quality/failure pass found **5 findings, ALL reconciled**, clustered at the **service-role/mid-task seam** (the one
+  path ADR-006 part 6 deliberately leaves off RLS): **+FR-1.RLS.007** (a `service_role` task binds its originating
+  user; on mid-task **deactivation or clearance-revoke it halts + quarantines before the next consequential side
+  effect** — while a benign **session-expiry continues**, reconciling C0 FR-0.SESS.006; mechanism seamed to C5/C6/C8,
+  compensation → OD-010); **+FR-1.RLS.008** (RLS/harness divergence is logged, not silently zero-rowed, #3);
+  **+OD-031**, **+AF-081** (agent-path audit completeness — no DB backstop, rests on harness discipline); reactivation
+  re-grant branch on USR.002 (no stale grant silently restored). AF-080 sharpened to runtime divergence.
+
+**`standards/rbac.md` written** (Binding, owed since ADR-006) — 12 rules: default-deny everywhere · one `can()` gate ·
+`PERMISSION_NODES.md` build-time source of truth · static generic data-driven policies · the `(select …)` initPlan
+rule (AF-067, non-negotiable for perf) · RLS owns only the row-access subset intra-client · human-path-RLS vs
+agent-path-service_role · instant change · explicit/scoped/reviewed clearances · Restricted per-individual/logged/
+never-auto-injected · dual-path audit completeness · no-lockout.
+
+**Sign-off:** user-authorized ("lets sign off unless you think i need to review something") — I judged nothing needed
+their specific review (gate clean on orphans/contradictions; findings reconciled on the locked ADRs). 37 FRs → `Approved`.
+
+**Files changed:** `component-01-rbac.md` (new, Approved); `standards/rbac.md` (new, Binding); `system-map/01-rbac.md`
+(new); `system-map/README.md` (01-rbac ✅); `traceability-matrix.csv` (37 rows); `open-decisions.md` (OD-024…031 → 🟢;
+next OD-032); `feasibility-register.md` (block L AF-079–081, AF-080 sharpened; next AF-082); `README.md` (status table
++ Phase-1 row); this log.
+
+**NEXT STEP — component 2 (Memory).** The exemplar zoom-in `system-map/02-memory.md` already exists (reflects
+ADR-002/003/004). Pattern-match the C0/C1 loop: Context Manifest → decompose the design's memory section → cite → log
+ODs (OD-032+) → verification gate → sign-off. **C2 consumes from C1:** the clearance/visibility/Restricted access model
+(FR-1.CLR.*/RST.*), the `(select …)` data-driven RLS pattern (AF-067), and **owns the mechanisms C1 only stated the
+rule for** — tagging memories with a sensitivity tier + entity type (FR-1.CLR.001/004), the retrieval/injection
+pipeline that enforces clearance-before-ranking (FR-1.CLR.006) and never-auto-inject-Restricted (FR-1.RST.003), and the
+service-role sole-writer path (ADR-004) whose mid-task authorization C1 governs (FR-1.RLS.007). **Carry-ins unchanged:**
+OD-010 (compensation/rollback) at C5/C6/C8; OD-011 (Slack app class) at the C3 Slack connector; build-time spikes
+AF-001/002/004 + AF-067/076/079/080/081 on a runnable prototype.
+
+---
+
 ## Session 16 — 2026-06-24 — COMPONENT 0 (LOGIN) DRAFTED, RESOLVED, VERIFIED & APPROVED (the golden exemplar)
 
 The full Phase-1 per-component loop, executed end-to-end on **component 0 (Login)** — the golden exemplar

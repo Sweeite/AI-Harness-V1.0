@@ -228,10 +228,20 @@ Verdict key: ✅ VERIFIED · 🟠 STALE · ⛔ REFUTED · ⬜ UNCONFIRMED (not s
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-079
+## L. Component 1 (RBAC) implementation feasibility
+
+| ID | Must-test item | Method | Status |
+|---|---|---|---|
+| AF-079 | **RLS coverage is complete — no application table ships without RLS enabled + a policy.** The DB backstop (L719, ADR-006 part 5) only holds if it is *universal*: a single table created without `ENABLE ROW LEVEL SECURITY` + a policy is a silent hole an authenticated user can read directly. Prove with a CI/lint gate that fails the build if any table in the public schema lacks RLS + ≥1 policy (analogous to AF-076 for the `aal2` clause, but for the base default-deny policy). Load-bearing for #2/#3 (a silent un-guarded table). | SPIKE / CI-lint | 🔴 |
+| AF-080 | **The harness `can()` check and the RLS helper functions, both reading the same permission tables, cannot disagree on the visibility/sensitivity/Restricted subset — and any runtime divergence is observable.** ADR-006 part 5's "single source of truth → cannot drift" claim rests on both readers deriving identically from the same rows. A subtle divergence (e.g. the harness applies entity-type scope but a helper forgets it, or `NULL`-scope semantics differ) would let one layer allow what the other denies — a leak or a false denial. Prove with (a) a build-time **differential test**: for a matrix of (user, node, entity, tier) cases, assert `can()` and the RLS result agree; **and (b)** a **runtime divergence signal** (FR-1.RLS.008) — when RLS zero-rows a read the harness believed permitted, it is logged/alerted, not silently returned as "no data" (#3). | EVAL / differential-test + runtime signal | 🔴 |
+| AF-081 | **Agent-path (`service_role`) Personal/Restricted access audit is complete.** FR-1.RLS.004 puts the agent path **off** RLS by design, so the audit record for every agent read/write/injection of Personal/Restricted content (FR-1.AUD.001) rests **entirely on harness discipline** — there is no DB backstop catching a missed log, unlike the human path. A single un-instrumented agent access path is a permanent silent gap (#3) and a knowledge-provenance hole (#1). Prove with the same shape as AF-076/079: an audit-coverage check over every agent access path to sensitive content (instrument-or-fail), exercised by a test battery. | SPIKE / EVAL | 🔴 |
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-082
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
-> **Component-0 block K uses AF-078**).
+> **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.
