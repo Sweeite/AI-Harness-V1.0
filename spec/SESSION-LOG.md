@@ -56,7 +56,14 @@ next OD-032); `feasibility-register.md` (block L AF-079–081, AF-080 sharpened;
 
 **NEXT STEP — component 2 (Memory).** The exemplar zoom-in `system-map/02-memory.md` already exists (reflects
 ADR-002/003/004). Pattern-match the C0/C1 loop: Context Manifest → decompose the design's memory section → cite → log
-ODs (OD-032+) → verification gate → sign-off. **C2 consumes from C1:** the clearance/visibility/Restricted access model
+ODs (OD-032+; new AFs from AF-082) → verification gate → sign-off. **Design-doc section: `## 2. Memory System` =
+L1338–1967** (memory types/entities, the two ingestion filters + contradiction check + memory writer write-flow, the
+visibility×sensitivity orthogonal tags L1400–1418, retrieval/ranking, the maintenance schedule L1870, the three
+ingestion pipelines L1908+); plus the C2 checklist overview **L222–243** and the memory-relevant config (e.g.
+`retrieval_confidence_threshold` ~L906). Note the clearance-before-ranking lines C1 cited (L464, **L1725**) live inside
+this section — C2 owns the *mechanism* there. Likely area codes (confirm at decomposition): MEM/ENT (entities) ·
+ING (ingestion filters + pipelines) · WRT (write flow + contradiction check + sole writer) · RET (retrieval/ranking) ·
+TAG (visibility×sensitivity) · MNT (maintenance/supersede/merge). **C2 consumes from C1:** the clearance/visibility/Restricted access model
 (FR-1.CLR.*/RST.*), the `(select …)` data-driven RLS pattern (AF-067), and **owns the mechanisms C1 only stated the
 rule for** — tagging memories with a sensitivity tier + entity type (FR-1.CLR.001/004), the retrieval/injection
 pipeline that enforces clearance-before-ranking (FR-1.CLR.006) and never-auto-inject-Restricted (FR-1.RST.003), and the
