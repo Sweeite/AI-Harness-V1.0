@@ -98,7 +98,11 @@ Two scope decisions locked before drafting any C0 FR (user-approved, this sessio
    **invite-based account creation** (72h link), **first-boot Super Admin** seed (24h link), the
    **"trouble signing in"** support/recovery flow + support-request handling, and **inbound webhook
    authentication** (HMAC/JWT verification of GHL/Google/Slack webhooks — this is *authentication*, a
-   hard control per ADR-007, not content detection). *Out of C0:* roles / permission matrix /
+   hard control per ADR-007, not content detection). **Webhook seam:** C0 owns *authenticating* the
+   webhook (verify signature → reject 401 → log the failure as `prompt_injection` per ADR-007); the
+   **content/payload handling** of a verified webhook belongs to the ingesting component (C2/C3).
+   ADR-007 (`L742–809`) homes HMAC verification to "connector ingress" — that's not a contradiction;
+   C0 owns the *auth step*, the ingest component owns *what the payload does*. *Out of C0:* roles / permission matrix /
    clearances / RLS → **C1 (RBAC)**; **connector OAuth + token lifecycle** for the AI's *data access*
    to Gmail/Drive/GHL/Slack → **C3 (Tool Layer)**, where the tool dossiers live. The **seam** between
    C0 and C1 is the session establishing `auth.uid()` — which ADR-006's RLS keys on. *Note:* the design
@@ -117,6 +121,17 @@ Two scope decisions locked before drafting any C0 FR (user-approved, this sessio
    `tool-integrations/` is for *client-facing connectors* only (per that folder's README), so the
    findings land as a **new dated AF block in `feasibility-register.md`** (AF-003 F-finding style) +
    glossary/OD outputs — **not** a `tool-integrations/` dossier.
+
+**Doc-reconciliation notes for the C0 drafter** (the design doc states these; carry them into the FRs,
+don't inherit them silently or re-derive them from prose):
+- **OAuth is the *primary* login, email+password+2FA is *secondary*** (`L360`, `L373`). Preserve that
+  priority in the AUTH FRs (the login surface leads with OAuth; email/password is the fallback path).
+- **No automated/self-service password reset — deliberate** (`L382`). This drives the **REC** area:
+  recovery is the human-verified **"trouble signing in"** flow (user submits a request → Super
+  Admin/Admin phone-verifies → manual credential change), *not* a self-service reset link. Do not spec a
+  forgot-password reset; spec the human-in-the-loop recovery.
+- **Notation:** `§N` in a Context Manifest = the ADR's **numbered decision point N** (ADRs number their
+  decisions 1–N; they carry no literal `§` markers). E.g. "ADR-001 §5" = ADR-001's 5th numbered decision.
 
 ---
 
