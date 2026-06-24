@@ -220,11 +220,18 @@ Verdict key: ✅ VERIFIED · 🟠 STALE · ⛔ REFUTED · ⬜ UNCONFIRMED (not s
 
 **Outputs filed:** AF-073–077 (above); AF-067 sharpened (initPlan `(select …)` rule). **Forks to become component-0 ODs** when C0 is drafted: session-lifetime model (SA3), mid-task continuation mechanism (SA5), invite-expiry approach 24h-vs-custom-token (SA11/12), HttpOnly requirement (SA4). **Glossary terms to add when first used in a C0 FR:** AAL (aal1/aal2), refresh-token rotation/reuse-detection, asymmetric JWT / JWKS local verification, custom invite-token layer. **Connector FRs this unblocks:** C0 login/session/2FA/invite/seed/webhook-auth FRs (cite Block J).
 
+## K. Component 0 (Login) implementation feasibility (verify by SPIKE)
+
+| ID | Must-test item | Method | Status |
+|---|---|---|---|
+| AF-078 | **End-to-end inbound webhook verification across GHL / Google / Slack actually rejects forged & replayed events.** The three verifiers (FR-0.WHK.002/003/004) each depend on getting the mechanics exactly right: capturing the **raw body before JSON parsing** (parsing re-serialises and invalidates the signature), **constant-time** comparison (`crypto.timingSafeEqual`, never `===`), correct base-string construction (Slack `v0:[ts]:[body]`), JWKS/audience/expiry checks (Google), and replay rejection (Slack 5-min window + the GHL/Google nonce cache from OD-022). One framework that buffers/parses the body before the verifier sees it silently breaks all three. Prove with a test battery of valid, tampered, and replayed payloads per connector. Load-bearing for non-negotiable #2 (an unverified webhook is the trust-boundary entry point per ADR-007). | SPIKE | 🔴 |
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-078
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-079
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
-> block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**).
+> block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
+> **Component-0 block K uses AF-078**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

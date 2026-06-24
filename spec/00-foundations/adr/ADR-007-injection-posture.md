@@ -167,6 +167,11 @@ must document them as such so no future requirement mistakes a threshold for the
   flagged ingestion is held in the queue, never machine-deleted.
 - **Connector ingress (component 1):** webhook HMAC verification per connector as a hard control
   (`L742–809`); unverified → 401 + guardrail_log `prompt_injection` + threshold alert.
+  - **Reconciliation (2026-06-24, C0 scoping — clarification, not a decision change):** the webhook
+    *authentication* step is owned by **C0 (Login)** — `FR-0.WHK.*`; the connector *payload / ingest*
+    handling of a verified webhook is **C2/C3**. The "component 1" label here predates the C0/C2/C3
+    split (the design doc filed webhook security under the `## 1.` header); the hard-control decision is
+    unchanged, only its home is clarified.
 - **Agent prompt design (component 8):** every agent's Layer-1 includes the external-data /
   not-an-instruction directive; boundary tags are applied at the tool-read layer, not left to the model.
 - **Config registry:** `injection_semantic_detection` (new, default **off** — the operator-facing

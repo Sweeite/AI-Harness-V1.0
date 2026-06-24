@@ -5,6 +5,60 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 16 — 2026-06-24 — COMPONENT 0 (LOGIN) DRAFTED, RESOLVED, VERIFIED & APPROVED (the golden exemplar)
+
+The full Phase-1 per-component loop, executed end-to-end on **component 0 (Login)** — the golden exemplar
+every later component pattern-matches. Output: `spec/01-requirements/component-00-login.md` (**42 live FRs +
+1 retired**, all `Approved`), its `system-map/00-login.md` zoom-in, 43 matrix rows, 12 OD resolutions.
+
+**Drafting:** decomposed design-doc **L358–390 + L643–816** into 6 area codes (AUTH/SESS/INV/SEED/REC/WHK).
+Every Supabase vendor fact cites **feasibility Block J (SA1–17)**, NOT the design doc; the **6 refuted
+design-doc claims** are carried as a doc-reconciliation table up top. New **AF-078** (webhook verification,
+block K). Glossary +AAL/aal2, +refresh-token rotation, +JWKS local verification.
+
+**12 ODs logged then resolved (OD-012…OD-023, all 🟢):** session-lifetime = native rotating+inactivity
+(OD-012); mid-task = `service_role` (OD-013, per ADR-004/006); invites = **24h native, no custom token**
+(OD-014); HttpOnly pursued w/ AF-073 gate (OD-015); 2FA = deployment-wide aal2, no exemptions (OD-016);
+same-page challenge + soft-lock (OD-017); **OD-018 (user-decided) = OAuth-only for all client-tenant users,
+email+password+2FA ONLY for external (operator-side) Super Admins** who can't SSO; OD-019 **dissolved** by
+OD-018 (no client password to reset → phone-verify flow retired); one-method-at-setup (OD-020); seed =
+email+pw+2FA external bootstrap admin (OD-021); webhook secret rotation/replay (OD-022); webhook alert→Super
+Admin+throttle (OD-023).
+
+**OD-018 cascade (the key event):** since all client users are OAuth, the system holds no client password →
+**FR-0.REC.004 (phone-verify credential change) RETIRED**, phone field + custom invite-token table dropped,
+REC reframed to a generic login-support intake. A scope decision *deleted* complexity + an attack surface.
+
+**Verification gate (2 independent zero-context subagents):**
+- Orphan/contradiction pass **CLEAN** — all 49 design intents mapped; 6 deviations are the intended Block-J
+  corrections; seams to C1/C2/C3 acknowledged; no unsupported claims.
+- Quality/failure-overlay pass found **6 findings, ALL reconciled:** seed check-then-create race → hardened
+  **FR-0.SEED.003** with an ADR-004 atomic guard (real bug caught); +**FR-0.AUTH.010** (audit completeness),
+  +**FR-0.INV.007** (email bounce), +**FR-0.REC.007** (stale-request re-escalation); missed-webhook detection
+  parked as a seam to **C2/C3/C7** (not C0); backup confirmed covered by ADR-008.
+
+**Sign-off:** user-authorized/delegated ("I trust you and your recommendations"). 3 LOW items accepted (status
+enum `contacted`→`in-progress`; phone-recovery retired; **ADR-007 webhook-ingress "component 1" cross-ref
+reconciled** via a dated clarification note); FR-0.INV.007 full-bounce-wiring deferred → **OOS-015**.
+
+**Files changed:** `spec/01-requirements/component-00-login.md` (new, Approved); `system-map/00-login.md` (new);
+`traceability-matrix.csv` (43 rows); `open-decisions.md` (OD-012…023 → 🟢; next OD-024); `feasibility-register.md`
+(block K, AF-078; next AF-079); `glossary.md` (+3 terms); `out-of-scope.md` (OOS-015; next OOS-016);
+`adr/ADR-007-injection-posture.md` (C0-scoping reconciliation note); `system-map/README.md` (00-login ✅);
+`README.md` (status + Phase-1 row); this log.
+
+**NEXT STEP — component 1 (RBAC).** Pattern-match the C0 exemplar: create `component-01-rbac.md` with a Context
+Manifest (ADR-006 data-driven RLS is the spine; ADR-001 intra-client; the C0 `auth.uid()`/`aal2` seam from
+FR-0.AUTH.008/SESS.006), decompose the design's RBAC section, cite, log ODs, run the verification gate, sign
+off. **C1 owes the `standards/rbac.md` standard** (two-level RBAC+RLS, default-deny, RLS-vs-harness division,
+service-role caveat, `PERMISSION_NODES.md`) — promised since ADR-006. C1 also **homes the PERM-* nodes** C0
+referenced as stubs (`PERM-user.invite`, `PERM-auth.provider_toggle`, `PERM-support.view/.resolve`) and the
+**role tables** `user_roles`/`roles` that FR-0.INV.005/SEED.001 read. Carry-ins unchanged: OD-011 (Slack app
+class) at the C3 Slack connector; OD-010 (compensation/rollback) at C5/C6; build-time spikes AF-001/002/004 +
+AF-073–078 on a runnable prototype.
+
+---
+
 ## Session 15 — 2026-06-24 — PHASE 1 ENTERED · component-0 scope finalized · Supabase Auth research-first gate run
 
 User asked to confirm Phase 0 done + whether to reason about Phase 1 before starting (yes to both). Read the

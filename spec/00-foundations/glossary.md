@@ -72,6 +72,9 @@ until resolved.
 | Config edit class | SECRET / BOOT / LIVE / REBUILD — how a config takes effect. | ✅ see standards/config-edit-taxonomy.md |
 | Surface | Any UI view, panel, modal, banner, or queue. | ✅ |
 | Permission node | An atomic, role-gated capability (default-deny). | ✅ |
+| AAL (aal1 / aal2) | Authenticator Assurance Level on a Supabase session: **aal1** = single factor (password/OAuth), **aal2** = a verified second factor (TOTP) was presented. The deployment-wide 2FA requirement is enforced by requiring `aal = 'aal2'` in RLS on every protected resource (no native toggle exists — it is built). | ✅ C0 (Block J/SA9, AF-076) |
+| Refresh-token rotation + reuse-detection | Supabase refresh tokens **never expire**; each refresh issues a new single-use token (10 s reuse interval) and **reuse of a rotated token revokes the whole session**. The harness must persist the new token on every rotation; session bounds come from optional inactivity/time-box settings, not a token TTL. | ✅ C0 (Block J/SA3) |
+| Asymmetric JWT / JWKS local verification | Supabase signs session JWTs with asymmetric keys (RS256/ES256, default since 2025-10-01); backends verify locally via the JWKS endpoint (`getClaims()`) with no Auth-server round-trip — but use `getUser()` where authoritative revocation/logout state matters. | ✅ C0 (Block J/SA17) |
 | Open Decision (OD) | A tracked unresolved question blocking one or more requirements. | ✅ |
 
 > Add a row the first time any new term appears in a requirement. Never let two requirements
