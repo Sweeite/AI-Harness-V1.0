@@ -238,10 +238,20 @@ Verdict key: ✅ VERIFIED · 🟠 STALE · ⛔ REFUTED · ⬜ UNCONFIRMED (not s
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-082
+## M. Component 2 (Memory) implementation feasibility
+
+| ID | Assumption | Method | Status |
+|---|---|---|---|
+| AF-082 | **Entity resolution is accurate enough that the brain does not fragment into duplicate entities at scale.** FR-2.ENT.005 resolves a mention to an existing entity by `external_refs`-first then a deterministic name/type match, creating a new entity only on no confident match. If resolution is too loose it **merges distinct entities** (two clients collapsed → cross-contaminated knowledge, a #2 leak); too strict it **fragments one entity into duplicates** (knowledge about one client split across rows → every retrieval silently sees half of it, a #1 integrity loss). The structural-erosion duplicate-cluster check (FR-2.MNT.010) is only a backstop. Prove with an **EVAL** over realistic mention data (mixed system-ID-bearing and free-text references, name collisions, aliases): measure false-merge and false-split rates against a ground-truth entity set, and validate that the ambiguity-flag threshold (OD-033) catches the hard cases for human confirm rather than guessing. Shares the AF-002 retrieval corpus. | EVAL | 🔴 |
+
+> **Note:** C2 also *relies on* existing AFs rather than creating new ones for them — **AF-002** (retrieval relevance/ranking), **AF-019** (HNSW recall **with RLS predicates applied** — the pgvector-after-ANN-scan cliff that C2's `ef_search` tuning must survive), **AF-031** (writer type-split + confidence quality), **AF-034** (Maturity predicts usefulness; Sufficiency cleanly separates `[Building]`/`[Unknown]`), **AF-043** (the Filter-1 Haiku gate pays for itself + is trustworthy; OD-036's trust window is its measurement vehicle), **AF-061/062/063** (validate-and-commit), and **AF-067** (live clearance predicate composes with pgvector on the hot path). These are tagged at their points of use in `component-02-memory.md` but already live in blocks B/E/G above.
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-083
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
-> **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**).
+> **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses AF-082**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

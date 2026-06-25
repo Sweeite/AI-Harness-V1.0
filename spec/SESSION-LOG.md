@@ -5,6 +5,71 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 18 — 2026-06-25 — COMPONENT 2 (MEMORY) DRAFTED, RESOLVED, VERIFIED & APPROVED — the business brain
+
+Third Phase-1 component, the heart of the system. Output: `spec/01-requirements/component-02-memory.md`
+(**57 FRs**, 56 Approved + 1 v2-deferred), OD-032…038 resolved, AF-082 logged, OOS-016/017 logged, matrix +
+system-map wired.
+
+**C2 = "what the AI knows"** — the durable, entity-organised, sensitivity-tagged knowledge base every task reads
+from (step 4) and writes back to (step 7). Area codes: MEM ×2 · ENT ×5 · TAG ×3 · ING ×10 · WRT ×7 · RET ×7 ·
+MNT ×17 · VEC ×3 · MAT ×3. **Three ADRs converge:** ADR-002 (Maturity/Sufficiency), ADR-003 (≤1 Sonnet writer +
+Haiku gates + "controls before gates"), ADR-004 (sole-writer service_role + validate-and-commit).
+
+**Drafting:** offloaded the design-doc Memory map (L1338–1967 + the L906–926 config block + L1487–1559 vector) to an
+Explore subagent → 78 fine-grained intents; spot-verified the load-bearing cites (memory types, the tag enumeration,
+the two filters) before writing. **Key reconciliation caught up front:** the design's "Filter 1 / Filter 2" ARE
+ADR-003's Haiku gates (selective-writing + sensitivity-classify), **not a third model layer** — C2 cites ADR-003
+rather than inventing one. C2 **consumes** C1's FR-1.CLR.001/004/006, RST.003, RLS.003/007, AUD.001 and **owns the
+mechanisms C1 only ruled on** (tagging, the retrieval pipeline, never-auto-inject-Restricted, the sole-writer path).
+
+**7 ODs logged then resolved (OD-032…038):** OD-032 hard-conflict quarantine+escalate (mirrors C1 OD-028); OD-033
+entity resolution external-ref-first + flag-ambiguous + soft-disable retire (gated by AF-082); **OD-034 cold storage
+DEFERRED to v2 → OOS-016** (user-decided — adds a lose-a-memory failure mode for no launch-scale benefit; HNSW stays
+fast past ≤20-user volume); OD-035 candidate filters apply uniformly to BOTH search arms (closes a stale-knowledge
+leak); OD-036 ~3-week shadow-retain trust window, graduate on low disagree-rate + operator sign-off (ADR-003 §8
+made concrete); OD-037 Personal-consolidation skip-by-default + audited approval queue; **OD-038 compliance-erasure
+rule homed in C2 (FR-2.MNT.017), backup-purge seamed to Phase 5** (user-decided). 5 delegated C0/C1-style; the two
+scope/legal calls (034, 038) taken to the user — both chose the recommendation.
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass CLEAN** — all design intents L1338–1967 mapped; the 3 deferrals (cold storage, re-rank/
+  HyDE, structured-extraction/query-decomposition) correctly logged OOS-016/003/017; no contradictions with
+  ADR-001/002/003/004/006/007 or the consumed C1 FRs; all 5 trap areas PASS. Caught a **citation slip** (Personal-
+  no-consolidation cited L1407 → correct **L1414**) + two cross-ref slips (MNT.009→**008**, MNT.016→**014**) — all fixed.
+- **Quality/failure pass found 7 findings, ALL reconciled:** **+FR-2.WRT.007** (embedding-failure halts commit, never
+  stores a null/invalid embedding — a real #1/#3 silent-loss hole); **+AC-2.WRT.006.3** (mid-task revocation re-check
+  at the commit boundary — C1 FR-1.RLS.007 stated the rule, no C2 FR enforced it); **FR-2.ING.003** escalation AC +
+  `CFG-review_escalation_days`/`CFG-ingest_defer_resurface_days` and **FR-2.MNT.010** now scans the ingestion queue +
+  null-embedding rows (closed a **Rule-0 dangling "Phase 2" decision**); **FR-2.MNT.017** hardened to erase
+  **transitively** across the supersede chain + merged/summarised derived rows (+AC-2.MNT.017.3 — the residue hole
+  OD-038's own rule forbids); escalation ACs on FR-2.WRT.002 / FR-2.MNT.014; FR-2.WRT.006 lexical-recheck note →
+  FR-2.MNT.006 daily backstop; AC-2.VEC.003.2 re-embed completeness gate. Confirmed-adequate: clearance-before-
+  ranking, Restricted, golden rule, decay-never-deletes, evidence layer, sole-writer.
+
+**Sign-off:** user-authorized — OD resolution delegated (5) + the two scope/legal calls decided directly; gate clean
+on orphans/contradictions, all 7 quality findings reconciled in-file. 56 FRs `Approved` + FR-2.MNT.012 `Deferred(v2)`.
+
+**Files changed:** `component-02-memory.md` (new, Approved); `open-decisions.md` (OD-032…038 → 🟢; next OD-039);
+`feasibility-register.md` (block M AF-082; next AF-083); `out-of-scope.md` (OOS-016 cold storage, OOS-017 structured-
+extraction/query-decomposition; next OOS-018); `traceability-matrix.csv` (57 rows); `system-map/02-memory.md`
+(reconciled-with-spec note); `system-map/README.md` (02-memory ✅ Approved); `README.md` (status table + Phase-1 row);
+this log.
+
+**NEXT STEP — component 3 (Tool layer).** This is the **connector** component, so it **triggers the research-first
+gate** (`standards/tool-integration-research.md`) — open dated primary-source dossiers in `tool-integrations/` for
+GHL / Google(Drive+Gmail) / Slack before speccing connector FRs, citing the dossier (not the design doc) for vendor
+facts. C3 is where the **AF-003 corrected vendor values propagate** (F1 Gmail per-env quota, F2 GHL 100/10s+200k/day,
+F5 GHL refresh-token-rotation-persist, F3 Slack throttle) and where **OD-011 (Slack app class — rec internal-custom-
+app, EVAL-gated)** resolves. C3 **owns the seams C2 named:** the connectors behind C2's three ingestion pipelines
+(FR-2.ING.006/007/008) and the **live-data fetch** for the relevance cross-check (FR-2.MNT.011); also the connector
+OAuth + token lifecycle C0 deferred (AF-013/014). **Carry-ins unchanged:** OD-010 (compensation/rollback) at C5/C6/C8;
+build-time spikes AF-001/002/004 + the C2 AFs (AF-019 HNSW-under-RLS, AF-031, AF-034, AF-043, AF-061–063, AF-067,
+AF-082) on a runnable prototype. The C2 mid-task-quarantine **machinery** (AC-2.WRT.006.3) is a C5/C6/C8 build concern;
+the answer-mode **pill rendering** (FR-2.RET.007) is C8.
+
+---
+
 ## Session 17 — 2026-06-24 — COMPONENT 1 (RBAC) DRAFTED, RESOLVED, VERIFIED & APPROVED + `standards/rbac.md` written
 
 Second Phase-1 component, pattern-matched to the C0 exemplar. Output: `spec/01-requirements/component-01-rbac.md`

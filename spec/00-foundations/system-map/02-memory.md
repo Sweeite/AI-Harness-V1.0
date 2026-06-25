@@ -5,6 +5,15 @@ the accepted ADRs: ADR-002 (Maturity / Retrieval Sufficiency), ADR-003 (write-pa
 + cost), ADR-004 (write concurrency). Where this map and a future requirement disagree, the
 requirement wins and this map gets updated (change control).
 
+> **Reconciled with the Approved spec (2026-06-25):** the C2 FRs are now written and Approved in
+> [`../../01-requirements/component-02-memory.md`](../../01-requirements/component-02-memory.md)
+> (57 FRs). This exemplar map remains accurate; the spec added detail the map doesn't draw —
+> **entity resolution** (FR-2.ENT.005, the fragmentation risk, AF-082), an **embedding-failure**
+> write path (FR-2.WRT.007), the **mid-task revocation** re-check at the commit boundary
+> (AC-2.WRT.006.3, consuming C1 FR-1.RLS.007), and **compliance erasure** (FR-2.MNT.017, the one
+> sanctioned destructive path). Cold storage is **deferred to v2** (OOS-016). The spec is the
+> source of truth; consult it for the FR-level rules.
+
 ## What memory is
 
 Three durable kinds + the transient one:

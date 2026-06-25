@@ -481,4 +481,139 @@ expiry ≠ revocation. The step-boundary + quarantine machinery is a Harness/Gua
 (C5/C6/C8) concern; compensation of already-applied effects is OD-010. Tied to **AF-068** (containment
 red-team).
 
-> Next OD number: OD-032.
+---
+
+## OD-032 — Unresolved hard-conflict handling + the "inject both with a note" behaviour 🟢 RESOLVED
+**Resolution (2026-06-25, delegated C0/C1-style):** (a) a hard conflict **holds the new memory in a pending/quarantine state** — not in the live retrievable set, not discarded — surfaces it in a conflict-review queue, and **escalates an un-actioned hard conflict** (alert + badge), never auto-resolving and never silently dropping it (mirrors C1 OD-028). For rule-5 genuine ambiguity, **both memories stay live and are injected with an explicit "conflicting memory" note** until a human resolves; resolution is tied to the conflict-review queue (bounding how long both persist). Unblocks FR-2.WRT.002, FR-2.MNT.008.
+**Surfaced by:** Component 2 (Memory) drafting, 2026-06-25. Blocks **FR-2.WRT.002, FR-2.MNT.008**.
+**Why it matters:** the contradiction check flags a **hard conflict** for human review and "never silently
+overwrites" (L1615); the conflict-resolution rules say a genuinely ambiguous conflict is "flagged for human
+and **inject both with a note**" (L1844). Two things are unspecified: (1) what happens to the **new memory**
+while a hard conflict is unreviewed — is it held un-written, written-but-quarantined, or written-pending? and
+what if the review **never happens** (the same un-actioned-review tension as C1 OD-028)? (2) how "inject both
+with a note" actually renders and how long both versions persist. Getting (1) wrong risks either losing the
+new knowledge (#1) or acting on a contradiction silently (#2/#3).
+**Options:** (a) **hold the new memory in a pending/quarantine state** (not in the live retrievable set, not
+discarded), surface it in a conflict-review queue, and **escalate** an un-actioned hard conflict (alert +
+badge, never auto-resolve, never silently drop) — mirroring C1 OD-028; for rule-5 ambiguity, **inject both
+with an explicit "conflicting memory" note** and keep both live until a human resolves; (b) write the new
+memory live immediately and rely on the supersede safety-net + review (weaker — acts on unresolved conflict);
+(c) drop the new memory until the conflict is resolved (rejected — loses knowledge, #1).
+**Recommendation:** **(a)** — quarantine-pending + escalate-if-unreviewed is the only option consistent with
+all three non-negotiables (don't lose it, don't act on it silently, don't fail silently). The rule-5
+"inject both with a note" is the *retrieval-time* expression of an unresolved ambiguity; cap how long both
+persist by tying resolution to the conflict-review queue. Reuses the C1 OD-028 escalate-don't-auto-act pattern.
+
+## OD-033 — Entity resolution / disambiguation / merge mechanism 🟢 RESOLVED
+**Resolution (2026-06-25, delegated):** (a) **deterministic precedence** — match by `external_refs` (system ID) first, then a normalised name+type match above a confidence threshold; **confident match → link**; **ambiguous/low-confidence → create-and-flag-for-merge or hold for human confirm, never silently guess**; duplicates are backstopped by the structural-erosion check (FR-2.MNT.010) feeding an entity-merge queue; entity-type retirement = **soft-disable** (hidden for new writes, existing memories retained, never orphaned). Auto-resolution accuracy is gated by **AF-082** (EVAL — false-merge / false-split rates) before it's trusted. Unblocks FR-2.ENT.005, FR-2.ENT.002, FR-2.RET.001.
+**Surfaced by:** Component 2 drafting, 2026-06-25. Blocks **FR-2.ENT.005, FR-2.ENT.002, FR-2.RET.001**.
+**Why it matters:** the design defines the entity model + schema (L1353–1394, L1429–1436) but never the
+**resolution** mechanism — how a mention in a task or ingested item maps to an *existing* entity vs. creates a
+new one. This is a direct #1 (knowledge-integrity) risk: if "Acme Corp" resolves to two different entity rows,
+the brain **fragments** — every retrieval about Acme silently sees half its knowledge. Also unspecified: how an
+in-use entity **type** is retired without orphaning its memories (FR-2.ENT.002 edge).
+**Options:** (a) **deterministic precedence** — match by `external_refs` (system ID) first, then a normalised
+name+type match above a confidence threshold; **confident match → link**; **ambiguous/low-confidence →
+create-and-flag-for-merge** (or hold for human confirm), never silently guess; duplicates caught by the
+structural-erosion check (FR-2.MNT.010) feed an entity-merge queue; entity-type retire = **soft-disable**
+(hidden for new writes, existing memories retained); (b) name-only fuzzy match (simpler, higher fragmentation
+risk); (c) always-human-confirm new entities (safest, heavy onboarding friction).
+**Recommendation:** **(a)** — external-ref-first + deterministic name/type fallback + a flag-don't-guess rule on
+ambiguity, with a merge queue as the backstop. Validate accuracy at scale via **AF-082** (EVAL) before trusting
+auto-resolution. Soft-disable for entity-type retirement so #1 is preserved.
+
+## OD-034 — Cold-storage mechanism + retrieval-back path 🟢 RESOLVED
+**Resolution (2026-06-25, user-decided):** (c) **defer cold storage to v2 → OOS-016.** Cold storage is a scale optimisation that does not bite until the vector index is large; shipping it at launch (≤20 users) adds a lose-a-memory failure mode (#1) for no benefit, since HNSW stays fast well past launch volume (the reason it was chosen, AF-019). **FR-2.MNT.012 is marked v2-deferred** (no v1 build). When built, design toward option (a) — cold memories stay in-table + keyword-reachable + rehydratable, never fully unsearchable. AF-019 identifies the hot-index size that actually motivates it.
+**Surfaced by:** Component 2 drafting, 2026-06-25. Blocks **FR-2.MNT.012**.
+**Why it matters:** the design moves "memories >12 months old with low access frequency to cold storage to
+keep the vector index fast and cheap" (L1897, L1962) but never says **what cold storage is** technically or how
+a cold memory is **retrieved back** if it becomes relevant again. Done wrong this is a #1/#3 risk: a memory
+that is silently unfindable when needed is effectively lost knowledge.
+**Options:** (a) **flag + drop-from-HNSW, keep in the table** — a `cold` flag removes the row from the hot
+vector index (kept in Postgres, still keyword-reachable); a cold hit (e.g. a keyword/entity match, or a
+periodic relevance signal) **rehydrates** it back into the index; (b) **separate cold table/tier** (archived,
+not searchable) with an explicit operator "restore" action only; (c) **defer cold storage entirely to v2**
+(it's a `Could`-priority optimisation; the brain is small at ≤20 users / first 12 months, so the hot index
+won't be large enough to need it soon).
+**Recommendation:** **(c) for v1, design toward (a).** Cold storage is a scale optimisation that does not bite
+until the index is large; shipping it early adds a lose-a-memory failure mode (#1) for little benefit at launch
+volume. Log the v1 deferral (OOS) and, when built, prefer (a) — keep cold memories in-table + keyword-reachable
++ rehydratable, never fully unsearchable. Confirm the hot-index size that actually motivates it via AF-019.
+
+## OD-035 — Vector-arm candidate-filter uniformity + system_pointer admission 🟢 RESOLVED
+**Resolution (2026-06-25, delegated):** (a) the confidence-floor / expiry / superseded filters **apply uniformly to both the keyword and vector arms** before the clearance filter and ranking — a superseded, expired, or sub-threshold memory must never re-enter via semantic similarity (closes a stale-knowledge leak, #1/#2). An unscored `system_pointer` memory is **admitted unconditionally** (it dereferences to the live source of record). Unblocks FR-2.RET.003.
+**Surfaced by:** Component 2 drafting, 2026-06-25. Blocks **FR-2.RET.003**.
+**Why it matters:** the design states the candidate filters (confidence > 0.7, not expired, not superseded)
+explicitly only for the **keyword** arm (L1707–1716); the **vector** arm is described as "top-20 semantically
+similar" with no stated filter. If the floors don't apply to the vector arm, a **low-confidence, expired, or
+superseded** memory can re-enter retrieval purely by semantic similarity — surfacing stale or retracted
+knowledge (#1/#2). Also unspecified: whether an unscored `system_pointer` memory is admitted unconditionally.
+**Options:** (a) **apply the confidence-floor / expiry / superseded filters uniformly to both arms** before the
+clearance filter and ranking; admit `system_pointer` memories (unscored) on their own rule since they point at
+authoritative live data; (b) keep the vector arm unfiltered (rejected — re-surfaces stale/superseded memory);
+(c) apply expiry+superseded uniformly but let the vector arm ignore the confidence floor (partial — still
+surfaces low-confidence memory).
+**Recommendation:** **(a)** — the floors are integrity filters, not keyword-search quirks; a superseded or
+expired memory must never re-enter via the vector arm. Admit `system_pointer` unconditionally (it dereferences
+to the source of record). Low cost, closes a real stale-knowledge leak.
+
+## OD-036 — Trust-window shadow-retain mechanics + exit criteria (Filter-1 Haiku gate) 🟢 RESOLVED
+**Resolution (2026-06-25, delegated):** (a) **a fixed ~3-week shadow-retain window per deployment** (ADR-003 §8): every Filter-1 "would-drop" is written to a shadow store tagged `would_drop` + the Haiku decision/reason, surfaced in the Haiku-decision review queue; the gate **graduates to live-discard on an operator sign-off gated by a low measured disagree-rate** (AF-043's bar) — "manual review is the gate to autonomy." After graduation, drops are real (no shadow retain) but a **sampled audit continues** so the gate can't silently drift. Unblocks FR-2.ING.001; makes AF-043 the measurable bar.
+**Surfaced by:** Component 2 drafting, 2026-06-25. Blocks **FR-2.ING.001**. Ties to **AF-043**, **ADR-003 §8**.
+**Why it matters:** ADR-003 §8 audits the selective-writing Haiku gate (= design Filter 1) in a **shadow-retain
+trust window**: a "would-drop" is **written + tagged**, never lost, so the gate's accuracy can be reviewed
+before it's trusted to discard. The design's Filter 1, by contrast, "discards immediately" (L1583). The
+mechanics are unspecified: **what** is retained (the dropped content + the Haiku decision + reason), **for how
+long** (a fixed window? per-deployment?), **where** it surfaces (the Haiku-decision review queue), and **what
+graduates** the gate to trusted-discard (a manual sign-off? a disagree-rate bar?).
+**Options:** (a) **a fixed ~3-week shadow-retain window per deployment** (ADR-003 §8's figure): every Filter-1
+drop is written to a shadow store tagged `would_drop` + the Haiku reason, surfaced in the Haiku-decision review
+queue; the gate graduates to live-discard on an **operator sign-off** gated by a **low measured disagree-rate**
+(AF-043's bar); after graduation, drops are real (no shadow retain) but a **sampled** audit continues; (b) keep
+shadow-retain **always on** (safest, but defeats the cost saving the gate exists for); (c) trust the gate
+immediately, no window (rejected — unvalidated autonomy over what knowledge to discard, #1).
+**Recommendation:** **(a)** — a bounded trust window with a manual-sign-off-on-low-disagree-rate graduation is
+exactly ADR-003 §8's "manual review is the gate to autonomy." After graduation keep a sampled audit so the gate
+can't silently drift. Makes AF-043 the measurable bar.
+
+## OD-037 — Personal-consolidation gate: skip vs human-approval queue 🟢 RESOLVED
+**Resolution (2026-06-25, delegated):** (a) **skip by default + an opt-in audited approval queue** — the weekly merge + summarise jobs exclude Personal-tier candidates from auto-consolidation (the safe default honouring L1414); a cleared human may explicitly approve a specific Personal consolidation, logged via `access_audit`. Matches the system-wide pattern: Personal/Restricted handling is always explicit + logged, never automatic. Unblocks FR-2.MNT.014, FR-2.MNT.005, FR-2.MNT.007.
+**Surfaced by:** Component 2 drafting, 2026-06-25. Blocks **FR-2.MNT.014, FR-2.MNT.005, FR-2.MNT.007**.
+**Why it matters:** "Personal — never consolidated into broader memories without explicit human approval"
+(L1414). The weekly **merge** + **summarise** jobs therefore must not auto-fold Personal-tier memories. The
+mechanism is unspecified: do the jobs **skip** Personal memories outright, or **route** them to a human-approval
+queue so the consolidation can still happen with sign-off? Auto-folding Personal data into a broader,
+more-injected memory would broaden its exposure beyond its tier (#2).
+**Options:** (a) **skip by default + an opt-in approval queue** — the jobs exclude Personal-tier candidates from
+auto-consolidation; a cleared human may explicitly approve a specific Personal consolidation (audited via
+`access_audit`); (b) **always skip** (simplest, but Personal knowledge never benefits from consolidation);
+(c) **route all Personal candidates to an approval queue** (more reviewer load).
+**Recommendation:** **(a)** — skip automatically (the safe default that honours L1414), but provide an audited
+human-approval path so a reviewer *can* consolidate Personal memories deliberately. Matches the broader pattern:
+Personal/Restricted handling is always explicit + logged, never automatic.
+
+## OD-038 — Memory hard-delete / compliance erasure path 🟢 RESOLVED
+**Resolution (2026-06-25, user-decided):** (a) **own the rule in C2, seam the backup specifics to Phase 5.** C2 homes a **compliance-erasure capability** (new **FR-2.MNT.017**): distinct from decay/supersede, Super-Admin-gated, writes an audit tombstone to `access_audit`, and **cascades across the live derived layers** — the memory rows, the episodic evidence layer, the embeddings, (and any future cold tier). The **backup-purge mechanics + retention windows + legal specifics** are seamed to **Phase 5 (compliance) + ADR-008**; the documented posture is that erasure is honoured on the next off-platform backup cycle / within the retention window. This keeps the non-destructive default (decay never deletes) intact while making deliberate, audited erasure possible on day one (a #2 obligation). Unblocks FR-2.MNT.017.
+**Surfaced by:** Component 2 drafting, 2026-06-25. Cross-cutting; seams to **Phase 5 (compliance)** + **ADR-008
+(backups)**. Touches FR-2.MNT.002 ("decay never deletes") + C1 `PERM-memory.delete`.
+**Why it matters:** the memory model is deliberately **non-destructive** — soft decay never deletes, human-written
+memories never decay, the episodic evidence layer is never deleted. But a real deployment will face a
+**right-to-erasure** request (delete all Personal data about an individual), which must purge across the
+*episodic evidence layer*, the *embeddings*, *cold storage*, **and the off-platform backups** (ADR-008). The
+design gives Super Admin/Admin a "delete/retire memory" capability (C1) but never defines a complete erasure
+path. Leaving it implicit risks either an inability to comply (#2, legal) or a "deleted" memory that survives in
+backups/evidence (a silent integrity gap, #3).
+**Options:** (a) **define an explicit, audited compliance-erasure path** distinct from decay/supersede — a
+Super-Admin-gated hard delete that cascades across the memory + its episodic evidence + embeddings + cold
+storage, records a tombstone in `access_audit`, and **flags the backup-purge requirement** (the off-platform
+snapshot must honour the erasure on its next cycle, ADR-008); (b) treat erasure as out-of-scope for v1 and rely
+on retire/supersede (rejected — no real erasure = a compliance gap); (c) full crypto-shredding of Personal data
+(heavier; revisit if a client requires it).
+**Recommendation:** **(a)**, but **own only the *rule* in C2** (a compliance-erasure capability exists, is
+Super-Admin-gated, audited, and cascades across the derived layers) and **seam the cross-cutting backup-purge +
+retention specifics to Phase 5 (compliance) + ADR-008**. This keeps the non-destructive default intact while
+making deliberate, audited erasure possible. Resolve the storage/retention/backup-purge details in Phase 5.
+
+---
+
+> Next OD number: OD-039.

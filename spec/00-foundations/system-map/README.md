@@ -12,7 +12,7 @@ gets built immediately** — out-of-order is fine when it helps you see.
 
 | Map | Component | Status |
 |---|---|---|
-| `02-memory.md` | C2 Memory | ✅ exemplar (built now) |
+| `02-memory.md` | C2 Memory | ✅ built (component 2 Approved, 2026-06-25) |
 | `00-login.md` | C0 Login & auth | ✅ built (component 0 Approved, 2026-06-24) |
 | `01-rbac.md` | C1 RBAC | ✅ built (component 1 Approved, 2026-06-24) |
 | `03-tools.md` | C3 Tool layer | ⚪ at Phase 1 |
