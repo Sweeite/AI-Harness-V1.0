@@ -56,7 +56,10 @@ extraction/query-decomposition; next OOS-018); `traceability-matrix.csv` (57 row
 (reconciled-with-spec note); `system-map/README.md` (02-memory ✅ Approved); `README.md` (status table + Phase-1 row);
 this log.
 
-**NEXT STEP — component 3 (Tool layer).** This is the **connector** component, so it **triggers the research-first
+**NEXT STEP — component 3 (Tool layer).** **Design-doc section: `## 3. Tool Layer` = L1968–2383** (next section
+`## 4. Prompt Architecture` at L2384), incl. Observation tools L2021, Action tools L2037, Tool registry L2070, Tool
+optimisations L2101, Connector token management L2225, Connector disconnection flow L2301; plus the C3 checklist
+overview **L245–~270**. This is the **connector** component, so it **triggers the research-first
 gate** (`standards/tool-integration-research.md`) — open dated primary-source dossiers in `tool-integrations/` for
 GHL / Google(Drive+Gmail) / Slack before speccing connector FRs, citing the dossier (not the design doc) for vendor
 facts. C3 is where the **AF-003 corrected vendor values propagate** (F1 Gmail per-env quota, F2 GHL 100/10s+200k/day,

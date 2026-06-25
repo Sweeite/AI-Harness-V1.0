@@ -112,7 +112,7 @@
   - AC-2.MEM.002.2 — Given a memory with zero entity_ids, When a write is attempted, Then it is rejected.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** `DATA-memories` is the canonical store consolidated in Phase 4; C1's FR-1.RLS.003 attaches the visibility/sensitivity/Restricted RLS predicates to it. Structured typed-field extraction (L1960) is a v2 optimisation → OOS-016.
+- **Notes:** `DATA-memories` is the canonical store consolidated in Phase 4; C1's FR-1.RLS.003 attaches the visibility/sensitivity/Restricted RLS predicates to it. Structured typed-field extraction (L1960) is a v2 optimisation → OOS-017.
 
 ---
 
@@ -787,7 +787,7 @@
   - AC-2.RET.005.1 — Given cleared candidates, When ranked, Then the top `memories_injected_per_task` by weighted score (procedural ×1.2) are selected.
 - **Open decisions:** —
 - **Feasibility assumptions:** ⚠️ FEASIBILITY: AF-002 (the weights/threshold produce relevant, low-noise retrieval).
-- **Notes:** Re-ranking (a second model pass, L1956) and HyDE (L1954) are **off / not mandated** (ADR-003) → OOS-016.
+- **Notes:** Re-ranking (a second model pass, L1956) and HyDE (L1954) are **off / not mandated** (ADR-003) → OOS-003.
 
 ### FR-2.RET.006 — Inject as Business Context with type tags; Restricted never auto-injected
 - **Statement:** The system shall prepend the selected memories to the prompt as a Business Context section, tagged by type ([Semantic]/[Episodic]/[Procedural]), and shall never auto-inject Restricted-tier content even for a cleared holder.
