@@ -5,6 +5,66 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 19 — 2026-06-25 — COMPONENT 3 (TOOL LAYER): spine decision + research-first gate run, filed & reconciled (FRs next)
+
+Entered C3 (the connector component). User raised a strategic point up front — **"factor in adding tools later"**
+(research → plan → build, repeatably). Turned it into a locked design decision + ran the research-first gate.
+
+**Spine decision (user-approved: "C3 spine + lifecycle standard", no new ADR):** C3 is specced as a **generic
+connector contract + shared tool runtime**, with **GHL / Google / Slack as the first three *instances***. The
+runtime builds the safety machinery ONCE (token-refresh-persist, rate-limit tracker+backoff, webhook verify,
+boundary-tagging, idempotent retry, disconnection/recovery) so future tools inherit it and the three
+non-negotiables can't regress per-tool. **Validated by the design doc itself — L1976: "built as a boilerplate
+… the first implementations of the pattern, not the limit."** After C3 is done, the existing
+`standards/tool-integration-research.md` grows from a research-only gate into the full Research→Spec→Build→Verify
+lifecycle (extracted from the real example, not pre-guessed).
+
+**Research-first gate run (4 background agents):** 3 primary-source dossiers (one per tool) + 1 Explore design-map.
+Dossiers written to `tool-integrations/{slack,gohighlevel,google-gmail}.md`, each gate-passed (independent
+re-check). **Statuses: GHL 🟢 · Google 🟢 · Slack 🟡** (Slack dossier complete; its *viability* — history ingest —
+rests on AF-083 EVAL, kept honest-yellow). The design-map decomposed L1968–2382 into ~58 intents, pre-split
+**generic (~35) vs tool-specific (~15) vs generic+param (~8)** → 9 area codes (CONN/REG/OBS/ACT/TRIG/OPT/RL/TOK/DSC).
+
+**Three material vendor surprises the design doc missed** (now spec'd correctly, cite dossiers not design doc):
+(1) **GHL webhook signing RSA→Ed25519**, legacy `X-WH-Signature` deprecated **2026-07-01** → use `X-GHL-Signature`;
+(2) **Google webhooks have no HMAC** (Gmail Pub/Sub OIDC JWT; Drive/Calendar signed `X-Goog-Channel-Token`+TLS);
+(3) **neither GHL nor Gmail has write-idempotency** → app-side send-once guards (GHL → `/contacts/upsert`).
+Plus a compliance flag: **GHL data can carry PHI, downstream BAA chain unknown (AF-098)** — gates HIPAA-location ingest.
+
+**Filed (Rule 0), collision-safe renumber (single-pass dict regex):** feasibility **Block N = AF-083–110** (Slack
+083–088 · GHL 089–100 · Google 101–110; next AF = **AF-111**); **OD-011 RESOLVED** (Slack internal custom app per
+workspace, gated AF-083 EVAL); **OD-039–045 logged then RESOLVED** per recommendation (next OD = **OD-046**);
+**OOS-018–027** (next OOS = **OOS-028**); **+12 glossary terms**. `traceability-matrix.csv` NOT yet touched (no C3
+FRs to wire yet).
+
+**OD resolutions (operator delegated "what do you recommend"):** OD-039 Slack per-workspace default · OD-040 token
+rotation OFF · OD-041 GHL pass Security Review (**implicit 5-GHL-agency cap until then** — flagged) · OD-042 GHL
+webhook receiver durable-queue→2xx+dedup `deliveryId` · OD-043 GHL re-verify 90d+changelog poll · **OD-044 ⭐ ADR-007
+webhook-auth reconciliation → clarification note added to ADR-007** (Consequences→Connector ingress, dated
+2026-06-25: hard control = "verified authenticated ingress", HMAC one instance; CONN contract homes per-vendor
+scheme — change-control satisfied via note, not supersede) · OD-045 Google Drive `drive.file` default (escalate to
+`drive.readonly`+CASA only for full-corpus ingest).
+
+**Files changed:** `component-03-tool-layer.md` (new — manifest, contract spine, intent inventory, seams, vendor-fact
+supersedes, OD table now RESOLVED, FRs deferred); 3 dossiers (new); `tool-integrations/README.md` (3 rows);
+`feasibility-register.md` (Block N); `open-decisions.md` (OD-011 + OD-039–045); `out-of-scope.md` (OOS-018–027);
+`glossary.md` (+12); `adr/ADR-007-injection-posture.md` (2026-06-25 clarification note); `README.md` (status); this log.
+
+**NEXT STEP — draft the C3 FRs.** Gate passed, all ODs resolved, ADR-007 reconciled → FR drafting is unblocked.
+Order: **generic CONN connector-contract FRs first** (the runtime: registry/REG, token lifecycle/TOK, rate-limit
+tracker+backoff/RL, webhook-verify + boundary-tag, idempotent retry, disconnection/recovery/DSC, optimisation/OPT,
+the 7 hard limits under ACT, trigger model/TRIG), **then the three connector instances** (OBS/ACT/TOK params per
+tool) each citing its dossier for vendor facts. Then OD-free ACs → the per-component verification gate (2 zero-context
+subagents: orphan/contradiction + quality/failure) → sign-off. **Per-FR `Ready` is additionally gated on build-time
+AFs** (Slack history-ingest → AF-083; GHL webhook → AF-090; GHL PHI ingest → AF-098). **Seams (don't double-spec):**
+memory-write tool → C2 (FR-2.WRT.*); high-risk rate-limit halt/escalate + approval gates + hard-limit enforcement →
+C7; health panels/alerts/event-logging → C8; webhook *authentication* → C0 (FR-0.WHK.*); service-role agent path +
+mid-task revocation → C1 (FR-1.RLS.007). Build `system-map/03-tool-layer.md` alongside the FRs (per-component map
+policy). Carry-ins unchanged: OD-010 (compensation/rollback) at C5/C6/C8 — every external-write ACT tool is an
+exposure point; build-time spikes AF-001/002/004.
+
+---
+
 ## Session 18 — 2026-06-25 — COMPONENT 2 (MEMORY) DRAFTED, RESOLVED, VERIFIED & APPROVED — the business brain
 
 Third Phase-1 component, the heart of the system. Output: `spec/01-requirements/component-02-memory.md`

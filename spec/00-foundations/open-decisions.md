@@ -154,7 +154,7 @@ components 5/6/8 (harness / guardrails / agent design).
 **Recommendation:** draft→approve during the Harness/Guardrails component work in Phase 1; promote
 to an ADR only if it proves cross-cutting. Not a Phase-0 blocker.
 
-## OD-011 — Slack app registration class (Marketplace / internal-custom) for history ingest 🟡
+## OD-011 — Slack app registration class (Marketplace / internal-custom) for history ingest 🟢 RESOLVED
 **Surfaced by:** AF-003 vendor-claims verification (finding F3), 2026-06-23.
 **Why it matters:** As of **2025-05-29** Slack throttles `conversations.history` and
 `conversations.replies` to **Tier 1 (1 call/min, `limit` max 15 objects)** for **non-Marketplace
@@ -174,6 +174,15 @@ function of *how the Slack app is registered*, not of our code — and it direct
 (per-client OAuth apps live in the client's accounts); internal custom apps are the documented exempt
 path. Confirm the exemption holds with an **EVAL against a live test workspace** (the AF-012 follow-up)
 before locking. Resolve when we spec the Slack connector / ingestion component in Phase 1.
+
+**✅ Resolution (2026-06-25, C3 research gate, session 19):** **(a) internal customer-built app, one per
+client workspace.** Primary-source verified in `tool-integrations/slack.md` (Slack docs, two independent
+reads): the 2025-05-29 non-Marketplace throttle **explicitly exempts internal customer-built apps**
+(verbatim). Binding guardrails on the Slack connector FRs: **never** activate public distribution /
+package as a distributed app (collapses throughput ~67× and voids the exemption → OOS-021);
+Enterprise-Grid multi-workspace is a separate branch (**OD-039**); bot-token rotation OFF by default
+(**OD-040**). The exemption is **DOCS-proven, not yet behaviour-proven** → locking this resolution and
+marking the Slack history-ingest FRs `Ready` is **gated on AF-083 EVAL** on a live workspace.
 
 ---
 
@@ -616,4 +625,112 @@ making deliberate, audited erasure possible. Resolve the storage/retention/backu
 
 ---
 
-> Next OD number: OD-039.
+## OD-039 — Slack Enterprise Grid: per-workspace internal apps vs org-ready app 🟢 RESOLVED (2026-06-25 → (a) per-workspace default)
+**Surfaced by:** Slack dossier (`tool-integrations/slack.md`), C3 research gate, 2026-06-25.
+**Why it matters:** OD-011's internal-custom-app exemption is per single workspace. A client on
+**Enterprise Grid** with multiple workspaces needs either one internal app per workspace (N installs/
+tokens) or an **org-ready app** (single org-level token spanning workspaces). Provisioning + token-model
+impact, Grid clients only.
+**Options:** (a) default per-workspace internal app, add org-ready only when a Grid client needs
+multi-workspace coverage; (b) org-ready app for all; (c) refuse Grid multi-workspace in v1.
+**Recommendation:** **(a)** — keeps the simple exempt path for the common (single-workspace) case;
+org-ready is a per-client escalation, not a default.
+
+---
+
+## OD-040 — Slack bot-token rotation: ON vs OFF 🟢 RESOLVED (2026-06-25 → (a) OFF by default)
+**Surfaced by:** Slack dossier, 2026-06-25.
+**Why it matters:** Slack token rotation is **opt-in and irreversible**; ON → 12 h access tokens
+(`xoxe.xoxb-`) + a refresh obligation; OFF → non-expiring `xoxb`. For an internal ingest bot, OFF is
+lower-complexity (revocation still handled via `tokens_revoked`/`app_uninstalled` → re-auth flow).
+**Options:** (a) OFF by default; (b) ON (short-lived tokens) for all.
+**Recommendation:** **(a) OFF** unless a client security policy mandates short-lived tokens — then accept
+the 12 h refresh + persist-rotating-refresh-token obligation.
+
+---
+
+## OD-041 — GHL Private-app 5-agency install cap 🟢 RESOLVED (2026-06-25 → (a) pass GHL Security Review)
+**Surfaced by:** GHL dossier (`tool-integrations/gohighlevel.md`), 2026-06-25.
+**Why it matters:** A GHL **Private app installs without review** but is **capped at 5 unique agencies**.
+Each client is its own agency, so the **6th client onward is blocked from installing** unless we publish
+Public (Marketplace approval) or pass an **optional Security Review** to stay Private + uncapped. A real
+scaling gate on a per-client connector (ties ADR-001/005).
+**Options:** (a) pass the optional Security Review → stay Private, uncapped, no Marketplace listing;
+(b) publish a Public/Marketplace app (review + ongoing compliance, conflicts with per-client model);
+(c) cap the product at 5 GHL clients in v1.
+**Recommendation:** **(a)** — keeps the per-client install model, removes the cap, avoids Marketplace;
+treat the Security Review as onboarding infrastructure (like Google CASA). Until passed, **(c)** is the
+implicit v1 limit — **flag it so we don't silently hit the block at GHL client #6** (#3).
+**✅ Resolution (2026-06-25, operator-delegated):** **(a)** — pass GHL's optional Security Review (an
+onboarding-infrastructure task, like Google CASA). **Until it passes, v1 is implicitly capped at 5 GHL
+agencies** — recorded here so client #6 never hits a silent install block; the Security Review goes on the
+C3 / provisioning build checklist. Re-open if onboarding outpaces the review.
+
+---
+
+## OD-042 — GHL inbound-webhook receiver contract 🟢 RESOLVED (2026-06-25 → (a) durable-queue→2xx, dedup `deliveryId`)
+**Surfaced by:** GHL dossier, 2026-06-25 (AF-097 — GHL's own docs contradict on retry policy).
+**Why it matters:** GHL's two official docs disagree on webhook retries (12/any-non-2xx vs 6/429-only/
+no-5xx-retry). If 5xx truly gets no retry, a transient outage on our receiver **silently drops events**
+(#3, and #1 if it was an ingest event).
+**Options:** (a) durably queue the event then return **2xx on receipt**, dedup on `deliveryId`, make
+processing idempotent, return 429 only as deliberate backpressure; (b) process synchronously and rely on
+GHL retries.
+**Recommendation:** **(a)** — decouple "I got it" from "I processed it" so our processing failures never
+depend on GHL's ambiguous retry behaviour. This is the **generic receiver pattern for all webhook
+connectors** (CONN contract). Resolve AF-097 to tune backpressure; (a) is safe regardless.
+
+---
+
+## OD-043 — GHL dossier re-verify cadence 🟢 RESOLVED (2026-06-25 → (a) 90-day re-verify + changelog poll)
+**Surfaced by:** GHL dossier, 2026-06-25.
+**Why it matters:** GHL ships **breaking changes with no deprecation window, multiple times/week**
+(`GET /contacts/` already removed; v1 EOL'd; OAuth paths renamed without notice). The default +6-month
+dossier re-verify is too slow for this vendor.
+**Options:** (a) shorten GHL's `Re-verify by` to **90 days** + a standing changelog-poll task; (b) keep
+the 6-month default.
+**Recommendation:** **(a)** — and flag in the GHL connector FRs that any FR citing a specific endpoint
+shape (OAuth paths, contact/opportunity schema, webhook signing) is high-staleness and must be re-checked
+before build.
+
+---
+
+## OD-044 — ⭐ Webhook-auth reconciliation: ADR-007 "HMAC" vs per-vendor signature schemes 🟢 RESOLVED (2026-06-25 → (a) ADR-007 clarification note)
+**Surfaced by:** Google + GHL dossiers, C3 research gate, 2026-06-25. **Touches a locked ADR (ADR-007) →
+change-control.**
+**Why it matters:** ADR-007 names **webhook HMAC** as "a real hard control." Across our three connectors
+it is **not HMAC for two of them:** Google has **no HMAC** (Gmail = Pub/Sub **OIDC JWT**; Drive/Calendar =
+client-set **`X-Goog-Channel-Token` + TLS + domain verification**); GHL uses **Ed25519** (`X-GHL-Signature`);
+only Slack uses **HMAC-SHA256** (`X-Slack-Signature`). ADR-007's control is right in spirit (verify
+authenticated ingress) but Slack-shaped in letter.
+**Options:** (a) **clarification note** on ADR-007: the hard control is **"verified, authenticated webhook
+ingress"** — HMAC is one instance; the connector contract requires each connector to declare + enforce its
+vendor's signature scheme (HMAC / Ed25519 / OIDC-JWT / signed channel-token), and an unverifiable webhook
+is rejected; (b) supersede ADR-007 with a new ADR; (c) leave ADR-007 as-is, handle divergence per-connector
+(risks future FRs mis-citing "HMAC").
+**Recommendation:** **(a)** — same posture (authenticated ingress = a hard control that ignores prompt
+content), generalised wording; a clarification note (not a supersede) is the lightest change-control move,
+consistent with how C0 reconciled ADR-007's webhook-ingress wording. The CONN contract's webhook-verify
+obligation homes the per-vendor scheme. *(Operator decision recommended — it amends a locked ADR.)*
+**✅ Resolution (2026-06-25, operator-delegated):** **(a)** — a dated **clarification note added to ADR-007**
+(Consequences → Connector ingress): the hard control is "verified, authenticated webhook ingress," HMAC is
+one instance, and the CONN connector contract requires each connector to enforce its vendor's scheme
+(Slack HMAC / GHL Ed25519 / Gmail OIDC-JWT / Drive·Calendar signed channel-token); unverifiable → reject.
+Posture unchanged; change-control satisfied via the note (not a supersede).
+
+---
+
+## OD-045 — Google Drive scope: `drive.file` vs `drive.readonly` 🟢 RESOLVED (2026-06-25 → (a) `drive.file` default)
+**Surfaced by:** Google dossier, 2026-06-25.
+**Why it matters:** Reading **existing** Drive files requires `drive.readonly` — a **RESTRICTED** scope
+(full-corpus access → triggers **CASA** annual assessment, ~6 wk + cost). `drive.file` is **non-sensitive**
+(no CASA) but only sees files the app created/opened — can't ingest a pre-existing corpus.
+**Options:** (a) default `drive.file`, escalate to `drive.readonly` only when a client needs full-corpus
+ingestion **and** accepts the CASA cost/lead-time; (b) always `drive.readonly`; (c) no Drive ingestion in v1.
+**Recommendation:** **(a)** — least-privilege by default (#2), avoids CASA for clients who don't need
+corpus-wide Drive ingest; corpus ingest is a deliberate, CASA-gated onboarding upgrade. (Gmail has no
+non-restricted read option — Gmail read always implies restricted + CASA; only Drive has this fork.)
+
+---
+
+> Next OD number: OD-046.

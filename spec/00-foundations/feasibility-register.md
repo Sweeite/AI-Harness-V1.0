@@ -248,10 +248,68 @@ Verdict key: ✅ VERIFIED · 🟠 STALE · ⛔ REFUTED · ⬜ UNCONFIRMED (not s
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-083
+## N. Component 3 (Tool Layer / connectors) implementation feasibility
+
+> Filed from the session-19 research dossiers (`tool-integrations/{slack,gohighlevel,google-gmail}.md`,
+> verified 2026-06-25). Vendor facts are DOCS-verified **in the dossiers**; the AF items below are the
+> claims that still need *testing* (SPIKE/EVAL/LOAD) or a non-primary-source follow-up (DOCS) before
+> build / go-live. Each is tagged at its point of use in `component-03-tool-layer.md` + its dossier.
+
+### Slack (dossier `slack.md`)
+
+| ID | Must-test item | Method | Status |
+|---|---|---|---|
+| AF-083 | **The OD-011 exemption holds for our exact setup** — a per-client *internal customer-built* Slack app actually receives Tier 3 (50+/min, `limit`=1,000) on `conversations.history`/`.replies` on a **live** workspace. DOCS-verified (two independent reads) but unproven for our config; **gates locking OD-011** + marking the Slack history-ingest FRs `Ready`. | EVAL | 🔴 |
+| AF-084 | **Events API silent-failure surface** — the connector stays under Slack's 95%-fail/60-min auto-disable threshold, and gap-reconciliation via `conversations.history` recovers events dropped during `app_rate_limited`/disable windows (no silent event loss, #3). | LOAD / EVAL | 🔴 |
+| AF-085 | **`chat.postMessage` has no idempotency key** — verify the app-side write-dedup design (track app-side key / returned `ts`) prevents double-posting on retry-after-timeout (OD-010 exposure). | SPIKE | 🔴 |
+| AF-086 | **Rate-limit introspection** — whether any Web-API headers beyond `Retry-After` expose quota-remaining; if not, backoff relies on `Retry-After` only. | SPIKE | 🔴 |
+| AF-087 | **Slack has no per-call charge** — docs state no fee but never positively "free"; confirm via Terms/pricing before the ADR-003 cost model treats Slack as $0. | DOCS | 🔴 |
+| AF-088 | **Prompt-injection mitigation for ingested untrusted Slack text** flowing into the memory/LLM system (ADR-007 containment; #2). | SECURITY / SPIKE | 🔴 |
+
+### GoHighLevel (dossier `gohighlevel.md`)
+
+| ID | Must-test item | Method | Status |
+|---|---|---|---|
+| AF-089 | **Refresh-token rotation persistence/race (#1, load-bearing).** GHL refresh tokens are single-use/rotating; the harness must persist the new refresh token **atomically on every refresh** or silently lose access. Prove the persist-on-refresh + single-flight design survives concurrent refreshes (the 30 s same-token grace helps but isn't a guarantee). | SPIKE / LOAD | 🔴 |
+| AF-090 | **Webhook Ed25519 signing input (#2).** Confirm exactly which bytes GHL signs (raw body? body+timestamp?) against the published public key, on a live payload, before implementing `X-GHL-Signature` verification. (Old GHL-091 folded here.) | SPIKE | 🔴 |
+| AF-091 | **OAuth endpoint surface** — confirm the exact authorize/`chooselocation` URL + required query params + the (undated) "Smarter Refresh Token Handling" changelog facts. | DOCS | 🔴 |
+| AF-092 | **Token invalidation triggers + caps** — token invalidation on app uninstall and on scope change, and whether any per-account token-count cap exists (none documented). | SPIKE | 🔴 |
+| AF-093 | **Outbound 429 shape** — response body shape + whether `Retry-After` is returned on *outbound* API 429s (docs only cover inbound webhook retries); backoff must not assume `Retry-After`. | SPIKE / EVAL | 🔴 |
+| AF-094 | **v3 search pagination + incremental** — exact `searchAfter` vs `page`/`pageLimit` params, max page size, and a reliable `dateUpdated` filter + stable sort for incremental pulls (not confirmable from JS-rendered docs). Delta-vs-full-rescan strategy depends on it. | SPIKE | 🔴 |
+| AF-095 | **No write idempotency (#1)** — confirm there is no `Idempotency-Key` support on writes (send the header on a create, observe); substitute is `/contacts/upsert` + app-side dedup. | DOCS / SPIKE | 🔴 |
+| AF-096 | **Message webhook event strings + replay** — exact inbound/outbound message webhook event-name strings and any replay-protection window beyond `timestamp`. | DOCS / SPIKE | 🔴 |
+| AF-097 | **Webhook retry-policy conflict (#3)** — GHL's own docs contradict (Integration Guide: 12 retries/any-non-2xx; help article: 6 retries/429-only/no 5xx retry). If 5xx truly gets no retry, a transient outage silently drops events. Mitigation regardless: durably queue → 2xx on receipt (OD-042). | DOCS / SPIKE | 🔴 |
+| AF-098 | **PHI/BAA chain (#2, legal gate).** GHL data can carry PHI; GHL's BAA is HighLevel↔Agency. Docs are silent on whether a third-party app that *egresses* PHI is covered or must hold its own BAA with the client. **Must resolve before ingesting any HIPAA-enabled location's data** — ingesting PHI without a BAA chain is a compliance violation. | LEGAL / DOCS | 🔴 |
+| AF-099 | **Conversations-API send draws the wallet** — confirm a v2 API send debits the same LC Phone/Email wallet as UI/workflow sends (implied, unverified) — send one SMS on a test sub-account, observe the debit. | SPIKE | 🔴 |
+| AF-100 | **`POST /contacts/` create-on-duplicate error shape** — uncertain (mitigated by preferring `/contacts/upsert`). | SPIKE | 🔴 |
+
+### Google — Gmail / Drive / Calendar (dossier `google-gmail.md`)
+
+| ID | Must-test item | Method | Status |
+|---|---|---|---|
+| AF-101 | **Drive & Calendar exact quota numbers** — per-minute/per-method models verified; exact current numbers unconfirmed verbatim, and whether the 2026-05-01 project-age split applies to Drive/Calendar is open. | DOCS | 🔴 |
+| AF-102 | **Calendar `events.insert` 409-duplicate idempotency** — Google states ID-collision detection is "not guaranteed at event creation time" in the distributed system; rapid-retry test before treating ADR-004 idempotency as airtight for Calendar. | EVAL | 🔴 |
+| AF-103 | **Workspace API overage billing** — "free today" is true-but-expiring (overage billing planned "later in 2026," ≥90 days' notice; rates/date TBD). Time-boxed; re-verify before go-live. | DOCS | 🔴 |
+| AF-104 | **Backoff "with jitter" cite** — jitter is *our* addition; Workspace error pages mandate exponential backoff, not jitter. Find a primary cite or own it as a design choice. | DOCS | 🔴 |
+| AF-105 | **Deprecation-notice window** — no explicit Workspace deprecation-notice window found in primary docs; locate the exact commitment before citing a notice period in an ADR. | DOCS | 🔴 |
+| AF-106 | **Refresh-token non-rotation** — Google does NOT rotate refresh tokens on a normal refresh (opposite of GHL); confirmed only indirectly via `prompt=consent` language. Refresh twice; confirm the same token is retained. | SPIKE | 🔴 |
+| AF-107 | **Unused OAuth *client* deletion** — policy eff. 2025-10-27: Google may delete OAuth clients idle ≥6 months (distinct from token inactivity — a long-idle integration can lose the whole client, #1/#3). Keep clients active; alert on long idle. | DOCS / monitor | 🔴 |
+| AF-108 | **Drive `changes` page-token expiry/error** — undocumented; needed for full-resync fallback parity with Gmail 404 / Calendar 410. | DOCS / SPIKE | 🔴 |
+| AF-109 | **Gmail Pub/Sub OIDC push-token validation** end-to-end (cert source, `aud`/`email` claim checks, clock skew) — provable only by standing up an authenticated push subscription. | SPIKE | 🔴 |
+| AF-110 | **2025 dated policy changes verbatim** — quote the 2025-10-27 (unused-client deletion) + 2025-12-15 changelog text not fully fetched this pass. | DOCS | 🔴 |
+
+> **Note:** C3 also relies on existing items — **AF-013/014** (Google/GHL OAuth, now superseded by the
+> dossiers as the citable source), **AF-019** (HNSW under RLS for the ingested-memory path), and **OD-010**
+> (compensation/rollback — every external-write ACT tool is an exposure point). The AF-003 corrected
+> vendor values (F1–F6) are now carried by the three dossiers.
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-111
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
-> **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses AF-082**).
+> **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
+> AF-082**; **Component-3 block N uses AF-083–110**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

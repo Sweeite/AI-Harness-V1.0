@@ -98,7 +98,7 @@ phase because they can invalidate the architecture. Paper-vs-proven is always st
 | Phase | Status |
 |---|---|
 | 0 — Foundations | 🟢 complete |
-| 1 — Requirements | 🟡 in progress — **C0 (Login) ✅ Approved** (42 FRs) · **C1 (RBAC) ✅ Approved 2026-06-24** (37 FRs) · **C2 (Memory) ✅ Approved 2026-06-25** (57 FRs — 56 Approved + 1 v2-deferred; OD-032…OD-038 resolved; verification gate clean — orphan/contradiction CLEAN + 7 quality findings reconciled; AF-082, OOS-016/017 logged; matrix + system-map wired). **Next: component 3 (Tool layer).** |
+| 1 — Requirements | 🟡 in progress — **C0 (Login) ✅ Approved** (42 FRs) · **C1 (RBAC) ✅ Approved 2026-06-24** (37 FRs) · **C2 (Memory) ✅ Approved 2026-06-25** (57 FRs — 56 Approved + 1 v2-deferred; OD-032…OD-038 resolved; verification gate clean — orphan/contradiction CLEAN + 7 quality findings reconciled; AF-082, OOS-016/017 logged; matrix + system-map wired). **C3 (Tool layer) 🟡 — research-first gate PASSED** (session 19, 2026-06-25): GHL 🟢 / Google 🟢 / Slack 🟡 dossiers; **OD-011 + OD-039–045 all resolved**; ADR-007 reconciled via a dated clarification note (OD-044 — webhook control = "verified authenticated ingress", HMAC one instance); AF-083–110, OOS-018–027, +12 glossary terms filed. **Next: draft C3 FRs — generic CONN connector-contract FRs first, then the GHL/Google/Slack instances.** |
 | 2 — Config | ⚪ not started |
 | 3 — Surfaces | ⚪ not started |
 | 4 — Data model | ⚪ not started |

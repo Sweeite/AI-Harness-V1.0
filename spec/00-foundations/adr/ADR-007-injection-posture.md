@@ -172,6 +172,16 @@ must document them as such so no future requirement mistakes a threshold for the
     handling of a verified webhook is **C2/C3**. The "component 1" label here predates the C0/C2/C3
     split (the design doc filed webhook security under the `## 1.` header); the hard-control decision is
     unchanged, only its home is clarified.
+  - **Clarification (2026-06-25, C3 research gate — OD-044, clarification, not a decision change):** the
+    hard control is **"verified, authenticated webhook ingress,"** of which **HMAC-SHA256 is one
+    instance, not the universal mechanism.** The C3 connector research (`tool-integrations/`) found the
+    scheme is vendor-specific: **Slack** = HMAC-SHA256 (`X-Slack-Signature`); **GHL** = **Ed25519**
+    (`X-GHL-Signature`, having migrated off RSA `X-WH-Signature`, deprecated 2026-07-01); **Google** =
+    **no HMAC** — Gmail validates a **Pub/Sub OIDC JWT**, Drive/Calendar a signed **`X-Goog-Channel-Token`
+    + TLS + domain verification**. The posture is unchanged (containment-first; authenticated ingress is a
+    hard control that ignores prompt content): the **C3 connector contract** requires each connector to
+    declare and enforce its vendor's signature scheme, and an **unverifiable webhook is rejected**
+    (401 + `prompt_injection` log + threshold alert). No requirement may assume "HMAC" is universal.
 - **Agent prompt design (component 8):** every agent's Layer-1 includes the external-data /
   not-an-instruction directive; boundary tags are applied at the tool-read layer, not left to the model.
 - **Config registry:** `injection_semantic_detection` (new, default **off** — the operator-facing
