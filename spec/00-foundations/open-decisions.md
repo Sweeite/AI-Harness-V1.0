@@ -733,4 +733,28 @@ non-restricted read option — Gmail read always implies restricted + CASA; only
 
 ---
 
-> Next OD number: OD-046.
+## OD-046 — C0 FR-0.WHK.002 GHL webhook scheme is stale (HMAC) vs dossier-correct Ed25519 🟢 RESOLVED (2026-06-25 → correct C0 FR via change-control)
+**Surfaced by:** C3 verification gate (orphan/contradiction pass), session 20, 2026-06-25. **Touches a locked
+(Approved) FR → change-control.**
+**Why it matters:** C0 **FR-0.WHK.002** (Approved) specs GHL webhook verification as **HMAC-SHA256** over the
+raw body against `X-GHL-Signature`. The GHL dossier (gohighlevel.md §5 L95–98, primary-source 2026-06-25)
+establishes GHL migrated **RSA→Ed25519**: current scheme is **Ed25519** verifying `X-GHL-Signature` against
+GHL's **published static public key**; the legacy RSA header `X-WH-Signature` is **deprecated 2026-07-01**.
+C3 FR-3.TRIG.004 and the ADR-007 OD-044 clarification note already spec Ed25519 — so the Approved C0 FR now
+contradicts both the dossier and its own governing ADR. Building C0 as-written would reject every real GHL
+webhook (wrong algorithm). This is a stale vendor fact (#3 risk: silent webhook rejection), not a design fork.
+**Options:** (a) **correct FR-0.WHK.002 in place via a dated change-control note** — change algorithm
+HMAC-SHA256 → **Ed25519 against the published public key**, header `X-GHL-Signature`, cite the dossier (not
+the design doc); (b) supersede the FR; (c) leave C0 stale, rely on C3 (risks a build using the C0 FR).
+**Recommendation:** **(a)** — a factual vendor correction, not a judgment call (dossier is primary-source;
+ADR-007 OD-044 already generalised the control to per-vendor schemes). Lightest change-control move; keeps
+the two components consistent. *(Surfaced for operator veto — it edits an Approved component.)*
+**✅ Resolution (2026-06-25, operator-delegated):** **(a)** — FR-0.WHK.002 corrected in place with a dated
+change-control note: algorithm → **Ed25519** verifying `X-GHL-Signature` against GHL's published public key;
+legacy RSA `X-WH-Signature` rejected after its 2026-07-01 deprecation; Source re-cited to the GHL dossier +
+ADR-007 OD-044 note. Status remains `Approved` (corrected, not re-opened). AF-090 (exact Ed25519 signing
+input) carries the residual build-time verification, shared with C3 FR-3.TRIG.004.
+
+---
+
+> Next OD number: OD-047.

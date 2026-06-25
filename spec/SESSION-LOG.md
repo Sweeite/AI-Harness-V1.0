@@ -5,6 +5,71 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 20 — 2026-06-25 — COMPONENT 3 (TOOL LAYER) DRAFTED, VERIFIED & APPROVED — the connector runtime
+
+Fourth Phase-1 component, the connector layer. Output: `spec/01-requirements/component-03-tool-layer.md`
+(**53 FRs, all Approved**), `system-map/03-tool-layer.md`, 53 matrix rows, OD-046 logged+resolved, the
+session-19 ODs already resolved. Built directly on the session-19 research gate (dossiers + spine decision).
+
+**C3 = "how the AI reaches the outside world."** Specced as the session-19 spine: a **generic connector
+contract + shared tool runtime** (safety machinery built ONCE) with **GHL / Google / Slack as the first
+three instances**. Area codes: CONN ×5 · REG ×4 · TOK ×6 (+3 instance) · RL ×8 · ACT ×7 (2 generic limits +
+5 instance writes) · TRIG ×5 (+1 instance) · OPT ×4 · DSC ×6 · OBS ×4. **53 FRs = 40 generic runtime + 13
+connector instances.** Every vendor fact cites the **dossier**, not the (stale) design doc.
+
+**Drafting:** offloaded the three dossiers to an Explore subagent → a precise citable vendor fact-sheet
+(token TTLs, scopes, rate limits, signature schemes, idempotency), then wrote generic CONN-contract FRs
+first (the runtime every instance plugs into), then the GHL/Google/Slack instances. Key reconciliations
+carried in: `client_slug`=label-not-RLS (mirrors C1) · agent/tool path = `service_role` (ADR-006) · golden
+rule (source_ref pointers, not copies) · the 7 hard limits are code gates (ADR-007) · OD-044's "verified
+authenticated ingress" homes the per-vendor signature schemes (GHL Ed25519 / Google OIDC-JWT+channel-token
+/ Slack HMAC).
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass CLEAN** — no orphaned design lines (all L1968–2382 intents map; stale
+  per-connector numbers correctly superseded by dossiers), no internal C3 contradictions, citations clean,
+  **all 6 traps PASS**. **Caught a real cross-component bug:** C0 **FR-0.WHK.002** (Approved) specced GHL
+  webhook auth as **HMAC-SHA256** — stale; the dossier + ADR-007 OD-044 note make it **Ed25519** (legacy RSA
+  `X-WH-Signature` deprecates 2026-07-01). Corrected in place via change-control → **OD-046** (operator
+  accepted at sign-off); C0 FR re-cited to the dossier, Status kept Approved (corrected, not re-opened).
+- **Quality/failure pass found 10 findings (2 HIGH, 7 MED, 1 LOW), ALL reconciled:** **+FR-3.TRIG.005**
+  (watch/subscription re-arm — Gmail/Drive/Calendar watches expire with NO auto-renew; a missed re-arm now
+  enters the degraded flow + health panel — closed a HIGH silent-ingest-loss hole); **+FR-3.TRIG.006**
+  (event-delivery gap detection + reconciliation — Slack auto-disable/>2h-late-drop had no specced mechanism,
+  only prose; HIGH); **+AC-3.CONN.004.4** (durable pre-call intent record); tightened **AC-3.TOK.005.2**
+  (post-refresh-pre-persist crash → grace-window retry then degrade loudly; no false "prior state intact");
+  **+AC-3.RL.006.2** (irreversible/billed writes route to halt-and-escalate, excluded from auto-retry);
+  **+AC-3.DSC.003.2/.3 + AC-3.DSC.004.2** (resume re-checks authorization FR-1.RLS.007; paused-task set +
+  escalation clock persisted across restart); **+AC-3.OPT.004.2** (gap flag structured/mandatory-to-read);
+  **+AC-3.CONN.005.3** (delete-granting scopes excluded — cheapest gate for hard-limit #3) + FR-3.ACT.002
+  note (financial/impersonation limits have **no** C3 mechanism — wholly C7+AF-068); persisted RL.004 queue
+  + drain re-consults idempotency. Confirmed-adequate: token no-leak, the GHL rotating-refresh persist spine,
+  draft-to-approval for email/calendar, fail-closed boundary tag, physical isolation, OD-044 per-vendor
+  signatures, OD-010 named-not-solved at every write FR.
+
+**Sign-off:** user-authorized (delegated, C1/C2-style — chose "Sign off — Approve C3 + C0 fix"). 53 FRs
+`Approved`; the C0 FR-0.WHK.002 correction accepted. **3 viability gates** documented (FRs are Approved but
+do NOT advance to build until cleared): Slack history ingest → AF-083/084; GHL webhook signing input →
+AF-090; GHL PHI-location ingest → AF-098 (BAA chain).
+
+**Files changed:** `component-03-tool-layer.md` (53 FRs Approved + gate summary); `component-00-login.md`
+(FR-0.WHK.002 HMAC→Ed25519, change-control note); `open-decisions.md` (OD-046 logged+resolved; next OD-047);
+`traceability-matrix.csv` (53 C3 rows); `system-map/03-tool-layer.md` (new); `system-map/README.md`
+(03 ✅ built); `README.md` (status table + Phase-1 row); this log. No new AFs (findings mapped to existing
+Block-N AFs); no new OOS.
+
+**NEXT STEP — component 4 (Prompt Architecture).** Design-doc section **`## 4. Prompt Architecture` ≈
+L2384+** (confirm the end bound at decomposition; next `## 5.` follows). Pattern-match the C0/C1/C2/C3 loop:
+Context Manifest → decompose the design's prompt section → cite → log ODs (next **OD-047**; new AFs from
+**AF-111**) → resolve → verification gate (2 zero-context subagents) → sign-off → wire matrix + build
+`system-map/04-prompt.md`. **C4 consumes** C3's tool registry + descriptions (FR-3.REG.002 — the AI selects
+tools by description) and ADR-007 containment (boundary-tagged content is data, never instructions). **Likely
+seams:** the harness/agent-loop *execution* → C5; guardrail *enforcement* of the hard limits + approval gates
+→ C7; observability/eval of prompt quality → C8. **Carry-ins unchanged:** OD-010 (compensation/rollback) at
+C5/C6/C8; the C3 viability gates (AF-083/090/098) + build-time spikes AF-001/002/004 on a runnable prototype.
+
+---
+
 ## Session 19 — 2026-06-25 — COMPONENT 3 (TOOL LAYER): spine decision + research-first gate run, filed & reconciled (FRs next)
 
 Entered C3 (the connector component). User raised a strategic point up front — **"factor in adding tools later"**

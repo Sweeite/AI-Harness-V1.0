@@ -843,24 +843,27 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
 - **Open decisions:** — (OD-022 resolved → FR-0.WHK.007/008)
 - **Feasibility assumptions:** ⚠️ FEASIBILITY: AF-078 (end-to-end webhook verification across GHL/Google/Slack — raw-body capture before parse, constant-time compare, replay window — actually rejects forged/replayed events).
 
-### FR-0.WHK.002 — GHL HMAC-SHA256 verification
-- **Statement:** The system shall verify GHL webhooks by computing HMAC-SHA256 over the **raw** request body with the GHL webhook secret and comparing, in constant time, to the `X-GHL-Signature` header.
-- **Source:** design-doc-v4.md L747–763
-- **Status:** Approved
+### FR-0.WHK.002 — GHL Ed25519 signature verification
+- **Statement:** The system shall verify GHL webhooks by validating the **Ed25519** signature in the `X-GHL-Signature` header against GHL's **published public key**, and shall reject the legacy RSA `X-WH-Signature` header after its 2026-07-01 deprecation.
+- **Source:** tool-integrations/gohighlevel.md §5 L95–98 (primary-source, 2026-06-25); ADR-007 OD-044 clarification note; design-doc-v4.md L747–763 (superseded for the algorithm)
+- **Status:** Approved *(corrected 2026-06-25 via change-control — see note)*
 - **Priority:** Must
 - **Actor / trigger:** Inbound GHL webhook.
-- **Preconditions:** GHL webhook secret in `DATA-credentials`.
+- **Preconditions:** GHL's published Ed25519 public key available to the verifier (the signing key is GHL's, not a per-client shared secret).
 - **Behaviour:**
-  - Happy path: read raw body (before JSON parse) → compute HMAC-SHA256 → constant-time compare to header → match → process.
-  - Edge / failure: mismatch → `401` + log `prompt_injection` "Unverified webhook rejected — GHL" (L763).
-- **Data touched:** `DATA-credentials.ghl_webhook_secret` (read); `guardrail_log` (write).
+  - Happy path: read raw body (before JSON parse) → verify the `X-GHL-Signature` Ed25519 signature against GHL's published public key → valid → process.
+  - Branches: a request bearing only the legacy `X-WH-Signature` (RSA) is rejected after the 2026-07-01 deprecation (transition handling before that date is a build concern under AF-090).
+  - Edge / failure: invalid/missing signature → `401` + log `prompt_injection` "Unverified webhook rejected — GHL" (L763).
+- **Data touched:** GHL published public key (read; not a secret); `guardrail_log` (write).
 - **Permissions:** N/A.
 - **Surfaces:** N/A.
 - **Observability:** `guardrail_log` on failure.
 - **Acceptance criteria:**
-  - AC-0.WHK.002.1 — Given a GHL webhook whose `X-GHL-Signature` does not match the HMAC of the raw body, When received, Then it is rejected `401` and logged as `prompt_injection`.
+  - AC-0.WHK.002.1 — Given a GHL webhook whose `X-GHL-Signature` Ed25519 signature does not verify against GHL's published public key, When received, Then it is rejected `401` and logged as `prompt_injection`.
+  - AC-0.WHK.002.2 — Given a GHL request bearing only the legacy `X-WH-Signature`, When received after 2026-07-01, Then it is rejected.
 - **Open decisions:** — (OD-022 resolved → FR-0.WHK.007/008)
-- **Feasibility assumptions:** ⚠️ AF-078.
+- **Feasibility assumptions:** ⚠️ AF-078 (webhook verification); ⚠️ AF-090 (exact Ed25519 signing input — shared with C3 FR-3.TRIG.004).
+- **Notes:** **Change-control (OD-046, 2026-06-25):** the original FR specced **HMAC-SHA256**, which is stale — the GHL dossier established the RSA→Ed25519 migration (primary-source 2026-06-25). Corrected in place per OD-046; the design doc (L747–763) is superseded for the algorithm, the dossier is authoritative. Posture unchanged (verified authenticated ingress, a hard control per ADR-007 OD-044); only the algorithm + key model changed.
 
 ### FR-0.WHK.003 — Google Pub/Sub JWT verification
 - **Statement:** The system shall verify Google push webhooks by validating the JWT signature against Google's public keys and checking audience and expiry.

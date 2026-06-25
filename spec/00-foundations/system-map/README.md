@@ -15,7 +15,7 @@ gets built immediately** — out-of-order is fine when it helps you see.
 | `02-memory.md` | C2 Memory | ✅ built (component 2 Approved, 2026-06-25) |
 | `00-login.md` | C0 Login & auth | ✅ built (component 0 Approved, 2026-06-24) |
 | `01-rbac.md` | C1 RBAC | ✅ built (component 1 Approved, 2026-06-24) |
-| `03-tools.md` | C3 Tool layer | ⚪ at Phase 1 |
+| `03-tool-layer.md` | C3 Tool layer | ✅ built (component 3 Approved, 2026-06-25) |
 | `04-prompt.md` | C4 Prompt architecture | ⚪ at Phase 1 |
 | `05-harness.md` | C5 Agent harness | ⚪ at Phase 1 |
 | `06-guardrails.md` | C6 Guardrails | ⚪ at Phase 1 (after ADR-007) |
