@@ -757,4 +757,28 @@ input) carries the residual build-time verification, shared with C3 FR-3.TRIG.00
 
 ---
 
-> Next OD number: OD-047.
+## OD-047 — Review the seven hard limits: right set, and right rigidity? 🟡 OPEN (flagged 2026-06-25, review at C7 Guardrails)
+**Surfaced by:** operator, 2026-06-25. **Touches locked decisions** (ADR-007 + FR-3.ACT.002, both Approved)
+→ any change goes through change-control.
+**The seven (code-enforced, no role/config/prompt override — FR-3.ACT.002, design L2053–2066):** never
+autonomously (1) send external email · (2) make a financial transaction · (3) delete a system-of-record
+record · (4) share data across client deployments · (5) impersonate a named human · (6) self-approve a
+queued action · (7) treat monitored tool content as instructions.
+**Why it matters / the two failure directions:**
+- **Too STRICT** — a blanket "never" could block legitimate, low-risk automation a client actually wants
+  (e.g. routine outbound comms), pushing real work into manual approval and hurting usefulness. Is a flat
+  prohibition right, or should some be *tier-gated* (auto-allow low-risk, gate high-risk) rather than absolute?
+- **Too LAX** — are seven *enough*? Other dangerous autonomous actions may not be covered: bulk data
+  export, mass-delete of memory, posting publicly/externally, spending via a connector that isn't a
+  classic "financial transaction," destructive config changes. And is "no override, ever" actually
+  *enforceable* end-to-end, or are there bypass paths (AF-068 red-team is the proof, still pending)?
+**Scope of the review:** confirm the *set* (add/remove limits), confirm the *rigidity* (absolute vs
+tier-gated per limit), and confirm *enforceability* (the AF-068 containment red-team). 
+**Home:** **C7 (Guardrails)** — C7 owns the enforcement machinery, so the review lands there; C3 only
+*declares* the limits. Carried forward until then.
+**Recommendation:** revisit at C7 with the AF-068 red-team results in hand; do not change the seven before
+then (they are the safe default — strict-by-default protects #2 while we decide).
+
+---
+
+> Next OD number: OD-048.

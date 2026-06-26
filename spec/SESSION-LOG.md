@@ -65,8 +65,10 @@ Context Manifest → decompose the design's prompt section → cite → log ODs 
 `system-map/04-prompt.md`. **C4 consumes** C3's tool registry + descriptions (FR-3.REG.002 — the AI selects
 tools by description) and ADR-007 containment (boundary-tagged content is data, never instructions). **Likely
 seams:** the harness/agent-loop *execution* → C5; guardrail *enforcement* of the hard limits + approval gates
-→ C7; observability/eval of prompt quality → C8. **Carry-ins unchanged:** OD-010 (compensation/rollback) at
-C5/C6/C8; the C3 viability gates (AF-083/090/098) + build-time spikes AF-001/002/004 on a runnable prototype.
+→ C7; observability/eval of prompt quality → C8. **Carry-ins:** OD-010 (compensation/rollback) at
+C5/C6/C8; **OD-047 (NEW — review the seven hard limits: right set / rigidity / enforceability — flagged by
+operator, lands at C7 with the AF-068 red-team)**; the C3 viability gates (AF-083/090/098) + build-time
+spikes AF-001/002/004 on a runnable prototype.
 
 ---
 
