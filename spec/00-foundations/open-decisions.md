@@ -877,4 +877,139 @@ it's surfaced rather than silently resolved.)*
 
 ---
 
-> Next OD number: OD-054.
+## OD-054 — `task_queue` status enum vs the guardrail-set `'flagged'`/quarantine state 🟢 RESOLVED (2026-06-26 → (a) explicit guardrail/quarantine status, C5-owned schema, C6-set)
+**Surfaced by:** Component 5 (Agent Harness) drafting, 2026-06-26. Blocks **FR-5.QUE.003** (and the
+guardrail-routing AC of FR-5.ASM.007).
+**Why it matters:** the `task_queue` schema enumerates status as
+`pending | running | awaiting_approval | completed | failed` (L2523), but the guardrails section sets a task's
+status to **`'flagged'`** when a guardrail fires (L2870, C6). The schema and its usage disagree — a guardrail
+hit would write a status the enum doesn't define. Left unreconciled, a held/quarantined task either rides an
+**undefined/blank status** (a silent-state failure, #3) or is mis-coded as `awaiting_approval` (conflating a
+**safety hold** with a routine **approval wait** — they need different handling and different dashboards).
+C5 owns the `task_queue` schema + state machine; C6 sets the value on a guardrail hit.
+**Options:**
+- (a) **Extend the enum with an explicit guardrail/quarantine state** (e.g. `flagged` / `quarantined`) defined
+  in the C5 schema, set by C6 — distinct from `awaiting_approval`; the state machine defines its transitions
+  (→ human review → requeue/discard/approve). A held task always has a real, defined status.
+- (b) Reuse `awaiting_approval` for guardrail holds (no new state) — simpler enum, but conflates safety holds
+  with approval waits and loses the distinction in the audit record.
+- (c) Track the flagged/held condition on a **separate column** (status stays in the base enum; a `hold_reason`
+  / `guardrail_state` field carries the safety hold).
+**Recommendation:** **(a)** — a defined, distinct status is the only option that never persists an undefined
+state (#3) and keeps a safety hold cleanly separable from a routine approval wait in the audit record and the
+dashboards. C5 owns the enum + the state machine; C6 sets the value. *(Delegable — schema-shape call,
+non-negotiable-#3-aligned; not a posture decision.)*
+
+## OD-055 — Context-envelope compression policy (trigger, strategy, original-output retention) 🟢 RESOLVED (2026-06-26 → (a) configurable threshold; summarize but retain full originals — economy, never loss)
+**Surfaced by:** Component 5 drafting, 2026-06-26. Blocks **FR-5.ENV.003**. Ties **AF-114**.
+**Why it matters:** the design compresses earlier step outputs into summaries between steps "in long chains" with
+a "configurable threshold" (L2608), but never says **what triggers** compression (token count? step count?
+chain depth?), **what strategy** summarizes (and at what fidelity), or — critically — **whether the original
+uncompressed outputs are retained**. If compression discards the only copy of a step's output and a later step
+(or an audit, or a resume-from-failure) needs it, that is silent **knowledge/state loss** (#1) and could corrupt
+a resumed chain (FR-5.GRP.004 reuses prior step outputs).
+**Options:**
+- (a) **Configurable token/step threshold; summarize into the working envelope but preserve the full original
+  outputs in the durable step record** (Inngest step state / task history) — compression bounds the *prompt
+  context*, never deletes the source. Later steps read the summary; resume/audit can recover the original.
+- (b) Lossy compression — discard originals once summarized (cheapest context, but loses the source; rejected
+  for the resume/audit/#1 risk unless originals are provably never needed again).
+- (c) No compression in v1 — accept token growth (simplest, but the design calls for it on real long chains).
+**Recommendation:** **(a)** — compression is a context-window **economy**, never a knowledge loss. Trigger on a
+configurable token/step threshold; summarize for the next step's prompt; keep the full originals in the durable
+step record so resume-from-failure and audit are intact. **AF-114** validates that the summary preserves the
+task-critical state a later step actually needs. *(Delegable — #1-aligned; rec is the safe reading.)*
+
+## OD-056 — Parallel step execution × approval-gate semantics 🟢 RESOLVED (2026-06-26, user-decided → (a) step-level gating + no-irreversible-outrun constraint, AF-113-gated)
+**Surfaced by:** Component 5 drafting, 2026-06-26. **Touches non-negotiable #2.** Blocks **FR-5.OPT.001**.
+Ties **AF-113**.
+**Why it matters:** parallel execution runs independent steps simultaneously (L2614); approval gates block a
+step until a human approves (L2525, FR-5.QUE.005). When the two combine, the design is silent on the semantics:
+if one step in a parallel set requires approval, does the **whole set block**, or only that step (and its
+dependents) while independent siblings proceed? Get this wrong and a parallel sibling could fire an
+**irreversible external side effect** (a CRM write, a comm) *before* the human approves a gated step that would
+have changed or cancelled it — a direct #2 exposure (an autonomous consequential action ahead of its gate).
+**Options:**
+- (a) **Step-level gating** — an approval-gated step blocks **itself and its dependents**; independent siblings
+  with no dependency on the gated step proceed. **Constraint:** a step may not pre-apply an irreversible side
+  effect that a *pending* approval elsewhere in the same task would logically precede; the planner/DAG marks
+  such ordering so the irreversible step waits. Maximises throughput while protecting #2.
+- (b) **All-or-nothing** — if any step in a parallel set requires approval, the entire set blocks until that
+  approval clears. Safest/simplest, lowest throughput; can stall independent work needlessly.
+- (c) Step-level gating with **no** irreversibility constraint — fastest, but reintroduces the #2 risk
+  (rejected).
+**Recommendation:** **(a)** — step-level gating with the irreversibility constraint: independent reversible work
+parallelises, but no irreversible side effect outruns a pending approval it should follow. **AF-113** proves
+the DAG honours this with no `shared_context` race. Fall back to **(b)** if AF-113 shows the ordering can't be
+made reliable. *(Surfaced for your decision — it touches #2: how aggressively parallel work may proceed around a
+human gate.)*
+
+## OD-057 — Loop missed-run catch-up + same-loop overlap semantics 🟢 RESOLVED (2026-06-26 → (a) no concurrent same-loop runs + single catch-up + idempotency, AF-112-gated)
+**Surfaced by:** Component 5 drafting, 2026-06-26. Blocks **FR-5.LOP.004**. Ties **AF-112**.
+**Why it matters:** "a missed run triggers automatic catch-up" and "all loops run independently" (L2575), but two
+behaviours are unspecified. (1) **Catch-up:** does a missed loop **backfill every missed interval** (N runs), or
+run **a single catch-up** now? Backfill-all could stampede after an outage. (2) **Self-overlap:** if a fast-loop
+run (5 min cadence) takes 7 min, does the next scheduled run start **concurrently** with the still-running one?
+Concurrent same-loop runs risk **double-processing** the same queue items / double side effects (#1/#3) unless
+idempotency fully covers them.
+**Options:**
+- (a) **No concurrent same-loop runs** (skip the tick, or queue exactly one, if the prior run is still going) +
+  **single catch-up** on the next interval after a miss (not backfill-all) + idempotency keys (FR-5.GRP.003)
+  guarantee a catch-up can't duplicate already-done work. Predictable, no stampede, no double-act.
+- (b) Backfill every missed interval + allow concurrent runs — maximal "catch up" but stampede + double-process
+  risk (rejected unless idempotency is proven exhaustive).
+- (c) Skip missed runs entirely (no catch-up) — simplest, but silently drops a scheduled sweep (#3).
+**Recommendation:** **(a)** — serialize a loop against itself (skip/queue-one on overrun), do a single catch-up
+rather than a backfill stampede, and lean on idempotency so even a late catch-up double-fire can't duplicate
+work. **AF-112** validates the idempotency holds under catch-up at scale. *(Delegable — #1/#3-aligned operational
+call.)*
+
+## OD-058 — Inngest retry/DLQ authority vs `task_queue.attempts` 🟢 RESOLVED (2026-06-26 → (a) Inngest = single retry authority; task_queue = audit projection)
+**Surfaced by:** Component 5 drafting, 2026-06-26. Blocks **FR-5.JOB.004** (and the retry ACs of FR-5.QUE).
+**Why it matters:** Inngest provides built-in retry-with-backoff + a dead letter queue (L2646–2648), **and** the
+`task_queue` table carries `attempts` / `next_retry_at` (L2528–2529). If **both** drive retries independently, a
+task can be retried twice per failure (Inngest *and* a task_queue poller) → **double execution** of a
+consequential step (#2) and an incoherent audit record (#3). The design says "Inngest executes, Supabase
+records, neither replaces the other" (L2681) but never states which one **owns** retry.
+**Options:**
+- (a) **Inngest is the single retry/DLQ authority**; `task_queue.attempts` / `next_retry_at` / `status` are an
+  **audit projection** synced *from* Inngest (written as Inngest reports attempts/outcomes). There is exactly
+  one retry loop. The task_queue never independently schedules a retry.
+- (b) task_queue owns retry; Inngest configured with retries=0 (inverts the design — loses Inngest's native
+  backoff/DLQ; rejected).
+- (c) Both retry, reconciled by idempotency keys (relies entirely on idempotency to suppress the double-run;
+  fragile, and still pollutes the audit record — rejected).
+**Recommendation:** **(a)** — Inngest is the execution + retry authority (its whole value proposition,
+AF-018-verified); task_queue is the durable record, updated from Inngest's lifecycle events. One retry loop, one
+source of truth, no double-execution. *(Delegable — #2/#3-aligned; rec follows the design's own "Inngest
+executes, Supabase records" split.)*
+
+## OD-059 — Chained-task scope inheritance 🟢 RESOLVED (2026-06-26, user-decided → (a) fresh envelope + explicit handoff + B re-retrieves under its own scope/clearance)
+**Surfaced by:** Component 5 drafting, 2026-06-26. **Touches non-negotiable #2.** Blocks **FR-5.TRG.004**
+(and FR-5.OPT.004 pre-warm).
+**Why it matters:** a chained trigger fires Task B from Task A's output (L2511). The design never says what
+**context** crosses the boundary: does B **inherit A's full context envelope** (entities, retrieved memories,
+`shared_context`), or start **fresh** with just a handoff payload? Inheriting the whole envelope is convenient
+but risks **carrying A's broader entity/memory scope into B** — B then acts on memories it never independently
+retrieved or cleared, potentially **above B's own scope/clearance** (a #2 over-reach) and on **stale** context
+(A's retrieval, not B's). Starting fresh is safer but loses useful continuity unless an explicit handoff carries
+what B needs.
+**Options:**
+- (a) **Fresh envelope + explicit handoff** — B starts a new context envelope seeded with an explicit handoff
+  payload (A's relevant output + a provenance link to A) and **re-runs its own memory retrieval** for its own
+  entity scope (re-applying the C2 clearance gate). B never silently inherits A's broader scope; continuity is
+  carried deliberately, not by leakage. Pre-warm (FR-5.OPT.004) warms B's *own* retrieval.
+- (b) **Full envelope inheritance** — B receives A's complete envelope (entities, memories, shared_context).
+  Maximal continuity, but B acts on A-scoped memory it didn't retrieve/clear (the #2 over-reach + staleness
+  risk).
+- (c) Configurable per chain (inherit vs fresh) — flexible, but makes the unsafe mode available by default
+  unless carefully governed.
+**Recommendation:** **(a)** — fresh envelope + explicit handoff + B re-retrieves under its own scope/clearance.
+It keeps every task's memory access traceable to *that task's* retrieval + clearance (preserves #2 and the C2
+clearance-before-ranking invariant), carries continuity deliberately via the handoff payload, and keeps a
+provenance link for audit. *(Surfaced for your decision — it touches #2: whether one task's memory scope may
+flow into the next.)*
+
+---
+
+> Next OD number: OD-060.

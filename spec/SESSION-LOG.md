@@ -5,6 +5,89 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 22 — 2026-06-26 — COMPONENT 5 (AGENT HARNESS) DRAFTED, VERIFIED & APPROVED — "what makes it run"
+
+Sixth Phase-1 component, the **execution layer**. Output: `spec/01-requirements/component-05-harness.md`
+(**43 FRs, all Approved**), `system-map/05-harness.md`, 43 matrix rows, OD-054…OD-059 logged+resolved,
+feasibility block P (AF-112…AF-115). Pattern-matched the C0–C4 loop end-to-end in one session.
+
+**C5 = "what makes it run"** (vs C2 what it knows, C3 what it can do, C4 what it is). Area codes: TRG ×5 ·
+QUE ×6 · GRP ×4 · ENV ×3 · LOP ×5 · JOB ×7 · ASM ×9 · OPT ×4. C5 owns triggering, the **`task_queue`**
+(permanent audit record), **versioned task graphs**, the **context envelope**, the **three loops**, the
+**Inngest** engine + dead letter queue, the **prompt-stack assembly + run pipeline** (assemble 4 layers → pin →
+safety-validate → gate → execute step-by-step → pill → complete), and the optimisations. **Scope boundary set
+with the operator at entry: strict — C5 calls, C6 enforces.** Seams out: enforcement/approval-policy/anomaly-
+detection → **C6**; event-log/metrics/alert-delivery → **C7**; orchestrator routing + agent registry → **C8**;
+memory mechanisms → C2; tool execution → C3; prompt content → C4; RBAC rules → C1.
+
+**Drafting:** Explore subagent mapped the design section (L2493–2745) + system loop (L3329–3367) → 79 intents +
+10 candidate area codes (refined to 8). Spot-verified load-bearing cites (task_queue L2517–2535, loops
+L2561–2575, envelope L2591–2609, Inngest L2624–2742). **Caught up front** that the subagent's "service_role
+mid-task re-check is an open ambiguity" is **already settled** by C1 FR-1.RLS.007 / OD-031 — C5 *implements* the
+machinery (FR-5.ASM.005), doesn't re-open it. Also reconciled `client_slug`=label-not-RLS, `'flagged'` status
+vs the enum (→ OD-054), Inngest-vs-task_queue double-retry (→ OD-058).
+
+**6 ODs logged then resolved (OD-054…OD-059):** OD-054 status enum **+ explicit guardrail/quarantine state**
+(C5 schema, C6-set, distinct from approval-wait); OD-055 compression **summarize-but-retain-originals** (economy
+never loss); **OD-056 (user-decided) parallel × approval = step-level gating + no-irreversible-outrun** (#2);
+OD-057 loops **no concurrent same-loop + single catch-up** (no backfill stampede); OD-058 **Inngest = single
+retry authority**, task_queue = audit projection; **OD-059 (user-decided) chained-task = fresh envelope +
+handoff + B re-retrieves under its own scope/clearance** (#2). The two #2-touching calls (056, 059) decided by
+the user directly; 054/055/057/058 delegated to recommendation. All landed on option (a).
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass CLEAN** — all L2493–2745 + L3329–3367 intents map (the 3 deferred seams —
+  observability→C7, ingestion-filter mechanism→C2, oversight→C6/C7 — correctly seamed, not orphaned); no
+  contradictions with ADR-003/004/005/006/007, glossary, or consumed C0/C1/C2/C4 FRs; **all 6 traps PASS**
+  (`client_slug` label-only · C5 never usurps C6 enforcement/anomaly-detection/approval-policy · mid-task
+  re-check consumes C1 not re-decides · no Inngest/task_queue double-retry · citations spot-checked ·
+  `flagged` reconciled). 2 cosmetic miscites fixed (extraneous L2349 in TRG.004, L2343 in QUE.005 dropped).
+- **Quality/failure pass found 11 findings (3 HIGH, 5 MED, 3 LOW), ALL reconciled in-file:** **+FR-5.TRG.005**
+  (verified-event→task **at-least-once**, the C3→C5 seam-atomicity hole — a one-shot event has no loop catch-up,
+  HIGH); **+AC-5.JOB.005.2** (fan-out partial failure never silent — HIGH); **+AC-5.QUE.005.2** (approval-wait
+  staleness escalation, reusing C1 OD-028 / C2 OD-032 don't-silently-abandon — HIGH); **+AC-5.GRP.003.2/.3**
+  (crash-window key-committed-before-side-effect ordering + collision-resistance — M1/L2); **+AC-5.ASM.009.2**
+  (durable chained-successor creation, the internal chain seam — M2); **retention clauses** on AC-5.ASM.005.1 +
+  AC-5.QUE.003.2 (quarantine/halt **retains WIP** — you can't compensate (OD-010) what you didn't retain — M3);
+  **+AF-115** + FR-5.ENV.003 note (the originals-store retention lifetime — Inngest cloud step-state TTL may be
+  shorter than the chain + audit window — M4); **+AC-5.JOB.006.2** (C5-emitted DLQ-not-empty heartbeat so the
+  failure-handler can't itself fail silently — M5); **+AC-5.ASM.004.2** (late-discovered consequential action
+  re-enters the approval gate — L1); **+AC-5.GRP.001.2** (graph-less task fails loudly at creation — L3).
+  The reviewer's meta-observation: H3/M2/M5 are all "a hold/handoff waiting on a human or downstream sink with
+  no staleness escalation" — C5 now adopts the standardized C1 OD-028 / C2 OD-032 escalate-don't-abandon pattern
+  at all three wait-points. Confirmed great-tier: the six resolved ODs land the hard #1/#2 calls.
+
+**Sign-off:** user-authorized (delegated, "Sign off — Approve C5"). 43 FRs `Approved`. **No build-time viability
+gate holds any C5 FR** — AF-112…115 are build-time validations of the catch-up/parallel/compression/retention
+*claims*, not of the FR machinery (gate analog of C4's AF-111).
+
+**Files changed:** `component-05-harness.md` (new, Approved); `open-decisions.md` (OD-054…OD-059 → 🟢; next
+OD-060); `feasibility-register.md` (block P AF-112…115; next AF-116); `traceability-matrix.csv` (43 C5 rows);
+`system-map/05-harness.md` (new); `system-map/README.md` (05 ✅ built); `README.md` (status table + Phase-1 row);
+this log. No new OOS (self-hosted Inngest deferral noted on FR-5.JOB.007, to home formally at C6/C10).
+
+**Carry-forward / housekeeping:** **OD-047** (review the seven hard limits) register entry says "Home: C7
+(Guardrails)" but Guardrails is **C6** under the current convention (C6 enforcement · C7 observability · C8
+agent design) — the C5 file uses the correct C6 label; **reconcile the OD-047 entry to C6 when C6 is specced**.
+The self-hosted-Inngest deferral (FR-5.JOB.007) should get an OOS id at C6/C10 (next OOS = OOS-028).
+
+**NEXT STEP — component 6 (Guardrails).** Design-doc section **`## 6. Guardrails` = L2746–~L3000** (confirm the
+end bound at decomposition; Layer 1 hard limits L2754–2768, Layer 2 approval gates L2772–2782, Layer 3 anomaly
+detection L2791–2803, boundary/sanitization L2940–2980, the failure-mode map L2821–2862). Pattern-match the
+C0–C5 loop: Context Manifest → decompose → cite → log ODs (next **OD-060**; new AFs from **AF-116**) → resolve →
+verification gate (2 zero-context subagents) → sign-off → wire matrix + build `system-map/06-guardrails.md`.
+**C6 is where many C5 seams land:** hard-limit **enforcement** (the code half of "both prompt AND code", paired
+with C4 FR-4.CID.004 + C3 FR-3.ACT.002), the **approval-gate tier policy + routing** (C5 QUE.005/ASM.004 only
+move tasks to `awaiting_approval`), **injection sanitization + boundary tagging** (ADR-007, the mechanism C4
+FR-4.CID.003 only states), **anomaly detection + thresholds** (C5 ASM.007 only invokes the check), and setting
+the **`flagged` status** (C5 OD-054 defined the state, C6 sets it). **C6 also actions OD-047** (review the seven
+hard limits — set / rigidity / enforceability — with the **AF-068** containment red-team) and is where
+**OD-010** (compensation/rollback) lands substantively alongside C5/C8. **ADR-007 is the spine** (containment-
+first; detection-as-signal; embedding scan off by default). Likely seams out: event-log/alerts → C7;
+orchestrator → C8. Carry-ins: build-time spikes AF-001/002/004 + the C5 block-P AFs (AF-112…115) + AF-068.
+
+---
+
 ## Session 21 — 2026-06-26 — COMPONENT 4 (PROMPT ARCHITECTURE) DRAFTED, VERIFIED & APPROVED — "what the AI is"
 
 Fifth Phase-1 component. Output: `spec/01-requirements/component-04-prompt.md` (**32 FRs, all Approved**),

@@ -322,11 +322,50 @@ L3589–3591) and the AF-001 cost spike. Next AF number: **AF-112**.
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-112
+## Block P — Component-5 (Agent Harness), 2026-06-26
+
+**AF-112 — Loop catch-up + idempotency under missed-run backlog (LOAD/EVAL, build-time).** The design promises
+"a missed run triggers automatic catch-up" with loops running independently (L2575), and idempotency keys
+"per task and per step" (L2581) to make retries safe. The unproven claim is that **a missed/overlapping/late
+catch-up loop run does not duplicate writes or double-act** at real scale — i.e. the idempotency keys fully
+cover the catch-up and self-overlap paths, not just the simple per-step retry. **Method:** LOAD/EVAL — force
+missed runs + overruns on a live loop against a populated queue and assert no duplicate side effects or
+double-processed items. **Relied on by:** FR-5.LOP.004 (catch-up/overlap), FR-5.GRP.003 (idempotency keys).
+**Resolution dep:** OD-057. Pairs with AF-018 (Inngest idempotency, verified) + AF-063 (per-key concurrency).
+
+**AF-113 — Parallel-step DAG correctness + approval ordering (SPIKE/LOAD, build-time).** Parallel execution of
+independent steps (L2614) must (1) honour the dependency DAG with **no race on `shared_context` /
+`previous_outputs`** when siblings write concurrently, and (2) never let a parallel step fire an **irreversible
+side effect ahead of a pending approval** it should logically follow (#2). **Method:** SPIKE/LOAD — run a
+graph with concurrent siblings + a gated step; assert deterministic envelope state and that no irreversible
+write precedes the gate. **Relied on by:** FR-5.OPT.001. **Resolution dep:** OD-056 (if the ordering can't be
+made reliable, fall back to all-or-nothing gating).
+
+**AF-114 — Inter-step compression fidelity (EVAL, build-time).** Compressing earlier step outputs into
+summaries between steps (L2608) must not silently drop **task-critical state a later step needs** — the chain
+must produce the same outcome compressed as uncompressed. **Method:** EVAL — run representative long chains
+with and without compression; assert equivalent final outputs and that resume-from-failure still works from the
+(retained) originals. **Relied on by:** FR-5.ENV.003. **Resolution dep:** OD-055 (retention of originals is the
+safety net regardless).
+
+**AF-115 — Originals-store retention outlives task chains + audit window (DOCS/SPIKE, build-time).** OD-055's
+"lossless source" guarantee retains the full uncompressed step outputs in "the durable step record (Inngest
+step state / task history)" (FR-5.ENV.003), and FR-5.JOB.007 pins v1 to Inngest **cloud**. The unproven
+assumption: **managed Inngest cloud step-state retention may have its own TTL** shorter than the longest task
+chain + the audit/compliance window — if so, the retained originals silently evaporate and the economy measure
+becomes #1 knowledge loss. **Method:** DOCS (confirm Inngest cloud step-output retention) → if insufficient,
+SPIKE the C5-owned durable task-history store as the authoritative originals store (engine state = cache only).
+**Relied on by:** FR-5.ENV.003, FR-5.GRP.004 (resume reads originals), FR-5.JOB.007. **Surfaced by:** C5
+verification gate (M4). Next AF number: **AF-116**.
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-116
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
-> AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**).
+> AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**; **Component-5
+> block P uses AF-112–115**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.
