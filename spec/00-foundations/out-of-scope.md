@@ -40,5 +40,7 @@ make us revisit it. Adding something here is a *decision*, not a gap.
 | OOS-025 | GHL bulk endpoints | Out (v1) | No bulk API; use paginated v3 search + incremental sync | gohighlevel dossier dim 4 | GHL ships a bulk API that materially helps backfill |
 | OOS-026 | Google destructive scopes (Gmail/Drive delete/trash, modify-beyond-send) | Out (v1) | Hard limit "never delete a system-of-record record" (ADR-007, L2058); request read + `gmail.send` only | google dossier dim 8, ADR-007 | Never (violates a hard limit) |
 | OOS-027 | Google preview MCP servers | Deferred | Connector uses the stable Gmail/Drive/Calendar REST APIs, not Google's preview MCP servers | google dossier | If Google GAs an MCP server that beats the REST path |
+| OOS-028 | Self-hosted Inngest | Deferred (v2) | C5 FR-5.JOB.007 targets Inngest Cloud; self-hosting the orchestration engine is deferred — homed here per the C5 session-22 / C6 session-23 carry-forward | C5 FR-5.JOB.007 | If Inngest Cloud cost/limits or data-residency force self-hosting |
+| OOS-029 | Cross-deployment benchmarking (outcome comparison) | Deferred (v2) | C7 FR-7.OPT.002 — "which configs produce better outcomes across deployments" needs aggregating across silos + data maturity launch scale lacks; v1 captures the per-deployment substrate (cost-per-task-type) only | C7 FR-7.OPT.002, L3325 | When deployment volume + data maturity make cross-silo comparison meaningful |
 
-> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-028.
+> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-030.

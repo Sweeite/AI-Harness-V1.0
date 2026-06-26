@@ -19,7 +19,7 @@ gets built immediately** — out-of-order is fine when it helps you see.
 | `04-prompt.md` | C4 Prompt architecture | ✅ built (component 4 Approved, 2026-06-26) |
 | `05-harness.md` | C5 Agent harness | ✅ built (component 5 Approved, 2026-06-26) |
 | `06-guardrails.md` | C6 Guardrails | ✅ built (component 6 Approved, 2026-06-26) |
-| `07-observability.md` | C7 Observability | ⚪ at Phase 1 |
+| `07-observability.md` | C7 Observability | ✅ built (component 7 Approved, 2026-06-26) |
 | `08-agent-design.md` | C8 Agent design | ⚪ at Phase 1 |
 | `09-proactive.md` | C9 Proactive intelligence | ⚪ at Phase 1 |
 | `10-infra-compliance.md` | C10 Infra & compliance | ⚪ at Phase 1 |

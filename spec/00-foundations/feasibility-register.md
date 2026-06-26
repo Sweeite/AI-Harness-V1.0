@@ -380,16 +380,45 @@ constantly quarantined. Pairs with **AF-068** (the containment red-team is the *
 *detection-signal-quality* proof — and per ADR-007 detection is only a signal, so a library gap degrades the
 signal, it does not breach containment). **Method:** EVAL — run the AF-068 red-team payloads + a benign corpus
 through the pipeline; measure detect/quarantine precision-recall. **Relied on by:** FR-6.INJ.002/003/005/006.
-Gates the *detection-quality claim*, not the FR machinery. **Surfaced by:** C6 drafting. Next AF number: **AF-118**.
+Gates the *detection-quality claim*, not the FR machinery. **Surfaced by:** C6 drafting.
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-118
+## Block R — Component 7 (Observability) — AF-118…AF-120
+
+**AF-118 — Absence-of-signal detection is only as live as its evaluator (SPIKE, build-time).** C7 leans hard on
+"absence of signal is itself a signal" — the management-plane staleness check (AC-7.MGM.002.3) and the alert-engine
+watchdog (FR-7.ALR.008). The unproven assumption: the **independent heartbeat evaluator / watchdog cannot itself
+silently stall** (if it does, every card stays last-known-green and every alert silently stops — the meta-#3 the
+whole component exists to prevent). **Method:** SPIKE — build the heartbeat + watchdog, fault-inject (kill the
+evaluator, the reporter, the silo DB) and confirm each failure surfaces out-of-band. **Relied on by:** FR-7.ALR.008,
+FR-7.MGM.001/002. Does **not** hold an FR from Approved-on-paper; it gates the *liveness claim* of the silent-failure
+detectors. **Surfaced by:** C7 verification gate (finding F2/F7).
+
+**AF-119 — Last-resort out-of-band log-failure surface durability (SPIKE, build-time).** AC-7.LOG.003.2 says an
+`event_log` write failure is surfaced via an out-of-band path (local stderr/file + a `log-write-failing` health bit
+on the push) — i.e. NOT only through the DB substrate that just failed. The unproven assumption: that out-of-band
+path is **actually reachable** when the silo's own Postgres/Supabase is down (the classic "log the logging failure
+to the log" trap). **Method:** SPIKE — induce a DB-write failure and confirm the condition reaches the Super Admin
+grid without the local DB. **Relied on by:** AC-7.LOG.003.2. Gates the *durability claim* of the last-resort surface.
+**Surfaced by:** C7 verification gate (finding F8).
+
+**AF-120 — Cross-deployment clock-sync for window math (DOCS/SPIKE, build-time).** All staleness / escalation /
+"N hours" / daily-weekly windows use a single server-authoritative timestamp (AC-7.MGM.002.4 / AC-7.ALR.005.3). The
+unproven assumption: cross-deployment clocks (each silo + the management plane) are synced tightly enough — or the
+math is anchored receiver-side — so a skewed reporter clock can't make a dead deployment look fresh or an escalation
+window miscompute and skip its secondary alert (#3). **Method:** DOCS (Railway/Supabase NTP guarantees) + SPIKE
+(inject skew, confirm receiver-side anchoring holds). **Relied on by:** AC-7.MGM.002.4, AC-7.ALR.005.3. Gates the
+*window-correctness claim*. **Surfaced by:** C7 verification gate (finding F6).
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-121
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
 > AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**; **Component-5
-> block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**).
+> block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**; **Component-7 block R uses AF-118–120**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

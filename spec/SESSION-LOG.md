@@ -5,6 +5,94 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 24 — 2026-06-26 — COMPONENT 7 (OBSERVABILITY) DRAFTED, VERIFIED & APPROVED — "how you know what it's doing"
+
+Eighth Phase-1 component, the **observability backbone**. Output: `spec/01-requirements/component-07-observability.md`
+(**33 FRs, all Approved**), `system-map/07-observability.md`, 33 matrix rows, OD-067…OD-074 logged+resolved,
+feasibility block R (AF-118…AF-120), OOS-028/029. Pattern-matched the C0–C6 loop end-to-end in one session.
+
+**C7 = "how you know what it's doing"** — the data + logic layer of the three pillars (logging · monitoring ·
+alerting). Area codes: LOG ×7 · RTP ×4 · ALR ×8 · COST ×4 · MGM ×5 · VIEW ×3 · OPT ×2. C7 owns the `event_log`, the
+real-time-vs-polling contract, alerting (the 7 rules + routing + escalation + the engine watchdog), the cost meter +
+ladder signal, the management-plane cross-deployment push (ADR-001 §7) + backup-health (ADR-008), and log
+retention/export (incl. the C7 side of `guardrail_log`).
+
+**Scope decision set with the operator up front: backbone now, surfaces → Phase 3.** C7 specs the observability
+*functions* as Phase-1 FRs; the five role dashboards (Super Admin · Operations · Manager · Standard User · Mobile)
+get only a thin "this view exists + RBAC-routed + sources these signals" contract, with full layout/state deferred
+to the dedicated Phase-3 Surfaces pass. Each panel's *signal* is produced by its home component (C2/C3/C5/C6/C8/C9) —
+C7 displays, it does not recompute. This kept C7 at 33 FRs and avoided both duplicating Phase 3 and usurping the
+producing components. Mirrors C6's "seam, don't absorb" call. **The operator chose this** (vs full-dashboards-in-C7).
+
+**Drafting:** an Explore subagent mapped L3031–L3328 → 80 intents + candidate area codes + the cross-cut sites that
+land in C7. Read the primary section directly to ground the `event_log`/alerting/polling cites. **Caught up front:**
+the `event_log` (L3048) + `guardrail_log` (L2896) schemas + the Realtime filters (L3085/3159) carry `client_slug` —
+stale under the Silo model (ADR-001 §3 deleted it). Also grounded the cross-deployment views as **push,
+operational-metadata-only** (ADR-001 §7), cost as **estimate-grade never the invoice** (ADR-003), and the three
+distinct log sinks (OD-065).
+
+**8 ODs logged then resolved (OD-067…OD-074), 2 user-decided:** **OD-068 (#2, user-decided)** cost-ladder enforcement
+ownership → **C7 meters + signals, C6 decides, C5 executes** — grounded in **ADR-003 §"Guardrails component"** (the
+cost ladder IS a C6 guardrail class). **OD-074 (#1/compliance, user-decided, surfaced by the gate)** erasure vs
+append-only logs → **redaction-tombstone** (scrub PII in place, retain row + audit metadata). OD-067 (client_slug
+drop intra-silo), 069 (escalate-don't-abandon), 070 (Slack-independent notification durability), 071 (stale-not-green
+push), 072 (three-sink retention), 073 (per-silo connection budget + degrade-to-polling) — all delegated, all land
+on (a).
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass CLEAN** — zero orphaned design lines (every intent L3031–3328 + checklist L304–326 maps
+  or is correctly seamed — surfaces→Phase 3, signals→home components, cost-enforcement→C5/C6); no contradictions with
+  ADR-001/003/008, glossary, or consumed C1–C6 FRs; **all 6 traps PASS** (`client_slug` label-only · cross-deployment
+  PUSH-not-pull, never mirrors business data · three distinct log sinks, C7 owns guardrail_log view/retention/export
+  not its write-completeness · cost estimate-grade never the invoice · surfaces→Phase 3 no signal usurpation · 10/10
+  citations clean). One finalization item (registers not yet wired) — done this session.
+- **Quality/failure pass — 13 findings (4 HIGH, 5 MED, 4 LOW), ALL reconciled.** The reviewer's meta-finding: C7 has
+  the strongest #3 instincts of any component so far; the residual risk was **the observability layer becoming its
+  own silent single point of failure**, plus two real cross-component seam holes. **F1 (HIGH)** cost-ladder
+  enforcement seam: verified against **ADR-003 §"Guardrails component" (L181–182)** → OD-068(a) is correct; the
+  contradiction was **C5's seam line ("C7 enforces") + C6's never-written cost-ladder FR** → C5 line **corrected via
+  change-control** (2 spots), the owed **C6 cost-ladder FR logged as a tracked carry-forward**, FR-7.COST.003
+  re-cited to ADR-003. **F2 (HIGH)** → +AC-7.MGM.002.3 (independent-heartbeat stale-evaluator — the stale-detector
+  can't itself fail silently) + AC-7.MGM.001.3 (reporter logs each push to the *local* event_log). **F3 (HIGH)/OD-074**
+  → redaction-tombstone (+AC-7.LOG.006.3 / .007.4; **C2 FR-2.MNT.017 amendment owed** — carry-forward). **F7 (HIGH)**
+  → +FR-7.ALR.008 (alert-engine heartbeat + independent watchdog — "the watcher is watched"). **F8** → AC-7.LOG.003.2
+  out-of-band degraded path. **F9** → +AC-7.LOG.003.3 cross-sink event_log↔guardrail_log reconciliation. **F6** →
+  server-authoritative timestamps (AC-7.MGM.002.4 / AC-7.ALR.005.3). **F10/F11/F12** → cost-unknown sentinel,
+  configurable connection-headroom threshold, pill-coverage thresholding seamed to C2. **F4/F5** → registers wired +
+  statuses reconciled. AF-118 (absence-of-signal liveness), AF-119 (out-of-band durability), AF-120 (clock-sync) —
+  all build-time, none holds an FR.
+
+**Sign-off:** user-authorized — OD-068 + OD-074 decided directly, the rest delegated; gate clean + all 13 findings
+reconciled in-file. 33 FRs `Approved`. **No build-time viability gate holds any C7 FR** (AF-118…120 gate the
+silent-failure-detector *liveness/durability/correctness claims*, not the FR machinery — gate analog of C6's block-Q).
+
+**Files changed:** `component-07-observability.md` (new, Approved); `component-05-harness.md` (cost-ladder seam line
+corrected, change-control); `open-decisions.md` (OD-067…074 → 🟢; next OD-075); `feasibility-register.md` (block R
+AF-118…120; next AF-121); `out-of-scope.md` (OOS-028 self-hosted Inngest, OOS-029 cross-deployment benchmarking;
+next OOS-030); `traceability-matrix.csv` (33 C7 rows); `glossary.md` (+7 terms — notification centre, Supabase
+Realtime, health reporter/push, staleness window, cost meter, answer-mode pill, redaction-tombstone);
+`system-map/07-observability.md` (new); `system-map/README.md` (07 ✅ built); `README.md` (status + Phase-1 row); this log.
+
+**Carry-forwards / housekeeping:** (1) **C2 FR-2.MNT.017** owes a change-control amendment to extend its transitive
+erasure walk to `event_log` + `guardrail_log` (redaction-tombstone, OD-074). (2) The **C6 cost-ladder enforcement
+FR** is owed — ADR-003 spawned it but C6 (session 23) didn't write it; tracked in OD-068; action when C6 is next
+touched. (3) AF-118/119/120 are build-time MUST-TEST.
+
+**NEXT STEP — component 8 (Agent Design).** Design-doc section **`## 8. Agent Design` = L3371–L3649** (next
+`## 9. Proactive Intelligence` at L3650). Pattern-match the C0–C7 loop: Context Manifest → decompose → cite → log ODs
+(next **OD-075**; new AFs from **AF-121**; next OOS **OOS-030**) → resolve → verification gate (2 zero-context
+subagents) → sign-off → wire matrix + build `system-map/08-agent-design.md`. **C8 is where many C5/C7 seams land:**
+the **orchestrator** (routing + confidence threshold — "the highest-leverage single tunable for cost vs quality",
+L3632), the **agent registry** (`agents.system_prompt` — reconcile with C4 OD-048's unify-on-`prompt_layers`
+decision), **agent specialisation drift detection** (L3642 — C7 reserves the surface, C8 produces the metric), and
+**agent health / success-rate** metrics (C7 VIEW.001 displays them). **C8 also resolves the `agents.system_prompt`
+single-source-of-truth** that C4 OD-048 deferred to C8. Likely seams out: observability/event-log → C7 (done);
+proactive/insight-agent → C9; infra → C10. **Carry-ins:** the C6 cost-ladder enforcement FR (if C8 touches
+orchestration cost), build-time spikes AF-001/002/004, AF-068/116/117, the C5 block-P + C7 block-R AFs. **C8 is NOT a
+connector component** (no research-first gate) unless it introduces a new external sink.
+
+---
+
 ## Session 23 — 2026-06-26 — COMPONENT 6 (GUARDRAILS) DRAFTED, VERIFIED & APPROVED — "what stops it doing something catastrophic"
 
 Seventh Phase-1 component, the **enforcement layer** ("the code half" of system safety). Output:

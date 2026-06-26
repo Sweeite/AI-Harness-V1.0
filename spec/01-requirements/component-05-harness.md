@@ -52,7 +52,11 @@
 
 - **ADR-003** (cost; "controls before gates") — loops **short-circuit in code** before the Sonnet orchestrator;
   per-step model calls (anomaly check, AI call) are token-cost levers; compression (FR-5.ENV.003) is an economy
-  measure. The viability ladder (soft/throttle/kill) is the cost guardrail C5 feeds but C7 enforces.
+  measure. The viability ladder (soft/throttle/kill) is the cost guardrail C5 **feeds** and **executes**: per
+  **ADR-003 §"Guardrails component"** the cost ladder is a **C6 guardrail class** (sibling to the rate-limit
+  ladder) — **C7 meters + signals** the breach, **C6 decides**, **C5 executes** the throttle/kill. *(Change-control
+  correction, 2026-06-26 / C7 session 24: this line previously read "C5 feeds but C7 enforces" — corrected to match
+  ADR-003 + C7 OD-068; see C7 FR-7.COST.003. No C5 FR/AC changed.)*
 - **ADR-004** (concurrency — sole-writer `service_role` + per-entity validate-and-commit) — the harness runs
   background/agent work as `service_role`; memory writes within a task step go through the C2 sole-writer path,
   **not** a second writer. The Inngest **per-key concurrency** assumption underpins ADR-004 (AF-063).
@@ -134,7 +138,8 @@
 |---|---|---|
 | Hard-limit / approval-gate **enforcement**; the three approval tiers; injection sanitization; **anomaly detection** + thresholds | **C6** | C5 *invokes* the check at the step boundary (FR-5.ASM.007) and *records* the resulting state (OD-054); C6 owns the policy + mechanism |
 | Approval **routing** (which person approves which task by context) | **C6** | C5 moves a `requires_approval` task to `awaiting_approval` and blocks (FR-5.QUE.005); C6 owns the routing rules |
-| **Event-log** sink, metrics, alert **delivery**, ops-dashboard rendering, cost ladder enforcement | **C7** | C5 *emits* run/loop/DLQ events + completion records (FR-5.LOP.005, FR-5.JOB.006, FR-5.ASM.009); C7 owns the sinks + alerting |
+| **Event-log** sink, metrics, alert **delivery**, ops-dashboard rendering, cost **meter + ladder signal** | **C7** | C5 *emits* run/loop/DLQ events + completion records (FR-5.LOP.005, FR-5.JOB.006, FR-5.ASM.009); C7 owns the sinks + alerting + the cost meter |
+| Cost-ladder **enforcement** (throttle non-critical / hard-kill on a C7 breach signal) | **C6 decides, C5 executes** | Per ADR-003 the cost ladder is a C6 guardrail class; C7 signals the breach (FR-7.COST.003), C6 decides, the C5 harness executes the throttle/kill. *(Change-control 2026-06-26: corrected from the prior "C7 enforces"; the explicit C6 cost-ladder FR is owed — see C7 OD-068.)* |
 | Orchestrator **routing**, agent registry, multi-agent dispatch, `agents.system_prompt` reconciliation | **C8** | C5 assembles + runs *an* agent's stack; C8 owns which agent and the registry |
 | Memory **read/write mechanisms**, ranking, sole-writer commit | **C2** | C5 *sequences* the calls within a task graph (FR-5.ASM.006, GRP steps); C2 owns the internals |
 | Tool **execution**, connector token lifecycle, rate-limit ladder | **C3** | C5 *issues* tool read/write steps; C3 owns the runtime |

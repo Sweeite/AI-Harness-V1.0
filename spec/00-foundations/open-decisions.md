@@ -1107,4 +1107,62 @@ remain signal knobs (ADR-007). Homed in FR-6.INJ.002/003/006.
 
 ---
 
-> Next OD number: OD-067.
+## OD-067 — `event_log` / `guardrail_log` `client_slug` under the Silo model 🟢 RESOLVED (2026-06-26, C7 session 24)
+**Surfaced by:** C7 drafting. **Blocks:** FR-7.LOG.001, FR-7.RTP.003. **Delegated.** The design schemas + Realtime
+examples carry `client_slug`; under ADR-001 §3 each client is a single-tenant silo with the column deleted.
+**✅ Resolution → (a):** **drop `client_slug` intra-silo** — identity is implicit; the Realtime filter reduces to
+`status=eq.awaiting_approval`; client identity appears only at the management-plane `client_registry`. Mirrors C1–C6.
+
+## OD-068 — Cost-ladder enforcement ownership: who throttles / hard-kills? 🟢 RESOLVED (2026-06-26, C7 session 24) — **#2, user-decided**
+**Surfaced by:** C7 drafting. **Blocks:** FR-7.COST.003. **Why it matters:** the ladder ends in throttle ($75) +
+hard-kill ($100) — actions that stop the system. Fuzzy ownership → either a runaway burns unbounded client money
+(#1) or legitimate work halts without authority (#2/#3). **✅ Resolution → (a)** (user-decided): **C7 owns the meter +
+the ladder trigger signal; C6 decides + C5 executes** the throttle/kill — grounded in **ADR-003 §"Guardrails
+component" (L181–182)** which makes the cost ladder a C6 guardrail class (sibling to the rate-limit ladder).
+**Carry-forward:** ADR-003 spawned a C6 cost-ladder enforcement FR that **C6 (session 23) did not write**, and C5's
+seam line previously read "C7 enforces" (corrected this session via change-control) — the **owed C6 cost-ladder FR**
+is tracked (session log) for when C6 is next touched.
+
+## OD-069 — Alert escalation: no-response → secondary alert (no silent drop) 🟢 RESOLVED (2026-06-26, C7 session 24)
+**Surfaced by:** C7 drafting. **Blocks:** FR-7.ALR.005. **Delegated.** L3315 names an escalation window but no owner
+or end-state. **✅ Resolution → (a):** every alert carries an escalation window + a routing chain; no ack in the
+window escalates to the next in the chain; a critical/hard-limit alert that exhausts its chain stays persistently
+escalated, never auto-cleared — reusing the C1 OD-028 / C2 OD-032 / C5 AC-5.QUE.005.2 escalate-don't-abandon pattern.
+
+## OD-070 — Notification-centre delivery durability vs Slack 🟢 RESOLVED (2026-06-26, C7 session 24)
+**Surfaced by:** C7 drafting. **Blocks:** FR-7.ALR.006. **Delegated.** **✅ Resolution → (a):** the dashboard
+notification is persisted first + independently; Slack is a best-effort fan-out off that row; a Slack-delivery
+failure never loses the dashboard notification and is itself surfaced (#3).
+
+## OD-071 — Management-plane push staleness: stale-not-green 🟢 RESOLVED (2026-06-26, C7 session 24)
+**Surfaced by:** C7 drafting. **Blocks:** FR-7.MGM.002. **Delegated.** The Super Admin grid is push-fed (ADR-001 §7);
+a stopped reporter would show a stale-but-green card. **✅ Resolution → (a):** every card carries a freshness
+timestamp; a snapshot older than a configurable window flips to `stale`/`unreachable` + raises a cross-deployment
+alert — absence of signal is itself a signal. *(C7 verification gate hardened this with AC-7.MGM.002.3 — an
+independent-heartbeat evaluator so the stale-detector can't itself fail silently — and AC-7.MGM.002.4 server-time.)*
+
+## OD-072 — Three-sink retention windows + completeness 🟢 RESOLVED (2026-06-26, C7 session 24)
+**Surfaced by:** C7 drafting. **Blocks:** FR-7.LOG.006, FR-7.LOG.007. **Delegated.** **✅ Resolution → (a):** each
+sink (`event_log` / `guardrail_log` / `access_audit`) has a per-deployment configurable retention window with a
+floor (audit/guardrail ≥ the compliance/audit minimum); a row is never pruned while still referenced; pruning is
+logged. The exact numeric floors are a C10/Phase-5 compliance input (flagged, not invented here).
+
+## OD-073 — Realtime connection budget per-silo + degrade-to-polling 🟢 RESOLVED (2026-06-26, C7 session 24)
+**Surfaced by:** C7 drafting. **Blocks:** FR-7.RTP.003. **Delegated.** The 200/500 Realtime cap is per Supabase
+project = per silo. **✅ Resolution → (a):** on approaching the per-silo cap, extra subscriptions degrade to the
+polling cadence (never silently freeze); the two trust-critical subscriptions (approval queue + notifications) are
+prioritized for live connections; the condition is surfaced. *(Gate added a configurable headroom threshold,
+AC-7.RTP.003.2.)*
+
+## OD-074 — Compliance erasure vs the append-only log sinks 🟢 RESOLVED (2026-06-26, C7 session 24) — **#1/compliance, user-decided**
+**Surfaced by:** the C7 verification gate (quality finding F3). **Blocks:** FR-7.LOG.006, FR-7.LOG.007. **Why it
+matters:** `event_log.summary` + `entity_ids` and `guardrail_log.description` carry the PII a GDPR/erasure request
+targets; C2 **FR-2.MNT.017** walks only the memory layers + `access_audit`, not these log sinks — so an erased
+subject's identity persists in the logs (#1 / compliance). **✅ Resolution → (a) redaction-tombstone** (user-decided,
+as the parent OD-038 was): scrub the PII fields in place, retain the row + audit metadata. Homed in
+AC-7.LOG.006.3 / AC-7.LOG.007.4. **Carry-forward (change-control):** C2 **FR-2.MNT.017** must be amended to name
+`event_log` + `guardrail_log` in its transitive erasure walk.
+
+---
+
+> Next OD number: OD-075.
