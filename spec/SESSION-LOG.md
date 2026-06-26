@@ -5,6 +5,78 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 21 — 2026-06-26 — COMPONENT 4 (PROMPT ARCHITECTURE) DRAFTED, VERIFIED & APPROVED — "what the AI is"
+
+Fifth Phase-1 component. Output: `spec/01-requirements/component-04-prompt.md` (**32 FRs, all Approved**),
+`system-map/04-prompt.md`, 32 matrix rows, OD-048…OD-053 logged+resolved, AF-111 logged. A
+**content-definition** component — the smallest so far, no connector research gate, most machinery is seams.
+
+**C4 = "what the AI is"** (vs C2 what it knows, C3 what it can do). Area codes: LYR ×4 · CID ×6 · BIZ ×3 ·
+INJ ×4 · TSK ×3 · PRIN ×3 · STO ×6 · OPT ×3. C4 owns the **four-layer model** (L1 core identity per-agent ·
+L2 business context · L3 memory injection · L4 task instruction), the **seven operating principles** + the
+safety floor, the **`prompt_layers` store** + version discipline, and the optimisations. It does NOT own
+runtime **assembly** (→C5), memory retrieval/clearance gate (→C1/C2), injection sanitization (→C6), hard-limit
+**enforcement** (→C6), answer-mode pill rendering (→C5/C8), or the prompt-health **signals** (→C7).
+
+**Drafting:** offloaded a whole-doc prompt-architecture sweep to an Explore subagent (the primary section
+L2384–2492 + 8 cross-cut sites: checklist L261–271, L2-config L840–856, perm rows L556–558, boundary
+instruction L2976–2980, hard-limits L2756–2768, `agents.system_prompt` L3500–3517, runtime assembly
+L3338–3347, prompt-health L3578/3589–3591). Spot-verified the load-bearing cites before drafting. Caught the
+central contradiction up front: **Layer 1 is stored in two places** (`prompt_layers.content` where
+`layer='core'` AND `agents.system_prompt`), each with its own versioning → OD-048.
+
+**6 ODs logged then resolved (OD-048…OD-053):** OD-048 Layer-1 single source of truth = **unify on
+`prompt_layers`**, drop/derive `agents.system_prompt` (reconcile in C8); **OD-049 (user-decided) operating-
+principles block = editable, Super-Admin-ONLY** (new `PERM-prompt.edit_principles`, not Admin) + mandatory
+change_reason + safety-audit + warning; OD-050 prompt-change = **version pinned at assembly** (in-flight tasks
+finish on their version); OD-051 L1 length = **advisory warning**; OD-052 dynamic L2 values = **operator-
+editable per-deployment store**; **OD-053 (user-decided) principles floor = hard-block** (reword yes, delete a
+principle no). 5 delegated/rec-accepted; the two safety-posture calls (049, 053) decided by the user directly.
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass CLEAN** — all L2384–2492 intents + the 8 cross-cut sites map to FRs;
+  `agents.system_prompt` + prompt-health correctly handled as seams not orphans; no contradictions with
+  ADR-001/002/003/006/007, glossary, or consumed C1/C2/C3 FRs; **all 6 traps PASS** (no `client_slug` RLS key ·
+  C4 never claims assembly · L1 duplication resolved to one store · boundary = C4 content + C6 mechanism ·
+  principles Super-Admin-edit doesn't break "shared verbatim" · citations clean).
+- **Quality/failure pass found 7 findings (2 HIGH, 3 MED, 2 LOW), ALL reconciled:** **+FR-4.LYR.004**
+  (assembly-time required-element validation — assembly halts if the resolved L1 lacks the boundary instruction
+  / hard-limit statement / principles block; C4 owns the requirement, C5 enforces — HIGH); **re-anchored
+  AC-4.PRIN.002.2** (the principles-edit audit pointed at C1 FR-1.AUD.002 which doesn't cover prompt edits →
+  re-homed to the immutable `prompt_layers` version chain + a distinct safety-event to C7 — HIGH); **+OD-053 +
+  AC-4.PRIN.002.4** (the seven-principle **hard-floor** — HIGH, the #2 edge of OD-049); +AC-4.BIZ.003.3
+  (present-but-stale dynamic field surfaced, required + configurable threshold — MED); reworded AC-4.PRIN.002.3
+  (assembled-*after*-edit, removes the version-pin ambiguity — MED); +AC-4.INJ.003.3 (above-clearance memory
+  in an assembled L3 = containment breach, halt-and-audit — MED); +AF-033 cross-ref at FR-4.CID.006 (said-vs-did
+  pill accuracy, already tracked — LOW). Confirmed great-tier: version discipline + single-source-of-truth,
+  principle-as-statement-not-enforcement (PRIN.003), boundary/hard-limit prompt-vs-code split, AF-111 honesty.
+
+**Sign-off:** user-authorized — OD-048/050/051/052 recs accepted, **OD-049 + OD-053 decided by the user**
+(principles editable by Super Admin only, with a hard floor against deletion), gate clean + all 7 findings
+reconciled in-file. 32 FRs `Approved`. No build-time viability gate holds any C4 FR (AF-111 gates only the
+*optimisation claim* — version-perf attribution + compression payoff — not the version-identity/pin machinery).
+
+**Files changed:** `component-04-prompt.md` (new, Approved); `open-decisions.md` (OD-048…OD-053 → 🟢; next
+OD-054); `feasibility-register.md` (block O AF-111; next AF-112); `traceability-matrix.csv` (32 C4 rows);
+`system-map/04-prompt.md` (new); `system-map/README.md` (04 ✅ built); `README.md` (status table + Phase-1 row);
+this log. No new OOS.
+
+**NEXT STEP — component 5 (Agent Harness).** Design-doc section **`## 5. Agent Harness` = L2493–2745** (next
+`## 6. Guardrails` at L2746); plus the **system loop** L3329–3370 (where C5's runtime assembly + execution
+lives) and the C5 checklist overview. Pattern-match the C0–C4 loop: Context Manifest → decompose → cite → log
+ODs (next **OD-054**; new AFs from **AF-112**) → resolve → verification gate (2 zero-context subagents) →
+sign-off → wire matrix + build `system-map/05-harness.md`. **C5 is where many C4 seams land:** the **prompt-
+stack assembly** (retrieve the 4 layers, inject dynamic/memory values, concatenate, send — L3338–3339), the
+**FR-4.LYR.004 assembly-validation** (halt if a safety element is missing), **version pinning** (FR-4.STO.006),
+the **answer-mode pill** evaluation (with C8), the **task_queue** (L2517–2535), checkpoints, context-envelope
+compression (L2608–2609), and the per-agent run loop. **C5 consumes:** C3's tool runtime (tool calls), C4's
+prompt layers, C2's memory read flow, C1's `service_role`/mid-task re-check (FR-1.RLS.007). **Likely seams
+out:** hard-limit/approval **enforcement** + injection sanitization → C6; observability/event-log → C7;
+orchestrator routing + agent registry → C8. **Carry-ins unchanged:** OD-010 (compensation/rollback) lands
+substantively at C5/C6; build-time spikes AF-001/002/004 + AF-111.
+
+---
+
 ## Session 20 — 2026-06-25 — COMPONENT 3 (TOOL LAYER) DRAFTED, VERIFIED & APPROVED — the connector runtime
 
 Fourth Phase-1 component, the connector layer. Output: `spec/01-requirements/component-03-tool-layer.md`

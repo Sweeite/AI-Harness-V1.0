@@ -781,4 +781,100 @@ then (they are the safe default — strict-by-default protects #2 while we decid
 
 ---
 
-> Next OD number: OD-048.
+## OD-048 — Layer-1 single source of truth: `prompt_layers` vs `agents.system_prompt` 🟢 RESOLVED
+**Surfaced by:** Component 4 (Prompt Architecture) drafting, 2026-06-26. Blocks **FR-4.LYR.001,
+FR-4.STO.001/002**.
+**Why it matters:** the design doc stores each agent's Layer 1 in **two** places — `prompt_layers.content`
+where `layer='core'` (L2460) **and** `agents.system_prompt` (L3504, "this agent's Layer 1") — each with its
+own `version`/`previous_version_id`/`change_reason`. Two authoritative stores for the same content is a direct
+#1 risk: an edit to one leaves the other stale, and the harness could assemble a prompt from the wrong copy.
+**Options:** (a) **unify on `prompt_layers`** as the single versioned store for all four layers; drop
+`agents.system_prompt` (or make it a derived read/pointer), reconcile in C8; (b) unify on
+`agents.system_prompt` for Layer 1 and use `prompt_layers` only for the other three layers (splits the store);
+(c) keep both, designate one canonical + sync (rejected — sync is the failure mode).
+**Resolution (2026-06-26, user — accepted recommendation):** **(a)** — `prompt_layers` is the single
+authoritative, versioned store for **all four** layer types (Layer 1 = `layer='core'`, keyed to `agent_id`).
+`agents.system_prompt` is **removed** (or reduced to a derived read) and this is reconciled in **C8 (Agent
+Design)** where the `agents` registry is specced. One store, one versioning path, no sync.
+
+## OD-049 — Operating-principles block editability 🟢 RESOLVED
+**Surfaced by:** Component 4 drafting, 2026-06-26. Blocks **FR-4.PRIN.002**.
+**Why it matters:** the seven operating principles are included in every agent's Layer 1 "without exception"
+(L2427) and are the one part of Layer 1 shared verbatim across all agents (L2390). Several of them *are* the
+safety posture — "prefer reversible actions", "memory is context, not authority", "stay in your lane" (#2). But
+prompts are dashboard-editable (L2475). If the principles block can be silently weakened, the system's
+guarantees change with no trace.
+**Options:** (a) **locked/system-managed block**, not editable from the dashboard; (b) **editable, but gated to
+Super Admin only** (tighter than general prompt-editing, which is Super Admin + Admin), with mandatory
+`change_reason` + audit + a safety-warning on the edit; (c) editable like any other prompt content (Super Admin
++ Admin, no special gate).
+**Resolution (2026-06-26, user-decided):** **(b)** — the operating-principles block **is editable, but only by
+Super Admin** (a dedicated, higher-privilege permission node `PERM-prompt.edit_principles`, NOT held by Admin,
+who can edit other prompt content). Every principles edit requires a mandatory `change_reason`, is
+audit-logged as a **safety-relevant change**, and surfaces a confirmation warning that the operator is
+modifying the shared safety posture. Honours "the operator owns their deployment" while keeping the change
+**never silent** (#3) and fully traceable. *(User preference over the rec-(a) lock: "I would like [it] to be
+editable for superadmin.")*
+
+## OD-050 — Prompt-change effect on in-flight tasks (version pinning) 🟢 RESOLVED
+**Surfaced by:** Component 4 drafting, 2026-06-26. Blocks **FR-4.LYR.003, FR-4.STO.006, FR-4.OPT.001**.
+**Why it matters:** prompts are edited live ("bump version, reload", L2475). If a running task picks up a new
+Layer 1 mid-flight, the agent's identity/principles change underneath it (contradicting "Layer 1 never changes
+mid-run", L2397) and version→outcome attribution (L2485) becomes ambiguous.
+**Options:** (a) **pin the prompt version at prompt-stack assembly time** — in-flight tasks finish on the
+version they began with, only tasks assembled after the edit use the new version; (b) hot-swap all tasks to the
+newest version immediately (breaks mid-run immutability); (c) pin per-step rather than per-task.
+**Resolution (2026-06-26, user — accepted recommendation):** **(a)** — the prompt version is pinned at
+assembly time; running tasks complete on their pinned version, new tasks use the edit. Preserves FR-4.LYR.003
+(mid-run immutability) and gives clean version→outcome attribution for FR-4.OPT.001 (#1/#3).
+
+## OD-051 — Layer-1 length-bound enforcement 🟢 RESOLVED
+**Surfaced by:** Component 4 drafting, 2026-06-26. Blocks **FR-4.CID.002**.
+**Why it matters:** the design caps Layer 1 at "300–500 words maximum" (L2403). A hard save-block could prevent
+a legitimate edit; an unbounded prompt undermines the compression discipline (L2489) and inflates token cost.
+**Options:** (a) **advisory warning** above the bound, save still permitted; (b) hard save-blocking validation;
+(c) no enforcement at all.
+**Resolution (2026-06-26, user — accepted recommendation):** **(a)** — an advisory warning when Layer 1
+exceeds ~500 words, but the save is permitted. No safety reason to fail-closed; compression is a maintained
+discipline (FR-4.OPT.003), not a gate.
+
+## OD-052 — Dynamic Layer-2 field value source + freshness 🟢 RESOLVED
+**Surfaced by:** Component 4 drafting, 2026-06-26. Blocks **FR-4.BIZ.003, FR-4.OPT.002**.
+**Why it matters:** deployment config *names* the dynamic Layer-2 fields (`current_quarter_goals`,
+`active_campaigns`, `this_week_priorities`, L851–855) but never says where their **live values** are stored,
+who edits them, or how stale they may be. A stale "this week's priorities" silently misleads the AI (#3).
+**Options:** (a) **operator-editable per-deployment key→value store** named by the config field list, injected
+at assembly time, with staleness optionally surfaced; (b) values pulled live from a connector each session
+(more moving parts, connector-dependent); (c) values baked into static config (defeats the "fresh each
+session" intent, L2487).
+**Resolution (2026-06-26, user — accepted recommendation):** **(a)** — dynamic-field values live in an
+operator-editable per-deployment store keyed by the config-declared field names, injected fresh at assembly;
+staleness is the operator's responsibility and may be surfaced in the editor (a `last_updated` hint). CFG/UI/
+DATA stubs parked for Phases 2–4.
+
+## OD-053 — Operating-principles floor: hard-block removal vs override-with-confirmation 🟢 RESOLVED
+**✅ Resolution (2026-06-26, user-decided):** **(a) hard-block** — a save that removes/empties any of the seven
+canonical principles is rejected outright; rewording/strengthening a principle is fully permitted. Faithful to
+L2427 "without exception"; keeps the safety floor intact (#2) while honouring OD-049's Super-Admin-edit intent.
+Realised by AC-4.PRIN.002.4.
+
+**Surfaced by:** Component 4 verification gate (quality pass, HIGH finding #2), 2026-06-26. Refines **OD-049**.
+Blocks the final AC of **FR-4.PRIN.002** (AC-4.PRIN.002.4).
+**Why it matters:** OD-049 made the operating-principles block Super-Admin-editable. The design also says the
+seven principles appear in every Layer 1 "without exception" (L2427), and several *are* the safety posture
+(#2: prefer-reversible, memory-is-context, stay-in-your-lane). So "editable" must not mean "a principle can be
+silently dropped." Rewording/strengthening a principle is clearly fine; **deleting one** is the edge. The
+question is only *how hard* the floor is enforced.
+**Options:** (a) **hard-block** — a save that removes/empties any of the seven is rejected outright (reword
+yes, remove no); (b) **override-with-explicit-second-confirmation** — removal is allowed but requires a
+distinct "I am reducing the safety floor" confirmation, itself audited as its own event; (c) no floor —
+removal allowed like any edit (rejected — silently weakens #2, contradicts L2427).
+**Recommendation:** **(a) hard-block** — it is faithful to the design's "without exception" (L2427), keeps the
+safety floor intact (#2), and still lets a Super Admin fully *edit the expression* of every principle (honours
+OD-049's intent). (b) is acceptable if you want the escape hatch; (c) is not. **Default in the spec = (a)**
+pending your call. *(This is the one C4 item that touches a non-negotiable and your own OD-049 decision, so
+it's surfaced rather than silently resolved.)*
+
+---
+
+> Next OD number: OD-054.

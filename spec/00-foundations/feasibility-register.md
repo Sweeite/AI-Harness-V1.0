@@ -305,11 +305,28 @@ Verdict key: ✅ VERIFIED · 🟠 STALE · ⛔ REFUTED · ⬜ UNCONFIRMED (not s
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-111
+## Block O — Component-4 (Prompt Architecture), 2026-06-26
+
+**AF-111 — Prompt-version → outcome attribution is signal, not noise (EVAL, build-time).** Two coupled
+claims the design leans on but cannot prove on paper: (1) "prompt versioning **with performance tracking** —
+track which version produced better outcomes" (L2485) assumes task outcomes can be attributed to the prompt
+version in force cleanly enough to *discriminate* a better version from a worse one; at launch task volume
+(≤20 users), per-version sample sizes may be too small to separate signal from variance. (2) "compressed,
+audited prompts **outperform** organic ones" (L2489, L3634) is an empirical performance claim, not a
+structural fact. **Method:** EVAL — once a deployment has real task history, measure whether version-bucketed
+outcome deltas exceed noise, and whether compression measurably improves task success/cost. **Relied on by:**
+FR-4.OPT.001 (version performance tracking), FR-4.OPT.003 (compression discipline). **Not a blocker to
+speccing C4** — the version identity + pin (FR-4.OPT.001/STO.006) are built regardless; this gates only the
+*claim that the feedback loop produces usable signal*. Pairs with the C7 observability signals (L3578,
+L3589–3591) and the AF-001 cost spike. Next AF number: **AF-112**.
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-112
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
-> AF-082**; **Component-3 block N uses AF-083–110**).
+> AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.
