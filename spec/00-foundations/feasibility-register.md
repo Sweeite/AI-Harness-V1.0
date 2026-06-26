@@ -411,14 +411,55 @@ window miscompute and skip its secondary alert (#3). **Method:** DOCS (Railway/S
 (inject skew, confirm receiver-side anchoring holds). **Relied on by:** AC-7.MGM.002.4, AC-7.ALR.005.3. Gates the
 *window-correctness claim*. **Surfaced by:** C7 verification gate (finding F6).
 
+## Block S — Component 8 (Agent Design), session 25 (2026-06-26)
+
+**AF-121 — Description-driven routing accuracy (EVAL, build-time).** The whole C8 premise (L3400, L3419) is that the
+orchestrator routes correctly by reading agent **descriptions**, not hardcoded logic. The unproven assumption: with
+realistic, operator-authored descriptions, routing lands on the right specialist at an acceptable rate. **Method:**
+EVAL (a labelled routing test set across the eight domains; measure top-1 routing accuracy + mis-route rate).
+**Relied on by:** FR-8.ORC.001/003/005, FR-8.SPC.001, FR-8.LRN.002. Gates the *routing-quality claim*, not the FR
+machinery. **Surfaced by:** C8 drafting.
+
+**AF-122 — Orchestrator confidence calibration (EVAL, build-time).** ORC.006 + COST.002 rest on the confidence score
+meaningfully separating good from bad routing so the threshold (default 0.75) is a real cost/quality dial (L3620).
+The unproven assumption: the score is calibrated — high-confidence routes are actually more correct than
+low-confidence ones. **Method:** EVAL (reliability diagram / correlation of confidence vs routing correctness).
+**Relied on by:** FR-8.ORC.006, FR-8.COST.002. Gates the *threshold-as-dial claim*. **Surfaced by:** C8 drafting.
+
+**AF-123 — Specialisation-drift detection accuracy (EVAL, build-time).** HLTH.002 claims an agent operating outside
+its intended scope can be detected periodically (L3642). The unproven assumption: drift is detectable without
+excessive false positives that would train operators to ignore the flag. **Method:** EVAL (inject scoped vs
+out-of-scope behaviour; measure precision/recall of the drift signal). **Relied on by:** FR-8.HLTH.002. Gates the
+*drift-detection claim*. **Surfaced by:** C8 drafting.
+
+**AF-124 — Dead-agent / low-quality signal reliability (EVAL, build-time).** HLTH.001/003 produce a "consistently
+fails or low quality" signal (L3578, L3644). The unproven assumption: the quality signal (task success/failure +
+answer-mode-pill distribution + approval/rejection outcomes) reliably distinguishes a genuinely failing agent from
+normal variance. **Method:** EVAL (compare signal against human-labelled agent quality). **Relied on by:**
+FR-8.HLTH.001/003. Gates the *dead-agent-detection claim*. **Surfaced by:** C8 drafting.
+
+**AF-125 — Agent-result-cache staleness safety (SPIKE/EVAL, build-time).** LRN.003 + OD-076 claim the scope-aware,
+time-bounded invalidation prevents serving stale knowledge (#1). The unproven assumption: the cache key (in-scope
+entity ids + their last-write/memory version) + write-invalidation actually catches every relevant change before a
+reuse — no stale hit slips through (e.g. an out-of-band write, a memory-version race). **Method:** SPIKE (force
+concurrent in-scope writes during a cache window; confirm no stale hit) + EVAL on the invalidation logic. **Relied
+on by:** FR-8.LRN.003. Gates the *cache #1-staleness claim*. **Surfaced by:** C8 drafting (the #1-touching OD-076).
+
+**AF-126 — Orchestrator learning measurably improves routing (EVAL, build-time).** LRN.001 + ORC.007 + PLAN.004 claim
+that outcome-tracking refinement improves routing over time (L3640). The unproven assumption: the feedback loop
+produces a measurable improvement and does not degrade routing (overfitting / feedback-loop drift). **Method:** EVAL
+(longitudinal routing-accuracy trend with vs without the learning update; guard against regression). **Relied on
+by:** FR-8.LRN.001, FR-8.PLAN.004. Gates the *self-improvement claim*. **Surfaced by:** C8 drafting.
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-121
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-127
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
 > AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**; **Component-5
-> block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**; **Component-7 block R uses AF-118–120**).
+> block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**; **Component-7 block R uses AF-118–120**;
+> **Component-8 block S uses AF-121–126**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

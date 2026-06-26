@@ -53,6 +53,12 @@ until resolved.
 | Orchestrator | The routing agent; plans and delegates, never does the work itself. | ✅ |
 | Specialist agent | A focused agent owning one domain (research, client, campaign, ...). | ✅ |
 | Context envelope | The structured package passed through every agent in a task graph. | ✅ |
+| Agent registry | The `agents` table — every agent's description, `memory_scope`, `tools_allowed`, version + audit; the orchestrator reads it to route, and adding a specialist is inserting a row (no code change). Layer-1 lives in `prompt_layers`, **not** an `agents.system_prompt` column (C8 OD-075). | ✅ C8 |
+| Memory scope (per agent) | A registry-defined predicate (memory types + entity classes) applied as an **additional retrieval filter** on top of clearance — the agent-level least-privilege boundary (C8 FR-8.SCO.001, wired via C5 AC-5.ASM.006.2 + C2 AC-2.RET.004.2, OD-081). | ✅ C8 |
+| Routing score / orchestrator confidence | The orchestrator's per-candidate score (domain/complexity/memory/tool fit, configurable weights) and the aggregate **confidence** that gates the plan — below the configurable threshold (default 0.75) it asks a human; "the highest-leverage single tunable for cost vs quality" (C8 FR-8.ORC.004/006). | ✅ C8 |
+| Drift / dead-agent detection | C8-produced metrics: specialisation **drift** = an agent behaving outside its scope; **dead-agent** = consistently failing/low-quality. Both are **flagged for human review, never auto-corrected/auto-disabled** (C8 FR-8.HLTH.002/003, OD-078). | ✅ C8 |
+| Agent result cache | Reuse of a recent agent output within a per-agent-type time window **and** only while in-scope entities are unchanged — invalidated write-triggered by the Memory Agent commit, miss-on-uncertainty (C8 FR-8.LRN.003, OD-076). | ✅ C8 |
+| Execution-plan version | A versioned plan for a common task type; outcome shifts are attributed to plan versions and rollback is **human-decided** (auto-rollback deferred, OOS-030) (C8 FR-8.PLAN.004). | ✅ C8 |
 | Task graph | The ordered, versioned step sequence for a task type. | ✅ |
 | Loop | A scheduled recurring job set: fast / medium / slow (+ custom). | ✅ |
 | Trigger | What wakes the system: event-driven / scheduled / human / chained. | ✅ |

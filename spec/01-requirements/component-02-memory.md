@@ -757,6 +757,7 @@
   - Happy path: candidates failing visibility **or** sensitivity (entity-type-scoped, FR-1.CLR.004) are dropped first; only cleared candidates are ranked.
   - Branches: human/session path is also backstopped by RLS (FR-1.RLS.003); the agent `service_role` path is governed by harness RBAC (FR-1.RLS.004/007) since it bypasses RLS.
   - Edge / failure: a memory ranked-then-stripped is forbidden (it could leak via ordering/scores, #2); Restricted is never auto-injected even for a cleared holder (FR-1.RST.003 / FR-2.RET.006).
+  - Branches *(change-control 2026-06-26, C8 session 25 — OD-081)*: when the caller is the agent path, the read flow also accepts an optional **agent-scope predicate** (the running agent's `memory_scope`, C8 FR-8.SCO.001) and drops out-of-agent-scope candidates **before** ranking, alongside clearance + visibility. The agent-scope filter narrows *within* clearance; it never widens access.
 - **Data touched:** `DATA-memories` (filter under clearance).
 - **Permissions:** C1 clearance/visibility model.
 - **Config dependencies:** —
@@ -764,6 +765,7 @@
 - **Observability:** Personal/Restricted candidate access → `access_audit` (FR-1.AUD.001).
 - **Acceptance criteria:**
   - AC-2.RET.004.1 — Given a candidate outside the requester's clearance, When retrieval runs, Then it is excluded before ranking (not ranked then hidden).
+  - AC-2.RET.004.2 — *(Change-control 2026-06-26, C8 OD-081.)* Given an agent-path read with an agent-scope predicate, When retrieval runs, Then candidates outside the agent's `memory_scope` are excluded before ranking (an additional narrowing within clearance, never a widening).
 - **Open decisions:** —
 - **Feasibility assumptions:** ⚠️ FEASIBILITY: AF-067 (the live clearance predicate composes with pgvector ranking within latency budget).
 

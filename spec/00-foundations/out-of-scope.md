@@ -43,4 +43,6 @@ make us revisit it. Adding something here is a *decision*, not a gap.
 | OOS-028 | Self-hosted Inngest | Deferred (v2) | C5 FR-5.JOB.007 targets Inngest Cloud; self-hosting the orchestration engine is deferred — homed here per the C5 session-22 / C6 session-23 carry-forward | C5 FR-5.JOB.007 | If Inngest Cloud cost/limits or data-residency force self-hosting |
 | OOS-029 | Cross-deployment benchmarking (outcome comparison) | Deferred (v2) | C7 FR-7.OPT.002 — "which configs produce better outcomes across deployments" needs aggregating across silos + data maturity launch scale lacks; v1 captures the per-deployment substrate (cost-per-task-type) only | C7 FR-7.OPT.002, L3325 | When deployment volume + data maturity make cross-silo comparison meaningful |
 
-> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-030.
+| OOS-030 | Automatic execution-plan rollback | Deferred (v2) | C8 FR-8.PLAN.004 supports rollback to a prior plan version, but rollback is **human-decided** — auto-rollback is itself an autonomous action (consistent with OD-010 no-auto-rollback). v1 surfaces the version→outcome attribution; a human chooses to roll back | C8 FR-8.PLAN.004, OD-010, L3646 | When auto-rollback can be proven safe and reversible |
+
+> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-031.

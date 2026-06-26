@@ -1163,6 +1163,81 @@ as the parent OD-038 was): scrub the PII fields in place, retain the row + audit
 AC-7.LOG.006.3 / AC-7.LOG.007.4. **Carry-forward (change-control):** C2 **FR-2.MNT.017** must be amended to name
 `event_log` + `guardrail_log` in its transitive erasure walk.
 
+## OD-075 — `agents.system_prompt` disposition (closes OD-048) 🟢 RESOLVED (2026-06-26, C8 session 25)
+**Surfaced by:** C8 drafting (carry-in from OD-048). **Blocks:** FR-8.REG.001, FR-8.REG.002, FR-8.ORC.008.
+**Why it matters:** OD-048 resolved Layer-1 to a single source of truth in `prompt_layers` but deferred the concrete
+`agents.system_prompt` disposition to C8. Two stores for the same content is a #1 risk (an edit to one leaves the
+other stale). **Options:** (a) **remove the column entirely** — Layer-1 lives solely in `prompt_layers` keyed by
+`agent_id` (`layer='core'`), the registry resolves it by `agent_id`; (b) keep it as a derived read-only
+pointer/view. **✅ Resolution → (a)** (delegated, accepted rec): remove `agents.system_prompt`; one authoritative
+store, no sync surface. A one-time migration folds any populated values into `prompt_layers` then drops the column
+(Phase 4/6). Homed in FR-8.REG.002.
+
+## OD-076 — Agent result cache invalidation 🟢 RESOLVED (2026-06-26, C8 session 25) — **#1, user-delegated**
+**Surfaced by:** C8 drafting. **Blocks:** FR-8.LRN.003. **Why it matters:** the design specifies a time-based
+`cache_time_window` per agent type (L952–960) **and** "reuse … when data hasn't changed" (L3630) — two different
+invalidation models. Time-window-only reuse can serve a stale Research/agent output after a relevant write — a #1
+corruption-by-staleness risk (acting on outdated knowledge). **Options:** (a) time-window-only (the literal config);
+(b) **scope-aware + time-bounded** — cache key includes the in-scope entity ids + their last-write/memory version;
+any write to an in-scope entity invalidates the entry, *and* a max time window still applies; on uncertainty,
+miss-and-recompute rather than risk a stale hit. **✅ Resolution → (b)** (delegated, accepted rec). Homed in
+AC-8.LRN.003.1/.2; staleness-safety gated by AF-125.
+
+## OD-077 — Low-confidence clarification that goes unanswered 🟢 RESOLVED (2026-06-26, C8 session 25) — **#3, user-delegated**
+**Surfaced by:** C8 drafting. **Blocks:** FR-8.ORC.006. **Why it matters:** below the confidence threshold the
+orchestrator asks a human for clarification (L3413). If that request is never answered, the task must not silently
+park (work lost, #3) and must not silently auto-proceed on a low-confidence plan (#2/quality). **Options:** (a)
+**tracked + escalating** — the clarification is a `task_queue` item that escalates on timeout (reuse C1 OD-028 / C5
+AC-5.QUE.005.2 escalate-don't-abandon), never silently dropped, never auto-executed below threshold; (b) auto-proceed
+on best-guess after timeout; (c) silently park. **✅ Resolution → (a)** (delegated, accepted rec). Homed in
+AC-8.ORC.006.2 + CFG-clarification_escalation window.
+
+## OD-078 — Drift + dead-agent detection: threshold, signal, action 🟢 RESOLVED (2026-06-26, C8 session 25)
+**Surfaced by:** C8 drafting. **Blocks:** FR-8.HLTH.001/002/003/004. **Why it matters:** "agent X has a 40% failure
+rate" (L3578), specialisation drift (L3642), and dead-agent detection (L3644) need a threshold, a quality signal, and
+an action policy. Auto-correcting/disabling an agent is itself an autonomous action (the L3563 prompt-drift rule says
+"never auto-corrected — too risky"; OD-010 says no auto-rollback). **Options:** (a) **flag-only, never auto-disable**
+— configurable thresholds with defaults; quality signal = task success/failure + answer-mode-pill distribution +
+human approval/rejection outcomes; C8 produces the metric, C7 surfaces, a human decides; (b) auto-disable a dead
+agent above a hard threshold. **✅ Resolution → (a)** (delegated, accepted rec). Gated by AF-123 (drift accuracy) +
+AF-124 (dead-agent signal reliability).
+
+## OD-079 — Specialist roster seeding 🟢 RESOLVED (2026-06-26, C8 session 25)
+**Surfaced by:** C8 drafting. **Blocks:** FR-8.REG.006, FR-8.SPC.001. **Why it matters:** the eight specialists +
+orchestrator have to exist before any task can route. **Options:** (a) **seed the 8 canonical specialists + the
+orchestrator at provisioning** (ADR-005 scripted, mirrors C1 OD-030 seed-then-authoritative), editable/extensible
+after; (b) empty registry, operator builds from scratch. **✅ Resolution → (a)** (delegated, accepted rec). Homed in
+FR-8.REG.006 (idempotent seed).
+
+## OD-080 — Who may edit the registry / roll back plans 🟢 RESOLVED (2026-06-26, C8 session 25) — **#2, user-delegated**
+**Surfaced by:** C8 drafting. **Blocks:** FR-8.REG.001/003/004/005, FR-8.SCO.001/003, FR-8.PLAN.004. **Why it
+matters:** an agent's `memory_scope` + `tools_allowed` are **capability grants** — widening them changes what the
+agent may see and do (#2). Editing them should be tighter than tuning a description. **Options:** (a) **split by
+authority** — `memory_scope`/`tools_allowed`/`enabled` changes = **Super Admin only** (mirrors C4 OD-049
+principles-are-tighter); `description`/routing-weight tuning = Super Admin + Admin; mandatory `change_reason` + audit
+on every change; (b) Super Admin + Admin for all (like general prompt editing); (c) Super Admin only for everything.
+**✅ Resolution → (a)** (delegated, accepted rec). Homed in REG.004 (capability changes flagged) + the permission
+notes across REG/SCO/PLAN FRs. *(New permission node implied — to wire at C1 reconciliation: `PERM-agent.edit_capability`
+Super-Admin-only vs `PERM-agent.edit_routing` Admin-allowed.)*
+
+## OD-081 — Per-agent `memory_scope` enforcement wiring 🟢 RESOLVED (2026-06-26, C8 session 25 — change-control to C5+C2) — **#2, surfaced by the C8 gate**
+**Surfaced by:** the C8 verification gate (quality finding H1), 2026-06-26. **Blocked `Ready` on:** FR-8.SCO.001,
+FR-8.SCO.003, FR-8.ORC.008. **Why it mattered:** C8 defines a per-agent `memory_scope` matrix (the SCO area) and
+asserts it is enforced as least-privilege. But the gate traced the only retrieval-into-envelope mechanism — **C5
+FR-5.ASM.006**, which invokes the **C2 read flow (FR-2.RET.004)** filtered by *task clearance* + *task entities* —
+and found **no per-agent scope filter**: nothing applied "which agent is running" at retrieval. So the Comms Agent's
+"semantic for brand guides only" was not actually narrower than the Client Agent's; clearance still held (so
+Restricted was safe), but the *agent-level* least-privilege (#2) was unwired. Most acute for the **orchestrator**,
+which runs `service_role` (RLS-bypass) and is narrowed *only* by this scope. **Options:** (a) **amend C5 FR-5.ASM.006
++ C2 FR-2.RET.004 (change-control) to accept and apply an agent-scope predicate** alongside clearance + entities; (b)
+post-retrieval filter only (weaker — over-fetches then drops, more cost + a brief in-memory exposure); (c) accept
+clearance-only, downgrade SCO to advisory (rejected — abandons an agent-level #2 boundary the design intends, L3479).
+**✅ Resolution → (a)** (delegated, accepted rec). **Applied this session via change-control** (mirrors C7's in-session
+C5 cost-seam fix): **+AC-5.ASM.006.2** (the harness passes the running agent's `memory_scope` into the C2 read flow;
+**fails closed** if the predicate can't be applied) and **+AC-2.RET.004.2** (the C2 read flow drops out-of-agent-scope
+candidates before ranking — a narrowing *within* clearance, never a widening). Both dated change-control, no prior AC
+altered. C8 SCO FRs are now genuinely enforceable, not asserted-only.
+
 ---
 
-> Next OD number: OD-075.
+> Next OD number: OD-082.

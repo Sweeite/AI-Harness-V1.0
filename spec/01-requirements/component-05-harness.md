@@ -497,6 +497,12 @@ consumes **C2 FR-2.RET.*, FR-1.CLR.006**.
 - **AC-5.ASM.006.1** — *Given* a task with entities in scope, *When* assembly runs, *Then* the C2 read flow
   populates `memory_retrieved` (clearance already enforced by C2 before ranking); no above-clearance memory is
   injected (consumes C4 AC-4.INJ.003.3).
+- **AC-5.ASM.006.2** — *(Change-control 2026-06-26, C8 session 25 — OD-081 / C8 H1.)* *Given* a step run by a
+  specific agent, *When* the harness invokes the C2 read flow, *Then* it passes that agent's `memory_scope`
+  (C8 FR-8.SCO.001) as an **additional retrieval predicate** alongside task clearance + entities; if the predicate
+  cannot be applied, retrieval **fails closed** (returns nothing) rather than widening to the clearance-only set —
+  realising C8's per-agent least-privilege (#2). *(No prior AC changed; this adds the agent-scope consumer the C8
+  SCO area depends on.)*
 
 **FR-5.ASM.007 — Per-step execution order** · *Approved*
 Each task-graph step executes in the order **anomaly check → tool read → AI call → tool write → memory write**

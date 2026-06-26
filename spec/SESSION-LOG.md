@@ -5,6 +5,92 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 25 — 2026-06-26 — COMPONENT 8 (AGENT DESIGN) DRAFTED, VERIFIED & APPROVED — "who does the work"
+
+Ninth Phase-1 component, the **routing + agent-definition layer**. Output: `spec/01-requirements/component-08-agent-design.md`
+(**37 FRs, all Approved**), `system-map/08-agent-design.md`, 37 matrix rows, OD-075…OD-081 logged+resolved, feasibility
+block S (AF-121…AF-126), OOS-030. Pattern-matched the C0–C7 loop end-to-end in one session.
+
+**C8 = "who does the work"** (vs C5 what makes it run). Area codes: ORC ×8 · REG ×6 · SPC ×6 · SCO ×3 · PLAN ×4 ·
+HLTH ×4 · LRN ×3 · COST ×3. C8 owns the **orchestrator + 7-step description-driven routing**, the **`agents`
+registry** (data-driven, versioned, auto-discovered), the **8 specialist definitions** + their hard limits,
+**per-agent memory scoping**, **per-step failure-mode ASSIGNMENT** (C5 executes), **agent-health / drift /
+dead-agent metric PRODUCTION** (flag-never-auto-correct), **orchestrator learning + result caching**, and
+**cost-routing by complexity** + the confidence dial.
+
+**Scope call set at entry: routing + definitions + metric-production now; execution / surfaces / healing stay
+seamed.** A large fraction of the design section (L3371–3649) is already owned by Approved components — the context
+envelope + retry/skip/halt execution + parallel/warm-up/checkpoints (C5), self-healing mechanisms (C2/C3/C5), the
+dashboards (C7 + Phase 3), suggestion generation (C9), cost metering/enforcement (C7/C6), prompt content (C4). C8
+**produces signals**; their home components surface/enforce/act. This kept C8 at 37 FRs and mirrors C6's "seam, don't
+absorb" + C7's "backbone now, surfaces → Phase 3."
+
+**Drafting:** an Explore subagent decomposed L3371–3649 + the cross-cut sites (checklist L321–335, `agents_config`
+L945–965, failure-map drift/dead-agent rows L2845–2847, observability intervals L3120–3128/L3210–3220, orchestrator
+own Layer 1 L2390) into ~112 intents pre-classified C8-OWN vs SEAM→Cx. Read the primary section directly to ground
+the routing/registry/scoping cites. **Carried in OD-048's deferral** — `agents.system_prompt` reconciled here.
+
+**7 ODs logged then resolved (OD-075…OD-081), 3 user-delegated #1/#2/#3:** **OD-076 (#1)** agent result cache →
+scope-aware + time-bounded invalidation (write-triggered by the Memory Agent commit, miss-on-uncertainty — never a
+stale hit). **OD-077 (#3)** low-confidence clarification → tracked + escalating (reuse C5 AC-5.QUE.005.2), never
+silent park/auto-proceed. **OD-080 (#2)** registry edits → split by authority: capability grants
+(memory_scope/tools_allowed/enabled) = Super Admin only; description/weight tuning = Super Admin + Admin. Plus
+OD-075 (drop `system_prompt`, closes OD-048), OD-078 (drift/dead-agent flag-only, never auto-disable), OD-079 (seed
+roster at provisioning). **All delegated** ("accept all my recommendations"). **OD-081 (#2)** was raised *by the
+gate* — see below.
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass CLEAN** — every intent L3371–3649 + cross-cut sites maps or is correctly seamed; 5/6
+  traps PASS, the 6th (citations) clean in spot-check. **Caught a real contradiction:** the design's
+  `agents.client_slug` column contradicts **ADR-001 §3** (Silo model deletes `client_slug` from app tables) — C8
+  was mis-citing ADR-001 §3 to *keep* it. **Dropped the column**, mirroring C7 OD-067; AC-8.REG.001.3 rewritten.
+  Plus a dead citation `FR-2.RST.003` → `FR-2.RET.006`/`C1 FR-1.RST.003`, and `FR-5.TRG.*` slow-loop → `FR-5.LOP.001`.
+- **Quality/failure pass — 10 findings (3 HIGH, 4 MED, 3 LOW), ALL reconciled.** **H1 (the structural hole):** the
+  per-agent `memory_scope` matrix (the whole SCO area) had **NO enforcement consumer** — C2 enforces clearance/RLS,
+  C5 FR-5.ASM.006 invokes it with task-clearance + task-entities, but nothing applied "which agent is running" at
+  retrieval (#2 unwired, most acute for the `service_role` orchestrator narrowed by *nothing*). → **OD-081 resolved +
+  applied via change-control** (the C7 in-session-fix precedent): **+AC-5.ASM.006.2** (harness passes the agent's
+  `memory_scope` into the C2 read, **fails closed**) + **+AC-2.RET.004.2** (C2 drops out-of-agent-scope candidates
+  before ranking, narrow-within-clearance); SCO.001 rewritten as a real retrieval filter (+AC-8.SCO.001.3
+  fail-closed). **H2** orchestrator crash mid-route (dequeue→plan-persist) → +AC-8.ORC.001.3 idempotent re-route,
+  never dequeued-but-unplanned. **H3** metric-producer silent stall → +AC-8.HLTH.004.2 producer liveness/heartbeat
+  for HLTH.001/003 + LRN.002 (mirrors HLTH.002.2 + C5 AC-5.JOB.006.2). MED/LOW: +AC-8.LRN.003.2/.3 (write-triggered
+  cache invalidation + miss-on-uncertainty, M4), ORC.008 service_role note (M5), +AC-8.SPC.003.3/.004.3 +
+  AC-8.REG.006.3 (Comms/Finance tool-grant reject-at-write + positive seed check, M6), C6 cost-ladder carry-forward
+  kept tracked (M7), +AC-8.ORC.007.2 secondary sink (L8), +AC-8.REG.005.3 warn-at-disable-last-agent (L9),
+  +AC-8.PLAN.002.2 halt-escalate staleness (L10). Meta: C8 upholds the three non-negotiables; the biggest residual
+  (H1) is now wired, not asserted.
+
+**Sign-off:** user-authorized ("Sign off — Approve C8"; OD resolution delegated). 37 FRs `Approved`. **No build-time
+viability gate holds any C8 FR** — AF-121…126 gate the routing/detection/cache/learning *accuracy claims*, not the
+FR machinery (gate analog of C4 AF-111 / C6 block-Q / C7 block-R).
+
+**Files changed:** `component-08-agent-design.md` (new, Approved); `component-05-harness.md` (+AC-5.ASM.006.2,
+change-control OD-081); `component-02-memory.md` (+AC-2.RET.004.2, change-control OD-081); `open-decisions.md`
+(OD-075…081 → 🟢; next OD-082); `feasibility-register.md` (block S AF-121…126; next AF-127); `out-of-scope.md`
+(OOS-030; next OOS-031); `traceability-matrix.csv` (37 C8 rows); `glossary.md` (+7 terms — agent registry, memory
+scope, routing/confidence score, drift/dead-agent detection, agent result cache, execution-plan version);
+`system-map/08-agent-design.md` (new); `system-map/README.md` (08 ✅ built); `README.md` (status + Phase-1 row); this log.
+
+**Carry-forwards / housekeeping:** (1) The **C6 cost-ladder enforcement FR** is still owed (OD-068) — C8 feeds it
+(COST.003) but the throttle/kill enforcer doesn't exist; action when C6 is next touched. (2) AF-121…126 are
+build-time MUST-TEST. (3) The OD-080 permission split implies new nodes `PERM-agent.edit_capability`
+(Super-Admin-only) vs `PERM-agent.edit_routing` (Admin-allowed) — to wire at the C1 reconciliation / Phase-2 config.
+
+**NEXT STEP — component 9 (Proactive Intelligence).** Design-doc section **`## 9. Proactive Intelligence` = L3650+**
+(confirm the end bound + next `##` at decomposition). Pattern-match the C0–C8 loop: Context Manifest → decompose →
+cite → log ODs (next **OD-082**; new AFs from **AF-127**; next OOS **OOS-031**) → resolve → verification gate (2
+zero-context subagents) → sign-off → wire matrix + build `system-map/09-proactive.md`. **C9 is where many C8/C7
+seams land:** the **Insight Agent** (C8 SPC.006 produces its output; C9 owns the proactive/pattern generation), the
+**self-improvement panel suggestions** (C7 reserves the surface + C8 produces the agent-health/drift/routing metrics;
+C9 turns them into surfaced/guided suggestions — "agent X 40% failure", "version 3 outperformed 4", "type Y
+rerouted"), and the **three proactivity modes** (L3658+). **Likely seams out:** the dashboards → C7 + Phase 3;
+enforcement → C6; memory mechanisms → C2; routing metrics → C8 (done). **Carry-ins:** the C6 cost-ladder FR (owed,
+OD-068) · build-time spikes AF-001/002/004 · the C8 block-S AFs · AF-068/116/117. **C9 is NOT a connector
+component** (no research-first gate) unless it introduces a new external sink.
+
+---
+
 ## Session 24 — 2026-06-26 — COMPONENT 7 (OBSERVABILITY) DRAFTED, VERIFIED & APPROVED — "how you know what it's doing"
 
 Eighth Phase-1 component, the **observability backbone**. Output: `spec/01-requirements/component-07-observability.md`
