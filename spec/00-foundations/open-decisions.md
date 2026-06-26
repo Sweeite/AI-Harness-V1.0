@@ -141,7 +141,19 @@ Storage holds only regenerable offboarding exports). DR is backup-restore-with-d
 exposes the health fields), AF-071 (backup region / AU residency — unconfirmed in primary docs), AF-072
 (**hourly** off-platform dump completes in-window at scale — gates the default cadence). See ADR-008.
 
-## OD-010 — Compensation / rollback for partially-completed task chains 🔴
+## OD-010 — Compensation / rollback for partially-completed task chains 🟢 RESOLVED (2026-06-26, C6 session 23)
+**✅ Resolution (2026-06-26, C6 Guardrails — operator delegated):** a refinement of option **(a) + (c)**, NOT
+saga-style auto-compensation. The exposure is **narrowed by three already-locked controls**: prefer-reversible +
+approval gates make irreversible external side effects rare and human-gated (FR-6.APR.002, C5 OD-056); C5
+quarantine **retains work-in-progress** (AC-5.ASM.005.1); idempotent resume makes re-run safe (C5 FR-5.GRP.003).
+The residual — a chain that applied a *reversible* external write at step N then halts at N+k — is handled by:
+on halt, C6 **records the already-applied side effects on the flagged task and queues an explicit, human-visible
+compensation/cleanup task** (option (c)), durably (C5 AC-5.ASM.009.2). **No automatic rollback of an external
+side effect** — auto-compensation is itself an autonomous external action (#2), so it is rejected (option (b)
+rejected). An *irreversible* applied effect is surfaced as **non-compensable** with an explicit operator note
+(no false "undo" impression). Homed in **FR-6.ESC.003 (+AC-6.ESC.003.2/.3)**. Promote to an ADR only if it
+proves cross-cutting beyond C5/C6. *(Original entry retained below.)*
+
 **Why it matters (surfaced by the "what makes it great" audit):** a task graph can act on the
 outside world mid-chain (e.g. update the CRM at step 7) and then halt at a later step. The current
 failure model is retry / skip / halt-escalate + idempotent re-run — but there is **no defined story
@@ -757,7 +769,20 @@ input) carries the residual build-time verification, shared with C3 FR-3.TRIG.00
 
 ---
 
-## OD-047 — Review the seven hard limits: right set, and right rigidity? 🟡 OPEN (flagged 2026-06-25, review at C6 Guardrails)
+## OD-047 — Review the seven hard limits: right set, and right rigidity? 🟢 RESOLVED (2026-06-26, C6 session 23)
+**✅ Resolution (2026-06-26, C6 Guardrails — operator delegated "what do you suggest"):** **Keep the seven as
+absolute, strict-by-default; do not tier-gate or remove any before the AF-068 red-team.** (a) **Too-strict** is
+handled *without* weakening a limit — every limit is "never **autonomously** X"; legitimate low-risk automation
+flows through the **approval-gate** layer (a human-approved action is not autonomous), so the limit is never
+tripped. (b) **Too-lax** is handled by **coverage via approval-gates + rate-limits, not new absolute limits** —
+bulk export, mass memory-delete, public/external posting, connector-mediated spend, destructive config change
+route to **hard-approval (FR-6.APR.002)** and/or **rate caps (FR-6.RTL.001)**; the sub-question "promote any of
+these to an absolute limit?" is **CLOSED → gate, don't promote** (they keep a legitimate human-authorized path an
+absolute limit would forbid). (c) **Enforceability** is **not yet proven** — it rests on **AF-068** (the
+containment red-team); the seven stay the safe default *because* enforceability is unproven; do not relax before
+AF-068. Any change to the set/rigidity goes through change-control (ADR-007 + FR-3.ACT.002, both Approved). Homed
+in **FR-6.HRD.001/003/004**. *(Original flag retained below.)*
+
 **Surfaced by:** operator, 2026-06-25. **Touches locked decisions** (ADR-007 + FR-3.ACT.002, both Approved)
 → any change goes through change-control.
 **The seven (code-enforced, no role/config/prompt override — FR-3.ACT.002, design L2053–2066):** never
@@ -1012,4 +1037,74 @@ flow into the next.)*
 
 ---
 
-> Next OD number: OD-060.
+## OD-060 — Hard-limit override posture: is a hard-limit hit ever human-overridable? 🟢 RESOLVED (2026-06-26, C6 session 23)
+**Surfaced by:** Component 6 (Guardrails) drafting, 2026-06-26. Blocks **FR-6.HRD.003**. **#2-touching** — surfaced
+to the operator, who delegated ("what do you suggest").
+**Why it matters:** L2066 says no role/instruction/config can override a hard limit; L2782 says hard *approval*
+blocks until a human approves. If the approval queue exposes "approve" on a **hard-limit** violation the same way
+it does for an approval-gate flag, the absolute boundary becomes human-overridable — collapsing #2.
+**✅ Resolution → (a):** **hard limit = block + log + alert, with NO approve/override affordance anywhere.** The
+queue's approve/reject/modify apply only to approval-gate, anomaly, and injection flags — never to a `hard_limit`
+event (the `status→approved` transition is invalid for type `hard_limit`). Legitimate "the client wants this
+automation" cases are served by the **approval-gate** layer (a human approves the *specific* action), not by
+weakening the autonomous prohibition. Pairs with OD-047. Homed in FR-6.HRD.003 (+ AC-6.HRD.003.2, AC-6.LOG.001.2).
+
+## OD-061 — Failure-mode-map ownership / scope 🟢 RESOLVED (2026-06-26, C6 session 23)
+**Surfaced by:** Component 6 drafting, 2026-06-26. Blocks **FR-6.FMM.001**. Delegated.
+**Why it matters:** the failure-mode map (L2821–2862) lists 26 failure modes across task/memory/tool/agent/system.
+Read literally, C6 would re-implement memory health scans, connector health, loop heartbeats, orchestrator
+confidence logging — usurping C2/C3/C5/C8 and ballooning C6.
+**✅ Resolution → (a):** the map is a **cross-component catalogue** — each row's *detection* belongs to its home
+component and its *alert path* is C7. C6 owns only (i) the **guardrail-class responses** (hard-limit / injection /
+anomaly / rate-limit / approval-abandonment) and (ii) the **no-silent-failure invariant** (#3). Homed in
+FR-6.FMM.001.
+
+## OD-062 — Rate-limit guardrail ownership split 🟢 RESOLVED (2026-06-26, C6 session 23)
+**Surfaced by:** Component 6 drafting, 2026-06-26. Blocks **FR-6.RTL.002**. Delegated.
+**Why it matters:** the five caps (L2811–2816) overlap existing owners — `memory_writes_per_minute` is C2/ADR-004,
+concurrent-tasks + retries-to-DLQ are C5, tool-writes + external-comms are C6/C3.
+**✅ Resolution → (a):** C6 **frames all five as guardrails** (configurable, never-unlimited, breach →
+`guardrail_log` + ladder) and **delegates the enforcement mechanism** to the home owner. C6 owns the policy + the
+breach response; it does not re-implement existing counters. Homed in FR-6.RTL.001/002/003.
+
+## OD-063 — Anomaly → severity / approval-tier mapping 🟢 RESOLVED (2026-06-26, C6 session 23)
+**Surfaced by:** Component 6 drafting, 2026-06-26. Blocks **FR-6.ANM.003**. Delegated.
+**Why it matters:** L2791–2803 defines five anomaly checks but never says what an anomaly *does* — flag only, or
+block? Per ADR-007 detection-as-signal, it must not autonomously hard-gate.
+**✅ Resolution → (a):** an anomaly **flags + routes to human review (the soft path) by default**, with a
+per-anomaly, per-deployment **configurable severity** that may escalate a specific anomaly to hard-approval. No
+anomaly autonomously blocks-and-acts. Homed in FR-6.ANM.003.
+
+## OD-064 — Soft-approval auto-execute-on-inaction posture 🟢 RESOLVED (2026-06-26, C6 session 23)
+**Surfaced by:** Component 6 drafting, 2026-06-26. Blocks **FR-6.APR.003**. **#2-adjacent** — surfaced to the
+operator, who delegated.
+**Why it matters:** soft approval "executes after X minutes unless rejected" (L2780) = human **inaction →
+auto-execute**; for an irreversible action that is a #2 exposure, and must reconcile with C5 OD-056 (no
+irreversible action auto-executes).
+**✅ Resolution → (a):** soft-tier auto-execute-on-timeout applies **only to reversible actions**; anything
+irreversible / external-communication / financial / Confidential / Restricted is **hard-tier by definition**
+(L2783–2784) and never auto-executes on inaction. Bounded by the OD-056 no-irreversible-outrun rule. Homed in
+FR-6.APR.003.
+
+## OD-065 — `guardrail_log` relationship to `access_audit` (C1) + `event_log` (C7) + completeness 🟢 RESOLVED (2026-06-26, C6 session 23)
+**Surfaced by:** Component 6 drafting, 2026-06-26. Blocks **FR-6.LOG.001/003**. Delegated.
+**Why it matters:** three append-only sinks now exist — `access_audit` (C1/OD-024), `event_log` (C7),
+`guardrail_log` (C6). Their boundaries + ownership of view/retention must be crisp or events fall between them (#3).
+**✅ Resolution → (a):** `guardrail_log` is the **distinct, append-only security-event store** for all five
+guardrail types; it does **not** duplicate `access_audit` or `event_log`. **C6 owns write-completeness** (every
+event of all five types produces a row, never silent); **C7 owns the dedicated view, retention, tamper-evidence,
+and export mechanism** (L2902). `client_slug` is label-only. Homed in FR-6.LOG.001/003/004.
+
+## OD-066 — Semantic-scan default + quarantine-when-semantic-off 🟢 RESOLVED (2026-06-26, C6 session 23)
+**Surfaced by:** Component 6 drafting, 2026-06-26. Blocks **FR-6.INJ.002/003/006**. Delegated.
+**Why it matters:** ADR-007 ships the semantic-similarity scan **off by default**; the design's step-4 quarantine
+combines "pattern match + semantic similarity" — so if semantic is off, does quarantine still function?
+**✅ Resolution → (a):** the **deterministic regex layer is always-on** and can **quarantine on a high-confidence
+literal match alone**; the **semantic scan is an additive signal** that, when enabled, raises the combined score
+toward the quarantine threshold. With semantic off, the regex layer still detects, logs, boundary-wraps, and
+quarantines high-confidence literals — never undefended; the semantic scan only *widens* coverage. Thresholds
+remain signal knobs (ADR-007). Homed in FR-6.INJ.002/003/006.
+
+---
+
+> Next OD number: OD-067.

@@ -360,12 +360,36 @@ verification gate (M4). Next AF number: **AF-116**.
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-116
+## Block Q — Component-6 (Guardrails), 2026-06-26
+
+**AF-116 — Behavioral anomaly-detection accuracy (EVAL, build-time).** FR-6.ANM.002 specs five anomaly checks;
+three of them — **volume** ("unusually high number of actions"), **scope** ("expanded significantly beyond the
+trigger"), and **sentiment** ("unusually negative or urgent") — rest on judgments with no DOCS-provable
+threshold. The unproven assumption: the checks fire on real anomalies without a false-positive rate that buries
+reviewers (alert fatigue → #3 in practice) or a false-negative rate that misses the runaway they exist to catch
+(#2). **Method:** EVAL — measure per-anomaly precision/recall against a labelled set on a runnable deployment;
+tune the FR-6.ANM.004 thresholds + the FR-6.ANM.005 baselines. **Relied on by:** FR-6.ANM.002/003/004/005. Does
+**not** hold an FR from Approved-on-paper (the machinery is sound); it gates the *accuracy claim*. **Surfaced
+by:** C6 drafting.
+
+**AF-117 — Injection known-pattern library coverage (EVAL, build-time).** FR-6.INJ.002 lists ~10 literal regex
+patterns and FR-6.INJ.003's semantic scan compares to "a library of known injection embeddings." The unproven
+assumption: the pattern/embedding library has **enough coverage** to catch real-world injections (and a tractable
+update/versioning process, AC-6.INJ.002.2) without so many false positives that legitimate tool content is
+constantly quarantined. Pairs with **AF-068** (the containment red-team is the *enforcement* proof; AF-117 is the
+*detection-signal-quality* proof — and per ADR-007 detection is only a signal, so a library gap degrades the
+signal, it does not breach containment). **Method:** EVAL — run the AF-068 red-team payloads + a benign corpus
+through the pipeline; measure detect/quarantine precision-recall. **Relied on by:** FR-6.INJ.002/003/005/006.
+Gates the *detection-quality claim*, not the FR machinery. **Surfaced by:** C6 drafting. Next AF number: **AF-118**.
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-118
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
 > AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**; **Component-5
-> block P uses AF-112–115**).
+> block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

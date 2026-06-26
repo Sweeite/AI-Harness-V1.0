@@ -5,6 +5,94 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 23 — 2026-06-26 — COMPONENT 6 (GUARDRAILS) DRAFTED, VERIFIED & APPROVED — "what stops it doing something catastrophic"
+
+Seventh Phase-1 component, the **enforcement layer** ("the code half" of system safety). Output:
+`spec/01-requirements/component-06-guardrails.md` (**35 FRs, all Approved**), `system-map/06-guardrails.md`, 35
+matrix rows, OD-060…OD-066 logged+resolved + carry-forwards **OD-047** and **OD-010** resolved, feasibility
+block Q (AF-116…AF-117). Pattern-matched the C0–C5 loop end-to-end in one session.
+
+**C6 = "what stops it doing something catastrophic"** (vs C5 what makes it run). Area codes: HRD ×4 · APR ×6 ·
+ANM ×5 · RTL ×3 · ESC ×4 · INJ ×6 · LOG ×4 · OPT ×2 · FMM ×1. C6 owns the code-side enforcement of the four
+guardrail layers (hard limits · approval gates · anomaly detection · rate limits), the escalation/flagged
+workflow, the 4-step injection sanitization pipeline, the `guardrail_log`, and the optimisations. **ADR-007 is the
+spine** (containment-first; detection-as-signal; semantic scan off-by-default; quarantine retains-not-discards;
+0.85/0.95 are signal knobs not safety dials).
+
+**Two scoping calls set up front (the architectural judgment):** (1) **the failure-mode map (L2821–2862) stays
+SEAMED, not absorbed** — it's a cross-component catalogue; each row's detection lives in its home component
+(C2/C3/C5/C8) + alert path is C7; C6 owns only the guardrail-class responses + the no-silent invariant (OD-061).
+This kept C6 at 35 FRs instead of ballooning to 60+ and usurping C2/C3/C5/C8. (2) **hard limits are the
+un-overridable layer, kept distinct from approval gates** (which ARE human-overridable) — L2066 vs L2782.
+
+**6 new ODs + 2 carry-forwards resolved (OD-060…066 + OD-047 + OD-010):** **OD-047** (carry-forward, operator's
+C3 flag) → **keep the seven hard limits absolute; gate-don't-promote coverage gaps** (bulk export / mass-delete /
+connector spend route to hard-approval + rate caps, not new absolute limits — they keep a legitimate
+human-authorized path); enforceability still gated on **AF-068**. **OD-060** (#2) → hard-limit hit = block+log+
+alert, **no approve affordance** (the `status→approved` transition is invalid for `hard_limit`). **OD-064** (#2) →
+soft-approval auto-executes **reversible-only** (irreversible is hard-tier by definition, reconciling C5 OD-056).
+**OD-010** (#2, carry-forward) → **no auto-rollback** of external side effects (auto-compensation is itself an
+autonomous action); instead show already-applied effects at review + queue a **human-visible cleanup task**;
+irreversible effects surfaced as non-compensable. OD-061 (failure-map scope), OD-062 (rate-limit ownership split),
+OD-063 (anomaly-as-signal severity), OD-065 (guardrail_log vs access_audit/event_log), OD-066 (semantic-off +
+regex-quarantine) delegated to recommendation. **The four #2-touching (047/060/064/010) were surfaced to the
+operator, who delegated** ("what do you suggest").
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass CLEAN** — zero orphans (all L2746–3030 + the L2053–2066 / L2976–2980 cross-cuts map
+  or are correctly seamed), no contradictions with ADR-007/003/004/006, glossary, or consumed C0/C1/C3/C4/C5 FRs;
+  **all 6 traps PASS** (`client_slug` label-only · C6 never usurps C2/C3/C5/C8 detection — the failure-map scope ·
+  hard-limit-not-overridable kept distinct · semantic-scan off-by-default + thresholds are signal knobs +
+  quarantine retains · anomaly-as-signal · 12 citations spot-checked, no miscites).
+- **Quality/failure pass found 12 findings (3 HIGH, 6 MED, 3 LOW), ALL reconciled in-file.** The reviewer's
+  meta-finding: the posture-level safety logic was already sound; the real risk was **mechanism wiring** — a
+  guardrail correctly designed but never run, or failing open. The 3 HIGH closed exactly those: **+AC-6.INJ.001.2**
+  (the injection pipeline's named harness call site between tool-read and AI-call + a C5 step-order
+  reconciliation note — H1, the silent-bypass seam); **+AC-6.FMM.001.3** (a guardrail check that **itself errors**
+  fails CLOSED — the missing #3 invariant, H2); **+AC-6.LOG.003.3** (a `guardrail_log` write-failure is
+  fail-closed — the block holds even if the row fails, never rolls back into the action proceeding — H3). MED/LOW:
+  +AC-6.APR.005.3 (no self-approval at the human tier — initiator ≠ approver, M1), +AC-6.ESC.001.3 (multi-fire
+  precedence — hard_limit dominates, M2), manifest tightened (mid-task re-check mechanism is C5 FR-5.ASM.005, M3),
+  +AC-6.ESC.004.3 (every wait-point has a named staleness owner, M4), +AC-6.INJ.006.4 (quarantine-review
+  staleness, M5), +AC-6.OPT.001.2 (un-actioned candidate persists, M6), +AC-6.LOG.001.3 (`pending` disambiguation,
+  L1), AC-6.RTL.001.1 meaningful-ceiling clause (L2), OD-047 sub-question CLOSED so no open sub-question points at
+  an Approved FR (L3). Confirmed great-tier: ADR-007 reconciliations faithful, hard-limit-vs-approval split handled
+  at three layers (FR + AC + schema-status), failure-map scope discipline, OD-010's no-auto-rollback care.
+
+**Sign-off:** user-authorized (delegated, "what do you suggest" on all four #2-touching ODs). 35 FRs `Approved`.
+**No build-time viability gate holds any C6 FR** — AF-068 gates the *enforceability claim* of the hard limits
+(HRD.001/OD-047), AF-116 the anomaly-accuracy claim, AF-117 the injection-library-coverage claim (the gate analog
+of C4's AF-111 / C5's block-P).
+
+**Files changed:** `component-06-guardrails.md` (new, Approved); `open-decisions.md` (OD-047 + OD-010 → 🟢,
+OD-060…066 added → 🟢; next OD-067); `feasibility-register.md` (block Q AF-116…117; next AF-118);
+`traceability-matrix.csv` (35 C6 rows); `glossary.md` (+7 terms — approval tier, anomaly detection, guardrail_log,
+escalation timeout, contextual approval routing, quarantine, flagged); `system-map/06-guardrails.md` (new);
+`system-map/README.md` (06 ✅ built); `README.md` (status table + Phase-1 row); this log.
+
+**Carry-forward / housekeeping:** (1) **C5 step-order reconciliation (INJ.001.2)** — C5 FR-5.ASM.007's step order
+should name the injection-sanitization step explicitly (it currently names only the anomaly check); raised as a
+C5 change-control note, to action when convenient (does not block C7). (2) The self-hosted-Inngest deferral
+(C5 FR-5.JOB.007) still owes an OOS id at C6/C10 — **deferred to C7/C10** (next OOS = OOS-028); not homed this
+session as C6 didn't touch the Inngest hosting question. (3) AF-068/116/117 are build-time MUST-TEST.
+
+**NEXT STEP — component 7 (Observability).** Design-doc section **`## 7. Observability` = L3031–L3328** (next
+`## The complete system loop` at L3329, then `## 8. Agent Design` at L3371). Pattern-match the C0–C6 loop:
+Context Manifest → decompose → cite → log ODs (next **OD-067**; new AFs from **AF-118**) → resolve → verification
+gate (2 zero-context subagents) → sign-off → wire matrix + build `system-map/07-observability.md`. **C7 is where
+many C5/C6 seams land:** the **event_log** + metrics sinks, **alert delivery** (the dashboard alerts + admin Slack
+that C6 HRD.002/ESC.002 *require* but C6 produces only the event), the **guardrail_log dashboard view + retention
++ tamper-evidence + export mechanism** (C6 LOG.004 owns completeness, C7 owns where it lives), the **cost-ladder
+enforcement** (ADR-003; C5 feeds, C7 enforces), the **management-plane push / backup-health** (ADR-008, ADR-001
+§7), **access_audit retention** (C1 OD-024 seamed retention to C7), the **answer-mode pill rendering** + prompt-
+health signals (C4/C2 seamed to C7/C8). Likely seams out: orchestrator → C8; enforcement → C6 (done). Carry-ins:
+OD-010 (now resolved for C5/C6) · build-time spikes AF-001/002/004 · AF-068/116/117 · the C5 block-P AFs ·
+the management-API field gaps AF-070/071. **C7 is NOT a connector component** (no research-first gate) unless it
+introduces a new external sink (e.g. a metrics/paging vendor) — if it does, that triggers the
+`tool-integration-research.md` gate.
+
+---
+
 ## Session 22 — 2026-06-26 — COMPONENT 5 (AGENT HARNESS) DRAFTED, VERIFIED & APPROVED — "what makes it run"
 
 Sixth Phase-1 component, the **execution layer**. Output: `spec/01-requirements/component-05-harness.md`
