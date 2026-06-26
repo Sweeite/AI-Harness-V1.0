@@ -1,5 +1,13 @@
 # Component 3 — Tool Layer (Connectors)
 
+> **Change-control note (2026-06-26, session 22 — clerical, non-substantive):** this file was authored
+> (sessions 19–20) under a pre-canonical component numbering where Guardrails = "C7" and Observability = "C8".
+> The canonical mapping is **C6 Guardrails · C7 Observability · C8 Agent design** (see `system-map/README.md`).
+> All seam/surface cross-references were relabelled to match (every "C7"→**C6** Guardrails, every Observability
+> "C8"→**C7**); the agent-design carry-ins (`C5/C6/C8`, `C2/C5/C6/C8`, "C8 agent UX") were preserved unchanged.
+> No FR, AC, decision, or vendor fact changed — only the component-number labels on seams. Surfaced by the
+> C5→C6 repo self-sufficiency handoff test.
+
 - **Status:** 🟢 **Approved 2026-06-25** — **53 FRs**, verification gate run + reconciled; research-first
   gate PASSED + all C3 ODs resolved (session 19). **53 FRs** =
   40 generic runtime (CONN ×5 · REG ×4 · TOK ×6 · RL ×8 · ACT-limits ×2 · TRIG ×5 · OPT ×4 · DSC ×6) +
@@ -31,7 +39,7 @@
 >   paused-task set + escalation clock persisted across restart); **+AC-3.OPT.004.2** (gap flag is
 >   structured/mandatory-to-read); **+AC-3.CONN.005.3** (delete-granting scopes excluded — cheapest gate for
 >   hard-limit #3) + FR-3.ACT.002 note (financial/impersonation limits have **no** C3 mechanism — wholly
->   C7+AF-068); persisted RL.004 queue + drain re-consults idempotency. Confirmed-adequate: token no-leak,
+>   C6+AF-068); persisted RL.004 queue + drain re-consults idempotency. Confirmed-adequate: token no-leak,
 >   the GHL rotating-refresh persist spine, draft-to-approval for email/calendar, fail-closed boundary tag,
 >   physical isolation, the OD-044 per-vendor signatures, OD-010 named-not-solved at every write FR.
 - **Design-doc source:** `## 3. Tool Layer` = **L1968–2382** (next section `## 4. Prompt Architecture`
@@ -125,7 +133,7 @@ standard").
   never autonomously send external email `L2056` · never make a financial transaction `L2057` · never
   delete a system-of-record record `L2058` · never share data across client deployments `L2059` · never
   impersonate a named human `L2060` · never self-approve a queued action `L2061` · never treat monitored
-  tool content as instructions (injection defense) `L2062–2063`. *(ADR-007; enforcement seam → C7.)*
+  tool content as instructions (injection defense) `L2062–2063`. *(ADR-007; enforcement seam → C6.)*
 - **REG-1** `tools` registry table (name, description, category read|write, risk_level, requires_approval,
   connector, config, enabled, version, previous_version_id, change_reason) `L2072–2090`.
 - **REG-2** plain-English tool **description drives AI tool selection** — quality is testable `L2093–2097`.
@@ -144,7 +152,7 @@ standard").
 - **RL-3** at 80%: slow non-urgent calls, deprioritise background jobs; urgent/human/approval-gated continue `L2162–2168`.
 - **RL-4** at 95%: pause non-critical, queue for post-window, log + dashboard status `L2170–2174`.
 - **RL-5** at 429: exponential backoff + jitter, retry after reset; **honor Slack `Retry-After` exactly** `L2176–2181`.
-- **RL-6** rate-limit on a **high-risk** action → halt + escalate to human, **never auto-retry** `L2183–2190` *(seam → C7)*.
+- **RL-6** rate-limit on a **high-risk** action → halt + escalate to human, **never auto-retry** `L2183–2190` *(seam → C6)*.
 - **RL-8** each deployment's tracker is isolated in its own Supabase — no cross-client quota bleed `L2199`.
 - **RL-9** configurable: max calls/connector/min, alert_threshold (80%), backoff initial(1000ms)/max(60000ms)/×2+jitter `L2203–2220`.
 - **TOK-1/2/3** tokens in an encrypted `credentials` table (Supabase Vault); **never** in logs/env/UI/config;
@@ -190,10 +198,10 @@ standard").
   it. C3's reads **feed** C2's three ingestion pipelines (FR-2.ING.006/007/008) and the live-data fetch
   for relevance cross-check (FR-2.MNT.011). Boundary-tagging on read (ADR-007) is where C3 hands C2
   untrusted external data.
-- **→ C7 (Guardrails):** approval-gate enforcement, the high-risk rate-limit **halt + escalate**
-  `L2183–2190`, and hard-limit enforcement machinery. C3 *names* the rule; C7 *enforces* the escalation.
-- **→ C8 (Observability):** dashboard health panels `L2195,L2367–2371`, connector alerts `L2373–2379`,
-  and disconnection/reconnection/rate-limit **event logging**. C3 emits; C8 surfaces.
+- **→ C6 (Guardrails):** approval-gate enforcement, the high-risk rate-limit **halt + escalate**
+  `L2183–2190`, and hard-limit enforcement machinery. C3 *names* the rule; C6 *enforces* the escalation.
+- **→ C7 (Observability):** dashboard health panels `L2195,L2367–2371`, connector alerts `L2373–2379`,
+  and disconnection/reconnection/rate-limit **event logging**. C3 emits; C7 surfaces.
 - **→ C0 (Login):** C0 owns inbound **webhook authentication** (HMAC/JWT verify, FR-0.WHK.*); C3 owns the
   connector **trigger infrastructure** that consumes an authenticated webhook. The seam = a verified
   inbound event handed to a connector's payload parser.
@@ -268,10 +276,10 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Branches: `category=read` → read-only path (no mutation, cacheable per FR-3.OPT.002); `category=write` → the higher-risk action path (FR-3.ACT.001) with approval + idempotency obligations.
   - Edge / failure: a tool whose contract is missing a required field is not registrable (FR-3.REG.001 rejects it) — there is no "partially defined" tool.
 - **Data touched:** `DATA-tools` (read).
-- **Permissions:** tool *invocation* runs on the agent path as `service_role` (ADR-006); registry *edits* are Admin/Super-Admin (PERM-tool.manage, homed in C1/C7).
+- **Permissions:** tool *invocation* runs on the agent path as `service_role` (ADR-006); registry *edits* are Admin/Super-Admin (PERM-tool.manage, homed in C1/C6).
 - **Config dependencies:** —
 - **Surfaces:** tool registry admin view (Phase 3).
-- **Observability:** tool selection + invocation logged to `event_log` (C8 surfaces).
+- **Observability:** tool selection + invocation logged to `event_log` (C7 surfaces).
 - **Acceptance criteria:**
   - AC-3.CONN.001.1 — Given a registered tool, When inspected, Then it carries all contract fields (name, description, category, risk_level, requires_approval, connector, scopes, config) with values in their domains.
   - AC-3.CONN.001.2 — Given a `read` tool, When invoked, Then no external mutation occurs; Given a `write` tool, When invoked, Then it traverses the action path (FR-3.ACT.001).
@@ -317,7 +325,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Permissions:** N/A (runtime).
 - **Config dependencies:** —
 - **Surfaces:** N/A.
-- **Observability:** boundary-tagged ingestion volume is observable (C8).
+- **Observability:** boundary-tagged ingestion volume is observable (C7).
 - **Acceptance criteria:**
   - AC-3.CONN.003.1 — Given any read tool returns content, When the runtime forwards it, Then the content carries the external-data boundary tag.
   - AC-3.CONN.003.2 — Given tagging fails, When forwarding is attempted, Then the content is not forwarded and the failure is logged (not silent — #3).
@@ -340,7 +348,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Permissions:** N/A (runtime).
 - **Config dependencies:** —
 - **Surfaces:** N/A.
-- **Observability:** suppressed-duplicate events logged (C8).
+- **Observability:** suppressed-duplicate events logged (C7).
 - **Acceptance criteria:**
   - AC-3.CONN.004.1 — Given a write performed once, When the identical write is retried with the same idempotency key, Then no second external side effect occurs.
   - AC-3.CONN.004.2 — Given a GHL contact create, When invoked, Then it routes through `/contacts/upsert`.
@@ -387,10 +395,10 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Preconditions:** —
 - **Behaviour:**
   - Happy path: every registered tool populates all fields; `category ∈ {read, write}`, `requires_approval` boolean, `enabled` boolean, `connector` references a configured connector.
-  - Branches: `enabled=false` removes the tool from AI selection without deleting its history; `requires_approval=true` forces the action through the approval queue (C7).
+  - Branches: `enabled=false` removes the tool from AI selection without deleting its history; `requires_approval=true` forces the action through the approval queue (C6).
   - Edge / failure: a row missing a required contract field (FR-3.CONN.001) is rejected — no partially-defined tool is registrable.
 - **Data touched:** `DATA-tools` (defined here; SQL in Phase 4).
-- **Permissions:** registry writes = Admin/Super-Admin (PERM-tool.manage, C1/C7); default-deny otherwise.
+- **Permissions:** registry writes = Admin/Super-Admin (PERM-tool.manage, C1/C6); default-deny otherwise.
 - **Config dependencies:** —
 - **Surfaces:** tool registry admin view (Phase 3).
 - **Observability:** —
@@ -416,7 +424,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Permissions:** N/A.
 - **Config dependencies:** CFG-tool_selection_confidence_threshold (FR-3.OPT.001).
 - **Surfaces:** N/A.
-- **Observability:** tool-selection decisions logged (C8) for description-quality review.
+- **Observability:** tool-selection decisions logged (C7) for description-quality review.
 - **Acceptance criteria:**
   - AC-3.REG.002.1 — Given a clearly-described tool and a matching task, When the AI selects, Then it picks that tool.
   - AC-3.REG.002.2 — Given two ambiguous descriptions, When selection confidence is below threshold, Then the AI asks instead of calling.
@@ -439,7 +447,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Permissions:** Admin/Super-Admin (PERM-tool.manage); default-deny.
 - **Config dependencies:** —
 - **Surfaces:** tool version history (Phase 3).
-- **Observability:** version changes audited (C8 / audit).
+- **Observability:** version changes audited (C7 / audit).
 - **Acceptance criteria:**
   - AC-3.REG.003.1 — Given a tool edit, When saved, Then a new version row exists with `previous_version_id` and a non-empty `change_reason`.
   - AC-3.REG.003.2 — Given an edit with empty `change_reason`, When saving, Then it is rejected.
@@ -599,10 +607,10 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: Layers 1+2 (FR-3.TOK.002/003) resolve refreshes without user action; Layer 3 (re-auth) is the rare exception.
   - Branches: per-connector death causes (FR-3.TOK.004) are the expected residual that needs a human.
   - Edge / failure: a connector requiring frequent manual re-auth is a signal surfaced on the health panel for investigation.
-- **Data touched:** refresh-outcome metrics (C8).
+- **Data touched:** refresh-outcome metrics (C7).
 - **Permissions:** N/A.
 - **Config dependencies:** —
-- **Surfaces:** health panel trend (Phase 3 / C8).
+- **Surfaces:** health panel trend (Phase 3 / C7).
 - **Observability:** automatic-vs-manual refresh ratio is a tracked metric.
 - **Acceptance criteria:**
   - AC-3.TOK.006.1 — Given normal operation, When refresh outcomes are measured, Then the automatic-resolution ratio is reported and visible.
@@ -628,7 +636,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** `DATA-rate_limit_tracker` (defined here; SQL Phase 4).
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** —
-- **Surfaces:** rate-limit status on the health panel (Phase 3 / C8).
+- **Surfaces:** rate-limit status on the health panel (Phase 3 / C7).
 - **Observability:** —
 - **Acceptance criteria:**
   - AC-3.RL.001.1 — Given a connector with burst + daily limits, When tracked, Then both windows have tracker rows.
@@ -673,7 +681,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** `DATA-rate_limit_tracker` (read).
 - **Permissions:** runtime.
 - **Config dependencies:** CFG-rate_alert_threshold (0.80).
-- **Surfaces:** dashboard status (C8).
+- **Surfaces:** dashboard status (C7).
 - **Observability:** throttle-engaged event logged + dashboard status.
 - **Acceptance criteria:**
   - AC-3.RL.003.1 — Given usage at 80%, When a background call is queued, Then it is slowed/deferred while an urgent call proceeds.
@@ -695,7 +703,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** `DATA-rate_limit_tracker` (read); a deferred-call queue.
 - **Permissions:** runtime.
 - **Config dependencies:** —
-- **Surfaces:** dashboard rate-limit status (C8).
+- **Surfaces:** dashboard rate-limit status (C7).
 - **Observability:** pause + queued-count logged and surfaced.
 - **Acceptance criteria:**
   - AC-3.RL.004.1 — Given usage at 95%, When a non-critical call arrives, Then it is queued for post-reset and the pause is shown on the dashboard.
@@ -718,7 +726,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** `DATA-rate_limit_tracker` (read reset_at).
 - **Permissions:** runtime.
 - **Config dependencies:** CFG-backoff_initial_ms (1000), CFG-backoff_max_ms (60000), CFG-backoff_multiplier (2 + jitter).
-- **Surfaces:** N/A (status via C8).
+- **Surfaces:** N/A (status via C7).
 - **Observability:** 429 + backoff events logged.
 - **Acceptance criteria:**
   - AC-3.RL.005.1 — Given a Slack 429 with `Retry-After: N`, When retrying, Then the runtime waits exactly N seconds.
@@ -729,26 +737,26 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 
 ### FR-3.RL.006 — A rate-limited high-risk action halts and escalates — never auto-retries
 - **Statement:** The system shall, when a high-risk action is rate-limited, halt it and escalate to a human rather than auto-retrying, because silently retrying a consequential external action is unsafe.
-- **Source:** design-doc-v4.md L2183–2190; ADR-007 (containment); seam → C7
+- **Source:** design-doc-v4.md L2183–2190; ADR-007 (containment); seam → C6
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** A high-risk/approval-gated action that hits a rate limit or 429.
 - **Preconditions:** The action is classified high-risk (FR-3.ACT.001).
 - **Behaviour:**
-  - Happy path: rate-limit on a high-risk write → halt → escalate to a human via the approval/escalation path (C7) with context; no automatic retry.
+  - Happy path: rate-limit on a high-risk write → halt → escalate to a human via the approval/escalation path (C6) with context; no automatic retry.
   - Branches: low-risk/background calls follow the backoff/queue tiers (FR-3.RL.004/005) instead.
   - Edge / failure: the escalation itself must be delivered (loud, not silent — #3); a missed escalation is a defect.
-- **Data touched:** `DATA-rate_limit_tracker` (read); escalation record (C7).
-- **Permissions:** escalation routes to Admin/Super-Admin per C7.
+- **Data touched:** `DATA-rate_limit_tracker` (read); escalation record (C6).
+- **Permissions:** escalation routes to Admin/Super-Admin per C6.
 - **Config dependencies:** —
-- **Surfaces:** approval/escalation queue (C7, Phase 3).
+- **Surfaces:** approval/escalation queue (C6, Phase 3).
 - **Observability:** halt + escalation logged + alerted.
 - **Acceptance criteria:**
   - AC-3.RL.006.1 — Given a high-risk action is rate-limited, When handled, Then it halts and a human escalation is raised — and it is not auto-retried.
   - AC-3.RL.006.2 — Given an action with `risk_level=high` **or any irreversible/billed external side effect** (e.g. a GHL message send), When it is rate-limited or 429s, Then it routes to this halt-and-escalate path and is **excluded** from the FR-3.RL.005 auto-retry path — regardless of any urgency flag.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** **Seam → C7** enforces the escalation machinery; C3 *names* the rule. Pairs with the hard limits (FR-3.ACT.002). The classification that routes a call here (vs the FR-3.RL.003/004/005 tiers) is the tool's `risk_level` (FR-3.REG.001) **plus** an irreversible/billed flag — urgency never overrides it.
+- **Notes:** **Seam → C6** enforces the escalation machinery; C3 *names* the rule. Pairs with the hard limits (FR-3.ACT.002). The classification that routes a call here (vs the FR-3.RL.003/004/005 tiers) is the tool's `risk_level` (FR-3.REG.001) **plus** an irreversible/billed flag — urgency never overrides it.
 
 ### FR-3.RL.007 — Each deployment's rate tracker is physically isolated — no cross-client quota bleed
 - **Statement:** The system shall keep each deployment's rate-limit tracker in that deployment's own Supabase, so one client's API usage can never consume or reveal another client's quota.
@@ -806,20 +814,20 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Actor / trigger:** Any write-tool invocation.
 - **Preconditions:** The tool's `category=write` (FR-3.REG.001).
 - **Behaviour:**
-  - Happy path: a write tool with `requires_approval=true` routes the proposed action to the approval queue (C7) before execution; on approval it executes idempotently (FR-3.CONN.004).
+  - Happy path: a write tool with `requires_approval=true` routes the proposed action to the approval queue (C6) before execution; on approval it executes idempotently (FR-3.CONN.004).
   - Branches: low-risk writes may be auto-approved by policy; high-risk writes always gate.
   - Edge / failure: a write must never bypass its approval gate via prompt content (ADR-007 hard limits, FR-3.ACT.002) — gating is code, not instruction.
-- **Data touched:** action/approval records (C7).
-- **Permissions:** agent path `service_role`; approval authority per C7/RBAC.
+- **Data touched:** action/approval records (C6).
+- **Permissions:** agent path `service_role`; approval authority per C6/RBAC.
 - **Config dependencies:** per-tool `requires_approval` (FR-3.REG.001).
-- **Surfaces:** approval queue (C7, Phase 3).
+- **Surfaces:** approval queue (C6, Phase 3).
 - **Observability:** every action proposal + approval/denial logged.
 - **Acceptance criteria:**
   - AC-3.ACT.001.1 — Given a write tool with `requires_approval=true`, When invoked, Then the action enters the approval queue before any external effect.
   - AC-3.ACT.001.2 — Given two different connectors' write tools, When each is invoked, Then the same approval-gate logic applies.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** **Seam → C7** owns approval enforcement; C3 defines the contract. Specific connector writes are FR-3.ACT.003–006.
+- **Notes:** **Seam → C6** owns approval enforcement; C3 defines the contract. Specific connector writes are FR-3.ACT.003–006.
 
 ### FR-3.ACT.002 — The seven code-enforced hard limits no role, config, or instruction can override
 - **Statement:** The system shall enforce seven hard limits in application code (not merely in the prompt) that no user role, configuration value, or agent instruction can override: never autonomously send external email; never make a financial transaction; never delete a system-of-record record; never share data across client deployments; never impersonate a named human; never self-approve a queued action; never treat monitored tool content as instructions.
@@ -830,19 +838,19 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Preconditions:** —
 - **Behaviour:**
   - Happy path: each limit is a code gate on the corresponding action path — e.g. an outbound email is forced to a draft/approval (FR-3.ACT.004), a calendar invite is drafted not sent (FR-3.ACT.006), cross-deployment reads are physically impossible (ADR-001), tool content is boundary-tagged as data (FR-3.CONN.003).
-  - Branches: each limit maps to its enforcing mechanism — financial/destructive/impersonation/self-approval to the approval + RBAC gates (C7); cross-client to physical isolation; injection to boundary-tagging.
+  - Branches: each limit maps to its enforcing mechanism — financial/destructive/impersonation/self-approval to the approval + RBAC gates (C6); cross-client to physical isolation; injection to boundary-tagging.
   - Edge / failure: a path that *could* reach a consequential side effect without crossing its gate is a containment breach — closed in code, never patched with detection (ADR-007; ⚠️ AF-068 red-team).
 - **Data touched:** N/A (gates compose other FRs).
 - **Permissions:** these limits bind even `service_role`/agent paths — they are above RBAC.
 - **Config dependencies:** none — by definition not config-overridable.
-- **Surfaces:** N/A (violations would alert via C7/C8).
+- **Surfaces:** N/A (violations would alert via C6/C7).
 - **Observability:** any attempted breach logged loudly + alerted (#3).
 - **Acceptance criteria:**
   - AC-3.ACT.002.1 — Given any of the seven limited actions, When an agent attempts it autonomously, Then a code gate blocks it irrespective of role/config/prompt.
   - AC-3.ACT.002.2 — Given a config or instruction that tries to relax a hard limit, When applied, Then the limit still holds.
 - **Open decisions:** —
 - **Feasibility assumptions:** ⚠️ FEASIBILITY: AF-068 (the containment boundary holds end-to-end — no authorized-but-dangerous autonomous path reaches a consequential side effect without hitting a content-ignoring code gate; red-team SPIKE).
-- **Notes:** **Enforcement machinery seam → C7**; C3 *declares* the limits as a contract obligation. This is ADR-007's "controls before gates" at the tool grain. **Per-limit honesty about where it's enforced:** external email → draft (FR-3.ACT.004); calendar → draft (FR-3.ACT.006); cross-client → physical isolation (ADR-001); tool-content-as-instructions → boundary tag (FR-3.CONN.003); destructive delete → *partly* at the scope grant (AC-3.CONN.005.3) + C7. **Two limits have NO C3 mechanism — financial transaction and impersonation rest wholly on C7 enforcement + the AF-068 red-team** (named here so the seam is visible, not silently assumed covered). **⚠️ FLAGGED FOR REVIEW — OD-047 (operator, 2026-06-25):** revisit the *set* (are seven enough?), the *rigidity* (absolute vs tier-gated — too strict could block legitimate automation; too lax could miss bulk-export/mass-delete/public-post), and *enforceability* (AF-068) at **C7**. Strict-by-default holds until then.
+- **Notes:** **Enforcement machinery seam → C6**; C3 *declares* the limits as a contract obligation. This is ADR-007's "controls before gates" at the tool grain. **Per-limit honesty about where it's enforced:** external email → draft (FR-3.ACT.004); calendar → draft (FR-3.ACT.006); cross-client → physical isolation (ADR-001); tool-content-as-instructions → boundary tag (FR-3.CONN.003); destructive delete → *partly* at the scope grant (AC-3.CONN.005.3) + C6. **Two limits have NO C3 mechanism — financial transaction and impersonation rest wholly on C6 enforcement + the AF-068 red-team** (named here so the seam is visible, not silently assumed covered). **⚠️ FLAGGED FOR REVIEW — OD-047 (operator, 2026-06-25):** revisit the *set* (are seven enough?), the *rigidity* (absolute vs tier-gated — too strict could block legitimate automation; too lax could miss bulk-export/mass-delete/public-post), and *enforceability* (AF-068) at **C6**. Strict-by-default holds until then.
 
 ---
 
@@ -863,7 +871,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Permissions:** N/A (runtime).
 - **Config dependencies:** —
 - **Surfaces:** N/A.
-- **Observability:** inbound event volume + parse errors logged (C8).
+- **Observability:** inbound event volume + parse errors logged (C7).
 - **Acceptance criteria:**
   - AC-3.TRIG.001.1 — Given an authenticated inbound event, When received, Then the connector parser normalizes it and passes it to trigger evaluation.
   - AC-3.TRIG.001.2 — Given a malformed payload, When received, Then it is rejected and logged (not silently dropped).
@@ -958,7 +966,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Permissions:** N/A.
 - **Config dependencies:** —
 - **Surfaces:** N/A.
-- **Observability:** cache hit/miss counts (optional, C8).
+- **Observability:** cache hit/miss counts (optional, C7).
 - **Acceptance criteria:**
   - AC-3.OPT.002.1 — Given a repeated identical read in one run, When requested, Then it is served from cache (no second call).
   - AC-3.OPT.002.2 — Given a write, When performed, Then it is never cached or served from cache.
@@ -1002,7 +1010,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** task result + gap annotations.
 - **Permissions:** N/A.
 - **Config dependencies:** —
-- **Surfaces:** task result surface (C8) shows the flagged gap.
+- **Surfaces:** task result surface (C7) shows the flagged gap.
 - **Observability:** missing-tool events logged + surfaced.
 - **Acceptance criteria:**
   - AC-3.OPT.004.1 — Given a missing tool, When a task runs, Then it completes the doable part and flags the skipped part (no hard fail, no silent partial).
@@ -1051,14 +1059,14 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** N/A.
 - **Permissions:** reconnect = Admin/Super-Admin (system-wide); affected user (individual). Default-deny otherwise.
 - **Config dependencies:** —
-- **Surfaces:** disconnection modal/banner (Phase 3 / C8).
+- **Surfaces:** disconnection modal/banner (Phase 3 / C7).
 - **Observability:** surfacing + acknowledgement logged.
 - **Acceptance criteria:**
   - AC-3.DSC.002.1 — Given a system-wide disconnection, When an Admin views the dashboard, Then a non-dismissible modal with reconnect is shown.
   - AC-3.DSC.002.2 — Given the same, When a standard user views, Then a banner (not a modal) is shown.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** **Seam → C8** renders the surfaces; C3 defines the behaviour + authority.
+- **Notes:** **Seam → C7** renders the surfaces; C3 defines the behaviour + authority.
 
 ### FR-3.DSC.003 — Auto-resume paused tasks on reconnect, with an audit trail
 - **Statement:** The system shall, on connector reconnection, automatically resume the tasks paused by the disconnection and record an audit trail of the pause and resume.
@@ -1074,7 +1082,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** paused-task state; audit.
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** —
-- **Surfaces:** task status (C8).
+- **Surfaces:** task status (C7).
 - **Observability:** pause/resume audited.
 - **Acceptance criteria:**
   - AC-3.DSC.003.1 — Given tasks paused by a disconnection, When the connector reconnects, Then they auto-resume and the pause/resume is in the audit trail.
@@ -1098,7 +1106,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** disconnection state + timers.
 - **Permissions:** escalation targets Super Admin.
 - **Config dependencies:** CFG-connector_disconnection_escalation_window (default 24h).
-- **Surfaces:** escalation alert (C8).
+- **Surfaces:** escalation alert (C7).
 - **Observability:** escalation logged + alerted.
 - **Acceptance criteria:**
   - AC-3.DSC.004.1 — Given a disconnection unresolved at the window, When the timer elapses, Then a Super Admin escalation is raised.
@@ -1121,13 +1129,13 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** connector state, `DATA-credentials` (metadata only), `DATA-rate_limit_tracker`.
 - **Permissions:** view = Admin/Super-Admin (RBAC).
 - **Config dependencies:** —
-- **Surfaces:** connector health panel (Phase 3 / C8).
+- **Surfaces:** connector health panel (Phase 3 / C7).
 - **Observability:** —
 - **Acceptance criteria:**
   - AC-3.DSC.005.1 — Given configured connectors, When an Admin opens the health panel, Then status, last-call, token-expiry, and rate headroom are shown without exposing token material.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** **Seam → C8** owns the dashboard rendering; C3 *emits* the health data.
+- **Notes:** **Seam → C7** owns the dashboard rendering; C3 *emits* the health data.
 
 ### FR-3.DSC.006 — Connector alerts: token expiring (<7d), degraded, unresolved
 - **Statement:** The system shall raise connector alerts — refresh-token expiring within 7 days emails the connector owner; a degraded connector triggers the modal; an unresolved disconnection alerts Super Admin — so connector trouble is always seen before it loses knowledge or fails a task.
@@ -1143,14 +1151,14 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** `DATA-credentials` (expiry); alert records.
 - **Permissions:** N/A (system-initiated).
 - **Config dependencies:** CFG-token_expiry_alert_days (default 7).
-- **Surfaces:** email + dashboard alerts (C8).
+- **Surfaces:** email + dashboard alerts (C7).
 - **Observability:** alerts logged.
 - **Acceptance criteria:**
   - AC-3.DSC.006.1 — Given a refresh token expiring within 7 days, When the monitor runs, Then the connector owner is emailed.
   - AC-3.DSC.006.2 — Given an alert delivery failure, When it occurs, Then the failure is surfaced (not silent).
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** **Seam → C8** owns alert delivery; C3 defines the triggers + recipients. Note Slack default `xoxb` is non-expiring (FR-3.TOK.009) so the <7d alert applies to rotating/expiring connectors (GHL, Google, rotation-on Slack).
+- **Notes:** **Seam → C7** owns alert delivery; C3 defines the triggers + recipients. Note Slack default `xoxb` is non-expiring (FR-3.TOK.009) so the <7d alert applies to rotating/expiring connectors (GHL, Google, rotation-on Slack).
 
 ---
 
@@ -1271,7 +1279,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** external GHL records; app-side idempotency ledger.
 - **Permissions:** agent path `service_role`; scopes `contacts.write`, `opportunities.write`, `conversations/message.write` (gohighlevel.md §8 L135).
 - **Config dependencies:** per-tool `requires_approval` (FR-3.REG.001).
-- **Surfaces:** approval queue (C7) for gated writes.
+- **Surfaces:** approval queue (C6) for gated writes.
 - **Observability:** every mutation logged; suppressed duplicates logged (FR-3.CONN.004).
 - **Acceptance criteria:**
   - AC-3.ACT.003.1 — Given a contact write, When performed, Then it uses `/contacts/upsert` and is idempotent on retry.
@@ -1289,13 +1297,13 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Preconditions:** Slack connected (`chat:write`); Gmail send only via approval.
 - **Behaviour:**
   - Happy path (Slack): `chat.postMessage` (channel/text/blocks/thread_ts), with app-side write-dedup on `ts`/key before any retry (slack.md §10 L134).
-  - Happy path (email): an email action produces a **draft routed to the approval queue** (C7); it is never sent autonomously (hard limit FR-3.ACT.002 / L2056). If/when sending is enabled, the least-privilege `gmail.send` scope is used (google-gmail.md §8).
+  - Happy path (email): an email action produces a **draft routed to the approval queue** (C6); it is never sent autonomously (hard limit FR-3.ACT.002 / L2056). If/when sending is enabled, the least-privilege `gmail.send` scope is used (google-gmail.md §8).
   - Branches: a Slack post timing out → app-side dedup prevents a double-post (slack.md §10 L134).
   - Edge / failure: Slack has no idempotency key → dedup is app-side (FR-3.CONN.004); a rate-limited high-risk send halts + escalates (FR-3.RL.006).
-- **Data touched:** external Slack messages; email drafts (approval queue, C7).
+- **Data touched:** external Slack messages; email drafts (approval queue, C6).
 - **Permissions:** agent path `service_role`; Slack `chat:write`; email gated to approval.
 - **Config dependencies:** per-tool `requires_approval`.
-- **Surfaces:** approval queue (C7) for email drafts.
+- **Surfaces:** approval queue (C6) for email drafts.
 - **Observability:** posts + drafts logged; suppressed duplicates logged.
 - **Acceptance criteria:**
   - AC-3.ACT.004.1 — Given an email action, When proposed, Then it becomes an approval-queue draft and is never sent autonomously.
@@ -1318,7 +1326,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Data touched:** external Drive documents (regenerable outputs; golden rule unaffected).
 - **Permissions:** agent path `service_role`; `drive.file`.
 - **Config dependencies:** per-tool `requires_approval`.
-- **Surfaces:** approval queue (C7) for gated writes.
+- **Surfaces:** approval queue (C6) for gated writes.
 - **Observability:** writes logged.
 - **Acceptance criteria:**
   - AC-3.ACT.005.1 — Given a document create retried, When re-attempted with the same key, Then no duplicate file is created.
@@ -1335,13 +1343,13 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
 - **Actor / trigger:** An approved action within a task.
 - **Preconditions:** Calendar connected (`calendar.events`); approval required.
 - **Behaviour:**
-  - Happy path: an invite is drafted to the approval queue (C7); on approval, `events.insert` runs with a client-supplied `id` so a retry returns 409 `duplicate` rather than a second event (google-gmail.md §10 L163).
+  - Happy path: an invite is drafted to the approval queue (C6); on approval, `events.insert` runs with a client-supplied `id` so a retry returns 409 `duplicate` rather than a second event (google-gmail.md §10 L163).
   - Branches: never auto-send — invites always gate (L2045).
   - Edge / failure: Calendar's distributed-id idempotency is "not guaranteed at creation time" → ⚠️ AF-102 (EVAL before trusting 409-dedup as the sole guard); pair with the app-side guard (FR-3.CONN.004).
 - **Data touched:** external calendar events; approval-queue drafts.
 - **Permissions:** agent path `service_role`; `calendar.events`.
 - **Config dependencies:** per-tool `requires_approval` (effectively always true here).
-- **Surfaces:** approval queue (C7).
+- **Surfaces:** approval queue (C6).
 - **Observability:** invite drafts + sends logged.
 - **Acceptance criteria:**
   - AC-3.ACT.006.1 — Given a calendar invite action, When proposed, Then it becomes an approval-queue draft (never auto-sent).

@@ -66,10 +66,20 @@ OD-060); `feasibility-register.md` (block P AF-112…115; next AF-116); `traceab
 `system-map/05-harness.md` (new); `system-map/README.md` (05 ✅ built); `README.md` (status table + Phase-1 row);
 this log. No new OOS (self-hosted Inngest deferral noted on FR-5.JOB.007, to home formally at C6/C10).
 
-**Carry-forward / housekeeping:** **OD-047** (review the seven hard limits) register entry says "Home: C7
-(Guardrails)" but Guardrails is **C6** under the current convention (C6 enforcement · C7 observability · C8
-agent design) — the C5 file uses the correct C6 label; **reconcile the OD-047 entry to C6 when C6 is specced**.
-The self-hosted-Inngest deferral (FR-5.JOB.007) should get an OOS id at C6/C10 (next OOS = OOS-028).
+**Carry-forward / housekeeping:** The self-hosted-Inngest deferral (FR-5.JOB.007) should get an OOS id at
+C6/C10 (next OOS = OOS-028).
+
+**Repo self-sufficiency / handoff test RUN (2026-06-26, end of session 22) — PASS, gaps patched.** A
+zero-context subagent read only the repo (start-of-session order) and confirmed C6 is fully resumable from the
+repo alone: component, design bounds (**L2746–L3030**, next `## 7.` at L3031), the per-component loop, spine
+**ADR-007**, the inbound C5/C3 seams, the carry-forward ODs (047, 010 — both fully written with options+recs),
+and the next counters (**OD-060 / AF-116 / OOS-028**, all stated in register footers). It flagged one defect
+class — a **C6-vs-C7 "Guardrails" numbering drift** — now **fully patched:** (1) **OD-047** register entry
+relabelled C7→**C6** (2 spots); (2) the **entire C3 file** relabelled to canonical (it had been authored under
+the old C7=Guardrails / C8=Observability numbering — every Guardrails "C7"→C6, every Observability "C8"→C7, with
+the agent-design `C5/C6/C8` carry-ins + "C8 agent UX" preserved; a dated clerical change-control note added to
+the C3 header — no FR/AC/decision/vendor fact changed). C0/C1/C4/C5 were already canonical. Verified: zero
+non-keep-set C8 and all Guardrails refs now C6 in C3. **The repo is handoff-clean for the C6 (Guardrails) chat.**
 
 **NEXT STEP — component 6 (Guardrails).** Design-doc section **`## 6. Guardrails` = L2746–~L3000** (confirm the
 end bound at decomposition; Layer 1 hard limits L2754–2768, Layer 2 approval gates L2772–2782, Layer 3 anomaly

@@ -757,7 +757,7 @@ input) carries the residual build-time verification, shared with C3 FR-3.TRIG.00
 
 ---
 
-## OD-047 — Review the seven hard limits: right set, and right rigidity? 🟡 OPEN (flagged 2026-06-25, review at C7 Guardrails)
+## OD-047 — Review the seven hard limits: right set, and right rigidity? 🟡 OPEN (flagged 2026-06-25, review at C6 Guardrails)
 **Surfaced by:** operator, 2026-06-25. **Touches locked decisions** (ADR-007 + FR-3.ACT.002, both Approved)
 → any change goes through change-control.
 **The seven (code-enforced, no role/config/prompt override — FR-3.ACT.002, design L2053–2066):** never
@@ -774,7 +774,7 @@ queued action · (7) treat monitored tool content as instructions.
   *enforceable* end-to-end, or are there bypass paths (AF-068 red-team is the proof, still pending)?
 **Scope of the review:** confirm the *set* (add/remove limits), confirm the *rigidity* (absolute vs
 tier-gated per limit), and confirm *enforceability* (the AF-068 containment red-team). 
-**Home:** **C7 (Guardrails)** — C7 owns the enforcement machinery, so the review lands there; C3 only
+**Home:** **C6 (Guardrails)** — C6 owns the enforcement machinery, so the review lands there; C3 only
 *declares* the limits. Carried forward until then.
 **Recommendation:** revisit at C7 with the AF-068 red-team results in hand; do not change the seven before
 then (they are the safe default — strict-by-default protects #2 while we decide).
