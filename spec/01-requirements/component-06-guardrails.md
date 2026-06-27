@@ -567,6 +567,35 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
   - AC-6.RTL.003.2 — *Given* an irreversible/billed action at its cap, *When* evaluated, *Then* it halts and
     escalates (it is excluded from auto-retry).
 
+#### FR-6.RTL.004 — Cost-ladder enforcement (C7 meters → C6 decides → C5 executes)
+- **Statement:** The system shall **enforce** the ADR-003 cost ladder as a guardrail class: C7 **meters** spend +
+  emits the ladder signal (FR-7.COST.*), C6 **decides** the disposition at each rung — **soft** (alert, work
+  continues) → **throttle** (defer/queue non-critical work, e.g. proactive loops + low-priority tasks) → **hard kill**
+  (stop new consequential spend, flag) — and C5 **executes** the throttle/kill on the run pipeline. A cost-threshold
+  breach is never silent and never auto-overrides a hard limit; an irreversible/billed action at the hard rung routes
+  to halt-and-escalate (consistent with FR-6.RTL.003.2).
+- **Source:** **OD-068** (cost-ladder ownership: C7 meters/signals · C6 decides · C5 executes); **ADR-003**
+  §"Guardrails component" (the cost ladder is a C6 guardrail class); consumes **C7 FR-7.COST.*** (meter + ladder
+  signal), **C5** run pipeline (executes throttle/kill), **C8 FR-8.COST.*** (cost-routing feeds the signal).
+  *(Change-control 2026-06-27, session 27 — the owed cost-ladder enforcement FR carried since C7/OD-068; the rate-
+  limit ladder FR-6.RTL.003 was modelled on the cost ladder but never enforced cost spend itself. Added as the
+  final-Phase-1 debt clear, alongside C10. No prior FR/AC/decision changed.)*
+- **Status:** Approved
+- **Priority:** Must
+- **Actor / trigger:** the cost meter (C7) crossing a configured ladder threshold.
+- **Preconditions:** C7 emits the cost-ladder signal (FR-7.COST.*); the ladder thresholds are config (Phase 2);
+  C5 run pipeline can defer/kill work.
+- **ACs:**
+  - AC-6.RTL.004.1 — *Given* the cost meter crosses the **soft** threshold, *When* the signal fires, *Then* C6
+    raises an alert and work continues (no throttle yet).
+  - AC-6.RTL.004.2 — *Given* the **throttle** threshold, *When* crossed, *Then* C6 directs C5 to defer/queue
+    non-critical work (proactive loops + low-priority tasks first); critical/in-flight consequential work is not
+    silently dropped (it is escalated if it cannot proceed).
+  - AC-6.RTL.004.3 — *Given* the **hard-kill** threshold, *When* crossed, *Then* C6 stops new consequential spend
+    and flags; an irreversible/billed action at this rung halts-and-escalates (FR-6.RTL.003.2). A cost-ladder rung
+    **never** overrides or relaxes a hard limit (FR-6.HRD.*), and **never** silently — every rung transition writes a
+    `guardrail_log` row.
+
 ### ESC — Escalation / flagged workflow
 
 #### FR-6.ESC.001 — Guardrail hit → pause → `flagged`

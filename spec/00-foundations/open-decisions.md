@@ -1119,9 +1119,10 @@ hard-kill ($100) — actions that stop the system. Fuzzy ownership → either a 
 (#1) or legitimate work halts without authority (#2/#3). **✅ Resolution → (a)** (user-decided): **C7 owns the meter +
 the ladder trigger signal; C6 decides + C5 executes** the throttle/kill — grounded in **ADR-003 §"Guardrails
 component" (L181–182)** which makes the cost ladder a C6 guardrail class (sibling to the rate-limit ladder).
-**Carry-forward:** ADR-003 spawned a C6 cost-ladder enforcement FR that **C6 (session 23) did not write**, and C5's
-seam line previously read "C7 enforces" (corrected this session via change-control) — the **owed C6 cost-ladder FR**
-is tracked (session log) for when C6 is next touched.
+**Carry-forward ✅ CLOSED (2026-06-27, session 27):** the owed C6 cost-ladder enforcement FR was written —
+**C6 FR-6.RTL.004** (C7 meters → C6 decides → C5 executes; soft→throttle→hard-kill; never overrides a hard limit;
+every rung writes `guardrail_log`), added via change-control alongside C10 as the final-Phase-1 debt clear. OD-068
+is now fully realised (decision + enforcement FR both exist).
 
 ## OD-069 — Alert escalation: no-response → secondary alert (no silent drop) 🟢 RESOLVED (2026-06-26, C7 session 24)
 **Surfaced by:** C7 drafting. **Blocks:** FR-7.ALR.005. **Delegated.** L3315 names an escalation window but no owner
@@ -1323,6 +1324,68 @@ to the non-client low-risk sub-type — **surfaced, not hidden** (the C9 gate co
 Act). *(New node implied: `PERM-guardrail.edit_autonomy`, Super-Admin-only — to register at C1 reconciliation /
 Phase-2.)* Gated by **AF-068** (containment of the floored set under the new matrix).
 
+## OD-089 — Offboarding hard-deletion partial-failure handling 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — **#2/#3**
+**Surfaced by:** C10 drafting (FR-10.OFF.005). **Why it mattered:** Step 4 deprovisions four systems (Supabase, Railway,
+credentials, OAuth tokens); a mid-sequence failure could leave a half-deprovisioned client (orphaned Supabase / live
+token) — a security + compliance gap, and if reported "complete" a silent #3 failure. **Options:** (a) each sub-step
+idempotent + result-recorded, a failure holds the offboarding in `deletion_failed` + escalation, **never** marked
+complete on partial, **no auto-rollback** of a deprovision (can't un-delete — fix forward); (b) best-effort + log.
+**✅ Resolution → (a)** (delegated; consistent with OD-010 no-auto-rollback + the escalate-don't-abandon pattern).
+Realised in **FR-10.OFF.005**.
+
+## OD-090 — Export integrity as a hard gate before destruction 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — **#1**
+**Surfaced by:** C10 drafting (FR-10.OFF.002/003). **Why it mattered:** destroying a client's data after a corrupt or
+incomplete export is irreversible #1 knowledge loss. **Options:** (a) the export is **verified-complete** (row-count /
+checksum reconciliation) **and** **client-acknowledged** (`export_acknowledged_at`) as a **hard gate** — destruction
+cannot run without both; (b) generate-and-trust. **✅ Resolution → (a)** (delegated). Realised in **FR-10.OFF.002**
+(verify) + **FR-10.OFF.003** (acknowledge) gating **FR-10.OFF.005** (destroy). AF-133 gates export integrity.
+
+## OD-091 — Deployment-freeze enforcement during the retention window 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — **#2/#3**
+**Surfaced by:** C10 drafting (FR-10.OFF.004). **Why it mattered:** "no new data written, no agents run, no loops
+execute" (L4054–4056) is a status *label* with no enforcement consumer — a frozen deployment that keeps running is a
+#2/#3 failure (the C8 OD-081 memory-scope class: a rule with no enforcer). **Options:** (a) C10 sets
+`client_registry.status = frozen`; the **C5 trigger/queue/loop dispatch layer checks it before any dispatch + fails
+closed** (applied via change-control to a C5 AC, mirroring OD-081); (b) leave as a label. **✅ Resolution → (a)**
+(delegated). Realised in **FR-10.OFF.004** + the C5 dispatch-gate amendment; **AF-135** gates freeze-propagation
+completeness. *(C5 change-control AC to be wired at finalization — see carry-forward.)*
+
+## OD-092 — Individual-erasure name-in-content matching: auto vs human-confirm 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — **#1/#2**
+**Surfaced by:** C10 drafting (FR-10.DEL.002). **Why it mattered:** the Step-1 "semantic search for the person's name
+in content" (L3963–3965) is fuzzy — a false negative leaves PII un-erased (#2 compliance), a false positive
+over-deletes legitimate context (#1). **Options:** (a) **deterministic `entity_id` matches auto-action; name-in-content
+matches surfaced for human confirmation**, never auto-deleted/redacted; the sweep is recall-oriented + reviewed; (b)
+auto-redact all matches. **✅ Resolution → (a)** (delegated). Realised in **FR-10.DEL.002/004**; **AF-134** gates
+erasure recall.
+
+## OD-093 — Two-person authorisation: no self-second-authorisation 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — **#2**
+**Surfaced by:** C10 drafting (FR-10.DEL.006). **Why it mattered:** a two-person gate is meaningless if the executor
+can be their own second authoriser. **Options:** (a) the second authoriser must be a **distinct** Admin/Super Admin
+(no self-authorisation, mirrors C6 AC-6.APR.005.3); (b) allow same person twice. **✅ Resolution → (a)** (delegated).
+Realised in **FR-10.DEL.006**.
+
+## OD-094 — Release-train promotion: manual vs automated 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — (process)
+**Surfaced by:** C10 drafting (FR-10.DEP.002); ADR-005 §2 left it "operator action (or automated once trust
+established)". **✅ Resolution:** **manual operator-initiated promotion in v1**; automated promotion deferred until
+trust is established (later config flag). Realised in **FR-10.DEP.002**.
+
+## OD-095 — Version-skew alert threshold defaults 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — (process/#3)
+**Surfaced by:** C10 drafting (FR-10.DEP.004); ADR-005 §3 said "config-tunable" with no defaults. **✅ Resolution:**
+defaults **3 versions behind / 14 days stale**, config-tunable (`deploy_max_version_skew` / `deploy_max_skew_days`).
+Realised in **FR-10.DEP.004**.
+
+## OD-096 — `client_slug` in application tables: label-demotion vs deletion 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated, ADR-grounded) — **#2 (isolation)**
+**Surfaced by:** C10 drafting FR-10.ISO.001 (homing the ADR-001 §3 invariant). **Why it mattered:** **ADR-001 §3**
+(Accepted) says `client_slug` is "**deleted from all application tables**," but prior Approved components reconciled it
+only to "**a label, not an RLS key**" (C5 FR-5.QUE.002 lists it in the `task_queue` schema; C2 + C6 `guardrail_log`
+similar) — a *partial* reconciliation that removed it as an RLS mechanism but left a descriptive column. The two
+readings are in tension, and C10 owns the data-model isolation invariant. **Options:** (a) **delete** — Phase-4 schema
+creates no `client_slug` column anywhere; identity lives only in `client_registry` (the literal ADR-001 §3 reading;
+the column is never load-bearing — no component uses it for RLS or any filter); (b) keep it as a descriptive label
+(softens ADR-001 §3). **✅ Resolution → (a)** (delegated; the ADR is the source of truth, Rule 0). **Reverses no prior
+decision** — the "not used for RLS" decision stands; this removes a now-redundant column. Realised in **FR-10.ISO.001**
+(+AC-10.ISO.001.3). **Carry-forward (Phase 4):** the schema authoring creates no such column, and C5 FR-5.QUE.002 / C2
+/ C6 `guardrail_log` get a one-line clerical reconciliation note then (no behavioural change).
+
 ---
 
-> Next OD number: OD-089.
+> Next OD number: OD-097.

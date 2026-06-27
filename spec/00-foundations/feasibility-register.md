@@ -493,7 +493,67 @@ unreliable, per AC-9.CST.007.1). **Relied on by:** FR-9.CST.007. Gates only the 
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-132
+## Block U — Infrastructure & Compliance (C10, session 27)
+
+**AF-132 — Offboarding deprovision completeness end-to-end (SPIKE, build-time).** FR-10.OFF.005 deprovisions four
+systems (Supabase project, Railway service, credentials, all connector OAuth tokens). The unproven assumption: each
+deprovision actually completes + is idempotent on re-run, and a partial failure is detectable (so the offboarding can
+hold in `deletion_failed` rather than silently report done). **Method:** SPIKE (deprovision a throwaway test
+deployment; assert Supabase project gone, Railway service gone, tokens rejected, re-run is a clean no-op; inject a
+mid-sequence failure + confirm `deletion_failed` + per-system status). **Relied on by:** FR-10.OFF.005. Gates the *#2/#3
+clean-offboarding claim*. **Surfaced by:** C10 drafting (OD-089).
+
+**AF-133 — Offboarding export integrity + readability at scale (SPIKE, build-time).** FR-10.OFF.002/003 generate a
+complete JSON+CSV export, verify it (row-count/checksum reconciliation), encrypt it, and deliver it behind a
+time-limited link — and destruction is gated on this. The unproven assumption: the export is genuinely complete +
+re-importable/readable at real data volume, and the verification catches a partial export. **Method:** SPIKE (export a
+loaded test deployment; reconcile counts; confirm the encrypted artefact decrypts + parses; corrupt one table +
+confirm verification blocks). **Relied on by:** FR-10.OFF.002/003 (gates FR-10.OFF.005). Gates the *#1 no-loss claim*.
+**Surfaced by:** C10 drafting (OD-090).
+
+**AF-134 — Individual-erasure recall / name-identifier matching (EVAL, build-time).** FR-10.DEL.002 finds memories
+that reference a person by `entity_id` (deterministic) **and** by name/identifier in content (probabilistic). The
+unproven assumption: the probabilistic sweep has high enough recall that a human-reviewed result does not leave
+personal data un-erased (#2), across name variants + identifiers. **Method:** EVAL (labelled corpus with known
+person-mentions incl. variants/aliases; measure recall of the sweep; the floor's compliance safety depends on
+high recall + human review). **Relied on by:** FR-10.DEL.002/004. Gates the *#2 erasure-completeness claim*.
+**Surfaced by:** C10 drafting (OD-092).
+
+**AF-135 — Deployment-freeze propagation completeness (SPIKE, build-time).** FR-10.OFF.004 freezes a deployment
+(`status=frozen`) and the C5 dispatch layer must block **every** path that would write/run — Inngest jobs, triggers,
+all three loops, manual actions. The unproven assumption: the freeze gate is checked at every dispatch site (no path
+slips through). **Method:** SPIKE (freeze a test deployment; attempt each dispatch path — event trigger, scheduled
+loop, manual task, chained successor; confirm each is blocked + logged). **Relied on by:** FR-10.OFF.004 + the C5
+freeze-gate amendment. Gates the *#2/#3 frozen-means-frozen claim*. **Surfaced by:** C10 drafting (OD-091).
+
+**AF-136 — Jurisdiction-specific lawful retention minimums (DOCS / legal, build-time).** FR-10.RET.002 enforces a
+"legal-minimum floor" on retention values + FR-10.LEG.001 requires legal review. The spec **cannot assert** the
+specific lawful minimums (Australia Privacy Act 1988 / UK GDPR / EU GDPR / US) — they are jurisdiction-, client-type-,
+and data-nature-dependent. **Method:** legal review (a qualified lawyer sets the actual floors per jurisdiction before
+the system handles that jurisdiction's regulated data). **Relied on by:** FR-10.RET.002, FR-10.LEG.001. This is the
+honest *paper-until-a-lawyer-signs-off* gate — the floor is a configurable safeguard, not legal advice. **Surfaced
+by:** C10 drafting (the design's own legal disclaimer, L4107–4109).
+
+> Carried-in build-time AFs C10 relies on (already logged): **AF-004** (provisioning end-to-end), **AF-013** (Google
+> OAuth production-verification lead-time), **AF-020** (Railway native auto-deploy + on-release migrate), **AF-064**
+> (Railway release-train/canary model), **AF-065** (expand-contract mixed-version safety — the rollback premise),
+> **AF-066** (canary corpus representativeness), **AF-071** (backup/data residency — Phase-5 backup track). None holds
+> a C10 FR from being `Ready`; they gate the build-time *claims*.
+
+**AF-137 — Transitive-erasure completeness verification (SPIKE, build-time).** C2 FR-2.MNT.017 (+AC-2.MNT.017.5) +
+C10 FR-10.DEL.003 erasure spans many stores (memory rows + supersede chain + merged/summarised derived rows +
+episodic evidence + embeddings + the `access_audit` tombstone + the OD-074 C7 `event_log`/`guardrail_log` redaction +
+the off-platform backup-purge flag). The unproven assumption: the erasure can be **verified complete** across all
+those legs (so a partial completion is detected + escalated, never reported done) — the OD-074 cross-process C2→C7
+fan-out adds a new failure point. **Method:** SPIKE (erase a seeded target with residue planted in every leg incl. a
+merged row + a log sink; assert every leg cleared + the verification catches an injected partial failure). **Relied
+on by:** C2 AC-2.MNT.017.5, C10 AC-10.DEL.003.4. Gates the *#1/#2 no-residue claim* of the erasure path. **Surfaced
+by:** the C10 verification gate (finding M1). Adjacent to but distinct from AF-134 (recall of *finding* the data) —
+this is completeness of *deleting* it.
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-138
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection

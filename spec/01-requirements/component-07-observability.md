@@ -271,9 +271,9 @@ audit/guardrail logs as exempt under audit-necessity (GDPR Art. 17(3)), logged e
 retention window; needs per-client/jurisdiction legal sign-off). (c) **full-delete** the log rows (punches holes in
 the append-only audit / guardrail trust-evidence — rejected).
 **✅ Resolution → (a) redaction-tombstone** (operator-decided, 2026-06-26 — the parent erasure rule OD-038 was also
-user-decided). Homed in **AC-7.LOG.006.3 / AC-7.LOG.007.4**. **Carry-forward (change-control):** **C2 FR-2.MNT.017
-must be amended** to name `event_log` + `guardrail_log` in its transitive erasure walk (the redaction-tombstone is
-triggered from C2's compliance-erasure path); tracked in the session log, owed to C2.
+user-decided). Homed in **AC-7.LOG.006.3 / AC-7.LOG.007.4**. ✅ **Carry-forward CLOSED (2026-06-27, session 27):** **C2 FR-2.MNT.017
+was amended** (AC-2.MNT.017.4) to name `event_log` + `guardrail_log` in its transitive erasure walk, triggered from
+the C10 individual-erasure workflow (FR-10.DEL.004). OD-074 fully resolved.
 
 ---
 
@@ -357,8 +357,9 @@ outcome) is **retained** — the audit trail survives ("an event happened here")
 - **AC-7.LOG.006.2** — Each pruning run records a summary event (count pruned, window applied) — pruning is never
   silent.
 - **AC-7.LOG.006.3** — A compliance erasure scrubs PII fields in the matching `event_log` rows but retains the row +
-  audit metadata (redaction-tombstone); the erasure is itself logged. **Carry-forward:** C2 **FR-2.MNT.017** must be
-  amended to name `event_log` + `guardrail_log` in its transitive erasure walk (change-control, owed to C2).
+  audit metadata (redaction-tombstone); the erasure is itself logged. ✅ **Carry-forward CLOSED (2026-06-27, session
+  27):** C2 **FR-2.MNT.017** was amended (AC-2.MNT.017.4) to name `event_log` + `guardrail_log` in its transitive
+  erasure walk, triggered from the C10 individual-erasure workflow (FR-10.DEL.004). OD-074 fully resolved.
 
 #### FR-7.LOG.007 — The `guardrail_log` view, retention, tamper-evidence, and export (C7 side of OD-065)
 **Status:** Approved · **Cites:** L2902; OD-065; OD-072

@@ -5,6 +5,107 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 27 — 2026-06-27 — COMPONENT 10 (INFRASTRUCTURE & COMPLIANCE) DRAFTED, VERIFIED & APPROVED — **PHASE 1 COMPLETE** 🎉
+
+**The FINAL Phase-1 component** — the deployment / management-plane / lawful-deletion layer. Output:
+`spec/01-requirements/component-10-infra-compliance.md` (**34 FRs, all Approved**), `system-map/10-infra-compliance.md`,
+34 matrix rows, OD-089…OD-096 logged+resolved, feasibility **block U (AF-132…AF-137)**, OOS-033. **Two carry-in
+Phase-1 debts cleared via change-control (OD-068, OD-074).** With C10 Approved, **Phase 1 (C0–C10, all 11 components)
+is COMPLETE.** Next: Phase 2 (Config).
+
+**The key scope finding (set with the operator up front):** the design doc's literal `## 10.` section (**L3919–4112**)
+is **only compliance** (retention / individual erasure / client offboarding). The **infrastructure** half is decided
+in the **ADRs (001/005/008)** and lives in orphaned design lines (deployment model L15–36, migration propagation
+L1138–1160, the management plane / `client_registry` L1164–1240) that **no component C0–C9 claimed**. Since "every
+design line → ≥1 FR, no orphans" is the definition of done and C10 is the last component, those orphans had to land
+here. **Operator chose (AskUserQuestion): "functional infra + compliance in C10; backup/DR → Phase 5."** Backup/DR
+(ADR-008) is only *referenced* — already routed to Phase 5 (C2 AC-2.MNT.017.2, README Phase-5 row).
+
+**Area codes:** RET ×2 · DEL ×7 · OFF ×6 · PRV ×4 · MGT ×4 · DEP ×5 · MIG ×2 · ISO ×3 · LEG ×1. **C10 owns:** the
+**intentional-retention** principle + retention configs · the **individual right-to-erasure** workflow (intake queue →
+identify → conditional delete → redaction → audit → connector-flag → two-person auth; **wraps C2 FR-2.MNT.017**, does
+not re-spec it) · the **client offboarding** workflow (trigger → verified export + client sign-off → retention-freeze
+→ hard-delete/deprovision → compliance meta-record) · **provisioning** orchestration (ADR-005 §5) · the **release
+model** (Railway auto-deploy · canary/release-train promotion gate · rollback-by-redeploy/no-down-migration ·
+version-skew alert · plugins-out-of-train) · **schema-migration propagation** + per-deployment failure isolation · the
+**management plane** (`client_registry` schema/lifecycle + the ingest endpoint, push-only, ADR-001 §7) · **isolation**
+(`client_slug` deleted from app tables) + **residency** (v1 Sydney lock, v2 selection). **Seams:** erasure mechanics →
+C2; log redaction → C7; token revocation → C3; seed → C0/C1; reporter+dashboards+staleness → C7; backup/DR → Phase 5;
+rendering → Phase 3.
+
+**Drafting:** two Explore subagents — one decomposed the §10 compliance lines, one mapped the infra ADRs + orphaned
+deployment/management-plane design lines + checked what's already owned. Caught up front: cold-storage tiering is
+**already OOS-016** (v2-deferred), not a new FR; individual erasure overlaps C2 FR-2.MNT.017 (C10 wraps, C2
+mechanises).
+
+**8 ODs resolved (OD-089…096), all delegated to recommendation; 5 touch the non-negotiables:** **OD-089 (#2/#3)**
+offboarding partial-deprovision → `deletion_failed` + escalate, never-complete-on-partial, no-auto-rollback (OD-010
+consistent). **OD-090 (#1)** export verified-complete **and** client-acknowledged = hard gate before destruction.
+**OD-091 (#2/#3)** deployment-freeze enforcement → C10 sets `status=frozen`, **C5 dispatch layer enforces + fails
+closed** (applied via change-control to **AC-5.TRG.001.3**, mirroring the C8 OD-081 memory-scope wiring). **OD-092
+(#1/#2)** erasure name-in-content → deterministic auto, fuzzy human-confirm. **OD-093 (#2)** two-person auth = distinct
+authoriser (no self-second). OD-094 (manual promotion v1), OD-095 (skew defaults 3/14). **OD-096 (#2 isolation, raised
+in drafting):** the `client_slug` **label-vs-delete** tension — ADR-001 §3 (Accepted) says "deleted from all app
+tables" but prior components reconciled only to "a label, not an RLS key." Carried to the **ADR terminus: delete**
+(the column was never load-bearing; reverses no prior decision; Phase-4 creates no column).
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass — CLEAN.** Zero orphans (every §10 + infra cross-cut intent maps to an FR/seam/OOS),
+  **all 6 traps PASS** (`client_slug` deleted + OD-096 reconciled · backup/DR seamed-not-owned · management plane
+  push-only + metadata-only · erasure delegated to C2 · deletion deliberate-never-partial-silent · 10/10 citations
+  sound), all 3 change-control edits consistent.
+- **Quality/failure pass — 9 findings (2 HIGH, 4 MED, 3 LOW), ALL reconciled in-file.** **H1** a frozen deployment
+  would false-alarm as *dead* (and a dead one could hide as *frozen*) → **+AC-10.OFF.004.4** (`status`
+  server-authoritative, consumed by C7 staleness — frozen = expected-quiet not dead-alert, while Supabase
+  project-health is still independently monitored — a #1 silent-deletion guard). **H2** export-verification could fail
+  *open* → **+AC-10.OFF.002.4** (fails closed; only affirmative verified-complete advances). **M1** the C2 erasure C10
+  calls had no verify-complete/fail-closed guarantee (OD-074 widened it across a C2→C7 boundary) → **+AC-10.DEL.003.4**
+  (verify C2 complete before the audit-done) + **C2 AC-2.MNT.017.5** (verified-complete-or-fails-loud) + **AF-137**.
+  **M2** fail-open in two-person-config / connector-flag-raise / ack-write → +AC-10.DEL.006.4 + AC-10.OFF.003.4. **M3**
+  offboarding progress + meta-record must be management-plane-resumable → +AC-10.OFF.005.4. **M4** token revoke could
+  orphan a live credential → +AC-10.OFF.005.5 (revoke first / re-driven). **L1** RET.001 had no enforcement consumer →
+  +AC-10.RET.001.3 (C2 sole-writer + tombstone is the detector). **L2** header count fixed (34). **L3** neighbouring
+  stale notes cleaned (C5 header, C7 carry-forward).
+
+**Two Phase-1 debts cleared this session (change-control — the last component is where they had to land or leak past
+Phase 1):**
+- **OD-068** → wrote the owed **C6 FR-6.RTL.004** (cost-ladder enforcement: C7 meters → C6 decides → C5 executes;
+  soft→throttle→hard-kill; never overrides a hard limit; every rung writes `guardrail_log`). OD-068 carry-forward
+  CLOSED.
+- **OD-074** → amended **C2 FR-2.MNT.017** (**AC-2.MNT.017.4**) to trigger the C7 log redaction-tombstone
+  (`event_log`/`guardrail_log`) on erasure, called from C10 FR-10.DEL.004. The two stale C7 carry-forward notes
+  flipped to ✅ CLOSED.
+
+**Sign-off:** user-authorized 2026-06-27 ("i approve, push to github and main"; OD-089…096 delegated, the
+C2/C5/C6/C7 change-control amendments accepted). **34 FRs `Approved`.** **No build-time viability gate holds any C10
+FR** — AF-132…137 gate the deprovision/export/erasure/freeze/legal/erasure-verify *claims* (block U), not the FR
+machinery.
+
+**Files changed:** `component-10-infra-compliance.md` (new, 34 FRs Approved); `component-06-guardrails.md`
+(+FR-6.RTL.004, OD-068); `component-02-memory.md` (+AC-2.MNT.017.4/.5, OD-074 + gate M1); `component-05-harness.md`
+(+AC-5.TRG.001.3 freeze gate, OD-091; header note); `component-07-observability.md` (2 carry-forward notes → CLOSED);
+`open-decisions.md` (OD-089…096 → 🟢; OD-068 carry-forward CLOSED; next OD-097); `feasibility-register.md` (block U
+AF-132…137; next AF-138); `out-of-scope.md` (OOS-033; next OOS-034); `traceability-matrix.csv` (34 C10 rows);
+`glossary.md` (+7 terms — client_registry, internal_token, client offboarding, deployment freeze, individual erasure,
+deletion audit log, offboarding meta-record); `system-map/10-infra-compliance.md` (new); `system-map/README.md` (10 ✅
+built); `README.md` (Phase 1 → COMPLETE + C10 row); this log.
+
+**Carry-forwards / housekeeping:** (1) **Phase 4 (data model):** create **no `client_slug` column** in any app table
+(OD-096); the three "label, not RLS key" mentions (C5 FR-5.QUE.002, C2, C6 `guardrail_log`) get a one-line clerical
+reconciliation note then. (2) **Phase 3 surface seam (H1):** wire C7's staleness path to read `client_registry.status`
+(frozen ≠ dead-alert) + independently monitor Supabase project-health — a small C10↔C7 seam at the C7/Phase-3 pass.
+(3) New nodes to register at C1 reconciliation / Phase 2: the C9 `PERM-guardrail.edit_autonomy` + `/`-command nodes
+(carried from session 26). (4) AF-132…137 + the carried-in AF-004/013/020/064/065/066/071 are build-time MUST-TEST.
+
+**NEXT STEP — Phase 1 is COMPLETE. Begin Phase 2 (Config registry).** Per the README plan: classify + surface every
+tunable — "every CFG has a surface + edit-mechanism + validation; zero `???`." The `CFG-*` ids scattered across
+C0–C10 FRs (e.g. C10's `client_offboarding_retention_days`, `deploy_max_version_skew`, `canary_soak_minutes`,
+`deployment_region`; the C9 autonomy matrix; the C6 thresholds; the C2/C5 windows) are the raw input — Phase 2
+consolidates them into the config registry (`spec/02-config/`). Read `phase-playbooks.md` for the Phase-2 procedure
+before starting.
+
+---
+
 ## Session 26 — 2026-06-27 — COMPONENT 9 (PROACTIVE INTELLIGENCE) DRAFTED, VERIFIED & APPROVED — "what it does without being asked"
 
 Tenth Phase-1 component, the **proactive-generation + cold-start-gating + chat-command layer**. Output:

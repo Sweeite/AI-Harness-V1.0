@@ -4,6 +4,9 @@
   **OD-054…OD-059** all resolved; feasibility **block P (AF-112…AF-115)** logged. Area codes:
   TRG ×5 · QUE ×6 · GRP ×4 · ENV ×3 · LOP ×5 · JOB ×7 · ASM ×9 · OPT ×4. C5 is the **execution layer**
   (what makes it run); enforcement → C6, observability → C7, orchestration → C8 are seams.
+  *(Change-control 2026-06-27, session 27: +AC-5.TRG.001.3 — the C10 OD-091 **deployment-freeze gate**; the C5
+  dispatch layer blocks every trigger/agent/loop/task dispatch + fails closed when `client_registry.status = frozen`.
+  No prior FR/decision changed.)*
 - **Sign-off:** ☑ **Approved 2026-06-26, user-authorized** — OD-056 + OD-059 (the two #2-touching calls)
   user-decided; OD-054/055/057/058 delegated to recommendation; gate clean on orphans/contradictions + all 11
   quality findings reconciled in-file. No build-time viability gate holds any C5 FR (AF-112…115 are build-time
@@ -164,6 +167,13 @@ a dashboard UI button), **chained** (the output of one task triggers the next). 
   `scheduled | event | human | chained` and no other value is accepted.
 - **AC-5.TRG.001.2** — *Given* each of the four trigger sources fires, *When* a task is created, *Then* exactly
   one task_queue row is created with the matching `type` and the originating `payload`.
+- **AC-5.TRG.001.3** — *(Change-control 2026-06-27, session 27 — C10 OD-091 deployment-freeze gate.)* *Given* the
+  deployment is in an offboarding **retention freeze** (`client_registry.status = frozen` / `offboarding`, C10
+  FR-10.OFF.004), *When* any of the four triggers would fire **or** the harness would dispatch a queued task to run,
+  *Then* the dispatch is **blocked and fails closed** (no task created, no agent/loop runs, no new data written) and
+  the block is logged — the freeze is an **enforced gate at the dispatch boundary**, not a status label. (Mirrors the
+  C8 OD-081 memory-scope wiring: the policy is set by C10, the enforcement consumer is C5.) Gated by **AF-135**
+  (freeze-propagation completeness across every dispatch path).
 
 **FR-5.TRG.002 — Triggers are config-defined, not hardcoded** · *Approved*
 Trigger definitions (conditions, schedules, enablement) live in deployment **config**; a new trigger is added,
