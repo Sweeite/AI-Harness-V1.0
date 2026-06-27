@@ -53,13 +53,19 @@ dashboard + raises an "alert delivery misconfigured" critical condition on the m
 never silence a critical/hard-limit alert; a config write that would strand a critical alert is rejected fail-closed.
 C7 header 33→34 FRs (ALR ×8→×9), matrix row added, OD-097 CLOSED. (Reuses the ALR.005/006/008 patterns.)
 
-**Carry-forwards / next:**
-1. **Operator confirm pass on proposed defaults** (knobs Phase 1 left blank now carry `(proposed)`
-   defaults) — light-touch, non-blocking.
-2. Then Phase-2 **sign-off**, and Phase 3 (Surfaces) — where `UI-config-admin` + the Tier-1 management
-   screens get specced.
+**Proposed defaults — CONFIRMED & locked** (operator: "as long as i can edit these later i am happy", 2026-06-27).
+~30 knobs Phase 1 left blank were given starting defaults; `(proposed)` tags stripped. All are LIVE/BOOT —
+operator-editable post-deploy via `UI-config-admin`. Confirmed editability was the operator's only condition.
 
-**Commits:** registry pushed to main (f607751); C7 addendum to follow this entry.
+**PHASE 2 SIGNED OFF (2026-06-27).** Registry complete + verification-CLEAN + OD-097 closed + defaults confirmed.
+README Phase-2 row → 🟢 COMPLETE.
+
+**Next: Phase 3 — Surfaces.** First surface to spec is `UI-config-admin` (the screen that renders this whole
+registry, sectioned per group), then the Tier-1 day-to-day management screens (User Management, Permission Matrix,
+Agent Builder, the 5 observability dashboards, memory navigation). Carry-in for Phase 3: Appendix B's new
+`UI-config-admin` + 11 sections; the per-component panel-signal seams C7 left for Phase 3.
+
+**Commits:** registry (f607751); C7 addendum (254a2ff); defaults-confirmed + sign-off to follow this entry.
 
 ---
 

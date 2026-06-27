@@ -63,14 +63,14 @@ behind a confirm-the-rebuild dialog).
 | `auth.oauth_provider` | `google` | BOOT | enum {google, microsoft} |
 | `auth.two_factor_required` | true | BOOT | bool (app-enforced) |
 | `auth.access_token_ttl` | 1 h | LIVE | duration; Supabase fixed 1 h (don't raise) |
-| `auth.session_absolute_timeout` | 30 d (proposed) | LIVE | duration; Pro+ only; > inactivity |
+| `auth.session_absolute_timeout` | 30 d | LIVE | duration; Pro+ only; > inactivity |
 | `auth.session_inactivity_timeout` | 14 d | LIVE | duration; Pro+ only |
 | `auth.invite_link_ttl` | 24 h | BOOT | duration ≤ 24 h (Supabase hard cap, AF-074) |
 | `auth.seed_setup_link_ttl` | 24 h | BOOT | duration ≤ 24 h |
 | `auth.account_lockout_threshold` | 5 | LIVE | int ≥ 1 |
-| `auth.account_lockout_minutes` | 15 (proposed) | LIVE | int minutes ≥ 1 |
+| `auth.account_lockout_minutes` | 15 | LIVE | int minutes ≥ 1 |
 | `auth.mfa_softlock_threshold` | 5 | LIVE | int ≥ 1 |
-| `auth.mfa_softlock_minutes` | 15 (proposed) | LIVE | int minutes ≥ 1 |
+| `auth.mfa_softlock_minutes` | 15 | LIVE | int minutes ≥ 1 |
 | `auth.captcha_enabled` | true | LIVE | bool |
 | `auth.leaked_password_protection` | true | LIVE | bool; Pro+ |
 
@@ -79,17 +79,17 @@ behind a confirm-the-rebuild dialog).
 | Key | Default | Class | Validation |
 |---|---|---|---|
 | `webhook.replay_window_seconds` | 300 | LIVE | int seconds 60–900 |
-| `webhook.replay_cache_window` | 300 s (proposed) | LIVE | duration ≥ replay_window_seconds |
-| `webhook.secret_rotation_window` | 24 h (proposed) | LIVE | duration |
+| `webhook.replay_cache_window` | 300 s | LIVE | duration ≥ replay_window_seconds |
+| `webhook.secret_rotation_window` | 24 h | LIVE | duration |
 | `webhook.google_expected_audience` | (per-deployment URL) | BOOT | URL; required when Google connector on |
-| `webhook.accept_rate_limit` | 60 / min (proposed) | LIVE | int per source per minute ≥ 1 |
+| `webhook.accept_rate_limit` | 60 / min | LIVE | int per source per minute ≥ 1 |
 | `webhook.failure_alert_threshold` | 3 / hr | LIVE | int per source per hour ≥ 1 |
 
 ## C. Support / recovery — `PERM-config.auth` · `UI-config-admin#auth`
 
 | Key | Default | Class | Validation |
 |---|---|---|---|
-| `support.stale_request_minutes` | 60 (proposed) | LIVE | int minutes ≥ 1 |
+| `support.stale_request_minutes` | 60 | LIVE | int minutes ≥ 1 |
 
 ## D. RBAC — (records, not config)
 RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tier-1 records (Phase 3/4).
@@ -105,7 +105,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `amber_zone_threshold` | 0.65 | LIVE | float 0–1; ≥ confidence_floor |
 | `confidence_floor` | 0.5 | LIVE | float 0–1; ≤ amber_zone_threshold |
 | `retrieval_confidence_threshold` | 0.7 | LIVE | float 0–1 |
-| `retrieval_sufficiency_threshold` | 0.6 (proposed) | LIVE | float 0–1 |
+| `retrieval_sufficiency_threshold` | 0.6 | LIVE | float 0–1 |
 | `memories_injected_per_task` | 7 | LIVE | int 1–50 (token-cost lever) |
 | `merge_similarity_threshold` | 0.92 | LIVE | float 0–1 |
 | `soft_decay_age_months` | 6 | LIVE | int months ≥ 1 |
@@ -118,8 +118,8 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `bulk_drop_alert_window_minutes` | 60 | LIVE | int minutes ≥ 1 |
 | `ef_search` | 40 | LIVE | int 10–500 (recall/latency dial) |
 | `procedural_boost` | 1.2 | LIVE | float ≥ 1.0 |
-| `review_escalation_days` | 7 (proposed) | LIVE | int days ≥ 1 |
-| `ingest_defer_resurface_days` | 14 (proposed) | LIVE | int days ≥ 1 |
+| `review_escalation_days` | 7 | LIVE | int days ≥ 1 |
+| `ingest_defer_resurface_days` | 14 | LIVE | int days ≥ 1 |
 | `hr_content_enabled` | false | BOOT | bool; legal review gate |
 | `embedding_model` | text-embedding-3-small | **REBUILD** | enum; save ⇒ re-embed + HNSW rebuild |
 | `ranking_weights` | App. A | LIVE | object; sum = 1.0 |
@@ -140,16 +140,16 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `token_refresh_lead_minutes` | 30 | LIVE | int minutes ≥ 1 |
 | `token_expiry_alert_days` | 7 | LIVE | int days ≥ 1 |
 | `connector_disconnection_escalation_window` | 24 h | LIVE | duration |
-| `event_reconciliation_sweep_minutes` | 30 (proposed) | LIVE | int minutes ≥ 1 |
-| `watch_rearm_lead_minutes` | per-connector (proposed) | LIVE | int minutes; < shortest watch TTL |
+| `event_reconciliation_sweep_minutes` | 30 | LIVE | int minutes ≥ 1 |
+| `watch_rearm_lead_minutes` | per-connector | LIVE | int minutes; < shortest watch TTL |
 | `slack_token_rotation_enabled` | false | BOOT | bool; irreversible once on (OD-040) |
-| `tool_selection_confidence_threshold` | 0.7 (proposed) | LIVE | float 0–1 |
+| `tool_selection_confidence_threshold` | 0.7 | LIVE | float 0–1 |
 
 ## G. Prompt architecture — `PERM-config.prompts` · `UI-config-admin#prompts`
 
 | Key | Default | Class | Validation |
 |---|---|---|---|
-| `dynamic_field_freshness_threshold` | 30 d (proposed) | LIVE | duration |
+| `dynamic_field_freshness_threshold` | 30 d | LIVE | duration |
 
 ## H. Agent harness / loops — `PERM-config.loops` · `UI-config-admin#loops`
 
@@ -159,9 +159,9 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `loop_cadence_medium` | `0 */2 * * *` | BOOT | cron; 1–4 h range |
 | `loop_cadence_slow` | `0 8 * * *` | BOOT | cron; daily/weekly |
 | `task_priority_scheme` | priority-then-FIFO | BOOT | enum {fifo, priority-then-fifo} |
-| `compression_threshold_tokens` | 8000 (proposed) | LIVE | int tokens ≥ 1000 |
+| `compression_threshold_tokens` | 8000 | LIVE | int tokens ≥ 1000 |
 | `parallel_execution_enabled` | false | BOOT | bool (safety default; opt-in) |
-| `smart_scheduling_enabled` | false (proposed) | BOOT | bool |
+| `smart_scheduling_enabled` | false | BOOT | bool |
 | `anomaly_check_cadence` | per-step | BOOT | enum {per-step, per-ai-call} |
 | `checkpoint_step_threshold` | 4 | LIVE | int steps ≥ 1 |
 | `checkpoint_response_timeout_minutes` | 60 | LIVE | int minutes ≥ 1 |
@@ -182,7 +182,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `rate_limit_concurrent_tasks` | 5 | LIVE | int ≥ 1 (never unlimited) |
 | `approval_pattern_sample_size` | 30 | LIVE | int ≥ 1 |
 | `cost_ladder_soft_threshold` | $50/day, $200/wk | LIVE | currency ≥ 0; < throttle |
-| `cost_ladder_throttle_threshold` | $75/day (proposed) | LIVE | currency; between soft & hard |
+| `cost_ladder_throttle_threshold` | $75/day | LIVE | currency; between soft & hard |
 | `cost_ladder_hard_kill_threshold` | $100/day | LIVE | currency; > throttle |
 | `anomaly_thresholds` | App. A | LIVE | object (5 checks) |
 | `action_autonomy_matrix` | App. A | LIVE | object; gate `PERM-guardrail.edit_autonomy`; floored rows reject downgrade |
@@ -193,7 +193,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 
 | Key | Default | Class | Validation |
 |---|---|---|---|
-| `event_log_retention_window` | 365 d (proposed) | BOOT | duration ≥ legal/audit floor (C10) |
+| `event_log_retention_window` | 365 d | BOOT | duration ≥ legal/audit floor (C10) |
 | `realtime_connection_headroom_threshold` | 80% | LIVE | int 1–100 |
 | `task_failure_spike_threshold` | 5 in 30 min | LIVE | int count + int minutes |
 | `queue_backup_threshold` | 20 for 60 min | LIVE | int count + int minutes |
@@ -202,7 +202,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `task_success_rate_threshold_pct` | 95 | LIVE | int 1–100 |
 | `memory_confidence_drop_threshold` | 0.6 | LIVE | float 0–1 |
 | `alert_escalation_window_hours` | 2 | LIVE | int hours ≥ 1 |
-| `deployment_staleness_window` | 15 min (proposed) | LIVE | duration ≥ push interval |
+| `deployment_staleness_window` | 15 min | LIVE | duration ≥ push interval |
 | `polling_interval_health_metrics_s` | 30 | LIVE | int seconds ≥ 5 |
 | `polling_interval_event_log_s` | 60 | LIVE | int seconds ≥ 5 |
 | `polling_interval_memory_health_s` | 300 | LIVE | int seconds ≥ 5 |
@@ -225,9 +225,9 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 |---|---|---|---|
 | `orchestrator_confidence_threshold` | 0.75 | LIVE | float 0–1 |
 | `chain_depth_limit` | 6 | LIVE | int ≥ 1 |
-| `clarification_escalation` | 24 h (proposed) | LIVE | duration |
-| `drift_threshold` | 0.3 (proposed) | LIVE | float 0–1 |
-| `dead_agent_threshold` | 0.5 success-rate (proposed) | LIVE | float 0–1 |
+| `clarification_escalation` | 24 h | LIVE | duration |
+| `drift_threshold` | 0.3 | LIVE | float 0–1 |
+| `dead_agent_threshold` | 0.5 success-rate | LIVE | float 0–1 |
 | `default_model` | claude-sonnet-4-6 | BOOT | enum (model id) |
 | `lightweight_model` | claude-haiku-4-5 | BOOT | enum (model id) |
 | `routing_weights` | App. A | LIVE | object; sum = 1.0 |
@@ -248,14 +248,14 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `scanner_opportunity_enabled` | true | LIVE | bool |
 | `scanner_briefing_enabled` | true | LIVE | bool |
 | `scanner_pattern_enabled` | true | LIVE | bool |
-| `briefing_schedule` | 07:00 daily (proposed) | LIVE | cron/time |
-| `meeting_prep_lead_time` | 120 min (proposed) | LIVE | duration |
-| `not_contacted_window` | 30 d (proposed) | LIVE | int days ≥ 1 |
-| `renewal_lookahead_days` | 60 (proposed) | LIVE | int days ≥ 1 |
-| `dismissal_decay` | 0.5 / 30 d (proposed) | LIVE | float 0–1 |
-| `risk_floor` | 0.8 (proposed) | LIVE | float 0–1; suppression can't go below |
-| `suggestion_ttl_days` | 7 (proposed) | LIVE | int days ≥ 1 |
-| `suggestion_volume_limit` | 10 / cycle (proposed) | LIVE | int ≥ 1 |
+| `briefing_schedule` | 07:00 daily | LIVE | cron/time |
+| `meeting_prep_lead_time` | 120 min | LIVE | duration |
+| `not_contacted_window` | 30 d | LIVE | int days ≥ 1 |
+| `renewal_lookahead_days` | 60 | LIVE | int days ≥ 1 |
+| `dismissal_decay` | 0.5 / 30 d | LIVE | float 0–1 |
+| `risk_floor` | 0.8 | LIVE | float 0–1; suppression can't go below |
+| `suggestion_ttl_days` | 7 | LIVE | int days ≥ 1 |
+| `suggestion_volume_limit` | 10 / cycle | LIVE | int ≥ 1 |
 | `approval_push_frequency_minutes` | 30 | LIVE | int minutes ≥ 1 |
 | `stale_queue_push_hours` | 4 | LIVE | int hours ≥ 1 |
 | `risk_thresholds` | App. A | LIVE | object (per risk type) |
@@ -271,7 +271,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `deletion_two_person_auth_required` | true | LIVE | bool; for Restricted/Personal (distinct authoriser) |
 | `deploy_max_skew_days` | 14 | LIVE | int days ≥ 1 |
 | `deploy_max_version_skew` | 3 | LIVE | int ≥ 1 |
-| `canary_soak_minutes` | 60 (proposed) | LIVE | int minutes ≥ 1 |
+| `canary_soak_minutes` | 60 | LIVE | int minutes ≥ 1 |
 | `deployment_region` | ap-southeast-2 | BOOT | enum (v1 Sydney locked) |
 
 ## N. Platform secrets — `PERM-config.secrets` (presence only) · `UI-config-admin#secrets`
@@ -327,7 +327,9 @@ alert fails loud.
 
 ---
 
-## Open items for the operator (light-touch, non-blocking)
-- **Proposed defaults** (tagged `(proposed)` above) — sensible starting values for knobs Phase 1 left
-  blank. Worth a glance; adjust any that feel wrong. None block.
-- **OD-097 C7 addendum** — to be raised as the registry lands (tracked in SESSION-LOG/README).
+## Status
+- **Defaults confirmed by operator 2026-06-27** ("as long as i can edit these later i am happy"). Every
+  knob is LIVE or BOOT — operator-editable post-deploy via `UI-config-admin`; defaults are starting values.
+- **OD-097 C7 addendum — CLOSED** (FR-7.ALR.009).
+- **Phase-2 gate met:** every row classified · defaulted · validated · PERM-gated · surfaced; zero `???`;
+  verification gate CLEAN. **Ready for Phase-2 sign-off.**
