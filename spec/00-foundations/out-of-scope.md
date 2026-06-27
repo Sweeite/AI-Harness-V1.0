@@ -45,4 +45,7 @@ make us revisit it. Adding something here is a *decision*, not a gap.
 
 | OOS-030 | Automatic execution-plan rollback | Deferred (v2) | C8 FR-8.PLAN.004 supports rollback to a prior plan version, but rollback is **human-decided** — auto-rollback is itself an autonomous action (consistent with OD-010 no-auto-rollback). v1 surfaces the version→outcome attribution; a human chooses to roll back | C8 FR-8.PLAN.004, OD-010, L3646 | When auto-rollback can be proven safe and reversible |
 
-> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-031.
+| OOS-031 | Founder-preparation checklist (as system behaviour) | Out (operational doc) | The founder-holiday prep checklist (L3831–3864) is an **operational/onboarding document**, not system behaviour; the readiness each item checks is covered by existing FRs (memory verification → C2, approval owners → C1/C6, agent Layer-1s → C4, triggers/briefing → C5/C9, alert thresholds → C7). The eight break-points map to existing components (integration narrative, no orphan). | C9 L3792–3864, OD-087 | If a client needs an in-product readiness-gate that blocks "founder away" mode until checks pass |
+| OOS-032 | Initialisation guide (as system behaviour) | Out (operational doc) | The initialisation guide (L3786) is explicitly a "separate operational document" walking the human through the onboarding sequence; the system surfaces the verification-pass priority + progress (FR-9.CST.007) but does not encode the guide itself. | C9 L3784–3788, OD-087 | If the guide becomes an in-product interactive wizard |
+
+> Add a row whenever a decision *excludes* or *postpones* something. Next OOS number: OOS-033.

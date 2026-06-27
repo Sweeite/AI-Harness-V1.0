@@ -453,7 +453,47 @@ by:** FR-8.LRN.001, FR-8.PLAN.004. Gates the *self-improvement claim*. **Surface
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-127
+## Block T — Component 9 (Proactive Intelligence), 2026-06-27 (session 26)
+
+**AF-127 — Proactive signal-detection accuracy (EVAL, build-time).** PRO.001/004/005/007 rest on the system reliably
+detecting sentiment/relationship-health drops, risk signals (overdue payment, underperforming campaign, capacity,
+silent renewal), opportunity signals, and cross-memory patterns. The unproven assumption: these classifiers are
+accurate enough (precision/recall) that proactive surfacing is trusted, not noise. **Method:** EVAL (labelled signal
+set; measure false-positive/false-negative rate per signal class). **Relied on by:** FR-9.PRO.001/004/005/007. Gates
+the *quality* of proactive generation, **not** the FR machinery. **Surfaced by:** C9 drafting.
+
+**AF-128 — Dismissal-learning never suppresses a true escalating signal (EVAL, build-time).** OD-084's floor
+(FR-9.SUG.005) claims learning tunes volume but never silences a derisking/hard-risk signal, and that escalating
+metrics re-surface regardless of prior dismissal. The unproven assumption: the floor + re-surface logic holds under
+real dismissal patterns (no learned suppression of a genuine risk). **Method:** EVAL (adversarial dismissal sequences
+against escalating-risk fixtures; confirm re-surface fires). **Relied on by:** FR-9.SUG.005, AC-9.PRO.004.2. Gates
+the #1/#3 invariant for the learning loop. **Surfaced by:** C9 drafting.
+
+**AF-129 — Ranking + briefing surface the genuinely important items (EVAL, build-time).** SUG.002 + PRO.006 claim the
+urgency×relevance ranking and the daily briefing surface what matters and don't bury it under low-value volume. The
+unproven assumption: the ranking is well-calibrated and the briefing is relevant, not noise. **Method:** EVAL
+(human-rated relevance of top-N surfaced items + briefings). **Relied on by:** FR-9.SUG.002, FR-9.PRO.002/003/006.
+Gates the *anti-spam / orientation claim*. **Surfaced by:** C9 drafting.
+
+**AF-131 — Non-client / content-sensitivity classification accuracy (EVAL, build-time).** The OD-088 autonomy floor
+rests on correctly tagging an action's risk sub-type — **recipient = existing-client/SoR vs non-client**, **content
+= financial / Confidential / Restricted vs not**. A *confident-but-wrong* tag (a real client labelled non-client) is
+the one unguarded path to an autonomous client send (#2). The spec defends this with a **send-time re-resolution**
+against the system of record (AC-9.MODE.004.5) + ambiguity-defaults-to-floored (AC-9.MODE.004.3), but the *accuracy*
+of the underlying classifier is unproven. **Method:** EVAL (labelled recipient/content set; measure
+mis-as-non-client + mis-as-non-sensitive rates; the floor's safety depends on a near-zero false-non-client rate).
+**Relied on by:** FR-9.MODE.004 (the floor), C6 FR-6.APR.002. Gates the *#2 containment claim* of the narrowed
+floor. **Surfaced by:** the C9 verification gate (finding H1).
+
+**AF-130 — Cold-start ETA from ingestion rate is meaningful (SPIKE, build-time).** CST.007 surfaces an
+"estimated time to full coverage" from the current ingestion rate (L3720). The unproven assumption: the estimate is
+accurate enough to show rather than mislead (ingestion rate is non-linear — interviews + verification dominate).
+**Method:** SPIKE (compare estimated vs actual time-to-coverage on seed deployments; fall back to "calculating" when
+unreliable, per AC-9.CST.007.1). **Relied on by:** FR-9.CST.007. Gates only the *ETA display*. **Surfaced by:** C9 drafting.
+
+---
+
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-132
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
@@ -461,5 +501,5 @@ by:** FR-8.LRN.001, FR-8.PLAN.004. Gates the *self-improvement claim*. **Surface
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
 > AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**; **Component-5
 > block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**; **Component-7 block R uses AF-118–120**;
-> **Component-8 block S uses AF-121–126**).
+> **Component-8 block S uses AF-121–126**; **Component-9 block T uses AF-127–131**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

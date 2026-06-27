@@ -21,5 +21,5 @@ gets built immediately** — out-of-order is fine when it helps you see.
 | `06-guardrails.md` | C6 Guardrails | ✅ built (component 6 Approved, 2026-06-26) |
 | `07-observability.md` | C7 Observability | ✅ built (component 7 Approved, 2026-06-26) |
 | `08-agent-design.md` | C8 Agent design | ✅ built (component 8 Approved, 2026-06-26) |
-| `09-proactive.md` | C9 Proactive intelligence | ⚪ at Phase 1 |
+| `09-proactive.md` | C9 Proactive intelligence | ✅ built (component 9 Approved, 2026-06-27) |
 | `10-infra-compliance.md` | C10 Infra & compliance | ⚪ at Phase 1 |

@@ -387,25 +387,48 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
     *Given* soft/hard, *Then* C5 moves it to `awaiting_approval` per FR-5.QUE.005.
 
 #### FR-6.APR.002 — Mandatory hard-approval set
-- **Statement:** The system shall require **hard approval** (never auto, never soft) for: external
-  communications, financial-record operations, and Confidential- or Restricted-tagged memory operations
-  (L2783–2784) — plus the FR-6.HRD.004 gated extensions (bulk export, mass-delete, connector spend, destructive
-  config). The Confidential/Restricted triggers consume C1 sensitivity tags (FR-1.CLR.001/004).
-- **Source:** L2783–2784; consumes C1 FR-1.CLR.*, FR-1.RST.003.
+- **Statement:** The system shall require **hard approval** (never auto, never soft) for: **floored external
+  communications** — communications to **existing clients or systems of record** — financial-record operations, and
+  Confidential- or Restricted-tagged memory operations (L2783–2784) — plus the FR-6.HRD.004 gated extensions (bulk
+  export, mass-delete, connector spend, destructive config). **Low-risk external communication** (cold-lead /
+  templated nurture to **non-client contacts**) is **not** in this floor — it is governed by the **C9
+  action-autonomy matrix (FR-9.MODE.004)** + **contextual approval routing (FR-6.APR.005)**, operator-configurable
+  down to Prepare or up to Act after a trust period. The Confidential/Restricted triggers consume C1 sensitivity
+  tags (FR-1.CLR.001/004).
+- **Source:** L2783–2784; consumes C1 FR-1.CLR.*, FR-1.RST.003; **amended OD-088 (2026-06-27)**.
 - **ACs:**
-  - AC-6.APR.002.1 — *Given* an external-communication, financial, or Confidential/Restricted memory action,
-    *When* tiered, *Then* it is hard-approval regardless of any config that would lower it (the mandatory set is
-    a floor, mirroring the C4 principles hard-floor).
+  - AC-6.APR.002.1 — *Given* a **floored** action — an external communication to an **existing client / system of
+    record**, a financial operation, or a Confidential/Restricted memory action — *When* tiered, *Then* it is
+    hard-approval regardless of any config that would lower it (the floor, mirroring the C4 principles hard-floor).
   - AC-6.APR.002.2 — *Given* a Restricted-tagged memory operation, *When* gated, *Then* the hard-approval routes
     to a grantee/Super-Admin per C1's Restricted model, and the access is audited in `access_audit` (C1 OD-024),
     distinct from the `guardrail_log` `approval_gate` row.
+  - AC-6.APR.002.3 — *(OD-088)* *Given* a **low-risk external** communication (cold-lead / non-client templated
+    nurture), *When* tiered, *Then* it is **not** floored to hard — its tier is the one assigned by the C9
+    action-autonomy matrix (FR-9.MODE.004); but *Given* the recipient is an existing client / system-of-record, or
+    the content is financial / Confidential / Restricted, *Then* it **remains floored to hard** and the matrix
+    **cannot** lower it.
+
+> **Change-control (2026-06-27 · C9 session 26 · OD-088, operator-decided #2):** the mandatory-hard **external**
+> element is **narrowed** from "all external communications" to **existing-client / system-of-record** comms.
+> Low-risk external (cold-lead / templated nurture to non-client contacts) is removed from the floor and governed by
+> the new C9 **action-autonomy matrix (FR-9.MODE.004)** — operator-configurable down to Prepare or up to Act after a
+> trust period, bounded by the C6 rate caps (max external comms/hour, FR-6.RTL.001) and full audit. **Financial,
+> existing-client / system-of-record, and Confidential/Restricted comms remain floored to hard, never configurable
+> below.** This also refines **OD-056 / FR-6.APR.003**: the blanket "external-communication never auto-executes"
+> becomes "**floored**-external never auto-executes"; an Act-tier low-risk external send is a **conscious,
+> operator-opt-in, trust-gated, rate-capped** exception to the no-irreversible-auto default — bounded to the
+> non-client low-risk sub-type only (see FR-9.MODE.004 for the bounds; surfaced, not hidden).
 
 #### FR-6.APR.003 — Soft-approval auto-execute is reversible-only
 - **Statement:** The system shall auto-execute a **soft-approval** action after its configurable delay only if
-  the action is **reversible**; any irreversible / external-communication / financial / Confidential / Restricted
-  action is hard-approval by definition (FR-6.APR.002) and **never** auto-executes on human inaction — reconciling
-  C5 **OD-056** (no irreversible action auto-executes). [OD-064]
-- **Source:** L2779–2780; OD-064; consumes C5 OD-056.
+  the action is **reversible**; any irreversible / **floored-external** (existing-client / system-of-record) /
+  financial / Confidential / Restricted action is hard-approval by definition (FR-6.APR.002) and **never**
+  auto-executes on human inaction — reconciling C5 **OD-056** (no irreversible action auto-executes). The one
+  bounded exception is an **Act-tier low-risk external** send authorized via the C9 action-autonomy matrix
+  (FR-9.MODE.004, OD-088) — operator-opt-in + trust-gated + rate-capped — which is *not* a soft-approval timeout
+  path but an explicitly configured autonomy grant for the non-client low-risk sub-type only. [OD-064, OD-088]
+- **Source:** L2779–2780; OD-064; consumes C5 OD-056; **amended OD-088 (2026-06-27)**.
 - **ACs:**
   - AC-6.APR.003.1 — *Given* a soft-approval action whose delay elapses with no human action, *When* the timer
     fires, *Then* it executes **only if** flagged reversible; an irreversible action could not have been soft-tier

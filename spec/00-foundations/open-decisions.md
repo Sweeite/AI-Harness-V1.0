@@ -1240,4 +1240,89 @@ altered. C8 SCO FRs are now genuinely enforceable, not asserted-only.
 
 ---
 
-> Next OD number: OD-082.
+## OD-082 — Proactive-item persistence (dedicated store vs task_queue) 🟢 RESOLVED (2026-06-27, C9 session 26 — delegated)
+**Blocked `Ready` on:** FR-9.MODE.001, FR-9.SUG.001. **Why it mattered:** a proactive suggestion has a lifecycle
+(generated → surfaced → acted/dismissed) the team learns from (L3694–3697); if it lived only as a `task_queue` row,
+"what was surfaced and what the human did with it" would blur into the execution record, and a generated-but-
+undelivered suggestion could be silently lost (#3). **Options:** (a) a dedicated `proactive_suggestions` store
+(C9-owned, state-tracked); a Prepare-mode item spawns a linked C5 task; (b) reuse `task_queue` with a "suggestion"
+type (rejected — conflates surfacing-audit with execution; muddies dismissal-learning). **✅ Resolution → (a)**
+(delegated). Homed in **FR-9.SUG.001** (lifecycle + never-dropped + Prepare→linked-C5-task).
+
+## OD-083 — Proactive mode-assignment + the no-bypass rule 🟢 RESOLVED (2026-06-27, C9 session 26 — delegated) — **#2**
+**Blocked `Ready` on:** FR-9.MODE.002, FR-9.MODE.003. **Why it mattered:** "Mode determined by risk level and
+approval tier… All proactive actions follow the same guardrails as reactive ones" (L3666). A proactive **Act**
+(autonomous, no human) is the highest-leverage place for an unintended action — if proactivity had any bypass of the
+C6 pipeline it would violate #2 (never do something it shouldn't). **Options:** (a) C9 **maps** the mode from C6's
+risk/tier (FR-6.APR.001) and **every** proactive action — including Act — traverses the identical C6 pipeline
+(approval / hard limits / anomaly / injection); no second risk classifier; (b) C9 owns its own proactive risk model
+(rejected — a divergent second classifier is exactly the #2 hole). **✅ Resolution → (a)** (delegated; operator
+confirmed the no-bypass rule). Homed in **FR-9.MODE.002** (map) + **FR-9.MODE.003** (no-bypass; Act traverses C6).
+
+## OD-084 — Dismissal-learning safety floor 🟢 RESOLVED (2026-06-27, C9 session 26 — delegated) — **#1 / #3**
+**Blocked `Ready` on:** FR-9.SUG.005, FR-9.PRO.004, FR-9.SUG.002. **Why it mattered:** "Dismissed suggestions reduce
+that signal type over time" (L3696). Naïvely, repeated dismissals could teach the system to go **silent on a genuine
+escalating risk** — losing knowledge (#1) and failing silently (#3). **Options:** (a) dismissal down-weights the
+signal type *for that context* (tunes volume/ranking), but a derisking / hard-risk class is **floored** — never
+silenced — and **re-surfaces** when its underlying metric escalates past threshold (reuses the C1/C2/C5
+don't-silently-abandon pattern); (b) uniform decay across all signal types (rejected — silences risk). **✅
+Resolution → (a)** (delegated). Homed in **FR-9.SUG.005** (floor + re-surface), **AC-9.PRO.004.2** (escalation
+re-surface), **AC-9.SUG.002.1** (no risk-floor item silently dropped at the volume cap). Gated by **AF-128**.
+
+## OD-085 — Cold-start ownership (phase metric vs behaviour matrix) 🟢 RESOLVED (2026-06-27, C9 session 26 — delegated) — **#2 / #3**
+**Blocked `Ready` on:** FR-9.CST.001/002/005/006. **Why it mattered:** the cold-start section (L3700–3788) mixes a
+**metric** (coverage/Maturity, already C2 FR-2.MAT.002, ADR-002) with a **behaviour matrix** (suppress proactive /
+read-only external writes / reduced loops / banner / `[Building]`). Without a clear owner the contract risks either
+duplication (C9 recomputing coverage) or a hole (no one guaranteeing "below 50% = no external writes"). **Options:**
+(a) **C2 emits the phase** (per-entity); **C9 owns the policy matrix** (the single FR assigning behaviours to phases)
+**+ the proactive-suppression behaviour itself**; the other behaviours are enforced by their owners consuming the
+phase (external-write → C6/C3/C5, loop freq → C5, `[Building]` → C2, banner/progress → Phase 3) — the C8
+failure-mode-assignment pattern; (b) C9 owns + enforces everything (rejected — usurps C2/C3/C5/C6). **✅ Resolution →
+(a)** (delegated). Homed in **FR-9.CST.001** (matrix, fail-safe-to-cold), **CST.002** (suppression), **CST.005**
+(read-only seam), **CST.006** (loop-freq seam).
+
+## OD-086 — `/` command gating: node-based, not the "Agency Owner" role ladder 🟢 RESOLVED (2026-06-27, C9 session 26 — delegated) — **#2, contradiction caught**
+**Blocked `Ready` on:** FR-9.CMD.001/002. **Why it mattered:** the design's command role-gating table (L3907–3912)
+gates on roles **Standard User / Agency Owner / Admin / Super Admin** — but **"Agency Owner" is not one of C1's six
+locked roles** (FR-1.ROLE.001: Super Admin, Admin, Finance, HR, Account Manager, Standard User). Same class of
+contradiction the C7/C8 gates caught with `agents.client_slug` — a design label that contradicts a locked decision.
+A hardcoded role ladder also violates ADR-006 (permissions-in-data). **Options:** (a) gate each command on a **C1
+permission node**, evaluated against the caller's node set; the four-tier table becomes the **default node
+assignment**; "Agency Owner" dissolves into "whoever holds the node"; (b) add an "Agency Owner" role (rejected —
+re-opens the locked six-role model + ADR-006). **✅ Resolution → (a)** (delegated). Homed in **FR-9.CMD.002**
+(per-command node gating, default-deny, no "Agency Owner" introduced). *(New command-gating nodes to register at the
+C1 reconciliation / Phase-2 config: a memory-retire node for `/forget`, the approval node for `/approve` `/reject`,
+`PERM-system.tune` for `/tune`, scheduling/trigger nodes for `/schedule` `/trigger`.)*
+
+## OD-087 — Founder-resilience + initialisation guide = operational docs 🟢 RESOLVED (2026-06-27, C9 session 26 — delegated)
+**Blocked `Ready` on:** the founder-holiday narrative (L3792–3864) + the init-guide reference (L3786). **Why it
+mattered:** these read like a checklist of system features but are explicitly *operational documents*; speccing them
+as FRs would invent behaviour. **Options:** (a) **OOS** both — the readiness each item checks is already covered by
+existing FRs (memory verification → C2, approval owners → C1/C6, agent Layer-1s → C4, triggers/briefing → C5/C9,
+alert thresholds → C7); the eight break-points map to existing components (integration narrative, no orphan); (b)
+spec a "founder-readiness" FR (rejected — duplicates existing FRs + encodes an ops doc as system behaviour). **✅
+Resolution → (a)** (delegated). Logged **OOS-031** (founder-prep checklist) + **OOS-032** (initialisation guide).
+
+## OD-088 — Configurable action-risk/autonomy matrix (narrow the "all external comms = hard" floor) 🟢 RESOLVED (2026-06-27, C9 session 26 — **operator-decided → option b**) — **#2**
+**Surfaced by:** the operator at C9 finalization. **Blocked `Ready` on:** FR-9.MODE.002, **FR-9.MODE.004** (new);
+amends **C6 FR-6.APR.002 + FR-6.APR.003**. **Why it mattered:** C6's mandatory-hard set floors **all** external
+communications to hard-approval (FR-6.APR.002, L2783–2784). That is too blunt for proactivity — a **cold-lead /
+templated nurture email to a non-client contact** is low-risk, but the blanket floor means the system refuses to even
+*draft* it autonomously, defeating relationship-management/opportunity proactivity. **Options:** (a) keep the blanket
+floor (status quo — too blunt); (b) **split "external comms" into sub-types** — **low-risk external** (cold-lead /
+templated nurture to **non-client** contacts) configurable down to Prepare or up to **Act after a trust period**
+(rate-capped + audited); **floored** (existing-client / system-of-record comms, anything financial,
+Confidential/Restricted) **fixed at hard-approval, never configurable below**. **✅ Resolution → (b)**
+(**operator-decided**, the operator's #2 call). **Applied this session via change-control:** **C6 FR-6.APR.002**
+narrowed (the mandatory-hard "external" element → existing-client/SoR only; +AC-6.APR.002.3) + **C6 FR-6.APR.003**
+reconciled (blanket "external never auto-executes" → "**floored**-external"); **+FR-9.MODE.004** (the matrix + the
+non-negotiable floor; `CFG-action_autonomy_matrix`; edits gated `PERM-guardrail.edit_autonomy`, Super-Admin; UI →
+Phase 3); **FR-9.MODE.002** "never Act" branch updated to the floored set. **The Act-tier low-risk-external send is
+the single bounded, opt-in, trust-gated, rate-capped exception to OD-056's no-irreversible-auto default**, confined
+to the non-client low-risk sub-type — **surfaced, not hidden** (the C9 gate confirms no floored sub-type can reach
+Act). *(New node implied: `PERM-guardrail.edit_autonomy`, Super-Admin-only — to register at C1 reconciliation /
+Phase-2.)* Gated by **AF-068** (containment of the floored set under the new matrix).
+
+---
+
+> Next OD number: OD-089.

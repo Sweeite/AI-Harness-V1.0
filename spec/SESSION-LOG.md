@@ -5,6 +5,100 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 26 — 2026-06-27 — COMPONENT 9 (PROACTIVE INTELLIGENCE) DRAFTED, VERIFIED & APPROVED — "what it does without being asked"
+
+Tenth Phase-1 component, the **proactive-generation + cold-start-gating + chat-command layer**. Output:
+`spec/01-requirements/component-09-proactive.md` (**28 FRs, all `Ready`**, gate-clean, **awaiting operator
+sign-off**), `system-map/09-proactive.md`, 28 matrix rows, OD-082…OD-088 logged+resolved, feasibility block T
+(AF-127…AF-131), OOS-031/032. A C6 Approved FR amended via change-control (OD-088). Pattern-matched the C0–C8 loop.
+
+**C9 = "what it does without being asked"** (L3654). Area codes: MODE ×4 · PRO ×7 · SUG ×5 · CST ×7 · CMD ×5. C9 owns
+the **three proactivity modes** (Suggest/Prepare/Act, mode = f(C6 risk tier), **no-bypass** — every Act traverses the
+same C6 pipeline), the **7 generators** (relationship/meeting/doc/derisking/opportunity/daily-briefing/pattern; each
+independently enable/disable-able + thresholded), the **suggestion lifecycle** (`proactive_suggestions` store, rank /
+explain-with-pill / deliver-route / **dismissal-learn-with-floor**), the **cold-start phase ladder** (consumes C2's
+phase, owns proactive-suppression), and the `/` **command dispatch** (node-gated). Enforcement → C6, slow-loop +
+briefing trigger → C5, Insight-Agent def → C8, coverage/`[Building]` → C2, delivery → C7, all rendering → Phase 3.
+
+**Scope call (entry): generation + cold-start policy + command dispatch now; enforcement / delivery / surfaces / the
+coverage metric stay seamed.** A large fraction of section 9 is owned by Approved components (the coverage metric
+already C2 FR-2.MAT.002/RET.007; the slow loop C5 FR-5.LOP.001; the Insight Agent C8 FR-8.SPC.006; notification C7;
+guardrails C6). C9 **produces** proactive items + assigns mode + gates the engine; home components enforce/schedule/
+deliver/render. Mirrors C8's "produce signals, others act" + C7's "backbone now, surfaces → Phase 3."
+
+**The founder-holiday problem (L3792–3864)** is handled as an **integration narrative** (no orphan — the 8
+break-points map to C2/C4/C5/C6/C7/C8/C9); the founder-prep checklist + initialisation guide = operational documents
+→ **OOS-031/032**.
+
+**7 ODs delegated + 1 operator-decided (OD-082…OD-088):** OD-082 dedicated `proactive_suggestions` store
+(never-dropped; Prepare → linked C5 task). **OD-083 (#2)** proactive Act never bypasses C6 (no second risk
+classifier). **OD-084 (#1/#3)** dismissal-learning floor — tunes *volume*, never *safety*; a derisking signal is never
+silenced + re-surfaces on escalation. OD-085 cold-start: C2 emits phase, C9 owns policy matrix + suppression, rest
+seamed. **OD-086 (#2, contradiction caught)** `/`-command gating → **C1 permission nodes, not the design's "Agency
+Owner" role** (which is NOT one of C1's six — same class as C7/C8 `client_slug`). OD-087 founder docs → OOS.
+**OD-088 (operator-decided #2 → option b)** — the **configurable action-autonomy matrix**: the operator flagged that
+C6's blanket "all external comms = hard" (FR-6.APR.002) is too blunt — a cold-lead nurture email can't even be
+drafted. Split: **low-risk external** (cold-lead / templated nurture to **non-client** contacts) → configurable down
+to Prepare or up to **Act after a trust period** (rate-capped + audited); **floored** (existing-client / SoR comms,
+financial, Confidential/Restricted) → **fixed at hard, never configurable below**. **Applied via change-control to
+C6 FR-6.APR.002 + FR-6.APR.003** (narrow the mandatory-hard "external" element; reconcile the no-irreversible-auto
+rule to "floored-external") + **new FR-9.MODE.004** (the matrix + the floor; `CFG-action_autonomy_matrix`; edits
+gated `PERM-guardrail.edit_autonomy` Super-Admin). Also added: each of the 7 PRO scanners individually
+enable/disable-able (default on) + thresholds → `CFG-scanner_*_enabled` refs for Phase 2.
+
+**Verification gate (2 independent zero-context subagents):**
+- **Orphan/contradiction pass — CLEAN.** Every intent L3650–3918 maps to an FR / correct seam / OOS; **all 6 traps
+  PASS** (no "Agency Owner" role — node gating · consumes C2 coverage, never recomputes · proactive Act never
+  bypasses C6 · OD-088 floored set can't be lowered to Act/Prepare · Insight Agent not redefined / no second writer ·
+  14/14 citations verified); no `client_slug`. Two editorial nits fixed (stale FR count; a MAT.002/003 citation).
+- **Quality/failure pass — critical floor-check NO HOLE + 9 findings (2 HIGH, 4 MED, 3 LOW), ALL reconciled.** The
+  **operator-requested critical check** confirmed **nothing financial / existing-client / SoR / Confidential /
+  Restricted can reach autonomous Act** through the new matrix — defended in depth (write-time reject 004.2 →
+  mode-assign floor 002.2 → C6 tier floor AC-6.APR.002.1/.3 → ambiguity-defaults-floored 004.3 → non-overridable
+  hard-limit backstop), OD-056 irreversibility exception bounded to non-client low-risk + rate-capped. **H1** (the
+  residual the floor-narrowing *introduced*): a *confident-but-wrong* client/content tag is the one unguarded route →
+  **+AC-9.MODE.004.5** (re-resolve recipient client-status vs the system-of-record **at send time**, re-floor on
+  match) + **AF-131** (classification-accuracy EVAL). **H2** Insight-detected escalating risks have no C6/C7 path →
+  sharpened AC-9.CST.002.3 + **+AC-9.PRO.004.4** (OD-084 floor spans dismissal **+** cold-start suppression **+**
+  scanner-disable). **M1** deferred floor item silent-expiry → +AC-9.SUG.002.3. **M2** stuck-`generated` →
+  +AC-9.SUG.001.4 (escalate-don't-abandon). **M3** node-gate-before-confirm + `/forget`→C2 trace → +AC-9.CMD.003.3.
+  **M4** floored-caps-mode precedence → +AC-9.MODE.004.6. **L1** scan-execution liveness, **L2** stale-phase
+  fail-open, **L3** audit-critical command fail-closed on log failure — all added.
+
+**Sign-off:** user-authorized 2026-06-27 ("i am happy"; OD-082…087 delegated, OD-088 operator-decided, the C6
+change-control amendment accepted). **28 FRs `Approved`**; matrix rows + headers + README + system-map README flipped
+to Approved; committed + pushed to `main`. **No build-time viability gate holds any C9 FR** — AF-127…131 gate the
+detection/learning/ranking/ETA/tag-accuracy *claims* (block T), not the FR machinery; **AF-131** is the load-bearing
+one (the OD-088 floor's #2 safety rests on the non-client/content classifier).
+
+**Files changed:** `component-09-proactive.md` (new, 28 FRs Ready); `component-06-guardrails.md` (FR-6.APR.002/003
+amended, change-control OD-088); `open-decisions.md` (OD-082…088 → 🟢; next OD-089); `feasibility-register.md` (block
+T AF-127…131; next AF-132); `out-of-scope.md` (OOS-031/032; next OOS-033); `traceability-matrix.csv` (28 C9 rows);
+`glossary.md` (+6 terms — proactivity mode, proactive suggestion, cold-start phase, action-autonomy matrix, floored
+external comms, dismissal-learning floor); `system-map/09-proactive.md` (new); `system-map/README.md` (09 ✅ built);
+`README.md` (status + Phase-1 row); this log.
+
+**Carry-forwards / housekeeping:** (1) **AF-131** (non-client/content classification accuracy) is the new
+load-bearing build-time gate — the OD-088 floor's #2 safety rests on it; MUST-TEST. (2) The OD-088 + OD-086 new nodes
+(`PERM-guardrail.edit_autonomy` Super-Admin; the per-command `/` gating nodes) to register at the C1 reconciliation /
+Phase-2 config. (3) Still owed from earlier: the **C6 cost-ladder enforcement FR** (OD-068) + **C2 FR-2.MNT.017**
+log-sink erasure amendment (OD-074). (4) AF-127…131 are build-time MUST-TEST.
+
+**NEXT STEP — component 10 (Infrastructure & Compliance), the FINAL Phase-1 component.** Design-doc section
+**`## 10. Infrastructure & Compliance` = L3919+** (confirm the end bound — `## Where the quality actually lives` at
+L4113 is likely the next `##`). Pattern-match the C0–C9 loop: Context Manifest → decompose → cite → log ODs (next
+**OD-089**; new AFs from **AF-132**; next OOS **OOS-033**) → resolve → verification gate (2 zero-context subagents) →
+sign-off → wire matrix + build `system-map/10-infra-compliance.md`. **C10 is where the deployment/infra ADRs land:**
+ADR-001 (Silo isolation + hybrid ownership + the management plane), ADR-005 (deploy/provisioning — canary +
+release-train + scripted provisioning), ADR-008 (backup/DR — hourly client-owned snapshot + PITR upsell +
+operator-verified restore), and the **compliance** surface (data residency, the GHL PHI/BAA chain AF-098, erasure
+already homed in C2 FR-2.MNT.017 + C7 redaction-tombstone). **Carry-ins:** the owed C6 cost-ladder FR (OD-068) + C2
+MNT.017 log-sink amendment (OD-074); the self-hosted-Inngest deferral (OOS-028); build-time spikes AF-001/002/004 +
+the provisioning AF-004; backup/DR block I (AF-069…072). **C10 may be a connector-research trigger** only if it
+introduces a new external sink (e.g. a paging/infra vendor). **First, finish C9: get the operator's sign-off + commit.**
+
+---
+
 ## Session 25 — 2026-06-26 — COMPONENT 8 (AGENT DESIGN) DRAFTED, VERIFIED & APPROVED — "who does the work"
 
 Ninth Phase-1 component, the **routing + agent-definition layer**. Output: `spec/01-requirements/component-08-agent-design.md`
