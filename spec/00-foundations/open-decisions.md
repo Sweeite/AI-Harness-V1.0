@@ -1386,6 +1386,20 @@ decision** — the "not used for RLS" decision stands; this removes a now-redund
 (+AC-10.ISO.001.3). **Carry-forward (Phase 4):** the schema authoring creates no such column, and C5 FR-5.QUE.002 / C2
 / C6 `guardrail_log` get a one-line clerical reconciliation note then (no behavioural change).
 
+## OD-097 — Alert routing has no owner or destination config 🟢 RESOLVED (2026-06-27, Phase-2 harvest session 28 — delegated) — **#3 (never fail silently)**
+**Surfaced by:** Phase-2 config harvest gap-hunt. **Why it matters:** C7 fires alerts and routes them "by role"
+(FR-7.ALR.003/005), but the spec **never defines the physical destination** — no Slack webhook URL, no admin channel,
+no escalation-contact list, no quiet-hours. An alert with nowhere to go is the observability layer **failing silently
+about itself** (#3). This was never specified in Phase 1, so it's a genuine hole, not a harvest miss.
+**Options:** (a) **C7 owns a small routing config** — `SLACK_WEBHOOK_URL` (SECRET) + `alert_routing_rules` /
+`escalation_contacts` / `quiet_hours` (editable), recipients resolved through C1 roles, **Slack + email both
+supported**; (b) deployment-env only, no UI; (c) defer the whole thing to Phase 3.
+**✅ Resolution → (a)** (operator delegated, "i trust your recs"). **Two outputs:** (1) the config keys are
+registered in the Phase-2 registry (`config-registry.md`, group J/N); (2) the *behaviour* — **an alert that cannot be
+routed must fail loud, never drop silently** — is a **C7 change-control addendum** (new FR-7.ALR.*), since C7 is
+Approved. The config alone doesn't satisfy #3 without that fail-loud FR. **Carry-forward:** raise the C7 ALR addendum
+when the registry lands (tracked in SESSION-LOG + README Phase-2 row).
+
 ---
 
-> Next OD number: OD-097.
+> Next OD number: OD-098.

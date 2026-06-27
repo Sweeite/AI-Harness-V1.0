@@ -5,6 +5,60 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 28 — 2026-06-27 — PHASE 2 (CONFIG REGISTRY) ENTERED — HARVEST + REGISTRY DRAFTED, VERIFICATION-GATE CLEAN
+
+**Phase 2 begun.** Output: `spec/02-config/config-registry.md` (authoritative) + `spec/02-config/_HARVEST.md`
+(working artifact). **~117 scalar knobs + 11 secrets + 10 structured objects**, every row classified
+(SECRET/BOOT/LIVE/REBUILD) · defaulted · validated · `PERM-`-gated · `UI-`-surfaced. **Zero `???`** —
+Phase-2 gate met. Verification gate (independent zero-context subagent): **CLEAN PASS on all 6 checks**
+(coverage 1:1 · zero-??? · class sanity · cross-key constraints satisfied by defaults · locks held ·
+conflict resolutions applied).
+
+**Method:** operator chose "full harvest first." 4 Explore subagents (C0–C3 / C4–C7 / C8–C10 component
+sweeps + a design-doc tunable sweep). Then a 3-agent gap-hunt. Then descriptions added to every row (the
+operator flagged the first draft was unreadable — descriptions had been stripped; restored). Then the
+registry built with per-GROUP PERM/UI assignment (not per-key — every knob in a group shares one
+`PERM-config.<group>` gate + one `UI-config-admin#<group>` section).
+
+**The gap-hunt payoff (real omissions caught, not in any FR):**
+- **8 platform SECRETs** missing → new group N: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `INNGEST_API_KEY`,
+  `X_INTERNAL_TOKEN` (mgmt-plane push auth, ADR-001 §7), the 3 connector signing secrets, the Google
+  Pub/Sub key.
+- **`ef_search`** (memory recall/latency dial, design L1511) — no CFG stub existed.
+- **12 design-block knobs** with no FR home (4 ranking weights, 6 polling intervals, default/lightweight
+  model, checkpoint thresholds, push frequencies, a few alert thresholds) — registered, additive, no
+  change-control needed.
+- **Alert routing has NO owner** (genuine Phase-1 hole, not a harvest miss) → **OD-097**.
+
+**Decisions (operator delegated, "i trust your recs"):**
+- **3 conflicts** resolved locked-spec-beats-stale-design: `parallel_execution_enabled`=false ·
+  `embedding_model`=REBUILD (not BOOT) · `invite_link_ttl`≤24h / `access_token_ttl`=1h (design's 72h/7d
+  were refuted by Block J).
+- **2 class calls:** `entity_types`=BOOT · `default_model`/`lightweight_model`=BOOT.
+- **OD-097** → C7 owns a small alert-routing config (`SLACK_WEBHOOK_URL` secret + `alert_routing_rules` /
+  `escalation_contacts` / `quiet_hours` editable, Slack+email), recipients via C1 roles.
+
+**Three-tier mental model agreed with operator (frames the whole phase):** Tier 1 = day-to-day record
+management (users/roles/agents/memory curation) → Phase 3 surfaces + Phase 4 data, NOT config. Tier 2 =
+harness tuning knobs → this registry. Tier 3 = secrets → env-only. "Customisable where it *should* be" =
+bounded on purpose: the seven hard limits, sole-writer identity, and floored autonomy rows are
+deliberately LOCKED, marked as such, never specced as editable.
+
+**Downstream wiring captured (Appendix B):** 11 new `PERM-config.*` nodes owed to `PERMISSION_NODES.md`
+(C1 FR-1.PERM.005); new `UI-config-admin` surface + 11 sections owed to Phase 3.
+
+**Carry-forwards / next:**
+1. **C7 alert-routing FR addendum** (OD-097) — the *behaviour* "unroutable alert fails loud, never drops
+   silently" (#3) is change-control against Approved C7; raise it. Config keys already registered.
+2. **Operator confirm pass on proposed defaults** (knobs Phase 1 left blank now carry `(proposed)`
+   defaults) — light-touch, non-blocking.
+3. Then Phase-2 **sign-off**, and Phase 3 (Surfaces) — where `UI-config-admin` + the Tier-1 management
+   screens get specced.
+
+**Not yet committed** — awaiting operator go on commit/push.
+
+---
+
 ## Session 27 — 2026-06-27 — COMPONENT 10 (INFRASTRUCTURE & COMPLIANCE) DRAFTED, VERIFIED & APPROVED — **PHASE 1 COMPLETE** 🎉
 
 **The FINAL Phase-1 component** — the deployment / management-plane / lawful-deletion layer. Output:
