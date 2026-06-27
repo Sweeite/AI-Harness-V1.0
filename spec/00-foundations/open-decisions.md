@@ -1394,11 +1394,13 @@ about itself** (#3). This was never specified in Phase 1, so it's a genuine hole
 **Options:** (a) **C7 owns a small routing config** — `SLACK_WEBHOOK_URL` (SECRET) + `alert_routing_rules` /
 `escalation_contacts` / `quiet_hours` (editable), recipients resolved through C1 roles, **Slack + email both
 supported**; (b) deployment-env only, no UI; (c) defer the whole thing to Phase 3.
-**✅ Resolution → (a)** (operator delegated, "i trust your recs"). **Two outputs:** (1) the config keys are
+**✅ Resolution → (a)** (operator delegated, "i trust your recs"). **Two outputs, both DONE:** (1) the config keys are
 registered in the Phase-2 registry (`config-registry.md`, group J/N); (2) the *behaviour* — **an alert that cannot be
-routed must fail loud, never drop silently** — is a **C7 change-control addendum** (new FR-7.ALR.*), since C7 is
-Approved. The config alone doesn't satisfy #3 without that fail-loud FR. **Carry-forward:** raise the C7 ALR addendum
-when the registry lands (tracked in SESSION-LOG + README Phase-2 row).
+routed must fail loud, never drop silently** — **realised via change-control in `FR-7.ALR.009`** (session 28,
+2026-06-27): C7 owns the routing config; unroutable alert persists + raises an "alert delivery misconfigured"
+critical condition on the dashboard + mgmt-plane push; quiet-hours can never silence a critical alert; a config write
+that would leave a critical alert with no destination is rejected fail-closed. C7 header count 33→34, ALR ×8→×9.
+**Carry-forward CLOSED.**
 
 ---
 

@@ -2,8 +2,9 @@
 
 - **Status:** 🟢 **Approved 2026-06-26 (session 24)** — 33 FRs, verification gate run + all 13 findings reconciled;
   ODs **OD-067…OD-074** resolved (OD-068 cost-ladder ownership + OD-074 log-erasure user-decided; the rest
-  delegated); feasibility **block R (AF-118…AF-120)** logged. Area codes: LOG ×7 · RTP ×4 · ALR ×8 · COST ×4 ·
-  MGM ×5 · VIEW ×3 · OPT ×2 (**33 FRs**). C7 is
+  delegated); feasibility **block R (AF-118…AF-120)** logged. **Change-control 2026-06-27 (session 28): +FR-7.ALR.009
+  (alert routing config + unroutable-alert-fails-loud), closing OD-097 — now 34 FRs.** Area codes: LOG ×7 · RTP ×4 ·
+  ALR ×9 · COST ×4 · MGM ×5 · VIEW ×3 · OPT ×2 (**34 FRs**). C7 is
   the **observability backbone** — the data + logic layer of "how you know what the system is doing": the
   `event_log`, the real-time-vs-polling contract, the alerting rules + routing + escalation, cost tracking, the
   management-plane cross-deployment push, and log retention/export. **The dashboard *surfaces* (the five role views,
@@ -504,6 +505,33 @@ silently stop firing while every surface stays green — the worst #3.
 - **AC-7.ALR.008.2** — A stalled alert engine raises a critical alert via the watchdog (and the management-plane
   push carries the condition, so a fully-down silo still surfaces on the Super Admin grid). ⚠️ FEASIBILITY:
   **AF-118** (absence-of-signal detection is only as live as its evaluator).
+
+#### FR-7.ALR.009 — Alert routing is configured, and an unroutable alert fails loud
+**Status:** Approved (change-control 2026-06-27, session 28) · **Cites:** OD-097; non-negotiable #3; extends
+FR-7.ALR.003 (route-by-type) / FR-7.ALR.005 (escalate-don't-drop) / FR-7.ALR.006 (delivery durability)
+C7 owns the **alert-routing configuration** — the destination layer that FR-7.ALR.003 routes *through*. This config
+(Phase-2 registry, `UI-config-admin#observability`, `PERM-config.observability`) comprises: `alert_routing_rules`
+(alert-type → {role, channel}), `escalation_contacts` (role → contact list), `quiet_hours`, `alert_email_enabled`,
+and the `SLACK_WEBHOOK_URL` secret. C1 roles remain the recipient authority (C7 routes *to* a role; C1 owns who that
+is). **The #3 guarantee:** an alert that resolves to **no deliverable destination** — empty/unresolvable contacts, a
+missing or invalid Slack webhook, every configured channel unreachable, or a misconfigured routing rule — must
+**fail loud**, never silently evaporate. The layer whose job is to surface failure must not itself fail silently when
+*its own* destination config is broken.
+- **AC-7.ALR.009.1** — Given an alert whose routing resolves to no deliverable destination (no resolvable contact on
+  any channel), When delivery is attempted, Then the alert is **not dropped**: it persists on the always-present
+  dashboard notification centre (FR-7.ALR.001/006) **and** raises a distinct **"alert delivery misconfigured"**
+  critical condition that is itself routed to the Super Admin and carried on the management-plane push (so a fully
+  mis-configured silo still surfaces on the Super Admin grid, reusing the FR-7.ALR.008 watchdog path).
+- **AC-7.ALR.009.2** — Given `quiet_hours` is configured, When a **critical or hard-limit** alert (C6 event, ALR.007)
+  fires inside the quiet window, Then it is delivered immediately regardless — quiet-hours suppresses **only**
+  non-critical alerts; it can **never** silence a critical/safety alert (#2/#3).
+- **AC-7.ALR.009.3** — Given an operator saves alert-routing config, When the new value would leave a
+  **critical-alert** type with no resolvable destination, Then the write is **rejected at config time** (you cannot
+  configure the system into a state where a hard-limit alert has nowhere to go) — fail-closed, mirroring the
+  registry's write-time validation rule.
+- **AC-7.ALR.009.4** — A `SLACK_WEBHOOK_URL` / channel that becomes invalid at runtime (revoked, 404) is surfaced as a
+  delivery-failure condition (reusing AC-7.ALR.006.2), not silently swallowed; the dashboard notification is
+  unaffected.
 
 ### COST — Cost tracking
 

@@ -216,9 +216,8 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `quiet_hours` | none | LIVE | object: window(s); never suppresses critical |
 | `alert_email_enabled` | true | LIVE | bool |
 
-> **OD-097 carry-forward:** the *behaviour* "an unroutable alert fails loud, never drops silently" is a
-> **C7 change-control FR addendum** (new FR-7.ALR.*), owed before this group is build-ready. `SLACK_WEBHOOK_URL`
-> is in group N (secret).
+> **OD-097 — CLOSED.** The *behaviour* "an unroutable alert fails loud, never drops silently" is realised in
+> **C7 `FR-7.ALR.009`** (change-control, session 28). `SLACK_WEBHOOK_URL` is in group N (secret).
 
 ## K. Agent design / routing — `PERM-config.agents` · `UI-config-admin#agents`
 

@@ -320,6 +320,7 @@ FR-7.ALR.005,Escalation window to secondary alert no silent drop,7,Approved,Must
 FR-7.ALR.006,Notification delivery durability dashboard independent of Slack,7,Approved,Must,L3290,n/a,n/a,UI-notification-centre,DATA-notifications,AC-7.ALR.006.1;AC-7.ALR.006.2,OD-070,,,
 FR-7.ALR.007,C7 delivers the alerts C5/C6 only emit,7,Approved,Must,L3088-3093;L3305-3306,n/a,n/a,UI-notification-centre,DATA-notifications,AC-7.ALR.007.1;AC-7.ALR.007.2,n/a,,,
 FR-7.ALR.008,Alert engine is itself watched watchdog,7,Approved,Must,n/a,n/a,n/a,UI-notification-centre,n/a,AC-7.ALR.008.1;AC-7.ALR.008.2,n/a,,,
+FR-7.ALR.009,Alert routing config and unroutable alert fails loud,7,Approved,Must,n/a,PERM-config.observability,CFG-alert_routing_rules;CFG-escalation_contacts;CFG-quiet_hours;CFG-alert_email_enabled,UI-config-admin;UI-notification-centre,DATA-notifications,AC-7.ALR.009.1;AC-7.ALR.009.2;AC-7.ALR.009.3;AC-7.ALR.009.4,OD-097,,,
 FR-7.COST.001,Estimate-grade cost accounting,7,Approved,Must,n/a,n/a,CFG-cost_price_table,UI-cost-tracking,DATA-event_log,AC-7.COST.001.1;AC-7.COST.001.2,n/a,,,
 FR-7.COST.002,Cost tracking per task type from day one,7,Approved,Should,L3321;L3120,n/a,n/a,UI-cost-tracking,DATA-event_log,AC-7.COST.002.1;AC-7.COST.002.2,n/a,,,
 FR-7.COST.003,Cost ladder C7 meters and signals C6 enforces C5 executes,7,Approved,Must,ADR-003-L181,n/a,CFG-cost_throttle_daily_usd;CFG-cost_hard_ceiling_daily_usd,UI-cost-tracking,DATA-guardrail_log,AC-7.COST.003.1;AC-7.COST.003.2;AC-7.COST.003.3,OD-068,,,

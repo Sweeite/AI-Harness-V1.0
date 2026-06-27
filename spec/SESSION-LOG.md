@@ -47,15 +47,19 @@ deliberately LOCKED, marked as such, never specced as editable.
 **Downstream wiring captured (Appendix B):** 11 new `PERM-config.*` nodes owed to `PERMISSION_NODES.md`
 (C1 FR-1.PERM.005); new `UI-config-admin` surface + 11 sections owed to Phase 3.
 
+**C7 alert-routing addendum — DONE (change-control, same session).** OD-097's behavioural half realised as
+**`FR-7.ALR.009`**: C7 owns the routing config; an alert with no deliverable destination fails loud (persists on the
+dashboard + raises an "alert delivery misconfigured" critical condition on the mgmt-plane push); quiet-hours can
+never silence a critical/hard-limit alert; a config write that would strand a critical alert is rejected fail-closed.
+C7 header 33→34 FRs (ALR ×8→×9), matrix row added, OD-097 CLOSED. (Reuses the ALR.005/006/008 patterns.)
+
 **Carry-forwards / next:**
-1. **C7 alert-routing FR addendum** (OD-097) — the *behaviour* "unroutable alert fails loud, never drops
-   silently" (#3) is change-control against Approved C7; raise it. Config keys already registered.
-2. **Operator confirm pass on proposed defaults** (knobs Phase 1 left blank now carry `(proposed)`
+1. **Operator confirm pass on proposed defaults** (knobs Phase 1 left blank now carry `(proposed)`
    defaults) — light-touch, non-blocking.
-3. Then Phase-2 **sign-off**, and Phase 3 (Surfaces) — where `UI-config-admin` + the Tier-1 management
+2. Then Phase-2 **sign-off**, and Phase 3 (Surfaces) — where `UI-config-admin` + the Tier-1 management
    screens get specced.
 
-**Not yet committed** — awaiting operator go on commit/push.
+**Commits:** registry pushed to main (f607751); C7 addendum to follow this entry.
 
 ---
 
