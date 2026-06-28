@@ -149,17 +149,70 @@ edit it, the `UI-` surface it lives on, live-vs-reload behaviour. Resolve any op
 `???`**. **Who decides:** user confirms edit-policy where non-obvious. **Hand-off:** surfaces feed
 Phase 3; the Config Admin screen is specified in Phase 3.
 
-## Phase 3 — Dashboard / UI Specs  *(approach altitude — finalize before entry)*
+## Phase 3 — Dashboard / UI Specs  *(full mechanical detail — finalized 2026-06-28)*
 
-**Goal:** Every `UI-` surface fully specified.
+**Goal:** Every `UI-` surface fully specified — layout, data bindings, actions, role-gating,
+real-time-vs-poll contract, and all states (loading / empty / error / partial / offline).
 
-**Approach:** Collect all `UI-` stubs (+ the surface inventory in `spec/source/review-scaffolding.md`
-as a checklist). For each surface: layout, components, data bindings, actions, role-gating
-(`PERM-`), real-time-vs-poll, and **all states** (loading / empty / error / partial / offline) per
-the design doc's state patterns. Include the Config Admin surface from Phase 2.
+**Surface ordering (13 files, agreed 2026-06-28):**
 
-**Done when:** every surface has a complete spec incl. all states and role-gating. **Who decides:**
-user on UX/layout calls. **Hand-off:** data bindings reconcile with Phase 4.
+| # | File | Coverage |
+|---|---|---|
+| 00 | `surface-00-auth.md` | UI-LOGIN, UI-2FA-*, UI-INVITE-SETUP, UI-REAUTH-PROMPT, UI-SUPPORT-REQUESTS |
+| 01 | `surface-01-config-admin.md` | UI-config-admin #auth…#secrets (11 sections) — Phase 2 Appendix B carry-in |
+| 02 | `surface-02-user-mgmt.md` | UI-USER-MGMT, UI-ROLE-MGMT, UI-PERMISSION-MATRIX, UI-CLEARANCE-*, UI-RESTRICTED-GRANT |
+| 03 | `surface-03-ingestion-queue.md` | UI-INGESTION-QUEUE, conflict review queue |
+| 04 | `surface-04-approval-queue.md` | Approval queue dashboard (C6 tiers) |
+| 05 | `surface-05-dashboard-ops.md` | Ops dashboard: system health, connector health, event log, DLQ, cost, guardrail log, self-improvement |
+| 06 | `surface-06-dashboard-super-admin.md` | Super Admin dashboard + management-plane screens (s-c-*): fleet clients, deploys, health, provisioning, migrations, cost, plugins |
+| 07 | `surface-07-dashboard-agency.md` | Agency Owner + Manager view, activity feed, notification centre |
+| 08 | `surface-08-dashboard-user.md` | Standard user view: My Workspace, Inbox, Decisions, chat |
+| 09 | `surface-09-agent-builder.md` | Agent Fleet, Agent Builder / specialist config, Orchestration |
+| 10 | `surface-10-commands.md` | UI-COMMANDS — custom command management (FR-9.CMD.006–008) |
+| 11 | `surface-11-memory-nav.md` | Memory navigation / entity browser |
+| 12 | `surface-12-mobile.md` | Mobile surfaces (6 sub-surfaces) |
+
+**Template:** `spec/03-surfaces/_TEMPLATE.md` — every surface file follows this shape exactly.
+
+**Inputs:** the ordered `UI-` stubs from Phase 1 + `spec/source/review-scaffolding.md` + Phase 2
+Appendix B (config-admin 11 sections + PERM-config.* gates). For each surface, load only the FRs
+it serves — bounded context.
+
+**Steps (every surface, identically):**
+1. **Create the surface file** from `_TEMPLATE.md` — open with Context Manifest (FRs served, CFG
+   deps, PERM gates, DATA bindings, ADR constraints). Load only those FRs + the config-registry
+   rows for that surface's sections.
+2. **Identify sections / panels / tabs** — decompose the surface into logical areas. Name each one.
+3. **Spec each section:** data bindings (table.field → display element), actions (label → behaviour
+   → PERM gate), and the real-time / poll contract per the C7 RTP area (FR-7.RTP.*).
+4. **Spec all five states** for every live section: loading / empty / error / partial / offline.
+   Never leave a state blank — "n/a" must be justified.
+5. **Log Open Decisions** (`OD-*`) for UX/layout calls — anything a developer couldn't decide from
+   the spec alone. Each OD gets options + a recommendation. Never assume a layout choice.
+6. **User resolves the ODs.** Apply resolutions.
+7. **Run the verification gate:** an independent subagent checks:
+   - (a) every `UI-` stub from Phase 1 that this surface covers is addressed — no orphaned stub
+   - (b) every CFG row in the config-registry that maps to this surface's section is wired
+   - (c) every DATA binding references a table/field that Phase 1 defined or flags it as a new Phase 4 stub
+   - (d) the PERM model is consistent with C1 FRs (no role string — only PERM nodes)
+8. **Reconcile every finding** from the verification gate.
+9. **Update the traceability matrix** — add a surface row noting which FRs it serves.
+10. **User sign-off** → commit. Append SESSION-LOG entry with next surface as resume point.
+
+**OD types in Phase 3:** two kinds — **(a) UX/layout** (how it looks, what order things appear,
+labels, empty-state copy) and **(b) behaviour** (what happens when an action fires, who gets
+notified, what the confirmation says). Both are ODs; never guess either.
+
+**The real-time / poll contract (C7 RTP):** every live-updating element must state which
+mechanism it uses. Options: (1) real-time Supabase subscription, (2) polling at a named interval,
+(3) static on page load, (4) on-demand user refresh. Mixed panels must specify per-element.
+
+**Done when:** every surface file is complete (all sections, all states, all ODs resolved) and the
+verification gate is clean.
+
+**Who decides:** user resolves ODs (layout + behaviour calls). Claude drafts, finds gaps, verifies.
+
+**Hand-off:** data bindings (table.field stubs) feed Phase 4 schema consolidation.
 
 ## Phase 4 — Data Model  *(approach altitude — finalize before entry)*
 
