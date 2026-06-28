@@ -171,6 +171,7 @@ real-time-vs-poll contract, and all states (loading / empty / error / partial / 
 | 10 | `surface-10-commands.md` | UI-COMMANDS — custom command management (FR-9.CMD.006–008) |
 | 11 | `surface-11-memory-nav.md` | Memory navigation / entity browser |
 | 12 | `surface-12-mobile.md` | Mobile surfaces (6 sub-surfaces) |
+| 01b | `surface-01b-config-audit-log.md` | UI-config-audit-log — config change audit log viewer (OD-099 resolved) |
 
 **Template:** `spec/03-surfaces/_TEMPLATE.md` — every surface file follows this shape exactly.
 
