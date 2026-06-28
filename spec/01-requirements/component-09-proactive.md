@@ -5,7 +5,12 @@
   FR-6.APR.002/003 via change-control, accepted at sign-off). Feasibility **block T (AF-127…AF-131)** logged,
   OOS-031/032 logged. **Verification gate run** — orphan/contradiction CLEAN (all 6 traps PASS) + **critical
   floor-narrowing check NO HOLE** + 9 quality findings reconciled. Area codes: MODE ×4 · PRO ×7 ·
-  SUG ×5 · CST ×7 · CMD ×5 (**28 FRs**). C9 is the
+  SUG ×5 · CST ×7 · CMD ×8 (**31 FRs**).
+  **Change-control addendum (2026-06-28, Phase 3 entry):** +FR-9.CMD.006–008 (user-defined custom commands —
+  "Commands" feature, modelled on Claude Code skills: admin-created slash-command bindings with a prompt template +
+  assigned agent, invoked inline in chat, same dispatch pipeline as system commands). New PERM stub:
+  `PERM-commands.manage` (→ PERMISSION_NODES.md, C1 FR-1.PERM.005). New DATA stub: `commands` table (→ Phase 4).
+  OOS-034–038 logged (v2 deferrals: Objectives, Projects, Priority Matrix, Brain Dump, Field Ops). C9 is the
   **proactive-generation + cold-start-gating + chat-command layer** — what the system does *without being asked*
   (L3654), how proactivity is *gated* before the memory is rich enough to be useful, and the `/` command surface
   for fast direct interaction.
@@ -961,6 +966,99 @@
 - **Acceptance criteria:**
   - AC-9.CMD.005.1 — Given a mobile user, When the command menu opens, Then the most common (node-permitted) commands
     appear as quick-tap buttons.
+- **Open decisions:** —
+- **Feasibility assumptions:** —
+
+---
+
+#### FR-9.CMD.006 — User-defined command definitions ("custom commands")
+- **Statement:** The system shall support user-defined commands — each record comprising: a unique slug (validated
+  against all system command slugs), a display name, a description, a prompt template (supporting a `$ARGUMENTS`
+  placeholder), an assigned agent from the agent registry, and a PERM node gate. Custom commands are created,
+  edited, and deleted via `UI-COMMANDS` by callers holding `PERM-commands.manage`.
+- **Source:** Introduced via change-control, Phase 3 entry 2026-06-28; not in design-doc-v4 (system commands only);
+  operator decision to add user-defined commands modelled on Claude Code skills.
+- **Status:** Approved
+- **Priority:** Should
+- **Actor / trigger:** Admin creating/editing/deleting a custom command via UI-COMMANDS.
+- **Preconditions:** Caller holds `PERM-commands.manage`; slug not already claimed by a system command.
+- **Behaviour:**
+  - Happy path: admin enters slug / name / description / prompt template / assigned agent → saved → command
+    appears in CMD dispatch and `/` menu for permitted callers.
+  - Branches: slug collision with a system command → rejected with a clear message, not silently renamed. No
+    agent assigned → save rejected.
+  - Edge / failure: assigned agent is later deleted or disabled → command is marked inactive (not deleted); callers
+    see "command unavailable" — never a silent failure.
+- **Data touched:** `commands` table (Phase 4 stub; user-defined only — system commands remain code-registered).
+- **Permissions:** `PERM-commands.manage` to create/edit/delete; per-command PERM node for invocation (CMD.002).
+  **PERM stub:** `PERM-commands.manage` → owed to PERMISSION_NODES.md (C1 FR-1.PERM.005); default Super Admin +
+  Admin.
+- **Config dependencies:** —
+- **Surfaces:** `UI-COMMANDS` (Phase 3).
+- **Acceptance criteria:**
+  - AC-9.CMD.006.1 — Given a caller with `PERM-commands.manage`, When they submit a valid custom command definition,
+    Then it is saved and appears in the dispatch registry.
+  - AC-9.CMD.006.2 — Given a slug that matches a system command, When submitted, Then the save is rejected with a
+    clear collision message.
+  - AC-9.CMD.006.3 — Given a custom command whose assigned agent is disabled, When a user attempts to invoke it,
+    Then the system returns "command unavailable" — not a silent no-op.
+- **Open decisions:** —
+- **Feasibility assumptions:** —
+
+#### FR-9.CMD.007 — Custom commands registered in the CMD dispatch alongside system commands
+- **Statement:** The system shall register all active user-defined commands in the CMD dispatch registry alongside
+  system commands. Custom commands appear in the `/` command menu for callers who hold the command's configured
+  PERM node. A user-defined command can never overwrite or shadow a system command slug; the collision check at
+  save time (FR-9.CMD.006) is the enforcement point.
+- **Source:** Change-control, Phase 3 entry 2026-06-28.
+- **Status:** Approved
+- **Priority:** Should
+- **Actor / trigger:** CMD dispatch loading the registry on request.
+- **Preconditions:** FR-9.CMD.006 (command saved and active).
+- **Behaviour:**
+  - Happy path: `/` menu shows system commands + permitted custom commands in a unified list; custom commands are
+    visually distinguishable (e.g., labelled "Custom").
+  - Branches: a custom command marked inactive is hidden from the menu, not shown as broken.
+  - Edge / failure: —
+- **Data touched:** `commands` table (read).
+- **Permissions:** CMD.002 (per-command PERM node).
+- **Config dependencies:** —
+- **Surfaces:** `/` command menu in chat (Phase 3).
+- **Acceptance criteria:**
+  - AC-9.CMD.007.1 — Given active custom commands, When a user opens the `/` menu, Then permitted custom commands
+    appear alongside system commands.
+  - AC-9.CMD.007.2 — Given an inactive custom command, When the `/` menu is rendered, Then the command is hidden —
+    not shown as an error.
+- **Open decisions:** —
+- **Feasibility assumptions:** —
+
+#### FR-9.CMD.008 — Custom command invocation (inline, same pipeline as system commands)
+- **Statement:** When a user invokes a custom command via `/slug [args]`, the system shall resolve the prompt
+  template (substituting `$ARGUMENTS` with supplied args, or an empty string if none are provided), dispatch to
+  the command's assigned agent, and return the result **inline in the chat thread** — same answer-mode pill as
+  FR-9.CMD.004, same PERM-node gate as FR-9.CMD.002, subject to the same C6 guardrail pipeline as any agent run.
+  No `task_queue` entry is created; the invocation is synchronous from the user's perspective.
+- **Source:** Change-control, Phase 3 entry 2026-06-28.
+- **Status:** Approved
+- **Priority:** Should
+- **Actor / trigger:** A user typing `/slug [args]` in chat.
+- **Preconditions:** Custom command active (FR-9.CMD.006); caller holds the command's PERM node (FR-9.CMD.002).
+- **Behaviour:**
+  - Happy path: template resolved → dispatched to assigned agent → result returned inline with answer-mode pill.
+  - Branches: `$ARGUMENTS` present in template but no args supplied → substituted with empty string, not an error
+    (the prompt author is responsible for graceful handling). Agent returns an error → surfaced inline, never silent.
+  - Edge / failure: assigned agent unavailable mid-invocation → inline error, logged (CMD.004 audit applies).
+- **Data touched:** `commands` table (read template + agent assignment); agent execution (C5/C8).
+- **Permissions:** CMD.002.
+- **Config dependencies:** —
+- **Surfaces:** chat inline response (Phase 3).
+- **Acceptance criteria:**
+  - AC-9.CMD.008.1 — Given a valid custom command with args, When invoked, Then `$ARGUMENTS` is substituted and the
+    result appears inline in chat with an answer-mode pill.
+  - AC-9.CMD.008.2 — Given a custom command invocation, When the assigned agent returns an error, Then the error
+    is surfaced inline — never a silent failure.
+  - AC-9.CMD.008.3 — Given a custom command invocation, Then no `task_queue` entry is created; the audit log entry
+    (FR-9.CMD.004) is the only persistent record.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
 

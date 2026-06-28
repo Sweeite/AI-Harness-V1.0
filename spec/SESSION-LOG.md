@@ -5,6 +5,51 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 29 — 2026-06-28 — PHASE 3 ENTERED (SURFACES) — PRE-ENTRY PASS + C9 CHANGE-CONTROL ADDENDUM
+
+**Phase 3 entered.** Pre-entry pass completed: surface inventory collected (17 formal `UI-` stubs + 94 review-scaffolding entries + `UI-config-admin` 11 sections from Phase 2 Appendix B), consolidated into ~12 logical surface files, ordering agreed. `spec/03-surfaces/` exists and is empty — ready.
+
+**Inputs reviewed:** operator's `AIOS_prototype.html` prototype (31 planned dashboards) + `AIOS Dashboard Planning.md`. Key finding: the vast majority of planned dashboards map cleanly to existing Phase 1 FRs. The `s-c-*` control-plane screens (Fleet Clients, Deploys, Health, Provisioning, Migrations, Workflows, Cost, Plugins) map to C7 MGM + C10 and will be Phase 3 surfaces.
+
+**V2 deferrals logged (OOS-034–038):**
+- OOS-034: Objectives / OKR hierarchy
+- OOS-035: Projects (task grouping)
+- OOS-036: Priority Matrix / Eisenhower grid
+- OOS-037: Brain Dump (quick-capture scratchpad)
+- OOS-038: Field Ops / Mission Manager
+
+**Credential Vault resolved:** platform secrets = env-only (Phase 2, Group N, class SECRET — no UI). Connector OAuth status = visible via management-plane surfaces. No standalone vault UI.
+
+**C9 change-control addendum — DONE:** +FR-9.CMD.006–008 (user-defined custom commands — the "Commands" feature):
+- Operator vision: user-defined slash commands that work like Claude Code skills — `/command-name` → inline result in chat, no async queue, no task_queue entry.
+- FR-9.CMD.006: custom command definition (slug, prompt template, assigned agent, PERM node) stored in `commands` table.
+- FR-9.CMD.007: custom commands registered in CMD dispatch alongside system commands; slug collision with system commands rejected at save.
+- FR-9.CMD.008: invocation — template resolved with `$ARGUMENTS`, dispatched to assigned agent, result inline with answer-mode pill; same C6 guardrail pipeline as any agent run.
+- C9 header updated: CMD ×5 → ×8, 28 FRs → 31 FRs. Matrix rows added. PERM stub `PERM-commands.manage` (→ PERMISSION_NODES.md, C1 FR-1.PERM.005; default Super Admin + Admin). DATA stub: `commands` table (→ Phase 4).
+- UI surface: `UI-COMMANDS` added to Phase 3 surface list (Commands management screen where admins create/edit custom commands).
+
+**Surface ordering agreed for Phase 3:**
+
+| # | File | Coverage |
+|---|---|---|
+| 00 | `surface-00-auth.md` | UI-LOGIN, UI-2FA-*, UI-INVITE-SETUP, UI-REAUTH-PROMPT, UI-SUPPORT-REQUESTS |
+| 01 | `surface-01-config-admin.md` | UI-config-admin #auth…#secrets (11 sections) — Phase 2 Appendix B carry-in |
+| 02 | `surface-02-user-mgmt.md` | UI-USER-MGMT, UI-ROLE-MGMT, UI-PERMISSION-MATRIX, UI-CLEARANCE-*, UI-RESTRICTED-GRANT |
+| 03 | `surface-03-ingestion-queue.md` | UI-INGESTION-QUEUE, conflict review queue |
+| 04 | `surface-04-approval-queue.md` | Approval queue dashboard (C6 tiers) |
+| 05 | `surface-05-dashboard-ops.md` | Ops dashboard: system health, connector health, event log, DLQ, cost, guardrail log, self-improvement |
+| 06 | `surface-06-dashboard-super-admin.md` | Super Admin dashboard + management-plane screens (s-c-*): fleet clients, deploys, health, provisioning, migrations, cost, plugins |
+| 07 | `surface-07-dashboard-agency.md` | Agency Owner + Manager view, activity feed, notification centre |
+| 08 | `surface-08-dashboard-user.md` | Standard user view: My Workspace, Inbox, Decisions, chat |
+| 09 | `surface-09-agent-builder.md` | Agent Fleet, Agent Builder / specialist config, Orchestration |
+| 10 | `surface-10-commands.md` | UI-COMMANDS — custom command management (FR-9.CMD.006–008) |
+| 11 | `surface-11-memory-nav.md` | Memory navigation / entity browser |
+| 12 | `surface-12-mobile.md` | Mobile surfaces (6 sub-surfaces) |
+
+**Next:** Phase 3 finalize-before-entry — create surface spec template, update phase-playbooks.md with detailed steps, then start `surface-01-config-admin.md` as the Phase 3 golden exemplar.
+
+---
+
 ## Session 28 — 2026-06-27 — PHASE 2 (CONFIG REGISTRY) ENTERED — HARVEST + REGISTRY DRAFTED, VERIFICATION-GATE CLEAN
 
 **Phase 2 begun.** Output: `spec/02-config/config-registry.md` (authoritative) + `spec/02-config/_HARVEST.md`

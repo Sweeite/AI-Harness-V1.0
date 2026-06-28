@@ -434,3 +434,6 @@ FR-10.ISO.001,client_slug deleted from all app tables,10,Approved,Must,ADR-001-3
 FR-10.ISO.002,Physical isolation = deletion evidence,10,Approved,Must,ADR-001-1;L19,n/a,n/a,UI-compliance_record,n/a,AC-10.ISO.002.1,n/a,,,
 FR-10.ISO.003,Data residency: region lock + selection,10,Approved,Should,ADR-001-consequences;ADR-005-5;L29-33,operator,CFG-deployment_region,UI-region_view,client_registry.region,AC-10.ISO.003.1;AC-10.ISO.003.2,n/a,,,
 FR-10.LEG.001,Mandatory legal review before regulated data,10,Approved,Must,L4107-4109;L1420,operator+counsel,n/a,ops-checklist,n/a,AC-10.LEG.001.1;AC-10.LEG.001.2,n/a,,,
+FR-9.CMD.006,User-defined command definitions (custom commands),9,Approved,Should,change-control-2026-06-28,PERM-commands.manage,n/a,UI-COMMANDS,commands,AC-9.CMD.006.1;AC-9.CMD.006.2;AC-9.CMD.006.3,n/a,,,
+FR-9.CMD.007,Custom commands registered in CMD dispatch alongside system commands,9,Approved,Should,change-control-2026-06-28,CMD.002,n/a,chat-command-menu,commands,AC-9.CMD.007.1;AC-9.CMD.007.2,n/a,,,
+FR-9.CMD.008,Custom command invocation (inline — same pipeline as system commands),9,Approved,Should,change-control-2026-06-28,CMD.002,n/a,chat-inline,commands;agent-execution,AC-9.CMD.008.1;AC-9.CMD.008.2;AC-9.CMD.008.3,n/a,,,
