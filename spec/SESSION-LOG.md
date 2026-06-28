@@ -46,7 +46,10 @@ next session reads the top entry to know exactly where to resume.
 | 11 | `surface-11-memory-nav.md` | Memory navigation / entity browser |
 | 12 | `surface-12-mobile.md` | Mobile surfaces (6 sub-surfaces) |
 
-**Next:** Phase 3 finalize-before-entry — create surface spec template, update phase-playbooks.md with detailed steps, then start `surface-01-config-admin.md` as the Phase 3 golden exemplar.
+**Surface-01 (Config Admin) — DONE ✅**
+`spec/03-surfaces/surface-01-config-admin.md` — 613 lines. All 11 sections (#auth #memory #tools #prompts #loops #guardrails #observability #agents #proactive #infra #secrets), all 117 scalar + 11 secret + 10 structured CFG rows wired, all 5 states per section. OD-098–103 resolved (operator: "take your recs"): "System Config" nav · `UI-config-audit-log` separate surface (added to Phase 3 list — now 14 surfaces total) · desktop banner mobile · BOOT confirm only when dirty · `secret_manifest` deploy-hook table · per-section save. Verification gate CLEAN (all 4 checks PASS). Phase 4 stubs: `config_values` · `config_audit_log` · `secret_manifest`.
+
+**Next: `surface-00-auth.md`** — UI-LOGIN, UI-2FA-CHALLENGE, UI-2FA-ENROLL, UI-INVITE-SETUP, UI-REAUTH-PROMPT, UI-SUPPORT-REQUESTS. Carry-in: C0 FRs (AUTH/SESS/INV/SEED/REC/WHK areas), Block J feasibility findings (Supabase Auth vendor facts), ADR-006 §RLS session boundary.
 
 ---
 
