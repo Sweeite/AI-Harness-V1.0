@@ -8,8 +8,14 @@ next session reads the top entry to know exactly where to resume.
 ## Session 30 — 2026-06-28 — PLAIN-ENGLISH DESCRIPTIONS ON EVERY CONFIG KNOB (registry) + DRY helper-text convention — **SIGNED OFF + PUSHED**
 
 **✅ OPERATOR SIGN-OFF (2026-06-28):** "i confirm it and i want to sign off and push to main." Confirmed the
-plain-English descriptions work, the DRY convention, the self-sufficiency-test gap patches, and **leaving OD-104
-(missed-webhook homing) tracked-open** for a future session. Pushed to `main`.
+plain-English descriptions work, the DRY convention, and the self-sufficiency-test gap patches. Pushed to `main`.
+
+**OD-104 CLOSED (2026-06-28, operator delegated "i trust your rec"):** missed/never-arriving webhook detection —
+**verified the mechanism already exists, no new FR.** Owned by C3 **FR-3.TRIG.005** (watch re-arm, fail-loud on
+lapse) + **FR-3.TRIG.006** (event-gap detect + reconcile from a persisted watermark — dropped/auto-disabled/
+late events never become silent loss), alerted via FR-3.DSC.006 → C7. **C0 OWED-FR-1 closed.** One build-time
+caveat logged: confirm GHL's incremental sync provides a TRIG.006 reconciliation read (GHL not in TRIG.006's
+named happy-path arms; rides the generic detect-then-reconcile pattern). **No open items remain blocking Phase 3.**
 
 **What happened:** Operator reviewed `surface-01-config-admin` (already signed off, session 29) plus an HTML
 mockup and flagged that the config knobs are impossible to understand from their key names alone. Added a

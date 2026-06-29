@@ -1404,7 +1404,7 @@ that would leave a critical alert with no destination is rejected fail-closed. C
 
 ---
 
-## OD-104 — Missed / never-arriving inbound webhook: detection homing 🔴 OPEN — **#3 (never fail silently)**
+## OD-104 — Missed / never-arriving inbound webhook: detection homing 🟢 RESOLVED (2026-06-28, Phase-3 sign-off — operator delegated "i trust your rec") — **#3 (never fail silently)**
 
 **Why it matters:** C0 authenticates webhooks that *arrive* (FR-0.WHK.*). A webhook that **never arrives**
 (provider outage / dropped delivery) is a silent missed-trigger — C0's auth boundary cannot see it. Parked
@@ -1418,12 +1418,21 @@ tracked OD here so it is not a dangling note. Not C0's concern (auth ≠ livenes
 - **(b)** Home to **C7 observability** — absence-of-signal liveness (AF-118) detects the missing expected trigger.
 - **(c)** Home to **C9 proactive** — treat as an "expected-but-absent" pattern.
 
-**Recommendation:** **(a)** — primary detection in C3 (FR-3.TRIG.005/006 likely already cover it; a future
-session must confirm the webhook-miss case is in scope), C7 owns the alert. If confirmed, this resolves with a
-cross-ref, not a new FR.
+**✅ Resolution → (a)** (operator delegated). **Verified against the FRs (2026-06-28):** the mechanism already
+exists — **no new FR needed.**
+- **FR-3.TRIG.005** (watch / subscription re-arm) — proactively re-arms every expiring push subscription and
+  treats a failed/missed re-arm as a `degraded` condition surfaced loudly (Google watch family; AC-3.TRIG.005.2).
+- **FR-3.TRIG.006** (event-delivery gap detection + reconciliation) — *"detect gaps in at-least-once event
+  delivery and reconcile … so dropped, auto-disabled, or late-expired events never become silent knowledge
+  loss"*; Slack `conversations.history` sweep from a persisted watermark, Gmail/Drive/Calendar full-sync on a
+  history-gap; the detect-then-reconcile pattern is declared **generic**.
+- **Alerting** rides **FR-3.DSC.006** (degraded-connector alert) → C7. C0's auth boundary is correctly *not*
+  the owner (auth ≠ liveness).
 
-**Status:** OPEN — operator confirmed at Phase-3 sign-off (2026-06-28) to **leave it tracked** for a future
-session. **Does not block any surface.**
+**Build-time caveat (not a spec hole):** TRIG.006's named happy-path arms are Slack + Google; **GHL** is the one
+connector not explicitly named (its app webhook is non-expiring, skipped by TRIG.005). When the GHL connector's
+incremental sync is built, confirm it provides the TRIG.006 reconciliation read (a GHL watermark re-read) under
+the generic pattern. Tracked as a build-time check, not an open spec decision. **OWED-FR-1 (C0) CLOSED.**
 
 ---
 
