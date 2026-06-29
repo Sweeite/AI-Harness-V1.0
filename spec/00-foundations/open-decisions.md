@@ -1404,4 +1404,29 @@ that would leave a critical alert with no destination is rejected fail-closed. C
 
 ---
 
-> Next OD number: OD-098.
+## OD-104 — Missed / never-arriving inbound webhook: detection homing 🔴 OPEN — **#3 (never fail silently)**
+
+**Why it matters:** C0 authenticates webhooks that *arrive* (FR-0.WHK.*). A webhook that **never arrives**
+(provider outage / dropped delivery) is a silent missed-trigger — C0's auth boundary cannot see it. Parked
+since session 16 as **OWED-FR-1** with a "confirm the homing at sign-off" note (C0 L819–823); converted to a
+tracked OD here so it is not a dangling note. Not C0's concern (auth ≠ liveness).
+
+**Options:**
+- **(a)** Home detection to **C3 ingestion** — connector event-gap reconciliation (**FR-3.TRIG.006** periodic
+  reconciliation sweep + **FR-3.TRIG.005** watch re-arm) already detects gaps in at-least-once delivery; a
+  missed webhook is a special case. **C7** raises the alert.
+- **(b)** Home to **C7 observability** — absence-of-signal liveness (AF-118) detects the missing expected trigger.
+- **(c)** Home to **C9 proactive** — treat as an "expected-but-absent" pattern.
+
+**Recommendation:** **(a)** — primary detection in C3 (FR-3.TRIG.005/006 likely already cover it; a future
+session must confirm the webhook-miss case is in scope), C7 owns the alert. If confirmed, this resolves with a
+cross-ref, not a new FR.
+
+**Status:** OPEN — operator confirmed at Phase-3 sign-off (2026-06-28) to **leave it tracked** for a future
+session. **Does not block any surface.**
+
+---
+
+> **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md` (surface-local layout
+> decisions, all resolved in that file) — do not reuse those numbers.
+> Next OD number: OD-105.

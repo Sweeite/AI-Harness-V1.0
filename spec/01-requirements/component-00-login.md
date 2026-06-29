@@ -820,7 +820,8 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
 > a webhook that **never arrives** (provider outage / dropped delivery) is a **missed-trigger** concern —
 > the failure-overlay's "loop heartbeat + catch-up" (design L2852). That belongs to **C2/C3 ingestion**
 > or **C7 observability / C9 proactive**, *not* C0 auth. Explicitly parked here so it is not silently
-> dropped at the auth boundary (#3). **Confirm the homing at sign-off.**
+> dropped at the auth boundary (#3). **Now tracked as OD-104** (recommendation: C3 FR-3.TRIG.005/006 detect,
+> C7 alerts — confirm in a future session); left open at the operator's Phase-3 sign-off (2026-06-28).
 
 ### FR-0.WHK.001 — Authenticate every inbound webhook before processing; reject unverified
 - **Statement:** The system shall verify the authenticity of every incoming webhook before any payload is processed, and reject an unverified webhook with HTTP 401.

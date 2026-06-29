@@ -5,7 +5,11 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
-## Session 30 — 2026-06-28 — PLAIN-ENGLISH DESCRIPTIONS ON EVERY CONFIG KNOB (registry) + DRY helper-text convention
+## Session 30 — 2026-06-28 — PLAIN-ENGLISH DESCRIPTIONS ON EVERY CONFIG KNOB (registry) + DRY helper-text convention — **SIGNED OFF + PUSHED**
+
+**✅ OPERATOR SIGN-OFF (2026-06-28):** "i confirm it and i want to sign off and push to main." Confirmed the
+plain-English descriptions work, the DRY convention, the self-sufficiency-test gap patches, and **leaving OD-104
+(missed-webhook homing) tracked-open** for a future session. Pushed to `main`.
 
 **What happened:** Operator reviewed `surface-01-config-admin` (already signed off, session 29) plus an HTML
 mockup and flagged that the config knobs are impossible to understand from their key names alone. Added a
