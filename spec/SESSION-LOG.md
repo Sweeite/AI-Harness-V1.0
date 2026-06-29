@@ -5,6 +5,36 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 30 — 2026-06-28 — PLAIN-ENGLISH DESCRIPTIONS ON EVERY CONFIG KNOB (registry) + DRY helper-text convention
+
+**What happened:** Operator reviewed `surface-01-config-admin` (already signed off, session 29) plus an HTML
+mockup and flagged that the config knobs are impossible to understand from their key names alone. Added a
+**plain-English `What it does` description to every config row.**
+
+**Scope of the change:**
+- **`spec/02-config/config-registry.md`** — new `What it does (plain English)` column on all 14 group/secret
+  tables (A–N), one jargon-free line per row, written for a non-technical agency admin. **170 knob/secret rows
+  + 11 Appendix-A structured objects** — verified 100% coverage (0 empty descriptions). Method: 6 parallel
+  subagents, each grounding its descriptions in the relevant `component-NN` requirement files (no invented
+  behaviour). Conventions section documents the column as **canonical source text**.
+- **`spec/03-surfaces/surface-01-config-admin.md`** — added a binding paragraph (Layout): the surface renders
+  each key's registry description as the on-screen **helper line** beneath the key. **DRY decision (operator
+  confirmed "keep it dry"):** the registry is the single source; the surface references it, never duplicates the
+  170 strings. A key with no description is a registry defect, not a surface fallback.
+- **`spec/03-surfaces/_TEMPLATE.md`** — added the **DRY rule for human-readable text** under Data bindings so
+  every future surface follows the same bind-don't-duplicate pattern.
+
+**Honest flag:** the trickiest descriptions (memory-retrieval dials especially) describe *intended* (paper)
+behaviour; revisit if real tuning behaves differently once built. Consistent with the feasibility posture.
+
+**Commits:** registry descriptions (b2316bd); template/README/SESSION-LOG alignment + this entry to follow.
+
+**Resume point unchanged: next surface is `surface-00-auth.md`** (UI-LOGIN, UI-2FA-*, UI-INVITE-SETUP,
+UI-REAUTH-PROMPT, UI-SUPPORT-REQUESTS). Follow the Phase 3 playbook steps; copy `_TEMPLATE.md`; the C0 FRs
+(`component-00-login.md`) are the FR source. Self-sufficiency test run before this handoff (see below / git log).
+
+---
+
 ## Session 29 — 2026-06-28 — PHASE 3 ENTERED (SURFACES) — PRE-ENTRY PASS + C9 CHANGE-CONTROL ADDENDUM
 
 **Phase 3 entered.** Pre-entry pass completed: surface inventory collected (17 formal `UI-` stubs + 94 review-scaffolding entries + `UI-config-admin` 11 sections from Phase 2 Appendix B), consolidated into ~12 logical surface files, ordering agreed. `spec/03-surfaces/` exists and is empty — ready.

@@ -58,6 +58,12 @@ breadcrumb, back button).
 |---|---|---|
 | [Label / field / chart] | `table.field` or `FR-N.AREA.NNN` | How it's computed / formatted |
 
+> **DRY rule for human-readable text.** Any description / helper / label text a surface renders
+> (e.g. a config knob's plain-English helper line, a status label's meaning) **binds to its
+> canonical source — it is never re-typed into the surface file.** Cite the source (e.g. "renders
+> the `What it does` column from `config-registry.md`") so one edit at the source can't drift from a
+> stale copy here. A missing description at the source is a defect there, not a surface fallback.
+
 **Actions:**
 | Action (label) | What it does | PERM gate |
 |---|---|---|
