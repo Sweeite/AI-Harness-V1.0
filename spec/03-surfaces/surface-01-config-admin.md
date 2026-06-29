@@ -52,7 +52,11 @@ The Config Admin screen is a **top-level sidebar item labelled "System Config"**
 
 A sticky header carries: screen title ("Config Admin"), the caller's role indicator, and a global "Unsaved changes" badge that appears when any field in the current section has a pending edit not yet saved.
 
-Each section renders its keys as a table of rows: key name · current value · edit control · edit class badge (LIVE / BOOT / REBUILD / SECRET). **Save is per-section** (OD-103 resolved: one "Save [Section]" button per section; no per-key inline save; no global save). Edit-class rules applied globally:
+Each section renders its keys as a table of rows: key name · **plain-English helper line** · current value · edit control · edit class badge (LIVE / BOOT / REBUILD / SECRET). **Save is per-section** (OD-103 resolved: one "Save [Section]" button per section; no per-key inline save; no global save).
+
+**Plain-English helper text (binds to the registry).** Every key renders the **"What it does (plain English)"** description from its `config-registry.md` row directly beneath the key name as muted helper text — so a non-technical admin understands each knob without reading the spec. The registry is the single source of this text (the `config_values` row carries no separate description; the surface reads the canonical registry description per key). A key with no plain-English description is a registry defect, not a surface fallback.
+
+Edit-class rules applied globally:
 - **LIVE** rows: change takes effect immediately after save — no dialog.
 - **BOOT** rows: change requires a redeploy. If the save batch contains at least one dirtied BOOT row, a confirm dialog appears before write: *"One or more changes require a redeploy to take effect. Proceed?"* (OD-101 resolved: dialog only when a BOOT row was dirtied; not on LIVE-only saves). After save, affected rows display an inline "applies next deploy" badge.
 - **REBUILD** rows: change triggers a background pipeline rerun. A confirm dialog always appears before write: *"This change will trigger a background rebuild. Proceed?"*
