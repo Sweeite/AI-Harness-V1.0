@@ -25,12 +25,17 @@ gets done for them. 2–4 sentences max. Do not describe the layout here — tha
 
 ## Access
 
+> **Use the six canonical C1 roles** (FR-1.ROLE.001) — never invent role names. Custom roles are
+> data-defined (a deployment may add more), but the six defaults are the baseline every Access table lists.
+
 | Role | Can enter? | Notes |
 |---|---|---|
 | Super Admin | Yes / No | |
 | Admin | Yes / No | |
-| Advanced Member | Yes / No | |
-| Basic Member | Yes / No | |
+| Finance | Yes / No | |
+| HR | Yes / No | |
+| Account Manager | Yes / No | |
+| Standard User | Yes / No | |
 
 **Entry gate:** `PERM-node-name` — callers without this node see [404 / redirect to home / hidden nav item].
 

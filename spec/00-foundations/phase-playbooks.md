@@ -154,7 +154,7 @@ Phase 3; the Config Admin screen is specified in Phase 3.
 **Goal:** Every `UI-` surface fully specified — layout, data bindings, actions, role-gating,
 real-time-vs-poll contract, and all states (loading / empty / error / partial / offline).
 
-**Surface ordering (13 files, agreed 2026-06-28):**
+**Surface ordering (14 files: 00–12 + 01b, agreed 2026-06-28):**
 
 | # | File | Coverage |
 |---|---|---|
@@ -172,6 +172,14 @@ real-time-vs-poll contract, and all states (loading / empty / error / partial / 
 | 11 | `surface-11-memory-nav.md` | Memory navigation / entity browser |
 | 12 | `surface-12-mobile.md` | Mobile surfaces (6 sub-surfaces) |
 | 01b | `surface-01b-config-audit-log.md` | UI-config-audit-log — config change audit log viewer (OD-099 resolved) |
+
+**Status (2026-06-28):** 1 of 14 built — `surface-01-config-admin.md` ✅ signed off. The other 13 (incl.
+`surface-01b`) are **listed but not yet built**; surface-01's "View audit log →" link targets `surface-01b`,
+which is a known not-yet-built target (not a defect). **Mapping note:** C0's `UI-CONFIG-AUTH` stub
+(FR-0.AUTH.003) is **not a separate surface** — it is absorbed into `surface-01-config-admin` `#auth`; do not
+create a standalone `UI-CONFIG-AUTH` surface. Role coverage labels in the table above (e.g. "Agency Owner",
+"Manager") are planning-doc shorthand — every surface's Access table must use the **six canonical C1 roles**
+(FR-1.ROLE.001), not those labels.
 
 **Template:** `spec/03-surfaces/_TEMPLATE.md` — every surface file follows this shape exactly.
 

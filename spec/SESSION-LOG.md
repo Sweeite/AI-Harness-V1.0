@@ -31,7 +31,26 @@ behaviour; revisit if real tuning behaves differently once built. Consistent wit
 
 **Resume point unchanged: next surface is `surface-00-auth.md`** (UI-LOGIN, UI-2FA-*, UI-INVITE-SETUP,
 UI-REAUTH-PROMPT, UI-SUPPORT-REQUESTS). Follow the Phase 3 playbook steps; copy `_TEMPLATE.md`; the C0 FRs
-(`component-00-login.md`) are the FR source. Self-sufficiency test run before this handoff (see below / git log).
+(`component-00-login.md`) are the FR source. FR bindings (from the sufficiency test): UI-LOGIN → FR-0.AUTH.001/
+.002/.004/.005/.009 + FR-0.REC.001; UI-2FA-ENROLL → FR-0.AUTH.006; UI-2FA-CHALLENGE → FR-0.AUTH.007/.008;
+UI-INVITE-SETUP → FR-0.INV.004/.005 (+ FR-0.SEED.002 reuse); UI-REAUTH-PROMPT → FR-0.SESS.003/.004/.006/.007;
+UI-SUPPORT-REQUESTS → FR-0.REC.002/.003/.005/.006/.007.
+
+**Self-sufficiency test RUN before this handoff (zero-context agent, 2026-06-28) → verdict: resumable, and the
+gaps it found are now PATCHED:**
+- **Phantom role model (blocking-quality)** — `_TEMPLATE.md` + signed-off `surface-01` Access tables used
+  non-existent "Advanced/Basic Member" roles. **FIXED** → the six canonical C1 roles (Super Admin, Admin,
+  Finance, HR, Account Manager, Standard User); template now carries a "use the six roles, never invent" note.
+- **`PERMISSION_NODES.md` did not exist** (referenced 35×, owed since ADR-006). **CREATED** at repo root — the
+  canonical catalog, 37 nodes harvested from C0–C10 + config, fields per FR-1.PERM.005 (Description / Default
+  roles / Scope / Added-in); 5 unseeded stubs flagged ⚠️ (default-deny per OD-030).
+- **Surface count 13-vs-14** — playbook header said "13 files". **FIXED** → 14 (00–12 + 01b); README/SESSION-LOG
+  already said 14.
+- **`UI-CONFIG-AUTH` orphan + `surface-01b` listed-not-built** — **NOTED** in the playbook: UI-CONFIG-AUTH is
+  absorbed into surface-01 `#auth` (not a standalone surface); surface-01b is a known not-yet-built link target.
+- **Pre-existing, NOT patched (needs an operator decision, flagged for a future session):** C0 OWED-FR-1
+  (missed/never-arriving webhook reconciliation homing, C0 L819–823) is still "confirm at sign-off" — it needs a
+  component-ownership call (C2/C3/C7/C9) = a real OD, not a doc fix. Does not block surface-00.
 
 ---
 

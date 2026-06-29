@@ -39,8 +39,10 @@ The Config Admin screen is the single privileged surface where Super Admins (and
 |---|---|---|
 | Super Admin | Yes | All 11 sections visible |
 | Admin | Yes | Sections #auth #memory #tools #prompts #loops #guardrails #observability #agents #proactive visible; #infra and #secrets hidden (registry: `PERM-config.infra` and `PERM-config.secrets` are Super Admin only, never delegable) |
-| Advanced Member | No | Redirected to home |
-| Basic Member | No | Redirected to home |
+| Finance | No | Holds no `PERM-config.*` node by default → redirected to home |
+| HR | No | Holds no `PERM-config.*` node by default → redirected to home |
+| Account Manager | No | Holds no `PERM-config.*` node by default → redirected to home |
+| Standard User | No | Holds no `PERM-config.*` node by default → redirected to home |
 
 **Entry gate:** Caller must hold at least one `PERM-config.*` node. Callers without any such node see a 404. Sections the caller's PERM set does not cover are hidden (not shown as locked — they simply do not render). The section list adapts to the caller's permission set; a Super Admin sees all 11, an Admin sees 9.
 
