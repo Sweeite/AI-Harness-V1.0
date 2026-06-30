@@ -43,8 +43,9 @@ re-flagged.
 **No matrix change** — Phase 3 surfaces don't add traceability-matrix rows (the `UI-` stubs are already columns
 on the C0 FR rows); consistent with surface-01.
 
-**NEXT STEP — `surface-02-user-mgmt.md`** (UI-USER-MGMT, UI-ROLE-MGMT, UI-PERMISSION-MATRIX, UI-CLEARANCE-*,
-UI-RESTRICTED-GRANT). FR source = `component-01-rbac.md` (ROLE/PERM/CLR/RST/USR areas) + the C0 INV FRs that name
+**NEXT STEP — `surface-02-user-mgmt.md`** (UI-USER-MGMT, UI-ROLE-MGMT, UI-PERMISSION-MATRIX,
+**UI-CLEARANCE-MGMT** (grant/revoke — FR-1.CLR.002/.004 + USR.005) + **UI-CLEARANCE-REVIEW** (cadence review —
+FR-1.CLR.005), UI-RESTRICTED-GRANT — i.e. the `UI-CLEARANCE-*` glob expands to **two** surfaces). FR source = `component-01-rbac.md` (ROLE/PERM/CLR/RST/USR areas) + the C0 INV FRs that name
 UI-USER-MGMT (FR-0.INV.001/.002/.003/.006/.007 — invite issue/expiry/SMTP/lifecycle/bounce). Carry-in:
 `PERMISSION_NODES.md` (the canonical node catalog), ADR-006 (data-driven RLS), the six canonical C1 roles. Copy
 `_TEMPLATE.md`; follow the Phase 3 playbook steps; run the gate before sign-off.
