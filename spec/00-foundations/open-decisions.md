@@ -1477,7 +1477,42 @@ live in that file's Open decisions table). All four resolved to the recommendati
 
 ---
 
+---
+
+## OD-113…OD-116 — surface-03 (memory review queues) layout/behaviour + a PERM-node gap 🟢 RESOLVED (2026-06-30, operator: "mint dedicated nodes" + "take all three recs")
+
+Surface-local decisions for `spec/03-surfaces/surface-03-ingestion-queue.md` (full options + reasoning live in
+that file's Open decisions table). All four resolved to the recommendation:
+
+- **OD-113** 🟢 — The three human-gated memory queues render as **one tabbed "Memory Review" surface**
+  (Ingestion / Conflicts / Consolidation) with per-tab PERM gating, not three separate nav routes. All three
+  gate the memory write path, share a Super-Admin/Admin-reviewer audience; mirrors surface-02's tabbed model.
+- **OD-114** 🟢 — The trust-window auto-drop audit (FR-2.ING.001 / OD-036 — what Filter 1 is discarding) renders
+  as a **read-only toggle/secondary view inside the Ingestion tab**, not a 4th tab. It's a lower-traffic audit of
+  the same source stream, not an action queue; promote to its own tab only if trust-window volume warrants.
+- **OD-115** 🟢 — **#2 gating.** The Conflicts + Consolidation review queues had **no dedicated PERM node** in
+  the C2 FRs (FR-2.WRT.002 named only "writer"; FR-2.MNT.014 named only "cleared role + `PERM-memory.*`") — a
+  real Rule-0 gap surfaced by the surface-03 draft. Resolved by **minting two new nodes via change-control**,
+  homed under the **Memory Access** category (FR-1.PERM.007), recorded here per FR-1.PERM.005's "updated whenever
+  a new gate is added" discipline (an *addition*, not an ADR supersede — the catalog is designed to grow):
+  - **`PERM-memory.review_conflict`** — *Description:* resolve a quarantined hard-conflict write (keep-new /
+    keep-existing / keep-both-with-note) on the surface-03 Conflicts queue. *Default roles:* Super Admin + Admin.
+    *Scope:* deployment-wide; viewing a Personal/Restricted memory in a conflict additionally requires the matching
+    sensitivity clearance. *Added-in:* surface-03 (2026-06-30).
+  - **`PERM-memory.approve_consolidation`** — *Description:* approve/reject a Personal-tier merge or
+    episodic→semantic summarise held for human approval (FR-2.MNT.014) on the surface-03 Consolidation queue.
+    *Default roles:* Super Admin only. *Scope:* deployment-wide; **requires Personal clearance** (the queue is
+    Personal-tier by definition). *Added-in:* surface-03 (2026-06-30).
+  - **Build obligation:** both must appear in `PERMISSION_NODES.md` (build artifact, FR-1.PERM.005) with these
+    four fields when that catalog is materialised; both default-deny (FR-1.PERM.002).
+- **OD-116** 🟢 — At **Include**, the reviewer **confirms/assigns the sensitivity tier** (pre-filled with Filter
+  2's suggestion, overridable, the override audited) — FR-2.ING.003 defines Include as "assign sensitivity +
+  proceed," so the human owns the tier; an under-classification is a #2 risk worth a logged human decision.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
-> `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`
-> (surface-local layout decisions, all resolved in their files) — do not reuse those numbers.
-> Next OD number: OD-113.
+> `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
+> OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local decisions, all resolved in
+> their files; OD-115 also mints two C1 Memory-Access PERM nodes via change-control) — do not reuse those numbers.
+> Next OD number: OD-117.

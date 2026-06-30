@@ -5,6 +5,71 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 33 — 2026-06-30 — SURFACE-03 (MEMORY REVIEW QUEUES) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 4 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-03-ingestion-queue.md` — the fourth Phase-3 surface. One tabbed
+**"Memory Review"** surface consolidates the **three human-gated queues that guard the memory write path**:
+**Ingestion** (`UI-INGESTION-QUEUE`) · **Conflicts** (the hard-conflict quarantine) · **Consolidation** (the
+Personal-tier merge/summarise approval gate). Framed as the operator-facing embodiment of the three non-negotiables
+for memory: nothing sensitive written without an explicit human decision (#2), nothing silently dropped or held
+forever (#3), held/deferred knowledge never lost (#1). Each section specced with data bindings, actions+PERM,
+poll contract, all five states. Pattern-matched surface-00/01/02.
+
+**FR source:** `component-02-memory.md` — **Ingestion tab:** FR-2.ING.002 (Filter-2 sensitivity flagging), FR-2.ING.003
+(Include/Exclude/Defer + defer-resurface + un-actioned escalation), FR-2.ING.004 (no sensitive write without Include),
+FR-2.ING.005 (HR Exclude-by-default), FR-2.ING.001/OD-036 (trust-window shadow-drop audit), FR-2.ING.010 (Include
+routes through the standard write flow). **Conflicts tab:** FR-2.WRT.002 / OD-032 (hard-conflict quarantine, never
+auto-resolved), informed by FR-2.MNT.008 (priority rules → suggested resolution), seam-in from FR-2.MNT.006 (daily
+supersede safety-net). **Consolidation tab:** FR-2.MNT.014 / OD-037 (Personal-tier merge FR-2.MNT.005 / summarise
+FR-2.MNT.007 never auto-consolidated). **ADR carry-ins:** ADR-003 (Filter-1/2 Haiku gates *produce* the queue
+contents), **ADR-004** (Include/approval hands to the **sole writer** — *not* a direct insert; still runs contradiction
+check + per-entity lock + write-rate cap; a writer-side rejection must resurface), ADR-002 (`[Building]` entity context),
+ADR-001 §3 (no `client_slug`). **C3 seam:** ingestion items originate from connector triggers (FR-3.TRIG.*) +
+gap-reconciliation re-ingest (FR-3.TRIG.006) feeding FR-2.ING.006/007/008. **C7 seam:** these are POLL queues (the
+realtime-WebSocket set is C6's agent-approval queue on **surface-04** + the notification centre — FR-7.RTP.001); the
+escalation *alert* is delivered by C7, the surface owns the queue + badge.
+
+**4 ODs raised + resolved (operator: "mint dedicated nodes" + "take all three recs"), logged OD-113–116:**
+- **OD-113** — one tabbed "Memory Review" surface (not three nav routes).
+- **OD-114** — trust-window auto-drop audit = read-only toggle inside the Ingestion tab (not a 4th tab).
+- **OD-115** 🔑 **#2 gating + change-control** — the Conflicts + Consolidation queues had **no dedicated PERM node**
+  in the C2 FRs (FR-2.WRT.002 said only "writer"; FR-2.MNT.014 said "cleared role + `PERM-memory.*`") — a real Rule-0
+  gap. Resolved by **minting two new nodes under the Memory Access category via change-control**:
+  **`PERM-memory.review_conflict`** (Super Admin + Admin) and **`PERM-memory.approve_consolidation`** (Super Admin +
+  Personal clearance). Four-field definitions (Description/Default roles/Scope/Added-in) recorded in `open-decisions.md`
+  OD-115; build obligation = appear in `PERMISSION_NODES.md` when materialised (FR-1.PERM.005 discipline — an
+  *addition*, not an ADR supersede). **C1 catalog grows; no FR re-approval needed.**
+- **OD-116** — Include confirms/assigns the sensitivity tier (pre-filled from Filter-2, overridable, override audited).
+
+**Verification gate (1 independent zero-context subagent, 6 checks a–f): CLEAN — 0 HIGH, 5 MED + 1 LOW.** All four
+core checks PASS clean: stub coverage (UI-INGESTION-QUEUE + conflict queue fully addressed, no orphans, no over-claim);
+CFG wiring (all 6 keys exist with claimed class/default — incl. `hr_content_enabled` BOOT); DATA (no `client_slug`
+leak, all Phase-4 stubs flagged, joins read-only); PERM (only nodes, two new ones recorded with all 4 fields). The
+two non-negotiable checks PASS: no silent-failure hole (every error state refuses to render a false-empty queue, badge
+shows "—" not "0"; ADR-004 sole-writer reflected; hard conflicts never auto-resolved; Personal never auto-consolidated;
+clearance-before-view enforced) + escalation uniform on all three queues with C7 alert-delivery seam. **6 reconciled:**
+(F1 already satisfied) + keep-both closes the quarantine record (`state=resolved`); consolidation-reject logs to
+`access_audit`; Defer disabled when `deferred_until` can't be computed; `escalated_at` documented as server-owned
+(C2 loop, not a surface computation — badge correct even when dashboard idle); HR row clarified (gate is the config
+flag, not the role).
+
+**Files changed:** `surface-03-ingestion-queue.md` (new); `open-decisions.md` (OD-113–116 🟢 + OD-115's two node
+defs; next OD-117); `README.md` (Phase-3 row → 4 of 14); `phase-playbooks.md` (status → 4 of 14). This log.
+
+**No matrix change** — Phase 3 surfaces don't add traceability-matrix rows (the `UI-` stubs are already columns on the
+C2 FR rows); consistent with surface-00/01/02. **No new OOS / AF.** The two new PERM nodes are catalog additions
+(C1 build artifact), not matrix rows.
+
+**NEXT STEP — `surface-04-approval-queue.md`** (the C6 agent-action approval-queue dashboard — the 3 approval tiers).
+FR source = `component-06-guardrails.md` (the **APR** area — FR-6.APR.* approval tiers / mandatory-hard set / contextual
+routing + the **ESC** escalation/flagged workflow FR-6.ESC.*). Carry-in: **ADR-007** (containment-first; quarantine
+retains-not-discards), the **C7 RTP realtime contract** (this queue **IS** in the realtime-WebSocket set — FR-7.RTP.001,
+`awaiting_approval` live — unlike surface-03's poll queues; note the distinction), OD-056 (step-level approval +
+no-irreversible-outrun), OD-088 (action-autonomy matrix, the C6/C9 floor). Copy `_TEMPLATE.md`; follow the Phase 3
+playbook steps; run the gate before sign-off. **surface-03 signed off + committed to main this session.**
+
+---
+
 ## Session 32 — 2026-06-30 — SURFACE-02 (USER & ACCESS MGMT) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 3 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-02-user-mgmt.md` — the third Phase-3 surface. One tabbed
