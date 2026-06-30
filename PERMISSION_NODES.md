@@ -28,7 +28,9 @@ Consolidated 2026-06-28 from a full `PERM-*` harvest across `spec/01-requirement
 `PERM-node`, `PERM-system` — not nodes). **+5 management-plane nodes** transcribed 2026-06-30 (surface-06 / OD-125 —
 the `PERM-fleet.*` family) = **42 catalogued**; **+2 Dashboard Access nodes** transcribed 2026-07-01 (surface-07 /
 OD-129 — `PERM-dashboard.overview` + `PERM-dashboard.ops`, formalising the FR-1.PERM.007 category + canonicalising
-surface-05's `view_ops` working name) = **44 catalogued**; plus **3 owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1
+surface-05's `view_ops` working name) = **44 catalogued**; **+1 Dashboard Access node** transcribed 2026-07-01
+(surface-08 / OD-133 — `PERM-dashboard.workspace`, the third node of the family, anticipated by OD-129) = **45
+catalogued**; plus **3 owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1
 — defined in `open-decisions.md`, not yet transcribed, flagged below). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
 they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM-memory.write`,
 `PERM-prompt.rollback`, `PERM-prompt.view_history`, `PERM-system.add_sensitivity`.
@@ -116,6 +118,7 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 |---|---|---|---|---|
 | `PERM-dashboard.overview` | Enter the agency / management overview dashboard (surface-07 — activity feed + at-a-glance + proactive suggestions) | Super Admin, Admin, Account Manager | intra-client | surface-07 / OD-129 |
 | `PERM-dashboard.ops` | Enter the technical operations dashboard (surface-05); canonicalises surface-05's working name `PERM-dashboard.view_ops` | Super Admin, Admin (+ Finance scoped to Cost panel, surface-05 OD-121) | intra-client | surface-05 (ref) / surface-07 / OD-129 |
+| `PERM-dashboard.workspace` | Enter the personal user workspace (surface-08 — chat + My Queue + my activity feed + my proactive suggestions) | All six roles (every authenticated user has a personal workspace; per-`/`-command authority stays finer, FR-9.CMD.002) | intra-client | surface-08 / OD-133 |
 
 ### Guardrails — autonomy (pre-existing, glossary)
 | Node | Description | Default roles | Scope | Added-in |

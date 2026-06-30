@@ -1,8 +1,16 @@
 # Surface: UI-DASHBOARD-USER (surface-08) — Standard User Dashboard (My Workspace · Chat · My Queue · Activity Feed)
 
 **Status:** 🟢 **Signed off 2026-07-01** (operator: "Cool do it" — recommendations delegated). **9 of 14 Phase-3 surfaces
-complete.** OD-133–136 🟢. **Verification gate (independent zero-context subagent, checks a–f): _pending — recorded below
-on completion_.** The ninth Phase-3 surface. One surface ID is minted here: **`UI-DASHBOARD-USER`** — the **Standard User
+complete.** OD-133–136 🟢. **Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 2 HIGH · 2 MED · 1 LOW
+(all reconciled).** Coverage (every cited C7/C9/C5/C4 FR/AC verified verbatim — incl. the three scrutiny points
+AC-7.VIEW.002.2 pill-on-every-chat-output, AC-7.RTP.001.3 only-two-Realtime, AC-9.CMD.008.3 no-`task_queue`-on-custom-command),
+CFG wiring (all 4 keys exist with claimed default/class), DATA (no `client_slug`; chat-store + `originating_user_id`
+correctly flagged net-new), PERM (no role-string gates; FR-9.CMD.002 node-gating correct), the #1/#2/#3 false-healthy
+sweep (no hole — "—" not "0", "mode unknown" never "Cited"), and seams all PASS. **Fixes applied:** **H1** — OD-133–136
+transcribed into the central `open-decisions.md` (pointer advanced to OD-137); **H2** — `PERM-dashboard.workspace`
+transcribed into `PERMISSION_NODES.md` (catalog 44→45); **M1** — `PERM-action.review` annotated OD-117-owed-to-catalog
+where referenced; **M2** — unpermitted-hidden re-cited to AC-9.CMD.007.1 + FR-9.CMD.002 (.007.2 covers *inactive* only);
+**L1** — prioritisation re-cited to FR-7.RTP.003 body (+AC-7.RTP.003.1/.2). The ninth Phase-3 surface. One surface ID is minted here: **`UI-DASHBOARD-USER`** — the **Standard User
 role view** (FR-7.VIEW.002 names five RBAC-gated role surfaces, one of which is the **Standard User** view, but assigns
 no formal `UI-` id). This surface is also a **canonical home of the answer-mode pill** (Cited / Inferred / Unknown, C4
 FR-4.CID.006) — the *other* home is surface-07; surface-05 seams the pill to "home surfaces 07/08". **OD-133 mints the
@@ -108,7 +116,8 @@ third Dashboard Access node `PERM-dashboard.workspace`** via change-control — 
   - **Each `/` command is gated on its own C1 node** (FR-9.CMD.002), evaluated against the caller's node set — entry to
     the chat does **not** grant any command; a caller without `/forget`'s node is denied + logged, never shown the confirm
     (AC-9.CMD.003.3). Custom commands carry the node set at definition (FR-9.CMD.006, surface-10).
-  - **My Queue's "go decide" routes to surface-04**, gated there by `PERM-action.review`; this surface shows *my*
+  - **My Queue's "go decide" routes to surface-04**, gated there by `PERM-action.review` (OD-117, owed to
+    `PERMISSION_NODES.md`); this surface shows *my*
     pending/assigned items but the decision UI is surface-04's.
   - **Acting on a suggestion** is gated by the action's own **C6 tier + C1 clearance** (FR-9.MODE.003) — never by chat
     entry alone.
@@ -213,7 +222,7 @@ A sectioned personal workspace on the client deployment — the user's home afte
 Only the notification centre holds a Realtime subscription (FR-7.RTP.001/AC-7.RTP.001.3); **every other section polls**
 (FR-7.RTP.002) — including the chat (an async task result returns on poll / via a notification nudge, **never** a third
 Realtime socket; OD-135). Under connection-budget pressure the notification centre is **prioritised** for the live
-connection while extras degrade to polling first (AC-7.RTP.003.1/.2).
+connection while extras degrade to polling first (FR-7.RTP.003 body, +AC-7.RTP.003.1/.2).
 
 ---
 
@@ -243,7 +252,7 @@ surface-01 #observability gated `PERM-config.observability`), available to any D
 
 **Real-time / poll:** **Realtime via Supabase subscription** (FR-7.RTP.001) — the one Realtime element here. Reconnects
 or falls back to polling on a dropped socket; **re-fetches on reconnect** so a notification that arrived while offline is
-not missed (AC-7.RTP.004.2). Prioritised for the live connection under budget pressure (AC-7.RTP.003.1).
+not missed (AC-7.RTP.004.2). Prioritised for the live connection under budget pressure (FR-7.RTP.003 body, +AC-7.RTP.003.1).
 
 **States:** identical posture to surface-07 §A — **Loading:** skeleton rows, bell neutral, never "0 / all clear" before
 data. **Empty:** the genuine "You're all caught up" state. **Error:** "Couldn't load notifications" + retry; bell shows
@@ -264,7 +273,7 @@ FR-4.CID.006). This is a **canonical home of the pill** alongside surface-07's f
 | Element | Source | Notes |
 |---|---|---|
 | Chat thread (messages) | **Net-new Phase-4 `conversations`/`messages` store (OD-135)**, RLS-scoped, no `client_slug` | The persisted user↔AI thread; reload-durable (#1). Synchronous command results (FR-9.CMD.008) live here + an `event_log` audit row — **no `task_queue` entry** |
-| `/` command menu | C9 FR-9.CMD.001 + custom commands FR-9.CMD.007 | System commands (memory/task/agent/trigger) + permitted **custom** commands (defined on surface-10); only commands whose C1 node the caller holds are shown (AC-9.CMD.007.1; inactive/unpermitted hidden AC-9.CMD.007.2) |
+| `/` command menu | C9 FR-9.CMD.001 + custom commands FR-9.CMD.007 | System commands (memory/task/agent/trigger) + permitted **custom** commands (defined on surface-10); only commands whose C1 node the caller holds are shown (AC-9.CMD.007.1 + FR-9.CMD.002 node gate; **inactive** commands hidden AC-9.CMD.007.2) |
 | Inline command/agent result | C9 FR-9.CMD.004/.008 | Returned **inline in the thread with an answer-mode pill** (AC-9.CMD.004.2 / AC-9.CMD.008.1); `$ARGUMENTS` substituted for custom commands |
 | Answer-mode pill | **C4 FR-4.CID.006** (Cited / Inferred / Unknown) | On every AI-output message; meaning binds DRY to C4. A pill that can't resolve reads **"mode unknown," never silently "Cited"** |
 | Cold-start note | C9 FR-9.CST.001 | Below 20% coverage every `[Unknown]` carries the cold-start note; the chat surfaces it (fails safe to cold when the C2 phase is stale/absent, AC-9.CST.001.2) |

@@ -1666,6 +1666,46 @@ that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-133…OD-136 — surface-08 (Standard User dashboard: chat · My Queue · activity feed) PERM-gap / layout / chat-mechanics / suggestion-placement 🟢 RESOLVED (2026-07-01, operator "Cool do it" — recommendations delegated)
+
+- **OD-133** 🔑 🟢 — **Rule-0 PERM gap (change-control mint), anticipated by surface-07.** OD-129 minted the Dashboard
+  Access node family (`PERM-dashboard.overview`, `PERM-dashboard.ops`) and **explicitly named a third, not-yet-minted
+  "surface-08's standard-user node"** as a holder of the cross-cutting notification centre. surface-08 mints it:
+  **`PERM-dashboard.workspace`** — enter the personal user workspace (chat + My Queue + my activity feed + my
+  suggestions). Scope = **intra-client**, under the **already-homed** FR-1.PERM.007 "Dashboard Access" category (no new
+  category, no ADR supersede — mirrors OD-129 / OD-117 / OD-125):
+  - `PERM-dashboard.workspace` — Description: enter the personal user workspace (chat + My Queue + my activity feed + my
+    proactive suggestions; surface-08). · **Default roles: all six** (Super Admin, Admin, Finance, HR, Account Manager,
+    Standard User) — every authenticated user has a personal workspace/chat. · Scope: intra-client. · Added-in:
+    surface-08.
+  Per-action authority inside stays finer than entry: **each `/` command is gated on its own C1 node** (FR-9.CMD.002),
+  My-Queue decisions route to surface-04 (`PERM-action.review`), and acting on a suggestion is gated by the action's C6
+  tier + clearance (FR-9.MODE.003). The **notification centre stays node-free** (OD-131, clearance-scoped). All nodes
+  default-deny (OD-030). **Transcribed into `PERMISSION_NODES.md` immediately** (Dashboard Access family; catalog count
+  44→45). **C1 catalog grows; no FR re-approval, no ADR supersede.**
+- **OD-134** 🟢 — **Layout.** A **chat-led main view + adjacent collapsible panels** (My Queue · Activity Feed ·
+  Proactive Suggestions) + the persistent cross-cutting notification bell (with the live/reconnecting/polling indicator,
+  FR-7.RTP.004) + the two always-loud banners (alert-delivery-misconfigured AC-7.ALR.009.1, alert-engine-stalled
+  AC-7.ALR.008.2) pinned above any section. The chat is the Standard User's primary tool (design-doc L3261), so it earns
+  the centre; not fully tabbed (would bury the queue/suggestions); not a flat scroll (would demote the chat). Consistent
+  with surface-07 OD-130.
+- **OD-135** 🟢 — **Chat thread — persistence + async-result return path (behaviour + Phase-4 data).** The spec defines
+  **no `chat_messages`/`conversations` store** today and FR-7.RTP.001 caps Realtime at exactly two surfaces (approval
+  queue + notification centre). Resolved: **persist the thread** (a **net-new Phase-4 `conversations`+`messages` store**,
+  RLS-scoped, no `client_slug`) so a user's interaction history survives reload (#1 — losing it is a violation);
+  **async task results return on poll** (`task_queue` status) **+ a notification-centre nudge** — **no third Realtime
+  socket** (honours FR-7.RTP.001 / AC-7.RTP.001.3). Synchronous commands (FR-9.CMD.008) already return inline with no
+  `task_queue` row — their record is the message store + the `event_log` audit entry (FR-9.CMD.004). The chat store is
+  **flagged as a net-new Phase-4 schema obligation owed to C5/C9** — surfaced here, not invented as an FR (Rule 0).
+- **OD-136** 🟢 — **Proactive-suggestion placement (UX).** **All three delivery surfaces** (FR-9.SUG.004 names dashboard
+  + chat + push): a dedicated **Suggestions panel (Section E)** for act/dismiss + the notification-centre nudge + the
+  option to surface inline in chat. The dismissal **safety floor** (FR-9.SUG.005 / AC-9.SUG.005.2/.3) holds on every
+  surface — a floored de-risking item re-delivers while its metric stays past threshold; **every "act" routes through
+  the C6 guardrail** (FR-9.MODE.003). Cold-start suppression (FR-9.CST.002) shows the labelled "learning" state, never an
+  empty panel.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1677,5 +1717,7 @@ that file's Open decisions table). All four resolved to the recommendation:
 > `PERM-fleet.*` management-plane nodes via change-control + introduces the `management-plane` scope). OD-129–132 by
 > `spec/03-surfaces/surface-07-dashboard-agency.md` (surface-local; all resolved in-file; OD-129 mints the
 > `PERM-dashboard.overview` + `PERM-dashboard.ops` Dashboard Access nodes via change-control + canonicalises surface-05's
-> `view_ops` working name).
-> Next OD number: OD-133.
+> `view_ops` working name). OD-133–136 by `spec/03-surfaces/surface-08-dashboard-user.md` (surface-local; all resolved
+> in-file; OD-133 mints `PERM-dashboard.workspace` via change-control — the third Dashboard Access node, anticipated by
+> OD-129; OD-135 flags a net-new Phase-4 `conversations`/`messages` chat store owed to C5/C9).
+> Next OD number: OD-137.

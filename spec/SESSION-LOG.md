@@ -5,6 +5,90 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 38 — 2026-07-01 — SURFACE-08 (STANDARD USER DASHBOARD: CHAT · MY QUEUE · ACTIVITY FEED) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES, SIGNED OFF — 9 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-08-dashboard-user.md` — the ninth Phase-3 surface: the **everyday
+user's home**, the Standard User role view (and every role's personal workspace). Minted **`UI-DASHBOARD-USER`**
+(FR-7.VIEW.002 names the Standard User view as one of five RBAC-gated role surfaces but assigns no `UI-` id). Grounded in
+the **design-doc canonical** (`design-doc-v4.md` L3256–3262, "Dashboard 4 — Standard user view") which names exactly
+three panels — **My queue · Activity feed · Chat interface** — plus the two FR-mandated carry-ins (notification centre +
+proactive suggestions). The planning-doc "My Workspace / Inbox / Decisions / chat" labels map onto these (My
+Workspace=the chat surface; Inbox=notification centre + suggestions; Decisions=My Queue) — design-doc is the authority,
+mirroring how surfaces 07–09 dissolved planning-doc role labels. Pattern-matched surfaces 00–07.
+
+**Five sections:** **A — Notification Centre** (cross-cutting chrome, **home-specced on surface-07** — rides here
+clearance-scoped, the one Realtime element, FR-7.ALR.001 / FR-7.RTP.001) · **B — Chat interface** (the heart: the `/`
+command dispatch FR-9.CMD.001–008, each command **node-gated on its own C1 node** FR-9.CMD.002 not entry, destructive
+commands confirm **after** the node gate FR-9.CMD.003.3, `event_log` write **fails closed** FR-9.CMD.004.3, custom
+commands return **inline with no `task_queue` row** FR-9.CMD.008; every AI output carries the **answer-mode pill** C4
+FR-4.CID.006 / AC-7.VIEW.002.2 — surface-08 is the *other* canonical pill home) · **C — My Queue** (C5 `task_queue`
+filtered to this user via `originating_user_id`; the decision UI for a held item is surface-04) · **D — Activity Feed**
+(C7 `event_log`, clearance+relevance scoped, pill on every row) · **E — Proactive Suggestions** (C9 FR-9.SUG.004
+delivered to the user, act-through-C6 FR-9.MODE.003, dismissal safety-floor FR-9.SUG.005, cold-start "learning"
+suppression FR-9.CST.002).
+
+**KEY ARCHITECTURAL CALL — the chat has no data store yet (OD-135).** The spec defines **no `chat_messages`/
+`conversations` table**; the chat is currently a rendering surface over `task_queue` + `event_log` + command results.
+Resolved: **persist the thread** (a **net-new Phase-4 `conversations`+`messages` store**, RLS-scoped, no `client_slug`)
+because losing a user's interaction history on reload is a **#1 violation** — flagged as a Phase-4 obligation owed to
+C5/C9, **not invented as an FR** (Rule 0). And because FR-7.RTP.001 caps Realtime at **exactly two surfaces** (approval
+queue + notification centre), an **async task result returns to chat on poll + a notification-centre nudge — no third
+Realtime socket** (AC-7.RTP.001.3).
+
+**4 ODs raised + resolved (operator: "Cool do it" — recommendations delegated), logged OD-133–136:**
+- **OD-133** 🔑 **Rule-0 PERM gap (change-control mint), anticipated by surface-07.** OD-129 explicitly named a third,
+  not-yet-minted "surface-08's standard-user node." Minted **`PERM-dashboard.workspace`** (default: **all six roles** —
+  every authenticated user has a personal workspace; per-`/`-command authority stays finer, FR-9.CMD.002), scope
+  intra-client, under the already-homed FR-1.PERM.007 "Dashboard Access" category — completing the family
+  (`overview`/`ops`/`workspace`). **Transcribed into `PERMISSION_NODES.md` immediately** (catalog 44→45).
+- **OD-134** — layout: chat-led main view + adjacent collapsible panels + persistent notification bell + the two
+  always-loud banners pinned (consistent with surface-07 OD-130).
+- **OD-135** — chat persistence + async-result path (above).
+- **OD-136** — proactive suggestions across all three FR-9.SUG.004 delivery surfaces (dedicated panel + notification
+  nudge + inline-in-chat), dismissal safety-floor preserved everywhere, every "act" through C6.
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 2 HIGH · 2 MED · 1 LOW (all
+reconciled).** Coverage (every cited C7/C9/C5/C4 FR/AC verified verbatim — incl. the three scrutiny points:
+AC-7.VIEW.002.2 pill-on-every-chat-output, AC-7.RTP.001.3 only-two-Realtime, AC-9.CMD.008.3 no-`task_queue`-on-custom-command,
+all hold), CFG wiring (all 4 keys exist with claimed default/class), DATA (no `client_slug` on any binding; the chat
+store + `originating_user_id` correctly flagged net-new, not asserted-existing), PERM (no role-string gates anywhere;
+FR-9.CMD.002 node-gating correct; the `PERM-dashboard.*` family + FR-1.PERM.007 category verified), the **#1/#2/#3
+false-healthy sweep — NO HOLE** (every error/stale state shows "—" not "0", an empty thread never reads "no history", a
+blank feed never "nothing happened", an unresolvable pill reads "mode unknown" never "Cited"; a `/` command routes
+through its node gate **and** C6, a proactive "act" through C6 — chat is no back-door), and seams (notification centre→
+surface-07, decision UI→surface-04, command management→surface-10, config edit→surface-01, trace→surface-05, pill
+definition→C4) all **PASS**. **Fixes applied:** **H1** — OD-133–136 transcribed into the central `open-decisions.md`
+(pointer advanced to OD-137); **H2** — `PERM-dashboard.workspace` transcribed into `PERMISSION_NODES.md` (44→45); **M1**
+— `PERM-action.review` annotated OD-117-owed-to-catalog at its reference; **M2** — unpermitted-hidden re-cited to
+AC-9.CMD.007.1 + FR-9.CMD.002 (.007.2 covers *inactive* only); **L1** — connection-prioritisation re-cited to the
+FR-7.RTP.003 body (+AC-7.RTP.003.1/.2). *(H1/H2 were the register-transcription steps; the surface had asserted them as
+done before the central files were patched — the gate correctly caught the dangling-ID window.)*
+
+**Files changed:** `surface-08-dashboard-user.md` (new); `PERMISSION_NODES.md` (+`PERM-dashboard.workspace` / count
+44→45); `open-decisions.md` (OD-133–136 🟢 + node def; reserved-block + pointer → OD-137); `README.md` (Phase-3 row → 9
+of 14 + surface-08 detail); `phase-playbooks.md` (status → 9 of 14). This log.
+
+**No matrix change** — consistent with surfaces 00–07 (the `UI-` stub is rendered; the served FRs are existing
+C7/C9/C5/C4 rows; `PERM-dashboard.workspace` is a catalog addition, not an FR row). **No new OOS / AF.** **Phase-4 debts
+flagged in-file:** the **net-new `conversations`/`messages` chat store** (OD-135, owed to C5/C9 — the one genuinely-new
+schema obligation this surface raises); `task_queue.originating_user_id` (the per-user filter, already flagged on
+surface-04); the relevance-scoping index on `event_log`; the clearance-scoping RLS policies (ADR-006) for the thread /
+queue / feed / suggestions / notification centre. **Catalog housekeeping still owed (unchanged):** the 3 flagged
+surface-03/04 nodes (OD-115 ×2, OD-117 ×1) remain to be transcribed when those surfaces are next touched.
+
+**Next step:** `surface-09-agent-builder.md` — the **Agent Fleet + Agent Builder / specialist config + Orchestration**
+surface. FR source: **C8 (Agent Design)** — the orchestrator + 7-step routing (FR-8.ORC.*), the `agents` registry
+(data-driven, versioned; `system_prompt`→`prompt_layers`, FR-8.REG.*), the 8 specialist definitions + their hard limits
+(FR-8.SPC.*), per-agent memory scoping (FR-8.SCO.*), agent-health/drift metric production (FR-8.HLTH.*), orchestrator
+learning + result caching (FR-8.LRN.*), cost-routing (FR-8.COST.*). Carry-in: **C4** (the `prompt_layers` content this
+surface edits is C4-owned — LYR/CID/BIZ/INJ/TSK/PRIN/STO; agent config binds to it), **ADR-004** (Memory = sole writer
+identity; Comms never-sends / Finance never-transacts hard limits), the `PERM-agents.*` / `PERM-system.*` gates (check
+`PERMISSION_NODES.md` — an agent-management node may need minting, raise as an OD if so), the six canonical C1 roles.
+Copy `_TEMPLATE.md`; load only the C8 FRs (+ the C4 prompt-layer seam); follow the Phase 3 playbook; run the gate before
+sign-off.
+
+---
+
 ## Session 37 — 2026-07-01 — SURFACE-07 (AGENCY / MANAGER DASHBOARD + NOTIFICATION CENTRE) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES, SIGNED OFF — 8 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-07-dashboard-agency.md` — the eighth Phase-3 surface: the
