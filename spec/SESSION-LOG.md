@@ -5,6 +5,88 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 39 — 2026-07-01 — SURFACE-09 (AGENT FLEET · AGENT BUILDER · ORCHESTRATION) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES, SIGNED OFF — 10 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-09-agent-builder.md` — the tenth Phase-3 surface: the **agent-management
+console** of one client deployment, fed by **C8 (Agent Design)**. Minted **`UI-AGENT-BUILDER`** (C8 names "registry
+editor", "version history", and the routing/plan-version views by description — FR-8.REG.001/003/004, FR-8.PLAN.004 — but
+assigns no formal `UI-` id). Pattern-matched surfaces 00–08. **Five sections in the three playbook buckets:** **Agent
+Fleet** (A — the data-driven `agents` roster grid + per-agent health/drift/dead-agent **badges**) · **Agent Builder**
+(B — the per-agent definition editor) + **Version History** (C — the immutable trail) · **Orchestration & Routing** (D —
+the orchestrator-as-registry-agent ORC.008 + the routing-config **read-only readout**) + **Execution Plans** (E —
+versioned plans + human-only rollback PLAN.004).
+
+**The governing framing:** surface-09 is the **act-on counterpart to surface-05's self-improvement panel** — surface-05
+*flags* (a drifting agent, a dead agent, a consistently-rerouted task type), surface-09 is where a human *edits the
+description, narrows the scope, or rolls back a plan*, because in C8 **the fix for mis-routing is data, never code**
+(AC-8.ORC.003.1). The seam was verified both ways (surface-05 owns the full panel + points back to surface-09; this
+surface shows badges + links out — no double-ownership). Cardinal-sin defenses encoded: the **hard-limit invariants are
+rejected AT WRITE** (Comms never-sends AC-8.SPC.003.3, Finance never-transacts AC-8.SPC.004.3, only the Memory Agent holds
+memory-write AC-8.SPC.005.2 / ADR-004 — a code-level deny, not a mere audit, #2); capability edits Super-Admin-only (#2);
+drift/dead-agent **flag-never-auto-correct** (OD-078, #3); a **stalled health producer reads "stale" not green**
+(AC-8.HLTH.004.2, #3); **immutable versioned history with a mandatory `change_reason`** (FR-8.REG.004, #1); human-only
+plan rollback (OOS-030, #1); **no `client_slug` column** (AC-8.REG.001.3).
+
+**4 ODs raised + resolved (operator: "I trust your recommendations, what's needed" — delegated), logged OD-137–140:**
+- **OD-137** 🔑 **Rule-0 PERM gap (change-control mint).** FR-1.PERM.007's **Asset Management** category names the
+  design-doc seed row **"Create / edit agents" (Super Admin + Admin, L509–615)**, but **no concrete `PERM-agents.*` node
+  was ever catalogued** (the catalog had no Asset Management section). The locked **OD-080 (C8)** further splits that
+  coarse row into two authority tiers. **Minted the `PERM-agents.*` family via change-control** under the **already-homed**
+  Asset Management category (no new category, no ADR supersede — mirrors OD-117/OD-125/OD-129/OD-133), scope
+  **intra-client**, encoding OD-080 exactly: **`PERM-agents.view`** + **`PERM-agents.edit_description`** (description /
+  tuning / plan-rollback — Super Admin + Admin) + **`PERM-agents.edit_capability`** (memory scope / tools / enabled / add
+  / disable — **Super Admin only**, *tighter* than the design-doc's coarse SA+Admin — a #2 authority decision).
+  **Transcribed into `PERMISSION_NODES.md` immediately** (new Asset Management section; catalog 45→48).
+- **OD-138** — layout: fleet-grid landing + per-agent Builder drawer (with a Version History tab) + an Orchestration
+  section via section nav (consistent with surface-06's grid-landing + detail-drawer, OD-126).
+- **OD-139** — edit-gating + change-reason UX: one Builder, inline split (capability fields **read-only/locked for an
+  Admin** with a "Super-Admin-only" affordance — transparency over hiding, #3); every Save opens a **mandatory
+  `change_reason` modal** (REG.004 — no version without a reason).
+- **OD-140** — hard-limit invariant presentation: **show + explain + block** (the forbidden tool appears greyed with an
+  inline reason; any grant attempt is **rejected at write** with the reason logged) — the Builder's defense-in-depth
+  layer alongside the missing tool (C3) + the code enforcement (C6).
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 1 HIGH (already-resolved) · 0 MED
+· 2 LOW (all reconciled).** (a) Coverage PASS — owns all eight C8 areas, does **not** double-own surface-05's
+self-improvement panel (badges + link-out only; surface-05 reciprocally points back). (b) CFG PASS — all 10 keys match
+the registry default/class/anchor/PERM verbatim. (c) DATA PASS — no `client_slug` on any binding; both net-new Phase-4
+stores flagged; `agents` columns match FR-8.REG.001 (no `system_prompt`, OD-075). (d) PERM PASS — OD-080 split encoded
+exactly across the three nodes; mint under the existing Asset Management category (FR-1.PERM.007 confirmed to carry it;
+design-doc L509–615 confirms the row). (e) #1/#2/#3 sweep PASS — false-healthy refused everywhere; hard-limit containment
+enforced **at write** for all three invariants; drift/dead-agent flag-never-auto-correct; plan rollback human-only.
+(f) Seams PASS (execution → C5; config knobs → surface-01 #agents; Layer-1 prompt → C4 `PERM-prompt.*`; self-improvement
+panel + routing trends → surface-05; tool registry → C3 `PERM-tool.manage`). **Fixes:** **F1 (HIGH, dangling-ID)** — the
+gate read `PERMISSION_NODES.md` *before* the transcription edit landed (it ran concurrently); **verified the three
+`PERM-agents.*` nodes ARE present** (Asset Management section, count 45→48) — resolved, not a real gap. **F3 (LOW)** — the
+Model field was bound to a non-existent `agents.model` column (FR-8.REG.001 defines none); corrected to a **read-only
+config-derived display** (model selected by complexity per FR-8.COST.001; a per-agent override would be a net-new Phase-4
+field, not asserted). **F2 (LOW)** — count-baseline note, no contradiction (45→48 on the right baseline; the 3 owed
+surface-03/04 nodes remain separately owed).
+
+**Files changed:** `surface-09-agent-builder.md` (new); `PERMISSION_NODES.md` (+Asset Management section / 3 `PERM-agents.*`
+nodes / count 45→48); `open-decisions.md` (OD-137–140 🟢 + node defs; reserved-block + pointer → OD-141); `README.md`
+(Phase-3 row → 10 of 14 + surface-09 detail); `phase-playbooks.md` (status → 10 of 14). This log.
+
+**No matrix change** — consistent with surfaces 00–08 (the `UI-AGENT-BUILDER` stub is rendered; the served FRs are
+existing C8 rows; the `PERM-agents.*` nodes are catalog additions, not FR rows). **No new OOS / AF** (all cited AFs are
+existing block-S AFs). **Phase-4 debts flagged in-file:** the **net-new execution-plan store** (PLAN.004 versioned plans,
+owed to C8/C5), the **net-new agent-health metric store** (HLTH.001–003 + producer heartbeat), a **per-agent `model`
+column** *if* per-agent model override is wanted (not asserted — net-new), the registry version-chain index, and the
+service_role-managed registry-edit authorization path (the OD-137 nodes, human-path). **Catalog housekeeping still owed
+(unchanged):** the 3 flagged surface-03/04 nodes (OD-115 ×2, OD-117 ×1) remain to be transcribed when those surfaces are
+next touched.
+
+**Next step:** `surface-10-commands.md` — the **custom-command management** surface (`UI-COMMANDS`). FR source: **C9
+(Proactive Intelligence)** — the custom-command CRUD FR-9.CMD.006–008 (define/manage custom `/` commands; `$ARGUMENTS`
+substitution; node-set-at-definition; disabled-agent handling) + the broader `/` command dispatch contract FR-9.CMD.001–005
+(each command node-gated FR-9.CMD.002, destructive-confirm FR-9.CMD.003, `event_log` fail-closed FR-9.CMD.004). The
+commands are **invoked** on surface-08 (the chat) but **managed** here. Carry-in: `PERM-commands.manage` (the existing C9
+catalog node, Super Admin + Admin) + `PERM-system.tune` (the `/tune` system-command node); the six canonical C1 roles;
+the answer-mode-pill seam (C4 FR-4.CID.006, every command output carries it). Copy `_TEMPLATE.md`; load only the C9 CMD
+FRs; follow the Phase 3 playbook; run the gate before sign-off.
+
+---
+
 ## Session 38 — 2026-07-01 — SURFACE-08 (STANDARD USER DASHBOARD: CHAT · MY QUEUE · ACTIVITY FEED) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES, SIGNED OFF — 9 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-08-dashboard-user.md` — the ninth Phase-3 surface: the **everyday

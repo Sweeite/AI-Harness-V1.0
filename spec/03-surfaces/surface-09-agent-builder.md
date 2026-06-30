@@ -1,6 +1,8 @@
 # Surface: UI-AGENT-BUILDER (surface-09) — Agent Fleet · Agent Builder / specialist config · Orchestration
 
-**Status:** 🟡 **Drafted 2026-07-01 — gate-clean-with-fixes, awaiting operator sign-off.** OD-137–140 resolved in-file
+**Status:** 🟢 **Signed off 2026-07-01** (operator: "I trust your recommendations, what's needed" — recommendations
+delegated). **10 of 14 Phase-3 surfaces complete.** OD-137–140 🟢. Gate CLEAN-WITH-FIXES (1 HIGH already-resolved + 2 LOW,
+all reconciled — see gate note below). OD-137–140 resolved in-file
 (recommendations). The tenth Phase-3 surface. One surface ID minted here: **`UI-AGENT-BUILDER`** — C8 (Agent Design)
 names "registry editor", "version history", and the routing/plan-version views by description (FR-8.REG.001/003/004,
 FR-8.PLAN.004) but assigns no formal `UI-` id. **OD-137 mints the `PERM-agents.*` node family** via change-control under
