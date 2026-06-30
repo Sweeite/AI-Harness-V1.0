@@ -1436,6 +1436,28 @@ the generic pattern. Tracked as a build-time check, not an open spec decision. *
 
 ---
 
-> **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md` (surface-local layout
-> decisions, all resolved in that file) — do not reuse those numbers.
-> Next OD number: OD-105.
+---
+
+## OD-105…OD-108 — surface-00 (auth) layout/behaviour calls 🟢 RESOLVED (2026-06-29, operator delegated "take all 4 recs")
+
+Surface-local UX/behaviour decisions for `spec/03-surfaces/surface-00-auth.md` (full options + reasoning live
+in that file's Open decisions table). All four resolved to the recommendation:
+
+- **OD-105** 🟢 — UI-LOGIN external-admin email+password path is **collapsed behind an "Operator / admin sign-in"
+  disclosure**; OAuth shown primary. Client-tenant users are OAuth-only (FR-0.AUTH.002), so a visible password
+  form would invite a path they have no account on.
+- **OD-106** 🟢 — UI-SUPPORT-REQUESTS queue **pins overdue `pending` requests to top, then newest-first**, with
+  status filter chips. Surfaces FR-0.REC.007 "overdue" by default — the #3 expression for this queue.
+- **OD-107** 🟢 — UI-2FA-ENROLL issues **no TOTP backup/recovery codes in v1**. The only TOTP accounts are
+  external Super Admins, who recover via the deterministic env-change seed re-run (FR-0.SEED.003). Deferral
+  logged → **OOS-039** (not a silent omission).
+- **OD-108** 🟢 — UI-REAUTH-PROMPT **re-authenticates inline (modal) to preserve page state**, full-page redirect
+  only when the OAuth provider forces it (returning to the same route). FR-0.SESS.007 requires preserving page
+  state with no data loss; a blanket redirect would discard the in-progress work the FR exists to protect.
+
+---
+
+> **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
+> `spec/03-surfaces/surface-00-auth.md` (surface-local layout decisions, all resolved in their files) —
+> do not reuse those numbers.
+> Next OD number: OD-109.

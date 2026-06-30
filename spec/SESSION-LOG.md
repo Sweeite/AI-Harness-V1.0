@@ -5,6 +5,52 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 31 — 2026-06-29 — SURFACE-00 (AUTH) DRAFTED, RESOLVED, GATE-CLEAN — 2 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-00-auth.md` — the second Phase-3 surface. One file consolidates
+the **six C0 auth-boundary sub-surfaces**: UI-LOGIN · UI-2FA-ENROLL · UI-2FA-CHALLENGE · UI-INVITE-SETUP ·
+UI-REAUTH-PROMPT · UI-SUPPORT-REQUESTS. Each specced as its own section with data bindings, actions+PERM,
+real-time/poll contract, and all five states (loading/empty/error/partial/offline). Pattern-matched surface-01.
+
+**FR source:** `component-00-login.md` (AUTH/SESS/INV/SEED/REC). CFG keys are **read-only** here (group A/B/C);
+editing lives on surface-01 `#auth`. Five sections are public/pre-auth; only the UI-SUPPORT-REQUESTS *queue* is
+authenticated (`PERM-support.view`/`.resolve`). The "Trouble signing in?" intake form is a public modal off
+UI-LOGIN. #3 (never fail silently) is the governing rule — every reject/lockout/throttle/dropped-email/lost-work
+state is made visible.
+
+**4 ODs raised + resolved (operator: "take all 4 recs"), logged OD-105–108:**
+- **OD-105** — external-admin email+password collapsed behind an "Operator sign-in" disclosure; OAuth primary.
+- **OD-106** — support queue pins overdue `pending` to top, then newest-first (FR-0.REC.007 first-class).
+- **OD-107** — no TOTP backup codes in v1 (external admins recover via the FR-0.SEED.003 env re-run) → **OOS-039**.
+- **OD-108** — UI-REAUTH-PROMPT re-authenticates inline to preserve page state (FR-0.SESS.007); redirect only if OAuth forces it.
+
+**Verification gate (1 independent zero-context subagent, 6 checks a–f): CLEAN — 0 HIGH, 1 MED, 5 LOW.**
+DATA fields match C0 exactly (no invented/retired fields; OD-019 no-phone honoured; status enum
+pending|in-progress|resolved); all 12 CFG keys exist + are correctly read-only; all six sections × five states
+present; zero contradictions with OD-016/018/019 or ADR-001 §3/OD-096; #3 posture strong. **2 patched:** (a3 MED)
+added the `aal1`→UI-2FA-CHALLENGE forced-redirect Navigation row (FR-0.AUTH.008); (e1 LOW) added the
+FR-0.REC.006 notification-send-failure note (queue stays durable source of truth; delivery is a C7 seam). Other
+LOWs were justified-as-is (manifest-completeness CFG entries; justified Empty=N/A; AF-075 correctly carried).
+
+**Stale-note fix:** SESSION-LOG session 30 called **OD-104** "pre-existing, NOT patched / needs an operator
+decision." It is in fact **already RESOLVED** (2026-06-28, → C3 FR-3.TRIG.005/006; OWED-FR-1 CLOSED — see
+`open-decisions.md` OD-104 and `component-00-login.md` L823–825). No action owed; corrected here so it isn't
+re-flagged.
+
+**Files changed:** `surface-00-auth.md` (new); `open-decisions.md` (OD-105–108 🟢; next OD-109);
+`out-of-scope.md` (OOS-039; next OOS-040); `README.md` (Phase-3 row → 2 of 14); this log.
+
+**No matrix change** — Phase 3 surfaces don't add traceability-matrix rows (the `UI-` stubs are already columns
+on the C0 FR rows); consistent with surface-01.
+
+**NEXT STEP — `surface-02-user-mgmt.md`** (UI-USER-MGMT, UI-ROLE-MGMT, UI-PERMISSION-MATRIX, UI-CLEARANCE-*,
+UI-RESTRICTED-GRANT). FR source = `component-01-rbac.md` (ROLE/PERM/CLR/RST/USR areas) + the C0 INV FRs that name
+UI-USER-MGMT (FR-0.INV.001/.002/.003/.006/.007 — invite issue/expiry/SMTP/lifecycle/bounce). Carry-in:
+`PERMISSION_NODES.md` (the canonical node catalog), ADR-006 (data-driven RLS), the six canonical C1 roles. Copy
+`_TEMPLATE.md`; follow the Phase 3 playbook steps; run the gate before sign-off.
+
+---
+
 ## Session 30 — 2026-06-28 — PLAIN-ENGLISH DESCRIPTIONS ON EVERY CONFIG KNOB (registry) + DRY helper-text convention — **SIGNED OFF + PUSHED**
 
 **✅ OPERATOR SIGN-OFF (2026-06-28):** "i confirm it and i want to sign off and push to main." Confirmed the
