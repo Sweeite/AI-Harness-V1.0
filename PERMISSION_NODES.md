@@ -30,7 +30,9 @@ the `PERM-fleet.*` family) = **42 catalogued**; **+2 Dashboard Access nodes** tr
 OD-129 — `PERM-dashboard.overview` + `PERM-dashboard.ops`, formalising the FR-1.PERM.007 category + canonicalising
 surface-05's `view_ops` working name) = **44 catalogued**; **+1 Dashboard Access node** transcribed 2026-07-01
 (surface-08 / OD-133 — `PERM-dashboard.workspace`, the third node of the family, anticipated by OD-129) = **45
-catalogued**; plus **3 owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1
+catalogued**; **+3 Asset Management nodes** transcribed 2026-07-01 (surface-09 / OD-137 — the `PERM-agents.*` family,
+homing the design-doc's "Create / edit agents" row + encoding the OD-080 two-tier split) = **48 catalogued**; plus **3
+owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1
 — defined in `open-decisions.md`, not yet transcribed, flagged below). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
 they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM-memory.write`,
 `PERM-prompt.rollback`, `PERM-prompt.view_history`, `PERM-system.add_sensitivity`.
@@ -119,6 +121,19 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 | `PERM-dashboard.overview` | Enter the agency / management overview dashboard (surface-07 — activity feed + at-a-glance + proactive suggestions) | Super Admin, Admin, Account Manager | intra-client | surface-07 / OD-129 |
 | `PERM-dashboard.ops` | Enter the technical operations dashboard (surface-05); canonicalises surface-05's working name `PERM-dashboard.view_ops` | Super Admin, Admin (+ Finance scoped to Cost panel, surface-05 OD-121) | intra-client | surface-05 (ref) / surface-07 / OD-129 |
 | `PERM-dashboard.workspace` | Enter the personal user workspace (surface-08 — chat + My Queue + my activity feed + my proactive suggestions) | All six roles (every authenticated user has a personal workspace; per-`/`-command authority stays finer, FR-9.CMD.002) | intra-client | surface-08 / OD-133 |
+
+### Asset Management — the `PERM-agents.*` family (FR-1.PERM.007 category; surface-09 / OD-137, minted via change-control 2026-07-01)
+> The FR-1.PERM.007 **Asset Management** category's design-doc seed row **"Create / edit agents" (Super Admin + Admin,
+> L509–615)** is the authority over the agent registry, but **no concrete node id was ever catalogued** (this file had no
+> Asset Management section). surface-09 OD-137 mints the family, scope **intra-client**, refining the coarse design-doc row
+> into the locked **OD-080** two-tier split: **capability edits are tighter (Super Admin only)** than the design-doc's
+> SA+Admin; **description/tuning stays SA+Admin**. Config *knobs* (section K) stay on `PERM-config.agents` (surface-01) —
+> these nodes gate registry *CRUD*, not config. Layer-1 prompt content stays on `PERM-prompt.*` (C4).
+| Node | Description | Default roles | Scope | Added-in |
+|---|---|---|---|---|
+| `PERM-agents.view` | Enter the agent fleet/builder (surface-09); view the registry, definitions, version history, routing readout, health badges | Super Admin, Admin | intra-client | surface-09 / OD-137 |
+| `PERM-agents.edit_description` | Edit an agent's `description` / `max_tokens` / per-agent registry tuning; **roll back an execution-plan version** (PLAN.004, the Asset Management "task graphs" row) | Super Admin, Admin | intra-client | surface-09 / OD-137 |
+| `PERM-agents.edit_capability` | Edit `memory_scope` / `tools_allowed` / `enabled`; **add** a new agent; **disable** an agent (capability grants — an authority decision, OD-080, #2) | Super Admin — only | intra-client | surface-09 / OD-137 |
 
 ### Guardrails — autonomy (pre-existing, glossary)
 | Node | Description | Default roles | Scope | Added-in |

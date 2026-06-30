@@ -1706,6 +1706,36 @@ that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-137…OD-140 — surface-09 (Agent Fleet / Agent Builder / Orchestration) PERM-gap / layout / edit-gating / hard-limit-presentation 🟢 RESOLVED (2026-07-01, surface-local; recommendations delegated)
+
+- **OD-137** 🔑 🟢 — **Rule-0 PERM gap (change-control mint).** The agent fleet/builder needs an entry + edit authority
+  model. FR-1.PERM.007's **Asset Management** category names the design-doc seed row **"Create / edit agents" (Super Admin
+  + Admin, L509–615)**, but **no concrete `PERM-agents.*` node was ever catalogued** (the catalog had no Asset Management
+  section). The locked **OD-080 (C8)** further splits that coarse row into two authority tiers. Resolved: **mint the
+  `PERM-agents.*` family via change-control** under the **already-homed** Asset Management category (no new category, no
+  ADR supersede — mirrors OD-117/OD-125/OD-129/OD-133), scope **intra-client**, encoding OD-080 exactly:
+  - **`PERM-agents.view`** — enter the fleet/builder; view registry/definitions/version-history/routing-readout/health-badges. **Default: Super Admin, Admin.**
+  - **`PERM-agents.edit_description`** — edit `description` / `max_tokens` / per-agent tuning; roll back a plan version (PLAN.004 "task graphs"). **Default: Super Admin, Admin** (OD-080 description/tuning tier).
+  - **`PERM-agents.edit_capability`** — edit `memory_scope` / `tools_allowed` / `enabled`; add / disable an agent. **Default: Super Admin only** (OD-080 capability tier — *tighter* than the design-doc's coarse SA+Admin, an authority decision, #2).
+
+  Config *knobs* (section K) stay on `PERM-config.agents` (surface-01); Layer-1 prompt content stays on `PERM-prompt.*`
+  (C4). **Transcribed into `PERMISSION_NODES.md` immediately** (new Asset Management section; catalog 45→48). C1 catalog
+  grows; no FR re-approval.
+- **OD-138** 🟢 — **Layout.** Fleet-grid landing + per-agent Builder drawer (with a Version History tab) + an
+  Orchestration section via section nav (not fully tabbed, which separates an agent from its history/edit; not a single
+  scroll, which buries orchestration config). Consistent with surface-06's grid-landing + detail-drawer (OD-126).
+- **OD-139** 🟢 — **Edit gating + change-reason UX.** One Builder, **inline split**: capability fields (scope/tools/
+  enabled) render **read-only/locked for an Admin** with a "Super-Admin-only" affordance (transparency over hiding, #3);
+  description/tuning fields editable per tier; **every Save opens a mandatory `change_reason` modal** (REG.004 — no version
+  without a reason, AC-8.REG.004.1); capability saves flagged as authority changes (OD-080).
+- **OD-140** 🟢 — **Hard-limit invariant presentation.** **Show + explain + block:** a forbidden tool appears in the
+  picker **greyed with an inline reason** ("Comms Agent can never hold an autonomous-send tool — hard limit, ADR-007"),
+  and any attempt to grant it is **rejected at write** with the reason logged (AC-8.SPC.003.3 / .004.3 / .005.2) — the
+  Builder's defense-in-depth layer alongside the missing tool (C3) + the code enforcement (C6). Surfacing the constraint
+  with its reason is the #3-honest choice; hiding it reads as a bug, allowing-with-warning drops a safety layer (#2).
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1719,5 +1749,7 @@ that file's Open decisions table). All four resolved to the recommendation:
 > `PERM-dashboard.overview` + `PERM-dashboard.ops` Dashboard Access nodes via change-control + canonicalises surface-05's
 > `view_ops` working name). OD-133–136 by `spec/03-surfaces/surface-08-dashboard-user.md` (surface-local; all resolved
 > in-file; OD-133 mints `PERM-dashboard.workspace` via change-control — the third Dashboard Access node, anticipated by
-> OD-129; OD-135 flags a net-new Phase-4 `conversations`/`messages` chat store owed to C5/C9).
-> Next OD number: OD-137.
+> OD-129; OD-135 flags a net-new Phase-4 `conversations`/`messages` chat store owed to C5/C9). OD-137–140 by
+> `spec/03-surfaces/surface-09-agent-builder.md` (surface-local; all resolved in-file; OD-137 mints the `PERM-agents.*`
+> Asset Management node family via change-control — encoding the locked OD-080 capability-vs-description authority split).
+> Next OD number: OD-141.
