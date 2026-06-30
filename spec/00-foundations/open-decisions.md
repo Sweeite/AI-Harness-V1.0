@@ -1511,8 +1511,48 @@ that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-117…OD-120 — surface-04 (agent action approval queue) layout/behaviour + a PERM-node gap 🟢 RESOLVED (2026-06-30, operator delegated "what do you recommend" → all recommendations taken)
+
+- **OD-117** 🟢 — **#2 gating, Rule-0 gap.** The agent-action approval queue had **no dedicated PERM node** in the
+  C5/C6/C7 FRs for *deciding* a held item: FR-5.QUE.005 said only "a human approves," FR-6.APR.005 routed to a
+  "reviewer role," FR-6.ESC.003 said "human resolutions" — none cited a node, and `PERM-guardrail.edit_autonomy`
+  gates editing the autonomy **config**, not deciding a queue item. A real Rule-0 gap (the OD-115 situation again,
+  surfaced by the surface-04 draft). Resolved by **minting one new node via change-control**, homed under the
+  **existing "Approval Authority" category** (FR-1.PERM.007's fixed twelve — a node *added within* that category,
+  the natural home for authority over approving agent actions; **not** a new category, which would conflict with the
+  fixed-12 set), recorded here per FR-1.PERM.005's "updated whenever a new gate is added" discipline (an *addition*,
+  not an ADR supersede):
+  - **`PERM-action.review`** — *Description:* enter the surface-04 approval queue and Approve / Reject / Modify a
+    held agent action (a `task_queue` item in `awaiting_approval` or `flagged`). *Default roles:* Super Admin +
+    Admin (the default reviewers + escalation terminus); Finance and Account Manager **only when granted** and
+    only for items routed to their role (FR-6.APR.005 contextual routing — financial → finance, CRM → account
+    manager). *Scope:* deployment-wide; **per-item authority is further narrowed at the item** by (1) contextual
+    routing or fallback (FR-6.APR.005), (2) **no-self-approval** — the caller's identity ≠ the item's
+    `originating_user_id` (AC-6.APR.005.3), and (3) the matching **sensitivity clearance** for any
+    Confidential/Personal/Restricted-touching action (Restricted routes to grantee/Super-Admin, AC-6.APR.002.2).
+    Injection-type holds default-route to Super Admin/Admin. *Added-in:* surface-04 (2026-06-30).
+  - **Build obligation:** must appear in `PERMISSION_NODES.md` (build artifact, FR-1.PERM.005) with these four
+    fields when that catalog is materialised; default-deny (FR-1.PERM.002).
+- **OD-118** 🟢 — The held items render as **one live queue with filter chips** (All / Approvals / Safety holds /
+  Overdue) + a per-item type-tier badge, **not** two tabs. The resolution model (Approve/Reject/Modify), the
+  escalation model, and the Realtime transport are identical across `awaiting_approval` and `flagged`, so a single
+  queue keeps the live count + connection singular; filters give the split without fragmenting the live socket.
+- **OD-119** 🟢 — **Modify** exposes a **structured editor of the action's declared editable params only**; on save
+  the task **requeues and re-enters the full guardrail gate** (re-classifies tier — an edit that raises risk can
+  re-floor it). FR-6.ESC.003 names Modify explicitly and AC-5.ASM.004.2 already requires a late-surfacing
+  consequential change to re-enter the gate; constraining the editor + forcing re-classification means a Modify can
+  never downgrade a tier or smuggle an action past the gate (#2).
+- **OD-120** 🟢 — **#2.** A reviewer **may freeze a reversible soft item's auto-run countdown** via a **Hold for full
+  review** affordance that promotes the soft item to require explicit approval (stops the `approval_soft_timeout`
+  auto-run). A one-directional tightening (soft→explicit only; never hard→soft). **Applied via change-control to C6
+  FR-6.APR.003** as **AC-6.APR.003.3** — an action must not auto-run while a human is mid-review of it.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
-> OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local decisions, all resolved in
-> their files; OD-115 also mints two C1 Memory-Access PERM nodes via change-control) — do not reuse those numbers.
-> Next OD number: OD-117.
+> OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
+> PERM nodes via change-control); OD-117–120 by `spec/03-surfaces/surface-04-approval-queue.md` (surface-local; all
+> resolved in-file; OD-117 mints `PERM-action.review` via change-control, OD-120 amends C6 FR-6.APR.003) — do not
+> reuse those numbers.
+> Next OD number: OD-121.

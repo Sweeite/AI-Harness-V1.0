@@ -428,13 +428,19 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
   bounded exception is an **Act-tier low-risk external** send authorized via the C9 action-autonomy matrix
   (FR-9.MODE.004, OD-088) — operator-opt-in + trust-gated + rate-capped — which is *not* a soft-approval timeout
   path but an explicitly configured autonomy grant for the non-client low-risk sub-type only. [OD-064, OD-088]
-- **Source:** L2779–2780; OD-064; consumes C5 OD-056; **amended OD-088 (2026-06-27)**.
+- **Source:** L2779–2780; OD-064; consumes C5 OD-056; **amended OD-088 (2026-06-27)**; **amended OD-120 (2026-06-30, surface-04 change-control — reviewer-side Hold)**.
 - **ACs:**
   - AC-6.APR.003.1 — *Given* a soft-approval action whose delay elapses with no human action, *When* the timer
     fires, *Then* it executes **only if** flagged reversible; an irreversible action could not have been soft-tier
     (it is forced hard by FR-6.APR.002) so this path never auto-runs an irreversible effect.
   - AC-6.APR.003.2 — *Given* a soft-approval action, *When* a human rejects before the delay elapses, *Then* it
     does not execute and is logged (reject path).
+  - AC-6.APR.003.3 *(added OD-120)* — *Given* a soft-approval action still within its `approval_soft_timeout`
+    window, *When* a routed reviewer elects **Hold for full review** (the surface-04 affordance), *Then* the
+    auto-run timer is **cancelled** and the item is **promoted to require explicit approval** (it can no longer
+    auto-execute on inaction) — a one-directional tightening (soft→explicit only; a reviewer can **never**
+    downgrade a hard/floored item to soft). The promotion is logged to `guardrail_log` (the held item persists,
+    now hard-gated; #2 — an action must not auto-run while a human is mid-review of it).
 
 #### FR-6.APR.004 — Auto-approve immediate execution
 - **Statement:** The system shall execute an **auto-approve** (low-risk) action immediately without a human step,

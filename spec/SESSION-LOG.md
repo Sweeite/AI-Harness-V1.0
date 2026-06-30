@@ -5,6 +5,67 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 34 — 2026-06-30 — SURFACE-04 (AGENT ACTION APPROVAL QUEUE) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 5 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-04-approval-queue.md` — the fifth Phase-3 surface and the
+**realtime/WebSocket counterpart to surface-03's poll queues**. Where surface-03 gates candidate *knowledge*,
+surface-04 gates candidate *action*: one **single live queue** (OD-118) of every held agent task —
+**`awaiting_approval`** (a C6 approval-tier gate) and **`flagged`** (a C6 safety hold: anomaly / rate-limit /
+injection) — with **Approve / Reject / Modify** (FR-6.ESC.003), routed to contextually-appropriate reviewers
+(FR-6.APR.005). Minted the surface ID **`UI-APPROVAL-QUEUE`** (Phase 1 referenced "the dashboard approval queue" by
+description but assigned no formal `UI-` id). This is **one of exactly two Realtime surfaces** in the product
+(FR-7.RTP.001 — the other is the notification centre on surface-07, seamed). Pattern-matched surface-00…03.
+
+**FR source:** **C5 (held state)** — FR-5.QUE.005 (`awaiting_approval` blocks execution; `approved_by`/`approved_at`;
+escalate-don't-abandon AC-5.QUE.005.2), FR-5.ASM.004 (the gate that produces the item; AC-5.ASM.004.2 late-side-effect
+re-enters), FR-5.ASM.005 (mid-task quarantine retains WIP). **C6 (tiers + routing + resolutions)** — FR-6.APR.001/002
+(3 tiers + mandatory-hard floor), FR-6.APR.003 (soft auto-runs only if reversible), FR-6.APR.005 (contextual routing +
+**no-self-approval** AC-6.APR.005.3), FR-6.ESC.001 (flagged ≠ awaiting_approval; **hard-limit hits are killed, never
+held** AC-6.ESC.001.2), FR-6.ESC.003 (Approve/Reject/Modify + already-applied-effects + compensation-not-rollback,
+OD-010), FR-6.ESC.004 (no silent abandon), FR-6.LOG.001/003 (`guardrail_log`). **C7 (transport + alerts)** —
+FR-7.RTP.001 (this IS the Realtime surface), FR-7.RTP.003 (per-silo budget → degrade-to-polling), FR-7.RTP.004
+(reconnect / honest live-vs-polling), FR-7.ALR.002/003/005/007 (stale-approval alert delivery — seam, C7 owns).
+
+**4 ODs raised + resolved (operator delegated "what do you recommend" → all four recommendations taken), logged OD-117–120:**
+- **OD-117** 🔑 **#2 gating + Rule-0 gap** — the C5/C6/C7 FRs named **no PERM node for *deciding* a held item**
+  (FR-5.QUE.005 "a human approves," FR-6.APR.005 "reviewer role," FR-6.ESC.003 "human resolutions"; `PERM-guardrail.edit_autonomy`
+  gates the autonomy *config*, not a queue item). Resolved by **minting `PERM-action.review` via change-control**,
+  **homed under the existing "Approval Authority" category** (FR-1.PERM.007's fixed twelve — a node *within* it, not a
+  new category). Four-field def (Description / Default roles = Super Admin + Admin, Finance/AM only-when-granted+routed /
+  Scope incl. no-self-approval + clearance / Added-in) recorded in `open-decisions.md`. Build obligation = appear in
+  `PERMISSION_NODES.md` (FR-1.PERM.005). Mirrors surface-03's OD-115. **C1 catalog grows; no FR re-approval.**
+- **OD-118** — one live queue + filter chips (All / Approvals / Safety holds / Overdue), not tabs (identical resolution +
+  escalation + transport across both classes; keeps the live socket singular).
+- **OD-119** — Modify = structured editor of declared editable params; requeue **re-enters the guardrail gate** (can't
+  downgrade a tier or smuggle past — AC-5.ASM.004.2).
+- **OD-120** — a reviewer may **freeze a soft item's auto-run countdown** ("Hold for full review" → promotes soft→explicit;
+  never the reverse). **Applied via change-control to C6 FR-6.APR.003 as AC-6.APR.003.3.**
+
+**Verification gate (1 independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 1 HIGH + 3 MED, all reconciled.**
+The three non-negotiables, full FR coverage, CFG wiring (all keys exist with claimed class/default — `approval_soft_timeout`
+10m, `approval_escalation_timeout` 4h, `approval_staleness_alert_threshold` 4h, `realtime_connection_headroom_threshold`
+80%, etc.), the six-role model, and the OD-120 change-control all passed clean. Fixes: **HIGH (c-1)** the
+`guardrail_log.client_slug` framing was stale ("Phase-4 fate undecided") — **OD-096 already deleted `client_slug` from all
+app tables** (C10 FR-10.ISO.001); corrected to cite the closed decision. **MED (c-2)** `originating_user_id` (task_queue)
++ `escalated_at` (guardrail_log) are net-new — flagged as **new Phase-4 fields owed to C5/C6**. **MED (a-1)** the soft
+auto-run countdown's "server-authoritative" claim leaned on an *alert* AC (AC-7.ALR.005.3) — re-cited as a server-owned
+timer (FR-6.APR.003) + an explicitly-owed surface UI obligation. **MED (d-1)** re-homed `PERM-action.review` under the
+existing Approval Authority category (not a new one, which would conflict with the fixed-12).
+
+**Files changed:** `surface-04-approval-queue.md` (new); `component-06-guardrails.md` (+AC-6.APR.003.3, OD-120 change-control);
+`open-decisions.md` (OD-117–120 🟢 + OD-117 node def; next OD-121); `README.md` (Phase-3 row → 5 of 14 + surface-04 detail);
+`phase-playbooks.md` (status → 5 of 14). This log.
+
+**No matrix change** — consistent with surfaces 00–03 (the `UI-` stub is rendered, the served FRs are existing C5/C6/C7 rows;
+`PERM-action.review` is a catalog node, not an FR; AC-6.APR.003.3 is an AC addition, not a new FR row). **No new OOS / AF.**
+Two debts to Phase 4 (new schema fields `task_queue.originating_user_id` + `guardrail_log.escalated_at`) + one owed UI
+obligation (server-authoritative displayed soft-countdown) are flagged in the surface's Phase-4 notes.
+
+**Next step:** `surface-05-dashboard-ops.md` (the ops dashboard: system health, connector health, event log, DLQ, cost,
+guardrail log, self-improvement — the poll-based C7 panels per FR-7.RTP.002).
+
+---
+
 ## Session 33 — 2026-06-30 — SURFACE-03 (MEMORY REVIEW QUEUES) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 4 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-03-ingestion-queue.md` — the fourth Phase-3 surface. One tabbed
