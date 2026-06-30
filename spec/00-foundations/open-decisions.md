@@ -1457,7 +1457,27 @@ in that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-109…OD-112 — surface-02 (user & access mgmt) layout/behaviour calls 🟢 RESOLVED (2026-06-30, operator delegated "yes to all")
+
+Surface-local UX/behaviour decisions for `spec/03-surfaces/surface-02-user-mgmt.md` (full options + reasoning
+live in that file's Open decisions table). All four resolved to the recommendation:
+
+- **OD-109** 🟢 — The six C1 admin sub-surfaces render as **one tabbed "Users & Access" surface** (Users/Roles/
+  Permissions/Clearances/Reviews/Restricted) with per-tab PERM gating, not six separate nav routes. Tightly
+  coupled, shared Super-Admin audience; mirrors surface-01's sectioned model. Admins (Users-only) see one tab.
+- **OD-110** 🟢 — The permission matrix (~37 nodes × 6+ roles) is a **category-grouped accordion** (the 12
+  FR-1.PERM.007 catalog categories), each a node-row × role-column sub-grid with a sticky role header + node
+  search — not one flat grid (too wide to scan).
+- **OD-111** 🟢 — Clearance review (FR-1.CLR.005) is its **own "Reviews" tab** surfacing due+overdue with an
+  escalation banner, not inline badges. The escalate-don't-revoke posture is the surface's sharpest #3
+  expression and deserves a countable queue (mirrors surface-00 overdue-pinning).
+- **OD-112** 🟢 — A reason on sensitive **non-Restricted** mutations (deactivate, role-delete, clearance-revoke)
+  is **optional**, captured to `access_audit` when given; mandatory only for Restricted grants (FR-1.RST.002).
+  Consistent with the locked OD-029 (audit every mutation; reason mandatory only for Restricted).
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
-> `spec/03-surfaces/surface-00-auth.md` (surface-local layout decisions, all resolved in their files) —
-> do not reuse those numbers.
-> Next OD number: OD-109.
+> `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`
+> (surface-local layout decisions, all resolved in their files) — do not reuse those numbers.
+> Next OD number: OD-113.

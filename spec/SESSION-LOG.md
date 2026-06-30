@@ -5,6 +5,63 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 32 — 2026-06-30 — SURFACE-02 (USER & ACCESS MGMT) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 3 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-02-user-mgmt.md` — the third Phase-3 surface. One tabbed
+**"Users & Access"** surface consolidates the **six C1 (RBAC) admin sub-surfaces**: UI-USER-MGMT · UI-ROLE-MGMT ·
+UI-PERMISSION-MATRIX · UI-CLEARANCE-MGMT · UI-CLEARANCE-REVIEW · UI-RESTRICTED-GRANT (the `UI-CLEARANCE-*` glob =
+two surfaces: grant/revoke + cadence review). `UI-USER-ACTIVITY` (FR-1.USR.004) is intentionally merged into the
+Users-tab detail drawer (noted in-file, not dropped). Six tabs: Users · Roles · Permissions · Clearances ·
+Reviews · Restricted. Each specced with data bindings, actions+PERM, real-time/poll contract, all five states.
+Pattern-matched surface-00/01.
+
+**FR source:** `component-01-rbac.md` (ROLE/PERM/CLR/RST/USR/AUD areas) **+** the C0 invite-lifecycle FRs that
+name UI-USER-MGMT (`component-00-login.md` FR-0.INV.001/.002/.003/.006/.007 — invite-only/expiry/SMTP/revoke-
+resend/bounce). CFG keys read-only here (editing → surface-01). **Gating spine:** Admin is gated to the **Users
+tab only**; Roles + Permissions = `PERM-system.role_manage` (Super-Admin-only, FR-1.ROLE.003); Clearances +
+Reviews = `PERM-user.grant_clearance` (Super-Admin-only, FR-1.USR.005); Restricted = `PERM-user.grant_restricted`
+(Super-Admin-only, FR-1.RST.001). #2 (explicit/scoped/reason-captured grants) and #3 (blocked last-Super-Admin,
+throttled invite, overdue review all surfaced) govern.
+
+**Key correctness moves carried in:** FR-1.RLS.007 mid-task-revocation halt **seamed OUT** to C5/C6/C8 (this
+surface owns authorization *state*, not agent-path interception); `client_slug` excluded everywhere (ADR-001 §3 /
+OD-096); reactivation does **not** auto-restore above-Standard clearances / Restricted (AC-1.USR.002.2); Restricted
+never a role default + never auto-injected (FR-1.RST.003, seamed to C2); instant-on-next-query, no re-login
+(FR-1.RLS.006); `restricted_grants.reason` NOT NULL (FR-1.RST.002).
+
+**4 ODs raised + resolved (operator: "yes to all"), logged OD-109–112:**
+- **OD-109** — six sub-surfaces render as one tabbed surface (not six nav routes).
+- **OD-110** — permission matrix = category-grouped accordion (12 catalog categories) + search, not a flat grid.
+- **OD-111** — clearance review = its own "Reviews" tab + overdue escalation banner, not inline badges.
+- **OD-112** — reason optional on non-Restricted mutations (captured to audit), mandatory only for Restricted —
+  consistent with locked OD-029.
+
+**Verification gate (1 independent zero-context subagent, 6 checks a–f): CLEAN — 0 HIGH, 1 MED, 4 LOW.**
+All six UI- stubs covered; every "FRs served" FR genuinely rendered; no `client_slug`; one-role-per-user matches
+OD-029; `restricted_grants.reason` NOT NULL; every PERM node real (checked vs `PERMISSION_NODES.md`); Super-Admin-
+only gating correct; five states have no silent-failure holes (fetch-failure never renders as healthy/empty;
+last-Super-Admin block surfaces; failed invite never reads "sent"; matrix toggle rolls back on write failure).
+**3 patched:** (MED) the manifest mis-routed `clearance_review_cadence_days` editing to surface-01 `#auth` — it
+lives under `#guardrails` (registry group D); fixed + corrected `invite_link_ttl` class to BOOT. (LOW) flagged
+`UI-USER-ACTIVITY` as intentionally merged; (LOW) corrected RLS.007 seam target C5/C6 → **C5/C6/C8** per OD-031.
+**2 LOW justified-as-is:** Reviews-tab gate granularity (faithful to C1's coarse node set — no separate view-only
+node exists); `invite_link_ttl` BOOT-vs-LIVE (surface never claims LIVE — folded into the MED fix).
+
+**Files changed:** `surface-02-user-mgmt.md` (new); `open-decisions.md` (OD-109–112 🟢; next OD-113);
+`README.md` (Phase-3 row → 3 of 14); this log.
+
+**No matrix change** — Phase 3 surfaces don't add traceability-matrix rows (the `UI-` stubs are already columns on
+the C1/C0 FR rows); consistent with surface-00/01. **No new OOS / AF.**
+
+**NEXT STEP — `surface-03-ingestion-queue.md`** (UI-INGESTION-QUEUE + the conflict-review queue). FR source =
+`component-02-memory.md` (the ING area — ingestion pipeline/queue durability/escalation FR-2.ING.* + the
+conflict/merge review FR-2.MNT.* human-gated queues) + the C3 connector trigger seams that feed ingestion.
+Carry-in: ADR-002 (Maturity / `[Building]`), ADR-003 (selective-writing + sensitivity-classify gates), ADR-004
+(sole-writer service_role + per-entity validate-and-commit), the C7 RTP real-time contract. Copy `_TEMPLATE.md`;
+follow the Phase 3 playbook steps; run the gate before sign-off.
+
+---
+
 ## Session 31 — 2026-06-29 — SURFACE-00 (AUTH) DRAFTED, RESOLVED, GATE-CLEAN — 2 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-00-auth.md` — the second Phase-3 surface. One file consolidates
