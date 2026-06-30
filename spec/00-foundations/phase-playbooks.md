@@ -173,7 +173,8 @@ real-time-vs-poll contract, and all states (loading / empty / error / partial / 
 | 12 | `surface-12-mobile.md` | Mobile surfaces (6 sub-surfaces) |
 | 01b | `surface-01b-config-audit-log.md` | UI-config-audit-log — config change audit log viewer (OD-099 resolved) |
 
-**Status (2026-06-28):** 1 of 14 built — `surface-01-config-admin.md` ✅ signed off. The other 13 (incl.
+**Status (2026-06-30):** 3 of 14 built — `surface-00-auth.md`, `surface-01-config-admin.md`,
+`surface-02-user-mgmt.md` ✅ signed off. The other 11 (incl.
 `surface-01b`) are **listed but not yet built**; surface-01's "View audit log →" link targets `surface-01b`,
 which is a known not-yet-built target (not a defect). **Mapping note:** C0's `UI-CONFIG-AUTH` stub
 (FR-0.AUTH.003) is **not a separate surface** — it is absorbed into `surface-01-config-admin` `#auth`; do not
