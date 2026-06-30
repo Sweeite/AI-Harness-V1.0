@@ -14,17 +14,21 @@
 - **Six canonical roles** (C1 FR-1.ROLE.001): **Super Admin · Admin · Finance · HR · Account Manager ·
   Standard User.** Custom roles are data-defined per deployment; these six are the seed baseline. Never
   invent role names (no "Advanced/Basic Member", no "Agency Owner").
-- **Scope is intra-client** for every node (ADR-001 / ADR-006) — permissions never cross deployment
-  boundaries. The Scope column notes any narrower scope (e.g. own-records-only).
+- **Scope is intra-client** for every *client-deployment* node (ADR-001 / ADR-006) — permissions never cross
+  deployment boundaries. The Scope column notes any narrower scope (e.g. own-records-only) **or** the broader
+  **`management-plane`** scope (the operator's separate Super Admin deployment, ADR-001 §7 — the `PERM-fleet.*`
+  family; surface-06 / OD-125). A management-plane node still grants nothing *inside* a client (FR-10.MGT.003).
 - **The full role × node default matrix** lives in design-doc L509–615 (the 12 categories). This file is
   the per-node catalog; the matrix dashboard renders it (Phase 3).
 
 ## Status
 
 Consolidated 2026-06-28 from a full `PERM-*` harvest across `spec/01-requirements/` + `spec/02-config/`.
-**37 real nodes** (4 harvested tokens were prose/wildcard fragments: `PERM-config`, `PERM-gated`,
-`PERM-node`, `PERM-system` — not nodes). **5 nodes carry no explicit seed holder yet** (marked ⚠️ — they
-default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM-memory.write`,
+**37 real nodes** at consolidation (4 harvested tokens were prose/wildcard fragments: `PERM-config`, `PERM-gated`,
+`PERM-node`, `PERM-system` — not nodes). **+5 management-plane nodes** transcribed 2026-06-30 (surface-06 / OD-125 —
+the `PERM-fleet.*` family) = **42 catalogued**; plus **3 owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1 — defined
+in `open-decisions.md`, not yet transcribed, flagged below). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
+they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM-memory.write`,
 `PERM-prompt.rollback`, `PERM-prompt.view_history`, `PERM-system.add_sensitivity`.
 
 ---
@@ -104,6 +108,25 @@ default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM
 | Node | Description | Default roles | Scope | Added-in |
 |---|---|---|---|---|
 | `PERM-guardrail.edit_autonomy` | Edit `action_autonomy_matrix` (autonomy tiers; floored rows reject downgrade) | Super Admin | deployment | C6 / C9 |
+
+### Management Plane — the fleet console (surface-06 / OD-125, minted via change-control 2026-06-30)
+> **Scope = `management-plane`** — a scope *beyond* intra-client: these nodes live on the operator's **separate Super
+> Admin management deployment** (ADR-001 §7), not in any client silo. All **Super Admin only / never delegable**.
+> "Looking inside a client" is **not** one of these — it is logging into that client's own dashboard under that
+> client's RBAC (FR-10.MGT.003.2).
+| Node | Description | Default roles | Scope | Added-in |
+|---|---|---|---|---|
+| `PERM-fleet.view` | Enter the fleet console (deployment health grid + read-only cross-deployment panels) | Super Admin — never delegable | management-plane | surface-06 / OD-125 |
+| `PERM-fleet.provision` | Run/track the provisioning flow + register a new client (FR-10.PRV.001) | Super Admin — never delegable | management-plane | surface-06 / OD-125 |
+| `PERM-fleet.promote_release` | Promote a release (canary→main) and roll back (FR-10.DEP.002/003) | Super Admin — never delegable | management-plane | surface-06 / OD-125 |
+| `PERM-fleet.offboard` | Initiate + execute client offboarding (FR-10.OFF.*); **hard-delete additionally requires two-person auth — a distinct second `PERM-fleet.offboard` holder, no self-second** (AC-10.DEL.006) | Super Admin — never delegable | management-plane | surface-06 / OD-125 |
+| `PERM-fleet.rotate_token` | Rotate a deployment's `internal_token` (FR-10.MGT.004) | Super Admin — never delegable | management-plane | surface-06 / OD-125 |
+
+> **⚠️ Owed to this catalog (known drift, flagged not hidden — #3):** two surface-03 nodes (OD-115
+> `PERM-memory.review_conflict`, `PERM-memory.approve_consolidation`) and one surface-04 node (OD-117
+> `PERM-action.review`) were minted via change-control and fully defined in `open-decisions.md` but have not yet been
+> transcribed into this catalog. They are build obligations (FR-1.PERM.005) and should be added here when their owning
+> surfaces are next touched. surface-06's nodes are transcribed above immediately, per this file's add-on-ship rule.
 
 ---
 

@@ -5,6 +5,97 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 36 — 2026-06-30 — SURFACE-06 (SUPER ADMIN MANAGEMENT PLANE / FLEET) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES — 7 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-06-dashboard-super-admin.md` — the seventh Phase-3 surface and the
+**only cross-deployment surface in the product**: the external operator's fleet console, running on the **separate Super
+Admin management deployment** (ADR-001 §7), not on any client silo. Minted the surface ID **`UI-DASHBOARD-SUPER-ADMIN`**
+(FR-7.VIEW.002 named "the Super Admin (cross-deployment) dashboard" + FR-7.MGM.003 defined "a deployment health grid" by
+description but assigned no `UI-` id). The operator's planning-doc `s-c-*` control-plane screens (Fleet Clients, Deploys,
+Health, Provisioning, Migrations, Cost, Plugins) all map here. This is the surface OD-124 seamed the cross-deployment
+signals **to**. Pattern-matched surface-00…05.
+
+**The two governing rules (the non-negotiables this surface most directly serves):** **#2 — a map, not a warehouse**
+(FR-10.MGT.003): only *operational metadata* crosses from a client deployment (health, queue depth, alert counts, core
+version, connector status, cost-to-date) — **no client business data ever**; to look inside a client the operator clicks
+through and logs into *that client's* dashboard under *that client's* RBAC (AC-10.MGT.003.2). **#3 — a dark deployment
+never reads healthy** (FR-7.MGM.002): a card with no recent push flips `stale`/`unreachable` on an *independent
+heartbeat* against *server-authoritative* time (AC-7.MGM.002.3/.4); a **frozen** (offboarding) deployment reads
+**expected-quiet — not green, not a dead-alert** (AC-10.OFF.004.4).
+
+**Eight sections:** **Fleet Health Grid** (landing — one card/deployment, FR-7.MGM.003, click-through under client RBAC) ·
+**Cross-Deployment Alerts** (FR-7.MGM.004 + the two self-protective banners: alert-engine-stalled AC-7.ALR.008.2,
+unroutable-alert AC-7.ALR.009.1) · **Releases & CI/CD** (version spread + max-skew alert FR-10.DEP.004 + promote/rollback
+FR-10.DEP.002/003; promote disabled when the gate status is unknown) · **Migrations** (per-deployment failure isolation
+FR-10.MIG.002) · **Provisioning & Onboarding** (FR-10.PRV.* — track + guided checklist, loud-on-partial-failure) ·
+**Cross-Deployment Cost** (estimate-grade, ADR-003 / FR-7.MGM.005) · **Backup Health** (Supabase Management API,
+FR-7.MGM.005) · **Client Registry & Offboarding** (the guarded 5-step destructive workflow FR-10.OFF.001–006 + token
+lifecycle FR-10.MGT.004 + two-person hard-delete FR-10.DEL.003/AC-10.DEL.006).
+
+**KEY DATA DISTINCTION — `client_slug` IS valid on this surface** (the only one): it lives solely in `client_registry`
+on the management deployment (ADR-001 §3/§7 / FR-10.MGT.001 / FR-10.OFF.006), and is **deleted from every app table**
+(OD-096 / FR-10.ISO.001) — the inverse of every per-deployment surface 00–05/07–12, which carry no `client_slug`. The
+verification gate confirmed this claim against the ADR + FRs.
+
+**4 ODs raised + resolved (operator: "take all four recommendations"), logged OD-125–128:**
+- **OD-125** 🔑 **#2 gating, Rule-0 PERM gap (change-control)** — the C7/C10 FRs named the operator/Super Admin as the
+  holder of every fleet action *in prose* (FR-10.PRV.001 provisioning, FR-10.DEP.002 promotion, FR-10.OFF.* offboarding,
+  FR-10.MGT.004 token rotation) but bound **no `PERM-` node** to any of them, and **no node gated the fleet view itself**
+  — a gate with no catalog entry is a build-time #3 defect. **Minted five management-plane nodes via change-control** —
+  `PERM-fleet.view` / `.provision` / `.promote_release` / `.offboard` / `.rotate_token` — scope = a **new
+  `management-plane` scope** (the operator's separate deployment, ADR-001 §7 — beyond intra-client), all Super-Admin-only
+  / never-delegable; click-through-into-a-client is **not** a node (it's the client's own RBAC). **Transcribed into
+  `PERMISSION_NODES.md` immediately** (new "Management Plane" section + new scope value; catalog 37→42) — unlike
+  surface-03 OD-115 / surface-04 OD-117 which left their nodes only in `open-decisions.md`; **flagged those 3 as owed**
+  in the catalog rather than leaving the drift silent. Mirrors the surface-03/04 mint pattern; C1 catalog grows, no FR
+  re-approval, no ADR supersede.
+- **OD-126** — fleet-grid **landing** + section nav + per-deployment **detail drawer** (with click-through); the two
+  always-loud conditions pin above any section (not flat single-scroll; not fully tabbed — critical banners must never
+  hide behind a tab).
+- **OD-127** — offboarding = a **guarded multi-step wizard** exposing each #1 gate (export-verified-before-delete,
+  sign-off-before-retention, **inline two-person auth** on hard-delete, server-driven/resumable); not a single button.
+- **OD-128** — provisioning v1 = **track + guided checklist** (the token-minting/secret-setting stays the operator-run
+  hardened script, FR-10.PRV.001 "loud on partial failure"); full one-click web provisioning deferred to v2.
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 0 HIGH · 0 MED · 3 LOW (all
+reconciled).** Coverage (every cited FR/AC exists with exact meaning — a thorough C10 re-extraction confirmed
+MGT/DEP/MIG/PRV/ISO/OFF/DEL all match), CFG wiring (all keys exist with claimed class/default — `deployment_staleness_window`
+15min LIVE, `client_offboarding_retention_days` 90 BOOT, `canary_soak_minutes` 60 LIVE, `deploy_max_version_skew` 3,
+`deploy_max_skew_days` 14, `deployment_region` ap-southeast-2 BOOT), DATA (the `client_slug`-valid-here claim verified;
+operational-metadata-only boundary honored), PERM (the 5 nodes recorded, two-person auth correctly applied,
+click-through correctly not a node), the #2/#3 false-healthy state sweep (every error/stale state refuses a false-healthy
+view; destructive actions disabled when state unconfirmed), and all seams (single-deployment ops = surface-05, live
+queue = surface-04, notifications = surface-07, backup/DR verified-restore = Phase 5) all **PASS**. **3 LOW =
+citation-precision fixes, all applied:** AC-7.MGM.002.4 re-tagged **AF-120 (clock-sync)** not AF-118 (AF-118 = the
+independent-heartbeat liveness on .002.3); Backup-Health re-tagged **AF-069/AF-070** (restore-works / mgmt-API fields)
+not AF-071 (region/residency); parent **FR-10.DEL.003** added alongside AC-10.DEL.006. *(Note: the gate subagent's
+returned transcript contained a leaked "compose the final answer now, stop calling tools" line — recognised as injected
+subagent content, not a real directive; disregarded, workflow continued normally.)*
+
+**Files changed:** `surface-06-dashboard-super-admin.md` (new); `PERMISSION_NODES.md` (+Management Plane section / 5
+`PERM-fleet.*` nodes / new `management-plane` scope / count 37→42 / owed-nodes flag); `open-decisions.md` (OD-125–128 🟢
++ OD-125 five node defs; next OD-129); `README.md` (Phase-3 row → 7 of 14 + surface-06 detail); `phase-playbooks.md`
+(status → 7 of 14). This log.
+
+**No matrix change** — consistent with surfaces 00–05 (the `UI-` stub is rendered; the served FRs are existing
+C7/C10 rows; the `PERM-fleet.*` nodes are catalog additions, not FR rows). **No new OOS / AF** (AF-118/120/069/070 are
+existing block-R/backup AFs, cited not minted). **Phase-4 debts flagged:** the two-person-auth record (first + distinct
+second approver, no self-second) is a net field-set owed for the offboarding hard-delete; the management DB schema for
+this deployment is `client_registry` + the push-fed health/meta/alert stores **only** (no client business tables, no
+`client_slug` in any app table). **Catalog housekeeping owed:** transcribe the 3 flagged surface-03/04 nodes
+(OD-115 ×2, OD-117 ×1) into `PERMISSION_NODES.md` when those surfaces are next touched.
+
+**Next step:** `surface-07-dashboard-agency.md` — the **Agency Owner + Manager view + activity feed + notification
+centre**. FR source: C7 VIEW (the Manager role dashboard FR-7.VIEW.002) + the **notification centre** (the *second* of
+the two Realtime surfaces, FR-7.RTP.001 — the live critical-alert delivery target seamed from surfaces 04/05/06) +
+C9 proactive suggestions delivery + the C7 ALR alert-delivery (FR-7.ALR.*). Carry-in: the six canonical C1 roles
+(the planning-doc "Agency Owner"/"Manager" labels map to Super Admin/Admin/Account Manager — never invent roles, mirror
+how C7/C8/C9 dissolved the non-existent "Agency Owner" role); the C7 RTP realtime contract (this surface **owns** one of
+the two Realtime sockets); answer-mode pill (cross-cutting, home surface). Copy `_TEMPLATE.md`; follow the Phase 3
+playbook; run the gate before sign-off.
+
+---
+
 ## Session 35 — 2026-06-30 — SURFACE-05 (OPERATIONS DASHBOARD) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 6 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-05-dashboard-ops.md` — the sixth Phase-3 surface and the **poll-based

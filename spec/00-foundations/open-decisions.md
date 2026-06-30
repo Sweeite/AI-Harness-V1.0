@@ -1579,11 +1579,59 @@ that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-125…OD-128 — surface-06 (Super Admin management plane / fleet) gating / layout / offboarding-UI / provisioning-scope 🟢 RESOLVED (2026-06-30, operator "take all four recommendations")
+
+- **OD-125** 🔑 🟢 — **#2 gating, Rule-0 PERM gap (change-control mint).** The C7/C10 FRs name the **operator / Super
+  Admin** as the holder of every fleet action *in prose* (FR-10.PRV.001 provisioning, FR-10.DEP.002 promotion,
+  FR-10.OFF.* offboarding, FR-10.MGT.004 token rotation) but bind **no `PERM-` node** to any of them, and **no node
+  gated the fleet view itself** — a gate with no catalog entry is a build-time #3 defect (PERMISSION_NODES.md rule).
+  `PERM-config.infra`/`.observability` gate *editing the thresholds* the fleet consumes, not viewing/acting on the
+  fleet. **Resolved: minted five management-plane nodes via change-control**, scope = **`management-plane`** (the
+  operator's separate Super Admin deployment, ADR-001 §7 — a scope *beyond* intra-client), all **Super Admin only /
+  never delegable**:
+  - `PERM-fleet.view` — Description: enter the fleet console (deployment health grid + read-only cross-deployment
+    panels). · Default roles: Super Admin (never delegable). · Scope: management-plane. · Added-in: surface-06.
+  - `PERM-fleet.provision` — Description: run/track the provisioning flow + register a new client (FR-10.PRV.001). ·
+    Default roles: Super Admin (never delegable). · Scope: management-plane. · Added-in: surface-06.
+  - `PERM-fleet.promote_release` — Description: promote a release (canary→main) + roll back (FR-10.DEP.002/003). ·
+    Default roles: Super Admin (never delegable). · Scope: management-plane. · Added-in: surface-06.
+  - `PERM-fleet.offboard` — Description: initiate + execute client offboarding (FR-10.OFF.*); **the hard-delete step
+    additionally requires two-person auth — a distinct second `PERM-fleet.offboard` holder, no self-second**
+    (AC-10.DEL.006). · Default roles: Super Admin (never delegable). · Scope: management-plane. · Added-in: surface-06.
+  - `PERM-fleet.rotate_token` — Description: rotate a deployment's `internal_token` (FR-10.MGT.004). · Default roles:
+    Super Admin (never delegable). · Scope: management-plane. · Added-in: surface-06.
+  **Click-through into a client is NOT a management-plane node** — it is logging into that client's own dashboard under
+  *that client's* RBAC (FR-10.MGT.003.2). **Transcribed into `PERMISSION_NODES.md` immediately** (per that file's
+  add-on-ship rule) — a new "Management Plane" section + a new `management-plane` Scope value; catalog count 37→42.
+  Mirrors surface-03 OD-115 / surface-04 OD-117 (mint via change-control when no existing node fits). **C1 catalog grows;
+  no FR re-approval, no ADR supersede.** *(Side-finding logged: OD-115's two nodes + OD-117's one node were defined here
+  but never transcribed to the catalog — flagged as owed in `PERMISSION_NODES.md`, not silently left.)*
+- **OD-126** 🟢 — **Layout.** Fleet-grid **landing** + section nav (Alerts · Releases & CI/CD · Migrations ·
+  Provisioning · Cost · Backup · Registry & Offboarding) + a **per-deployment detail drawer** (with the "Open client
+  dashboard ↗" click-through). The two always-loud conditions (alert-delivery-misconfigured AC-7.ALR.009.1,
+  alert-engine-stalled AC-7.ALR.008.2) pin above any section. Not a flat single-scroll (the grid deserves to be home)
+  and not fully tabbed (the critical banners must never hide behind an unselected tab — #3).
+- **OD-127** 🟢 — **Offboarding workflow UI (behaviour).** The destructive offboarding is a **guarded multi-step wizard**
+  on this surface — Initiate → Export (verified-complete + client sign-off gate) → Freeze (retention countdown,
+  reactivation possible) → Hard-delete (**inline two-person auth, distinct second approver, no self-second**) →
+  Meta-record — each transition exposing its #1 gate (AC-10.OFF.002.4 export-verified-before-delete, AC-10.OFF.003.3
+  sign-off-before-retention, AC-10.DEL.006 two-person, AC-10.OFF.005.4 server-driven/resumable). Makes the C10 gates
+  *visible + UI-enforced* rather than relying on operator memory; not a single "Offboard" button.
+- **OD-128** 🟢 — **Provisioning launch vs track (scope).** v1 = **track + guided checklist**: the surface shows
+  provisioning status (`client_registry` `initialising`→`active`), per-step results, and the onboarding runbook, with a
+  "Provision new client" entry that launches the **guided flow**; the **token-minting / Railway-secret-setting steps
+  remain the operator-run script** (FR-10.PRV.001 "scripted, operator-run"), surfaced **loud on partial failure**. Full
+  one-click web provisioning (which would webify the product's most privileged secret-handling) is a **v2** consideration.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
 > PERM nodes via change-control); OD-117–120 by `spec/03-surfaces/surface-04-approval-queue.md` (surface-local; all
 > resolved in-file; OD-117 mints `PERM-action.review` via change-control, OD-120 amends C6 FR-6.APR.003); OD-121–124 by
 > `spec/03-surfaces/surface-05-dashboard-ops.md` (surface-local; all resolved in-file; OD-123 mints `dlq_stale_alert_hours`
-> via change-control to the config registry) — do not reuse those numbers.
-> Next OD number: OD-125.
+> via change-control to the config registry) — do not reuse those numbers. OD-125–128 by
+> `spec/03-surfaces/surface-06-dashboard-super-admin.md` (surface-local; all resolved in-file; OD-125 mints five
+> `PERM-fleet.*` management-plane nodes via change-control + introduces the `management-plane` scope).
+> Next OD number: OD-129.
