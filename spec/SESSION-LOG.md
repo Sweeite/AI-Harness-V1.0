@@ -5,6 +5,70 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 35 — 2026-06-30 — SURFACE-05 (OPERATIONS DASHBOARD) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 6 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-05-dashboard-ops.md` — the sixth Phase-3 surface and the **poll-based
+read-only counterpart to surface-04's Realtime approval queue**. Where surface-04 is one of exactly two Realtime/WebSocket
+surfaces (FR-7.RTP.001), surface-05 is the canonical **polling** surface (FR-7.RTP.002): nine panels, each fed by its home
+component, each refreshing on its own per-deployment-configurable cadence, none over a live socket. Minted the surface ID
+**`UI-DASHBOARD-OPS`** (FR-7.VIEW.001 defined "the operations dashboard" by description but assigned no formal `UI-` id).
+Framed as the operator-facing embodiment of non-negotiable **#3 (never fail silently)** — the dashboard's defining job is to
+make a *silent* failure *loud*, and its cardinal sin is a **false-healthy view**. Pattern-matched surface-00…04.
+
+**Nine panels (8→9: Connector Health split out of VIEW.001's system-health bundle — a faithful decomposition, sanctioned by
+the playbook's panel list):** **System Health** (C5 FR-5.LOP.005/QUE.001 loops + queue + success rate, + C3/C8 rollups) ·
+**Failure Health** (the silent-failure detector — `task_queue`-terminal-without-`event_log`-terminal per **AC-7.LOG.003.1** +
+spike/backup pre-breach trackers) · **Connector Health** (C3 FR-3.DSC.005/006/TOK/RL.001/TRIG.005/006 — status, token-expiry
+countdown never showing the token, rate headroom, watch re-arm) · **Memory Health** (C2 FR-2.MNT.* signals, **read-only**;
+the actionable queues are surface-03) · **Event Log** (C7 FR-7.LOG.001–006 — append-only plain-English timeline, `cost_unknown`
+sentinel, redaction-tombstone retention) · **DLQ** (C5 FR-5.JOB.006 — full error history, **human-only requeue/discard**,
+the AC-5.JOB.006.2 unattended-escalation badge) · **Cost** (C7 FR-7.COST.001–004 — estimate-grade meter + lit ladder rung;
+**renders, does not enforce** — C6 decides/C5 executes per FR-7.COST.003) · **Guardrail Log** (C6 FR-6.LOG.001–004 + C7
+FR-7.LOG.007 view/export; hard-limit rows never `approved`) · **Self-Improvement** (C8 FR-8.HLTH.001–004/LRN.001–002 +
+C7 FR-7.OPT.001 + C6 FR-6.OPT.001 + C9 Insight suggestions — **flag/suggest only, never auto-act**).
+
+**4 ODs raised + resolved (operator "yes" → all four recommendations taken), logged OD-121–124:**
+- **OD-121** — **#2 per-panel role-scoping** (FR-7.VIEW.002 / AC-7.VIEW.002.1 gave no panel→node map). Bound to **existing**
+  C1 PERM categories (FR-1.PERM.007 — Dashboard Access · Observability · Compliance · System Functions · Tool Access): entry
+  via a Dashboard Access (ops) node (Super Admin + Admin full; Finance → Cost only; others hidden); export →
+  `PERM-compliance.download_records`; DLQ requeue/discard + connector re-auth → System-Functions/Tool-Access nodes. **No new
+  category, no node mint, no FR re-approval** (unlike surface-03 OD-115 / surface-04 OD-117 — here the categories already fit;
+  node ids materialise in `PERMISSION_NODES.md` at build, FR-1.PERM.005).
+- **OD-122** — **single-scroll sectioned** dashboard + sticky health-summary strip + anchor nav + **independently-polled**
+  collapsible panels (not tabbed — tabs hide a degrading panel, a #3 risk).
+- **OD-123** 🔑 **#3 Rule-0 config gap (change-control)** — C5 **AC-5.JOB.006.2** mandates a DLQ-unattended escalation "beyond
+  a configurable age," but the registry had **no key** for it (`max_retries_before_dead_letter`=3 is the retry cap). **Minted
+  `dlq_stale_alert_hours`** (default 24 h, LIVE, §H `#loops`, `PERM-config.loops`) **via change-control to `config-registry.md`**
+  (logged in its Status section). Satisfies the existing AC; no FR re-approval. Same shape as OD-097.
+- **OD-124** — surface-05 is **strictly single-deployment**; cross-deployment/management-plane signals (FR-7.MGM.001–005) are
+  **exclusively surface-06** (matches ADR-001 §3 isolation, no `client_slug`).
+
+**Verification gate (1 independent zero-context subagent, checks a–f): CLEAN — 0 HIGH · 0 MED · 0 LOW.** All six passed:
+(a) full panel coverage, every panel → a producing FR, silent-failure driven by LOG.003, self-improvement displays-not-
+generates; (b) **all 19 cited config keys resolve** with matching class/default, incl. the newly-minted `dlq_stale_alert_hours`
+(verified at registry L176); (c) **no `client_slug` leak** (OD-096/FR-10.ISO.001 honored on every binding), `cost_unknown`
+sentinel + silent-failure join coherent; (d) PERM model reuses existing C1 categories, `PERM-compliance.download_records`
+confirmed, no invented node/category, no bare role-string gates; (e) **the #3 false-healthy sweep found no hole** — every
+error/stale state badges "—" not "0"/"$0"/"✓", and notably **the silent-failure detector protects itself** (its own failure
+shows "couldn't verify," never an empty all-clear) + DLQ/export actions disabled while stale/unloaded; (f) all seven seams
+correct, cost-ladder enforcement correctly disclaimed. One non-blocking note (8 named views → 9 panels) folded into the
+Sections intro.
+
+**Files changed:** `surface-05-dashboard-ops.md` (new); `config-registry.md` (+`dlq_stale_alert_hours` §H, Status-section
+change-control note); `open-decisions.md` (OD-121–124 🟢 + reserved-block, next OD-125); `README.md` (Phase-3 row → 6 of 14 +
+surface-05 detail); `phase-playbooks.md` (status → 6 of 14). This log.
+
+**No matrix change** — consistent with surfaces 00–04 (the `UI-` stub is rendered, the served FRs are existing C5/C6/C7/C3/C8/C9
+rows; `dlq_stale_alert_hours` is a config row, not an FR). **No new OOS / AF.** The Phase-4 data-binding notes flag the
+silent-failure reconciliation join (`task_queue`↔`event_log` terminal-event), the `cost_unknown` sentinel representation, and
+the C3 connector-state / C8 agent-metric stores as Phase-4 schema obligations.
+
+**Next step:** `surface-06-dashboard-super-admin.md` — the **Super Admin dashboard + management-plane screens** (the
+cross-deployment fleet: clients, deploys, health grid, provisioning, migrations, cost overview, plugins — FR-7.MGM.001–005 +
+C10 management plane + ADR-001 §7). This is the surface OD-124 seamed the cross-deployment signals *to*.
+
+---
+
 ## Session 34 — 2026-06-30 — SURFACE-04 (AGENT ACTION APPROVAL QUEUE) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 5 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-04-approval-queue.md` — the fifth Phase-3 surface and the

@@ -1549,10 +1549,41 @@ that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-121…OD-124 — surface-05 (operations dashboard) gating / layout / a config gap / scope 🟢 RESOLVED (2026-06-30, operator "yes" → all four recommendations taken)
+
+- **OD-121** 🟢 — **#2 gating, per-panel role-scoping.** FR-7.VIEW.002 / AC-7.VIEW.002.1 require the ops dashboard to be
+  role-scoped ("a role sees only the panels its permissions allow") but the C7 FRs give **no panel→PERM-node map**.
+  Resolved by binding to **existing C1 PERM categories** (FR-1.PERM.007 — Dashboard Access · Observability · Compliance ·
+  System Functions · Tool Access): **entry** via a **Dashboard Access (ops)** node (Super Admin + Admin full; Finance →
+  Cost panel only; HR/Account Manager/Standard User hidden by default); **export** (Event-Log / Guardrail-Log,
+  FR-7.LOG.007 / FR-6.LOG.004) via `PERM-compliance.download_records`; **DLQ requeue/discard** + **connector re-auth** via
+  System-Functions / Tool-Access nodes. **No new category, no node mint, no ADR supersede** (unlike surface-03 OD-115 /
+  surface-04 OD-117, which minted nodes because no category fit) — here the categories already exist; exact node ids
+  **materialise in `PERMISSION_NODES.md`** at build (FR-1.PERM.005). A build-artifact enumeration, not a new decision;
+  **C1 catalog unchanged, no FR re-approval.** Panel×role table recorded in `surface-05-dashboard-ops.md` (Access + OD-121).
+- **OD-122** 🟢 — **Layout.** The ops dashboard is a **single-scroll, sectioned** surface with a **sticky health-summary
+  strip** + anchor nav + collapsible, **independently-polled** panels — not tabbed. A monitoring glass is read as a whole;
+  tabs hide a degrading panel behind an unselected tab (a #3 risk — the failure you don't see). Independent per-panel poll
+  + per-panel error/stale states keep one failed panel from taking down the dashboard.
+- **OD-123** 🟢 — **#3, Rule-0 config gap (change-control).** C5 **AC-5.JOB.006.2** mandates an escalating signal when a
+  DLQ entry sits "**beyond a configurable age**," but the config registry had **no key** for that age
+  (`max_retries_before_dead_letter`=3 is the *retry* cap, not the staleness age) — the loud-condition's threshold was
+  unspecified (same shape as OD-097). **Resolved: minted `dlq_stale_alert_hours`** (default **24 h**, **LIVE**, §H
+  `#loops`, `PERM-config.loops`) **via change-control to `config-registry.md`** (logged in its Status section). Satisfies
+  the existing AC; **no FR re-approval** (an FR's AC already assumed the knob). Adds one registry row.
+- **OD-124** 🟢 — **Scope seam.** surface-05 is **strictly single-deployment**; it renders **no** cross-deployment /
+  management-plane signal (FR-7.MGM.001–005). The fleet grid + cross-deployment cost/health/CI-CD is **exclusively
+  surface-06** (the Super Admin management-plane surface). Matches ADR-001 §3 isolation (no `client_slug`, no cross-silo
+  data on a per-deployment surface) and the Phase-3 surface split. A Super Admin on surface-05 sees only the local
+  deployment; they reach the fleet via surface-06.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
 > PERM nodes via change-control); OD-117–120 by `spec/03-surfaces/surface-04-approval-queue.md` (surface-local; all
-> resolved in-file; OD-117 mints `PERM-action.review` via change-control, OD-120 amends C6 FR-6.APR.003) — do not
-> reuse those numbers.
-> Next OD number: OD-121.
+> resolved in-file; OD-117 mints `PERM-action.review` via change-control, OD-120 amends C6 FR-6.APR.003); OD-121–124 by
+> `spec/03-surfaces/surface-05-dashboard-ops.md` (surface-local; all resolved in-file; OD-123 mints `dlq_stale_alert_hours`
+> via change-control to the config registry) — do not reuse those numbers.
+> Next OD number: OD-125.

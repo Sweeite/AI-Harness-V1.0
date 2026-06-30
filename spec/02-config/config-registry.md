@@ -173,6 +173,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `checkpoint_step_threshold` | How many steps the AI takes before pausing to check in on a long task | 4 | LIVE | int steps ≥ 1 |
 | `checkpoint_response_timeout_minutes` | How long a checked-in task waits for a human reply before timing out | 60 | LIVE | int minutes ≥ 1 |
 | `max_retries_before_dead_letter` | How many times a failing task retries before it's set aside for a human | 3 | LIVE | int ≥ 0 |
+| `dlq_stale_alert_hours` | How long a set-aside (dead-lettered) task can sit untouched before it's escalated as overdue | 24 | LIVE | int hours ≥ 1 |
 
 ## I. Guardrails — `PERM-config.guardrails` · `UI-config-admin#guardrails`
 
@@ -338,5 +339,8 @@ alert fails loud.
 - **Defaults confirmed by operator 2026-06-27** ("as long as i can edit these later i am happy"). Every
   knob is LIVE or BOOT — operator-editable post-deploy via `UI-config-admin`; defaults are starting values.
 - **OD-097 C7 addendum — CLOSED** (FR-7.ALR.009).
+- **Phase-3 change-control (2026-06-30, OD-123, surface-05):** **+`dlq_stale_alert_hours`** (24 h, LIVE, §H
+  `#loops`, `PERM-config.loops`) — closes a Rule-0 gap: C5 AC-5.JOB.006.2 mandated a DLQ-unattended escalation
+  "beyond a configurable age" but the registry had no such key. Satisfies the existing AC; no FR re-approval.
 - **Phase-2 gate met:** every row classified · defaulted · validated · PERM-gated · surfaced; zero `???`;
   verification gate CLEAN. **Ready for Phase-2 sign-off.**
