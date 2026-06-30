@@ -5,6 +5,95 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 37 — 2026-07-01 — SURFACE-07 (AGENCY / MANAGER DASHBOARD + NOTIFICATION CENTRE) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES, SIGNED OFF — 8 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-07-dashboard-agency.md` — the eighth Phase-3 surface: the
+**non-technical leadership view** of one client deployment (the business-activity counterpart to surface-05's technical
+ops dashboard) **plus the notification centre**. **Two surface IDs minted here:** **`UI-DASHBOARD-AGENCY`** (FR-7.VIEW.002
+names five role surfaces incl. the **Manager (non-technical)** view but assigns no `UI-` id) and **`UI-NOTIFICATION-CENTRE`**
+(the **second of exactly two Realtime/WebSocket surfaces** per FR-7.RTP.001 — the other is surface-04's approval queue —
+named in FR-7.ALR.001 but never given a `UI-` id). Pattern-matched surfaces 00–06.
+
+**Role mapping (the planning-doc trap, dissolved):** "Agency Owner" → **Super Admin**, "Manager" → **Admin /
+Account Manager**; there is **no** "Agency Owner"/"Manager" C1 role. The Access table uses only the six canonical roles
+(FR-1.ROLE.001) — mirrors how C7/C8/C9 dissolved the non-existent "Agency Owner" role (C9 OD-086). Default entrants:
+Super Admin, Admin, Account Manager (the AM is the primary day-to-day user — their clients' activity + suggestions).
+
+**Four sections:** **A — Notification Centre** (`UI-NOTIFICATION-CENTRE`, the one **Realtime** element; all 7 alert
+rules FR-7.ALR.002 incl. the non-suppressible hard-limit AC-7.ALR.002.2; the two self-protective pinned banners —
+alert-engine-stalled AC-7.ALR.008.2 + alert-delivery-misconfigured AC-7.ALR.009.1; Slack-independent durability
+FR-7.ALR.006; honest Live/Reconnecting/Polling FR-7.RTP.004 with **re-fetch on reconnect**; prioritised for the live
+connection under budget FR-7.RTP.003) · **B — At-a-Glance** (non-technical management rollup; **C7 invents no signal**
+AC-7.VIEW.001.1; polls health 30s) · **C — Activity Feed** (a **canonical home of the answer-mode pill** Cited/Inferred/
+Unknown C4 FR-4.CID.006 / AC-7.VIEW.002.2 — an unresolved pill reads **"mode unknown", never silently "Cited"**; the C2
+thin-coverage *threshold* is seamed to C2, not owned here; polls event-log 60s) · **D — Proactive Suggestions** (C9
+delivery FR-9.SUG.004; every "act" routes through the **identical C6 path** FR-9.MODE.003, floored rows never auto-act
+FR-9.MODE.002; dismissal safety-floor FR-9.SUG.005 / AC-9.PRO.004.2/.4).
+
+**KEY DESIGN CALL — the notification centre is cross-cutting chrome, not a surface-07-exclusive panel** (OD-131): FR-7.ALR.001
+makes it "primary, persistent, **accessible from every view**", so it rides **every** dashboard (surface-05/07/08) as a
+bell + slide-over, **clearance-scoped per viewer** (a Standard User gets it on surface-08). Home-specced here; **node-free**
+(rides any Dashboard Access node — see OD-129). This is why it gets its own `UI-` id but is rendered everywhere.
+
+**4 ODs raised + resolved (operator: "take all four recommendations"), logged OD-129–132:**
+- **OD-129** 🔑 **Rule-0 PERM gap (change-control mint).** FR-1.PERM.007 **homes** the twelve permission categories
+  incl. **Dashboard Access**, but **no concrete `PERM-dashboard.*` node id was ever catalogued**. surface-05 (signed
+  off) already references a Dashboard-Access "ops" node (working name `PERM-dashboard.view_ops`) absent from the catalog
+  — a real owed gate (same drift the catalog flags for surface-03/04). **Minted the Dashboard Access node family via
+  change-control**, scope **intra-client**, under the already-homed FR-1.PERM.007 category (no new category, no ADR
+  supersede — mirrors surface-04 OD-117's mint under "Approval Authority"): **`PERM-dashboard.overview`** (this surface
+  — Super Admin/Admin/Account Manager) + **`PERM-dashboard.ops`** (canonicalises surface-05's `view_ops`; Super Admin/
+  Admin + Finance-scoped-to-Cost). **The notification centre is deliberately NOT a node** (cross-cutting chrome,
+  clearance-scoped). **Transcribed into `PERMISSION_NODES.md` immediately** (new "Dashboard Access" section; catalog
+  42→44) and **surface-05's `view_ops` reference updated in lockstep** (closing, not extending, the drift).
+- **OD-130** — layout: persistent notification bell + slide-over (cross-cutting) + a sectioned main agency view; the
+  two always-loud banners pin above any section.
+- **OD-131** — notification-centre scope: cross-cutting chrome on every dashboard, home-specced here (above).
+- **OD-132** — suggestion actions: every "act" routes through the C6 guardrail (FR-9.MODE.003); dismissal safety-floor
+  preserved (a floored item re-delivers regardless of dismissal). Inline execution rejected as a #2 violation.
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 1 HIGH · 1 MED · 2 LOW (all
+reconciled).** Coverage (every cited C7 ALR/RTP/VIEW + C9 SUG/MODE/PRO + C4 CID.006 + C1 PERM/ROLE id verified
+verbatim), CFG wiring (all 11 keys exist with claimed class/default, edited on surface-01 #observability), DATA (no
+`client_slug`; net Phase-4 fields flagged), PERM (the **no-`PERM-dashboard.*`-node gap verified real, not fabricated**;
+surface-05's uncatalogued ref confirmed; mint under existing category OK), the **#1/#2/#3 false-healthy sweep — NO HOLE**
+(notification centre shows "—" not "0" on error; pill "mode unknown" never silently "Cited"; feed/suggestions never
+empty-as-fact on fetch failure), seams (approval *queue*→surface-04, only the stale-approval *alert* here; ops→surface-05;
+fleet→surface-06; pill *definition*→C4; coverage *threshold*→C2; routing *config edits*→surface-01), and role mapping
+all **PASS**. **Fixes applied:** **H1** — the "every action incl. Act routes through C6" rule is **FR-9.MODE.003**, NOT
+FR-9.PRO.005 (which is *Opportunity-spotting*) — re-cited at all 6 use sites (the extraction prompt had propagated the
+wrong id; caught by the gate). **M1** — node-name drift: surface-05's working name `view_ops` canonicalised to
+`PERM-dashboard.ops` and **surface-05's reference updated in lockstep** (else OD-129 would have created a *second*
+dangling ref instead of closing the first). **L1** — RTP.002 cadence defaults (60s/30s) re-cited to the FR statement,
+not AC .1/.2. **L2** — dismissal-floor tightened to AC-9.PRO.004.2/.4.
+
+**Files changed:** `surface-07-dashboard-agency.md` (new); `surface-05-dashboard-ops.md` (node-name `view_ops`→`ops`
+reconciled, 3 refs); `PERMISSION_NODES.md` (+Dashboard Access section / 2 `PERM-dashboard.*` nodes / count 42→44);
+`open-decisions.md` (OD-129–132 🟢 + node defs; next OD-133); `README.md` (Phase-3 row → 8 of 14 + surface-07 detail);
+`phase-playbooks.md` (status → 8 of 14). This log.
+
+**No matrix change** — consistent with surfaces 00–06 (the two `UI-` stubs are rendered; the served FRs are existing
+C7/C9/C4 rows; the `PERM-dashboard.*` nodes are catalog additions, not FR rows). **No new OOS / AF** (all cited AFs —
+AF-118 alert-engine liveness, AF-120 clock-sync — are existing block-R AFs). **Phase-4 debts flagged in-file:** the
+`notifications` store's net fields `escalation_state` + `escalated_at` (FR-7.ALR.005) and `actioned_at` (FR-7.ALR.001),
+the dashboard-row-persisted-independent-of-Slack constraint (FR-7.ALR.006), and the RLS clearance-scoping of the feed /
+suggestions / notification centre (ADR-006). **Catalog housekeeping still owed (unchanged):** the 3 flagged surface-03/04
+nodes (OD-115 ×2, OD-117 ×1) remain to be transcribed when those surfaces are next touched.
+
+**Next step:** `surface-08-dashboard-user.md` — the **standard-user view: My Workspace, Inbox, Decisions, chat**.
+FR source: C7 FR-7.VIEW.002 (the **Standard User** role surface — the fifth role view) + the cross-cutting
+**notification centre** (rides here too, clearance-scoped — surface-07 is its home spec; gate this surface's entry with
+the standard-user Dashboard Access node) + the **answer-mode pill** (surface-08 is the *other* canonical pill home, on
+chat + workspace AI-output items, C4 FR-4.CID.006 / AC-7.VIEW.002.2) + C9 proactive suggestions delivered to the user +
+the **chat interface** (the `/` command dispatch is C9 FR-9.CMD.* — but command *management* is surface-10; surface-08
+renders the chat + inline command use). Carry-in: the six canonical C1 roles (Standard User entry needs a Dashboard
+Access node — likely a third `PERM-dashboard.*` mint, e.g. `PERM-dashboard.workspace`, under the now-established family;
+raise as an OD if so); the C7 RTP realtime contract (the notification centre socket rides here); clearance-scoping at the
+row (ADR-006). Copy `_TEMPLATE.md`; load only the FRs surface-08 serves; follow the Phase 3 playbook; run the gate
+before sign-off.
+
+---
+
 ## Session 36 — 2026-06-30 — SURFACE-06 (SUPER ADMIN MANAGEMENT PLANE / FLEET) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES — 7 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-06-dashboard-super-admin.md` — the seventh Phase-3 surface and the

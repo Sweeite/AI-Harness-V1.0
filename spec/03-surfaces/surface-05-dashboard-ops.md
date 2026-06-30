@@ -123,9 +123,10 @@ mint. Next OD: OD-125.
 - **PERM gates:**
   - **Entry:** a **Dashboard Access** category node (FR-1.PERM.007 — the twelve categories include **Dashboard Access**
     *and* **Observability**). The ops dashboard is the **technical/Operations** view, gated to operators; the specific
-    node id (working name `PERM-dashboard.view_ops`) **materialises in `PERMISSION_NODES.md`** at build (FR-1.PERM.005/007
-    discipline — the per-node enumeration lives in that build artifact, not duplicated into FRs). **No new node is
-    minted here** (unlike surface-03's OD-115 / surface-04's OD-117) — the category already exists and is the natural
+    node id is **`PERM-dashboard.ops`** (canonicalised from this surface's working name `view_ops` and minted into
+    `PERMISSION_NODES.md` by **surface-07 OD-129**, which formalises the whole Dashboard Access node family;
+    FR-1.PERM.005/007 discipline — the per-node enumeration lives in that build artifact, not duplicated into FRs).
+    **No new node is minted *in this file*** (unlike surface-03's OD-115 / surface-04's OD-117) — the category already exists and is the natural
     home; what *is* undecided is the **per-panel role-scoping** (OD-121, below), the FR-7.VIEW.002 AC-7.VIEW.002.1
     obligation that "a role sees only the panels its permissions allow."
   - **Per-panel gating** (FR-7.VIEW.002): panels are individually permission-scoped — e.g. the **Cost** panel maps to
@@ -206,9 +207,9 @@ is a **false-healthy view**: a panel that failed to load must say so, never show
 | Finance | Partial — **Cost panel** | Enters to the **Cost** panel only (per FR-7.VIEW.002 role-scoping); other panels absent (not empty). OD-121 confirms |
 | HR | No (default) | No ops-monitoring node by default → nav item hidden; a deployment may grant a scoped view |
 | Account Manager | No (default) | Operational health is not their surface; client-facing activity lives on surface-07. May be granted Cost-read |
-| Standard User | No | No Dashboard-Access(ops) node by default → nav item hidden; their activity/health view is surface-08 |
+| Standard User | No | No `PERM-dashboard.ops` node by default → nav item hidden; their activity/health view is surface-08 |
 
-**Entry gate:** the surface renders iff the caller holds the **Dashboard Access (ops)** node; a caller without it
+**Entry gate:** the surface renders iff the caller holds the **`PERM-dashboard.ops`** node (Dashboard Access category); a caller without it
 never sees the "Operations" nav item and a direct URL returns 404 (FR-1.PERM.006 — denied surfaces are absent, not
 visible-but-empty). **Per-panel scoping is enforced at the panel** (AC-7.VIEW.002.1): a caller who may enter but lacks
 a given panel's node does not see that panel rendered (it is absent). **Export and DLQ requeue/discard are action-gated**

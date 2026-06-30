@@ -1625,6 +1625,47 @@ that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-129…OD-132 — surface-07 (agency / manager dashboard + notification centre) PERM-gap / layout / notification-scope / suggestion-actions 🟢 RESOLVED (2026-07-01, operator "take all four recommendations")
+
+- **OD-129** 🔑 🟢 — **Rule-0 PERM gap (change-control mint).** FR-1.PERM.007 **homes** the twelve design-doc
+  permission categories — including **Dashboard Access** — but **no concrete `PERM-dashboard.*` node id was ever
+  catalogued** in `PERMISSION_NODES.md`. surface-05 (signed off) already **references** a Dashboard-Access "ops" node
+  (working name `PERM-dashboard.view_ops`) that did not exist in the catalog — an owed gate, the same drift the catalog
+  flags for surface-03/04. A gate with no catalog entry is a build-time #3 defect. **Resolved: minted the concrete
+  Dashboard Access node family via change-control**, scope = **intra-client** (these are per-deployment dashboard
+  views, not management-plane), under the **already-homed** FR-1.PERM.007 "Dashboard Access" category (no new category,
+  no ADR supersede — mirrors surface-04 OD-117's mint under "Approval Authority"):
+  - `PERM-dashboard.overview` — Description: enter the agency / management overview dashboard (surface-07 — activity
+    feed + at-a-glance rollup + proactive-suggestions panel). · Default roles: Super Admin, Admin, Account Manager. ·
+    Scope: intra-client. · Added-in: surface-07.
+  - `PERM-dashboard.ops` — Description: enter the technical operations dashboard (surface-05). **Canonicalises
+    surface-05's working name `PERM-dashboard.view_ops`** (surface-05's reference updated in lockstep). · Default
+    roles: Super Admin, Admin (+ Finance scoped to the Cost panel, surface-05 OD-121). · Scope: intra-client. ·
+    Added-in: surface-05 (referenced) / surface-07 (formalised).
+  **The notification centre is NOT a node** — it is **cross-cutting chrome available to any holder of any Dashboard
+  Access node** (`PERM-dashboard.overview` / `PERM-dashboard.ops` / surface-08's standard-user node), **clearance-scoped
+  per viewer** (AC-7.VIEW.002.1 / FR-9.SUG.004) — FR-7.ALR.001 ("accessible from every view") mandates it ride every
+  dashboard rather than gate behind one surface. **Alert-routing config edits** stay surface-01 #observability
+  (`PERM-config.observability`). All nodes default-deny (OD-030). **Transcribed into `PERMISSION_NODES.md` immediately**
+  (new "Dashboard Access" section; catalog count 42→44). **C1 catalog grows; no FR re-approval, no ADR supersede.**
+- **OD-130** 🟢 — **Layout.** A **persistent notification-centre affordance (bell + slide-over) as cross-cutting chrome**
+  + a sectioned main agency view (At-a-Glance · Activity Feed · Proactive Suggestions). The bell carries the
+  live/reconnecting/polling indicator (FR-7.RTP.004); the two always-loud banners (alert-delivery-misconfigured
+  AC-7.ALR.009.1, alert-engine-stalled AC-7.ALR.008.2) pin above any section. Not fully tabbed (would hide the unread
+  count + break "accessible from every view"); not a fixed side-column (wastes space on the technical dashboards).
+- **OD-131** 🟢 — **Notification-centre scope (behaviour).** The notification centre is **cross-cutting chrome,
+  home-specced here** — rendered on **every** dashboard (surface-05/07/08), available to any holder of any Dashboard
+  Access node, **clearance-scoped per viewer**. FR-7.ALR.001 is explicit ("primary, persistent, accessible from every
+  view"); gating it to surface-07 alone would leave a Standard User on surface-08 with no way to receive a notification.
+- **OD-132** 🟢 — **Proactive-suggestion actions (behaviour).** **Every "act" routes through the identical C6 approval
+  path** (FR-9.MODE.003) — a held action lands in surface-04; a reversible Act-mode item may auto-run *per C6*, never
+  bypassing the guardrail; floored rows (client/financial/Restricted comms) never auto-act (FR-9.MODE.002). The
+  **dismissal safety floor** (FR-9.SUG.005 / AC-9.PRO.004.2/.4) is preserved: a floored/de-risking item re-delivers
+  while its metric stays past threshold — dismissal-learning never silences a safety-critical suggestion. Inline
+  execution (a back-door around C6) rejected as a #2 violation.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1633,5 +1674,8 @@ that file's Open decisions table). All four resolved to the recommendation:
 > `spec/03-surfaces/surface-05-dashboard-ops.md` (surface-local; all resolved in-file; OD-123 mints `dlq_stale_alert_hours`
 > via change-control to the config registry) — do not reuse those numbers. OD-125–128 by
 > `spec/03-surfaces/surface-06-dashboard-super-admin.md` (surface-local; all resolved in-file; OD-125 mints five
-> `PERM-fleet.*` management-plane nodes via change-control + introduces the `management-plane` scope).
-> Next OD number: OD-129.
+> `PERM-fleet.*` management-plane nodes via change-control + introduces the `management-plane` scope). OD-129–132 by
+> `spec/03-surfaces/surface-07-dashboard-agency.md` (surface-local; all resolved in-file; OD-129 mints the
+> `PERM-dashboard.overview` + `PERM-dashboard.ops` Dashboard Access nodes via change-control + canonicalises surface-05's
+> `view_ops` working name).
+> Next OD number: OD-133.

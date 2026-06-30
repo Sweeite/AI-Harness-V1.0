@@ -26,8 +26,10 @@
 Consolidated 2026-06-28 from a full `PERM-*` harvest across `spec/01-requirements/` + `spec/02-config/`.
 **37 real nodes** at consolidation (4 harvested tokens were prose/wildcard fragments: `PERM-config`, `PERM-gated`,
 `PERM-node`, `PERM-system` — not nodes). **+5 management-plane nodes** transcribed 2026-06-30 (surface-06 / OD-125 —
-the `PERM-fleet.*` family) = **42 catalogued**; plus **3 owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1 — defined
-in `open-decisions.md`, not yet transcribed, flagged below). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
+the `PERM-fleet.*` family) = **42 catalogued**; **+2 Dashboard Access nodes** transcribed 2026-07-01 (surface-07 /
+OD-129 — `PERM-dashboard.overview` + `PERM-dashboard.ops`, formalising the FR-1.PERM.007 category + canonicalising
+surface-05's `view_ops` working name) = **44 catalogued**; plus **3 owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1
+— defined in `open-decisions.md`, not yet transcribed, flagged below). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
 they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM-memory.write`,
 `PERM-prompt.rollback`, `PERM-prompt.view_history`, `PERM-system.add_sensitivity`.
 
@@ -103,6 +105,17 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 | `PERM-config.proactive` | Config section L (scanners, thresholds, cold-start) | Super Admin | deployment | Phase 2 |
 | `PERM-config.infra` | Config section M (deploy, residency, retention, deletion policy) | Super Admin — never delegable | deployment | Phase 2 |
 | `PERM-config.secrets` | Config section N (platform secrets — presence-only view) | Super Admin (read-only) | deployment | Phase 2 |
+
+### Dashboard Access — the `PERM-dashboard.*` family (FR-1.PERM.007 category; surface-07 / OD-129, minted via change-control 2026-07-01)
+> The FR-1.PERM.007 "Dashboard Access" category was homed but had **no concrete node id** until surface-07 OD-129
+> formalised the family (closing surface-05's dangling `view_ops` working-name reference). Scope = **intra-client**
+> (per-deployment dashboard views). The **notification centre is deliberately node-free** — it is cross-cutting chrome
+> available to any holder of any Dashboard Access node, clearance-scoped per viewer (FR-7.ALR.001 "accessible from
+> every view" / AC-7.VIEW.002.1).
+| Node | Description | Default roles | Scope | Added-in |
+|---|---|---|---|---|
+| `PERM-dashboard.overview` | Enter the agency / management overview dashboard (surface-07 — activity feed + at-a-glance + proactive suggestions) | Super Admin, Admin, Account Manager | intra-client | surface-07 / OD-129 |
+| `PERM-dashboard.ops` | Enter the technical operations dashboard (surface-05); canonicalises surface-05's working name `PERM-dashboard.view_ops` | Super Admin, Admin (+ Finance scoped to Cost panel, surface-05 OD-121) | intra-client | surface-05 (ref) / surface-07 / OD-129 |
 
 ### Guardrails — autonomy (pre-existing, glossary)
 | Node | Description | Default roles | Scope | Added-in |
