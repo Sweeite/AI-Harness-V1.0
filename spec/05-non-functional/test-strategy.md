@@ -87,7 +87,8 @@ go/no-go spikes · `POSTURE` = blocking-by-posture mechanism, AF is build-time p
 | AF-013 | DOCS ✅ | Google production verification lead-time (NFR-INF.006) | INF | DOCS (verified) |
 | AF-020/021 | DOCS ✅ | Railway auto-deploy + operator↔client-Supabase connection (NFR-INF.006) | INF | DOCS (verified) |
 | AF-132 | SPIKE | Offboarding deprovision completeness (NFR-INF.013 / NFR-CMP.008) | INF/CMP | FAST-FOLLOW |
-| AF-112/113 | LOAD/EVAL | Loop catch-up idempotency; parallel-DAG safety (NFR-INF.014 / NFR-PERF.010) | INF/PERF | POSTURE (idempotency keys present) |
+| AF-112 / AF-063 | LOAD/SPIKE | Loop catch-up idempotency + no post-outage stampede (AF-112); Inngest per-key concurrency serialises same-entity steps (AF-063) — both hold NFR-INF.014 | INF | POSTURE (idempotency keys present) |
+| AF-113 | LOAD/EVAL | Parallel-DAG safety — no irreversible side effect outruns a pending approval (NFR-PERF.010) | PERF | POSTURE |
 | AF-114/115 | SPIKE | Compression fidelity; originals-store retention (NFR-PERF.008) | PERF | POSTURE |
 | AF-019 | LOAD | pgvector HNSW recall under the RLS predicate (NFR-PERF.002) | PERF | FAST-FOLLOW |
 | AF-002 | SPIKE+EVAL | Retrieval surfaces the right memories; re-rank/HyDE earn cost (NFR-PERF.003 / NFR-COST.010) | PERF/COST | FAST-FOLLOW |
@@ -100,11 +101,12 @@ go/no-go spikes · `POSTURE` = blocking-by-posture mechanism, AF is build-time p
 | AF-124 | EVAL | Dead-agent/drift detection reliable (NFR-OBS.005, flag-only) | OBS | FAST-FOLLOW |
 | AF-121–123, 126–131 | EVAL/SPIKE | Routing accuracy, confidence calibration, proactive signal/ranking/ETA/tag accuracy | (C8/C9 quality) | FAST-FOLLOW |
 | AF-042 | Reconcile vs bill | Cost estimate stays biased-above the real invoice (NFR-OBS.013 / NFR-COST.005) | OBS/COST | FAST-FOLLOW |
+| AF-040/041 | EVAL/tune | Cost-ladder thresholds are realistic — soft/throttle/hard-kill fire at the right daily spend (NFR-COST.001/006) | COST | FAST-FOLLOW (operator-editable per client) |
 | AF-043/035 | EVAL | Memory-write Haiku gate quality; two-model split earns its keep (NFR-COST.008/009) | COST | FAST-FOLLOW (shadow-retain) |
 | AF-070 | SPIKE | Supabase Management API exposes backup-health fields (NFR-DR.006) | DR | POSTURE (build-time) |
 | AF-072 | LOAD | Hourly off-platform dump fits the hour at scale (NFR-DR.001) | DR | POSTURE — **gates the default cadence** (back off / upsell PITR if it fails) |
 | AF-071 | DOCS | Backup region / `ap-southeast-2` residency (NFR-CMP.001 / NFR-DR.002) | CMP/DR | DOCS |
-| AF-133 | SPIKE | Export integrity + readability at scale (NFR-CMP.009) | CMP | POSTURE (build-time) |
+| AF-133 | SPIKE | Export integrity + readability at scale (NFR-CMP.008/009) | CMP | POSTURE (build-time) |
 | AF-134 | EVAL | Individual-erasure name-match recall — no false-neg un-erased PII (NFR-CMP.005) | CMP | FAST-FOLLOW |
 | AF-136 | Legal review | Jurisdiction lawful-retention minimums (NFR-CMP.004/011) | CMP | DOCS/LEGAL (gates HR-content enablement) |
 | AF-137 | SPIKE | Erasure completeness verified before audit-done (NFR-CMP.005) | CMP | POSTURE (build-time) |

@@ -283,6 +283,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `deploy_max_version_skew` | How many versions behind a deployment can fall before it's flagged | 3 | LIVE | int ≥ 1 |
 | `canary_soak_minutes` | How long a new release is watched on a small slice before full rollout | 60 | LIVE | int minutes ≥ 1 |
 | `deployment_region` | Which part of the world this client's data is physically stored in | ap-southeast-2 | BOOT | enum (v1 Sydney locked) |
+| `recovery_tier` | Which backup/restore plan this client is on — how often data is copied off-platform and how far back it can be restored | hourly_off_platform | BOOT | enum: daily_in_project · hourly_off_platform · pitr (ADR-008 §1; PITR = paid upsell) |
 
 ## N. Platform secrets — `PERM-config.secrets` (presence only) · `UI-config-admin#secrets`
 All env/Railway only; surface shows presence + last-rotated, never the value. Deployment cannot boot

@@ -142,7 +142,7 @@
 - **Acceptance criteria:**
   - AC-NFR-COST.009.1 — Given the trust window, When the gate would drop a memory, Then the memory is written and tagged `haiku_would_drop` (nothing lost) and the decision is logged for review.
   - AC-NFR-COST.009.2 — Given the window ends, When the disagree-rate is under threshold, Then the gate goes autonomous; When over threshold, Then it stays supervised and is retuned.
-- **Notes / OD:** OD-036 owns the retain mechanics + exit criteria. **Config note:** `haiku_audit_window_days` / `haiku_gate_disagree_threshold` are specified in ADR-003 §8 (Consequences) as owed Phase-2 keys but were **not found in `config-registry.md`** at draft — flagged for the config-registry gap-sweep (they must be added, per-deployment operator-editable).
+- **Notes / OD:** OD-036 owns the retain mechanics + exit criteria. **Config:** `haiku_audit_window_days` (21) and `haiku_gate_disagree_threshold` (0.05) — owed by ADR-003 §8 and **added to `config-registry.md` §E via the Phase-5 gap-sweep change-control** (both per-deployment, LIVE, operator-editable).
 
 ### NFR-COST.010 — Cost-per-task-type from day one; re-ranking/HyDE off by default
 
@@ -162,9 +162,9 @@
 
 *Drafted session 45 (2026-07-01). Cites verified against ADR-003, `config-registry.md`
 (`cost_ladder_soft/throttle/hard_kill_threshold`, `price_table`,
-`rate_limit_memory_writes_per_minute`), and the C5–C8 component FRs. Two discrepancies flagged
-for follow-up: (1) `haiku_audit_window_days` / `haiku_gate_disagree_threshold` are owed by
-ADR-003 §8 but absent from `config-registry.md` (config gap-sweep, COST.009 Notes); (2) the
+`rate_limit_memory_writes_per_minute`), and the C5–C8 component FRs. Notes: (1)
+`haiku_audit_window_days` (21) / `haiku_gate_disagree_threshold` (0.05) were added to
+`config-registry.md` §E via the Phase-5 gap-sweep change-control (COST.009); (2) the
 `cost_unknown ≠ $0` meter-honesty duty is cross-referenced to `observability.md` (OBS-m /
 FR-7.LOG.004), not duplicated here. AF-001 marked **blocking** per RP-1; AF-042/043/035/002
 fast-follow behind the shadow-retain + fail-safe-round-up postures.*
