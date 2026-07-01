@@ -466,6 +466,7 @@ doesn't use Slack can rely entirely on the dashboard. Dashboard notifications **
 actioned** and are accessible from every view.
 - **AC-7.ALR.001.1** — Every alert produces a dashboard notification (independent of whether Slack is configured).
 - **AC-7.ALR.001.2** — A notification stays in unread state until explicitly actioned; it is reachable from any view.
+- (Schema: `notifications` — with `escalation_state` / `escalated_at` / `actioned_at` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 
 #### FR-7.ALR.002 — The seven alert rules with configurable thresholds
 **Status:** Approved · **Cites:** L3293–3313
@@ -706,6 +707,7 @@ and always**, **pending approvals at a configurable frequency**, **stale approva
 interaction design itself → Phase 3; the notification *routing contract* is C7.)
 - **AC-7.VIEW.003.1** — A hard-limit-hit push is immediate and not suppressible (pairs with ALR.002.2).
 - **AC-7.VIEW.003.2** — Pending-approval and stale-approval push frequencies are configurable per deployment/user.
+- (Schema: `push_subscriptions` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 
 ### OPT — Observability optimisations
 

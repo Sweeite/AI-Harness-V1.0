@@ -344,7 +344,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: the runtime derives a stable idempotency key for the action and records intent before the call; on a retry with the same key it suppresses a second external effect (returns the prior result).
   - Branches: GHL contact create → use `POST /contacts/upsert` (idempotent create-or-update) rather than raw create (gohighlevel.md §10 L158–160); Gmail send → app-side dedup (no native key, google-gmail.md §10 L162); Calendar insert → client-supplied `id` yields 409 on re-run (google-gmail.md §10 L163, ⚠️ AF-102); Slack `chat.postMessage` → app-side write-dedup on `ts`/key before retry (slack.md §10 L134).
   - Edge / failure: GHL outbound message send is **irreversible and billed on attempt** — the send-once guard must prevent a duplicate *before* the call, not compensate after (gohighlevel.md §10 L161); the partial-chain compensation problem (multi-write task halts mid-way) is **OD-010**, owned at C5/C6/C8 — named here as an exposure point, not solved.
-- **Data touched:** an app-side idempotency/dedup ledger (DATA TBD, Phase 4).
+- **Data touched:** an app-side idempotency/dedup ledger (Schema: `idempotency_ledger` — consolidated in `spec/04-data-model/schema.md`, Phase 4.).
 - **Permissions:** N/A (runtime).
 - **Config dependencies:** —
 - **Surfaces:** N/A.
@@ -475,7 +475,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - AC-3.REG.004.1 — Given any C3 table, When its RLS/policies are reviewed, Then none filters by `client_slug`.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** Mirrors the C1 reconciliation exactly (ADR-006 deleted `client_slug` from policies). The agent/tool path is `service_role` anyway (FR-3.CONN.001 permissions).
+- **Notes:** Mirrors the C1 reconciliation exactly (ADR-006 deleted `client_slug` from policies). The agent/tool path is `service_role` anyway (FR-3.CONN.001 permissions). (Phase-4 reconciliation: the column is DELETED, not label-only — OD-096 / FR-10.ISO.001; it exists only in management-plane `client_registry`.)
 
 ---
 

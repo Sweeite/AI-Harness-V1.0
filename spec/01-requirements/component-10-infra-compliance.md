@@ -406,7 +406,7 @@
   - AC-10.DEL.006.1 — Given the target's data exists in a connected system, When erasure runs, Then a per-system
     deletion flag is raised + tracked until an Admin acknowledges it actioned; the harness never deletes from the SoR.
   - AC-10.DEL.006.2 — Given a Restricted/Personal erasure with two-person auth required, When executed, Then a second
-    **distinct** Admin/Super Admin must confirm; the executor cannot self-authorise.
+    **distinct** Admin/Super Admin must confirm; the executor cannot self-authorise. (Schema: the two-person-auth columns on `deletion_requests` — `authorized_by` / `second_authoriser_id` / `executor_id`, with the executor-distinctness CHECK — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
   - AC-10.DEL.006.3 — Given an un-acknowledged connector flag, When time passes, Then it escalates, never silently
     closing.
   - AC-10.DEL.006.4 — *(Gate M2 — the gate mechanisms fail closed.)* Given `CFG-deletion_two_person_auth_required`

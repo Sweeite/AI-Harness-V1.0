@@ -565,6 +565,7 @@
   - AC-2.WRT.002.1 — Given a soft conflict, When the new memory is written, Then the old is marked superseded (chain intact), not deleted.
   - AC-2.WRT.002.2 — Given a hard conflict, When detected, Then the write is held in quarantine for human review, never silently applied.
   - AC-2.WRT.002.3 — Given a hard conflict un-actioned past `CFG-review_escalation_days`, When the next cycle runs, Then it is escalated (alert + badge), neither auto-resolved nor silently held.
+  - (Schema: `memory_conflicts` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** ✅ RESOLVED — OD-032 (unresolved-hard-conflict handling + the "inject both with a note" rule).
 - **Feasibility assumptions:** ⚠️ FEASIBILITY: AF-061 (validate-and-commit closes the same-entity TOCTOU window without livelock).
 
@@ -1139,6 +1140,7 @@
 - **Acceptance criteria:**
   - AC-2.MNT.014.1 — Given a Personal-tier memory, When merge/summarise runs, Then it is not auto-consolidated.
   - AC-2.MNT.014.2 — Given a Personal-consolidation approval item un-actioned past `CFG-review_escalation_days`, When the next cycle runs, Then it is escalated, never silently held.
+  - (Schema: `consolidation_approvals` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** ✅ RESOLVED — OD-037 (skip vs approval-queue mechanism).
 - **Feasibility assumptions:** —
 

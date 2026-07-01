@@ -897,6 +897,7 @@ OD-010 no-auto-rollback. AFs block S = AF-121…AF-126. All six original ODs + t
 - **Acceptance criteria:**
   - AC-8.PLAN.004.1 — Given a common task type, When plans change, Then outcomes are attributable to plan versions.
   - AC-8.PLAN.004.2 — Given a rollback, When performed, Then it is human-initiated and audited — never automatic.
+  - (Schema: `execution_plans` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** —
 - **Feasibility assumptions:** AF-126.
 
@@ -923,6 +924,7 @@ OD-010 no-auto-rollback. AFs block S = AF-121…AF-126. All six original ODs + t
   - AC-8.HLTH.001.1 — Given agent task outcomes, When aggregated, Then success/failure rate + last-run are available
     to C7.
   - AC-8.HLTH.001.2 — Given a high failure rate, When detected, Then it is surfaced (C7/C9), not auto-corrected (OD-078).
+  - (Schema: `agent_health_metrics` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** OD-078.
 - **Feasibility assumptions:** AF-124.
 
@@ -1085,6 +1087,7 @@ OD-010 no-auto-rollback. AFs block S = AF-121…AF-126. All six original ODs + t
     confidence below a floor, or a write to an *entity class* the cached agent reads but not the specific keyed id),
     When the agent is next invoked, Then it **misses and recomputes** rather than risk a stale hit — the
     blind-spot-fails-safe rule (closes the out-of-band-write / entity-not-in-key gap). _(M4)_
+  - (Schema: `agent_result_cache` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** **OD-076.**
 - **Feasibility assumptions:** AF-125 (cache staleness safety — incl. the M4 races).
 

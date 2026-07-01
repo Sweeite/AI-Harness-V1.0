@@ -753,6 +753,7 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
     awaiting a human discard/include decision **past the escalation timeout**, *When* the timeout fires, *Then* it
     escalates per FR-6.ESC.004 (the quarantine sets `flagged` via FR-6.ESC.001, so it is covered — made explicit
     and testable here) — a quarantined-and-forgotten task is never silently stuck holding retained content (#1/#3).
+  - (Schema: `injection_quarantine` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 
 ### LOG — Guardrail log
 
@@ -761,7 +762,7 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
   `description` (plain English), `action_blocked`, `status` (`pending` | `approved` | `rejected`), `reviewed_by`,
   `reviewed_at`, `client_slug`, `created_at` — with `guardrail_type` ∈ {`hard_limit`, `approval_gate`, `anomaly`,
   `rate_limit`, `prompt_injection`} (L2887–2899, L3007–3014). `client_slug` is a **label, not an RLS key**
-  (reconciliation #1).
+  (reconciliation #1). *(Phase-4 reconciliation: the column is DELETED, not label-only — OD-096 / FR-10.ISO.001; it exists only in management-plane `client_registry`.)* (Schema: new field `guardrail_log.escalated_at` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Source:** L2887–2899, L3007–3014; ADR-001 (client_slug label-only).
 - **ACs:**
   - AC-6.LOG.001.1 — *Given* a guardrail event of any of the five types, *When* it fires, *Then* a row with the

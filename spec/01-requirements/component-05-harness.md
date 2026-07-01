@@ -228,7 +228,7 @@ truth for what happened and when, viewable from the operations dashboard. — ci
 **FR-5.QUE.002 — Task record schema** · *Approved*
 A task_queue row carries: `id`, `type`, `task_name`, `payload`, `status`, `priority`, `requires_approval`,
 `approved_by`, `approved_at`, `attempts`, `next_retry_at`, `client_slug`, `created_at`, `completed_at`, `error`.
-**`client_slug` is a label, not an RLS key** (doc-reconciliation #1). — cites **L2517–2535**.
+**`client_slug` is a label, not an RLS key** (doc-reconciliation #1). *(Phase-4 reconciliation: the column is DELETED, not label-only — OD-096 / FR-10.ISO.001; it exists only in management-plane `client_registry`.)* — cites **L2517–2535**. (Schema: new field `task_queue.originating_user_id` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **AC-5.QUE.002.1** — *Given* a task row, *When* inspected, *Then* all listed fields are present and typed per
   the schema; `client_slug` is descriptive only and appears in no RLS policy predicate.
 
@@ -340,6 +340,7 @@ must be persisted to a **C5-owned durable store** (task-history table), not reli
 - **AC-5.ENV.003.2** — *Given* a task resumed from a failed step after earlier outputs were compressed, *When*
   it resumes, *Then* it reconstructs from the retained originals (no needed state lost). *(Validated by
   **AF-114**.)*
+- (Schema: durable `task_history` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 
 ### LOP — Loop architecture
 

@@ -338,7 +338,7 @@ Prompt layers are persisted in a `prompt_layers` store with: `id`, `layer`
 key), `enabled`, `version`, `created_at`, `updated_at`, `created_by`, `previous_version_id`, and
 `change_reason`. — cites **L2457–2473**. *(DATA stub `DATA-prompt_layers`.)*
 - **AC-4.STO.001.1** — *Given* the schema, *When* a prompt layer is persisted, *Then* all listed fields are
-  present and `client_slug` is used only as a label (no RLS policy keys on it).
+  present and `client_slug` is used only as a label (no RLS policy keys on it). *(Phase-4 reconciliation: the column is DELETED, not label-only — OD-096 / FR-10.ISO.001; it exists only in management-plane `client_registry`.)*
 
 **FR-4.STO.002 — Layer 1 single source of truth** · *Approved*
 Per **OD-048**, `prompt_layers` is the **single authoritative, versioned store for all four layer types**

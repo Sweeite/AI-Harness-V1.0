@@ -630,6 +630,7 @@
     threshold, Then it re-surfaces regardless of prior dismissals.
   - AC-9.SUG.005.3 — Given any dismissal, When applied, Then it never drives a hard-risk signal class below the floor
     (verified: floor is enforced before the weight update commits).
+  - (Schema: `signal_weights` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** OD-084.
 - **Feasibility assumptions:** AF-128 (learning never suppresses a true signal).
 
@@ -950,6 +951,7 @@
     node-gated** command whose `event_log` write fails, When execution is evaluated, Then it **fails closed** (the
     command does not silently execute unlogged), mirroring C6 AC-6.LOG.003.3 — a destructive `/forget`/`/tune` that
     cannot be audited must not proceed.
+  - (Chat-thread persistence (OD-135): the chat thread + async-result return path persist to the net-new stores `conversations` + `messages` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** —
 - **Feasibility assumptions:** —
 
@@ -1015,6 +1017,7 @@
     over the wrapped agent/capability; a save that would gate a powerful capability on a broadly-held node below its risk
     is **rejected at write**, not silently accepted (defense-in-depth alongside the invocation's C6 pipeline, CMD.008,
     and the agent's own scope/clearance, C8 FR-8.SCO.002).
+  - (Schema: `commands` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
 - **Open decisions:** — *(OD-142 resolved surface-local, surface-10; recorded in open-decisions.md.)*
 - **Feasibility assumptions:** —
 
