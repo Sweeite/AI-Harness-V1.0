@@ -5,7 +5,7 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
-## Session 44 — 2026-07-01 — PHASE 4 (DATA MODEL) DRAFTED — playbook finalized · harvest · schema · RLS · indexes · migrations · gate CLEAN-WITH-FIXES — 🟡 AWAITING SIGN-OFF
+## Session 44 — 2026-07-01 — PHASE 4 (DATA MODEL) DRAFTED, GATE CLEAN-WITH-FIXES, FINALIZED + SIGNED OFF — 🟢 PHASE 4 COMPLETE
 
 **What happened:** Entered **Phase 4 (Data Model)**. Per the playbook's "finalize before entry" rule, first
 **rewrote the Phase-4 playbook** from approach-altitude to full mechanical detail (output file structure,
@@ -59,13 +59,28 @@ executor-distinctness CHECK added (AC-10.DEL.006.2 no-self-execution now DB-enfo
 `_gate-report.md` — all new), `README.md` (Phase-4 row 🟡). This log. Committed + pushed across the session
 (playbook, harvest, schema, RLS/idx/migrations, gate-fixes as separate commits).
 
-**Next step — Phase-4 SIGN-OFF (awaiting operator):** confirm the **7 OD-P4 resolutions** (or override any),
-then finalize: (1) apply the **16 net-new-store owed-back `DATA-` cites** to their component FRs via
-change-control (Phase-4 step 8) — e.g. `injection_quarantine`→C6 FR-6.INJ.006, `notifications`→C7 FR-7.ALR.001,
-`commands`→C9 FR-9.CMD.006, chat→C5/C9 OD-135, etc.; (2) apply the **R1 clerical `client_slug` amendment** to
-C2–C6 (the "label-only" wording → "deleted, ADR-001/OD-096"); (3) wire `traceability-matrix.csv` (DATA-
-consolidated-in-schema note); (4) flip README/playbook Phase-4 → 🟢. **Then Phase 5 (Non-Functional):** security,
-infra, observability, cost (ADR-003), compliance, **backup & DR (resolve OD-009, ADR-008)**, test strategy.
+**SIGN-OFF FINALIZATION DONE (this session):** the operator delegated ("go what you recommend"). (1) The
+**16 net-new-store owed-back `DATA-` cites** were applied to their component FRs via change-control (subagent,
+18 additive edits, verified): C2 memory_conflicts (FR-2.WRT.002)/consolidation_approvals (FR-2.MNT.014) ·
+C3 idempotency_ledger (FR-3.CONN.004) · C5 task_history (FR-5.ENV.003) + task_queue.originating_user_id
+(FR-5.QUE.002) · C6 injection_quarantine (FR-6.INJ.006) + guardrail_log.escalated_at (FR-6.LOG.001) ·
+C7 notifications (FR-7.ALR.001) + push_subscriptions (FR-7.VIEW.003) · C8 agent_health_metrics (FR-8.HLTH.001)/
+execution_plans (FR-8.PLAN.004)/agent_result_cache (FR-8.LRN.003) · C9 commands (FR-9.CMD.006)/signal_weights
+(FR-9.SUG.005)/conversations+messages (FR-9.CMD.004, best-fit anchor — no dedicated chat FR exists) ·
+C10 deletion_requests two-person-auth columns (AC-10.DEL.006). (2) The **R1 `client_slug` clerical amendment**
+landed on C3/C4/C5/C6 ("label-only" → DELETED per OD-096/FR-10.ISO.001, mgmt-plane `client_registry` only);
+**C2 needed none** (it never carried the label-only wording — isolation there is only ever "physical, never an
+RLS predicate"). (3) `traceability-matrix.csv` wired (Phase-4 header note: every `data_touched` DATA-* id
+consolidated in `schema.md`). (4) README + playbook + this log → 🟢. **7 OD-P4 resolutions accepted as
+recommended.**
+
+**Next step — Phase 5 (Non-Functional):** `NFR-*` requirements across security, infrastructure/deploy,
+observability, cost (envelope + ladder per ADR-003), compliance, **backup & disaster recovery (resolve OD-009
+under ADR-008 — client-owned Supabase ownership/verification + a *tested* restore)**, and the **test strategy**
+(how every `AC-*` becomes a real test and reaches `Verified`). Load the Phase-5 playbook (`phase-playbooks.md`
+§"Phase 5" — currently at approach altitude; finalize it before entry, same as Phase 4). The schema
+(`spec/04-data-model/`) now underpins the security + backup NFRs. OD-009 is the one load-bearing operator
+decision (risk posture + backup ownership). Run the standing verification gate at Phase-5 close.
 
 ---
 
