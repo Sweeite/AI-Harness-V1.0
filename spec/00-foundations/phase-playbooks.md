@@ -229,6 +229,12 @@ verification gate is clean.
 
 ## Phase 4 — Data Model  *(full mechanical detail — finalized 2026-07-01)*
 
+**Status (2026-07-01, session 44): 🟡 DRAFT COMPLETE — gate CLEAN-WITH-FIXES, awaiting sign-off.**
+All 5 files built (`_data-inventory.md`, `schema.md`, `rls-policies.md`, `indexes.md`, `migrations.md`);
+~40 tables consolidated; 16 net-new stores designed; no `client_slug` on any app table; verification
+gate 0 HIGH / 2 MED (reconciled) / 4 LOW. On sign-off: confirm OD-P4-01…07, apply the net-new owed-back
+`DATA-` cites + R1 `client_slug` clerical amendment via change-control, then → 🟢 and Phase 5.
+
 **Goal:** One coherent, buildable schema — every `DATA-` reference across the 11 components and 14
 surfaces consolidated into typed tables, with RLS policies, indexes, and migrations, so that no
 build issue ever has to guess a column, a type, or a policy.

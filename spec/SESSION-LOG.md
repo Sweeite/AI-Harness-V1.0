@@ -5,6 +5,70 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 44 — 2026-07-01 — PHASE 4 (DATA MODEL) DRAFTED — playbook finalized · harvest · schema · RLS · indexes · migrations · gate CLEAN-WITH-FIXES — 🟡 AWAITING SIGN-OFF
+
+**What happened:** Entered **Phase 4 (Data Model)**. Per the playbook's "finalize before entry" rule, first
+**rewrote the Phase-4 playbook** from approach-altitude to full mechanical detail (output file structure,
+harvest fan-out, the 7 net-new stores, type/enum consolidation, RLS/index/migration rules, verification
+gate checks a–f). Then built all five `spec/04-data-model/` files.
+
+**Harvest (subagent fan-out).** Independent subagents over the **14 surfaces** ("Phase 4 data binding
+notes"), the **11 components** (`DATA-`/`Data touched:` footers, sharded C0–C1/C2–C3/C4–C6/C7–C8/C9–C10),
+and the **config registry + traceability matrix** (the authoritative **21 `DATA-*` id** list). Consolidated
+into **`_data-inventory.md`**: ~40 tables in 14 groups, the **16 net-new Phase-3 stores/fields** catalogued
++ owed-back to their component FRs, **R1** (`client_slug` is DELETED not "label-only" — OD-096/FR-10.ISO.001
+supersede the older C2–C6 prose), **R2** (store renames), and **7 schema ODs** (OD-P4-01…07) surfaced with
+recommendations.
+
+**`schema.md`** — one coherent schema: a `Types` section (every enum defined once) + 14 groups. Every table
+typed with PK/FK/constraints. All net-new stores **designed** — `memory_conflicts`, `consolidation_approvals`,
+`injection_quarantine`, `task_history` (durable envelope originals, OD-P4-04/AF-115), `notifications`,
+`push_subscriptions`, `agent_health_metrics`, `agent_result_cache` (scope-aware invalidation), `execution_plans`,
+`commands`, `signal_weights`, `conversations`/`messages` (OD-135 chat), + fields `task_queue.originating_user_id`,
+`guardrail_log.escalated_at`, two-person-auth on `deletion_requests`. **NO `client_slug` on any application
+table** — only `client_registry`/`deployment_health`/`offboarding_records` on the **separate management
+deployment** (ADR-001 §7). 7 schema ODs resolved per the **recommended** option (user-delegated): OD-P4-01
+thin `profiles` mirror · **OD-P4-02 split** `webhook_secrets` + `connector_credentials` · OD-P4-03 shadow-drop
+= `ingestion_queue.state` · **OD-P4-04 durable `task_history`** · OD-P4-05 pill stored / cost derived ·
+OD-P4-06 defer per-agent `model` · OD-P4-07 dedicated `agent_result_cache`.
+
+**`rls-policies.md`** — ADR-006 static data-driven policies via `(select …)` initPlan (AF-067); human-path RLS
+(keyed to `auth.uid()` + PERM nodes + clearances) vs agent-path `service_role` (bypasses RLS; containment via
+harness RBAC + the C8 `memory_scope` fail-closed filter); per-table policy summary; the three non-negotiables
+mapped into the RLS layer. **`indexes.md`** — HNSW vector (CONCURRENTLY, m=16/ef_construction=64) + the
+`(status, created_at)` queue family + the silent-failure-detector join (`task_queue` terminal ⋈ `event_log`
+terminal) + RBAC policy-read indexes (initPlan perf) + every net-new store; AF-019 (RLS-after-ANN recall
+starvation) flagged paper-until-tested. **`migrations.md`** — expand→backfill→contract discipline
+(`migration-discipline.md`), migration 0001 ordering + the CONCURRENTLY-outside-txn caveat (0001b), the
+management deployment's **separate** migration lineage, worked examples (drop `agents.system_prompt`,
+embedding-model swap), per-deployment failure isolation, AF-065 paper-until-tested.
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 0 HIGH · 2 MED · 4
+LOW.** (a) coverage complete — all 21 ids + config + 16 net-new present, no orphan, no dead table. (b) net-new
+completeness PASS. (c) types PASS (task_status incl. `flagged`, guardrail_type ×5, event_type ×8,
+sensitivity_tier ×4, memory_type ×3 all match source; 2 doc-only enums flagged). (d) **`client_slug` CLEAN** —
+grep confirms only the 3 mgmt-plane tables carry it, no app table. (e) #1/#2/#3 sweep PASS — append-only sinks,
+sole-writer memories, hard_limit≠approved CHECK, two-person auth all present. (f) migrations PASS. Source
+subagent verified **10/10 load-bearing claims**, zero contradictions. **Reconciled: MED-1** — `deletion_requests`
+executor-distinctness CHECK added (AC-10.DEL.006.2 no-self-execution now DB-enforced, not app-only); **MED-2/LOW-1**
+— store renames recorded as R2; **LOW-2** — doc-enum note added. **LOW-3** (confirm OD-P4 resolutions at sign-off)
++ **LOW-4** (severity/risk_level as free text) carried to sign-off.
+
+**Files changed:** `phase-playbooks.md` (Phase-4 approach→full detail + status), `spec/04-data-model/`
+(`_data-inventory.md`, `schema.md`, `rls-policies.md`, `indexes.md`, `migrations.md`, `_harvest-c7-c8.md`,
+`_gate-report.md` — all new), `README.md` (Phase-4 row 🟡). This log. Committed + pushed across the session
+(playbook, harvest, schema, RLS/idx/migrations, gate-fixes as separate commits).
+
+**Next step — Phase-4 SIGN-OFF (awaiting operator):** confirm the **7 OD-P4 resolutions** (or override any),
+then finalize: (1) apply the **16 net-new-store owed-back `DATA-` cites** to their component FRs via
+change-control (Phase-4 step 8) — e.g. `injection_quarantine`→C6 FR-6.INJ.006, `notifications`→C7 FR-7.ALR.001,
+`commands`→C9 FR-9.CMD.006, chat→C5/C9 OD-135, etc.; (2) apply the **R1 clerical `client_slug` amendment** to
+C2–C6 (the "label-only" wording → "deleted, ADR-001/OD-096"); (3) wire `traceability-matrix.csv` (DATA-
+consolidated-in-schema note); (4) flip README/playbook Phase-4 → 🟢. **Then Phase 5 (Non-Functional):** security,
+infra, observability, cost (ADR-003), compliance, **backup & DR (resolve OD-009, ADR-008)**, test strategy.
+
+---
+
 ## Session 43 — 2026-07-01 — SURFACE-01b (CONFIG-CHANGE AUDIT LOG VIEWER · `UI-config-audit-log`) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 🟢 PHASE 3 COMPLETE (14 of 14)
 
 **What happened:** Built `spec/03-surfaces/surface-01b-config-audit-log.md` — the **14th and final Phase-3 surface**: the
