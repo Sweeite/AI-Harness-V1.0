@@ -5,6 +5,60 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 45 — 2026-07-01 — PHASE 5 (NON-FUNCTIONAL) ENTERED + DRAFTED, GATE CLEAN — 🟡 AWAITING SIGN-OFF
+
+**What happened:** Entered **Phase 5 (Non-Functional Requirements)**. Per the "finalize before entry" rule,
+first **rewrote the Phase-5 playbook** from approach-altitude to full mechanical detail (9-file output
+structure, the **reference-don't-re-spec** cardinal rule, the **AF-register-as-test-spine** principle, steps
+1–8, verification gate checks a–f). Added the **`DR` domain code** to `id-conventions.md` (backup/DR is a
+first-class NFR domain). Noted **OD-009 is already RESOLVED→ADR-008** — Phase 5 specs the machinery, doesn't
+re-decide.
+
+**Harvest (six-agent fan-out).** Independent read-only subagents over: 3 component shards (C0–C3 · C4–C7 ·
+C8–C10 — the first two attempts overflowed reading all 11 at once, so sharded), 2 surface shards (00–05 ·
+06–12), and 1 ADR + config-registry pass. Consolidated into **`_nfr-inventory.md`**: ~82 NFR candidates across
+8 domains, each tied to its functional owner FR/ADR + its AF-* gate, + a gap-sweep list + the 4 risk-posture ODs.
+
+**Four risk-posture ODs surfaced to the operator (RP-1…4), who chose the recommended option for each →
+OD-157–160:** OD-157 the **six launch-gating spikes** (AF-068/069/001/067/078/077) vs blocking-by-posture
+mechanisms vs fast-follow accuracy-EVALs; OD-158 restore rehearsal monthly+per-migration; OD-159 a11y baseline
+(full WCAG→OOS-041); OD-160 aspirational spike-confirmed perf targets (never a binding SLO).
+
+**Drafted all 9 files.** `security.md` written first as the **exemplar** (the `NFR-*` row shape: Requirement /
+Type / Upholds / Implemented-by / Target / Verification / **Launch gate** / ACs). The other 7 domain files +
+were drafted by parallel subagents against the exemplar (each verified its cites against source; two agents
+paused after delegating cite-checks and were resumed to write). `test-strategy.md` (the keystone — the AF
+de-risking schedule) written in the main thread. **~90 NFR-\* total** (SEC 17 · INF 14 · OBS 16 · PERF 12 ·
+CMP 11 · COST 10 · DR 8 · A11Y 2).
+
+**Gap-sweep change-controls:** +AF-138 (mobile web-push delivery) · +OOS-041 (WCAG deferral) · +3 config keys
+(`recovery_tier`, `haiku_audit_window_days`, `haiku_gate_disagree_threshold` — all owed by ADRs but absent from
+the registry, Rule-0 gaps) · inventory scale-cite fix (≤20 users/silo is ADR-006/008, not ADR-001).
+
+**Verification gate (independent zero-context, checks a–f): CLEAN — 0 HIGH · 3 MED · 3 LOW, all reconciled.**
+(a) domain coverage complete; (b) reference-integrity high (~30 cites spot-checked live, no dangling safety cite,
+no NFR contradicts its source); (c) three non-negotiables provably covered (audit-sink immutability trigger,
+restore-proven, erasure-walk, hard-limits-non-overridable, service_role-bounded, silent-failure detector +
+watchdog + escalate-don't-abandon + cost-unknown≠$0); (d) feasibility spine — six launch-gating spikes
+consistent everywhere, **no NFR overclaims proven-vs-specified** (every perf number tagged "confirm-by-AF"); (e)
+gap-sweep landed; (f) testability — every domain→test layer, every AC-NFR checkable. **Reconciled:** MED-1
+dangling `recovery_tier` cite→config key added; MED-2 stale "haiku keys missing" note→corrected; MED-3
+test-strategy "every AF" completeness→+AF-063/040/041/113; LOW-1/LOW-2 cite-precision; LOW-3 no-action.
+
+**Files changed:** `phase-playbooks.md` (Phase-5 approach→full detail), `id-conventions.md` (+DR),
+`spec/05-non-functional/` (all 9 files, new), `feasibility-register.md` (+AF-138), `out-of-scope.md` (+OOS-041),
+`config-registry.md` (+recovery_tier +2 haiku keys), `open-decisions.md` (+OD-157–160), `_nfr-inventory.md`
+(cite fixes), `traceability-matrix.csv` (Phase-5 header note), `README.md` (Phase-5 🟡), this log. Committed
+across the session (playbook-entry, inventory, domain-files, gap-sweep, gate-fixes as separate commits).
+
+**Next step:** **operator sign-off on Phase 5** → flip README to 🟢 → **Phase 6 (Issue decomposition)** — slice
+the finished spec into vertical, independently-buildable issues, each inheriting its FR ACs **+** the NFR-*
+constraints (+ the launch-gating spikes) as its definition of done. This is the last spec phase before the
+backlog. **Open question for sign-off:** confirm the 4 risk-posture ODs (OD-157–160) as chosen (they were the
+recommended options, operator-selected via the Phase-5 decision prompt).
+
+---
+
 ## Session 44 — 2026-07-01 — PHASE 4 (DATA MODEL) DRAFTED, GATE CLEAN-WITH-FIXES, FINALIZED + SIGNED OFF — 🟢 PHASE 4 COMPLETE
 
 **What happened:** Entered **Phase 4 (Data Model)**. Per the playbook's "finalize before entry" rule, first
