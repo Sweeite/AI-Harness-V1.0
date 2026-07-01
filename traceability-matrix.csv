@@ -1,6 +1,7 @@
 fr_id,title,component,status,priority,source_lines,permissions,config_deps,surfaces,data_touched,acceptance_criteria,open_decisions,issue,pr,test
 # This is the master index. One row per FR. Populated during Phase 1+.
 # Walk any row end-to-end: design intent -> requirement -> config/UI/data/perm -> AC -> issue -> PR -> test.
+# Phase 4 (2026-07-01): every DATA-* id in the data_touched column is now consolidated + typed in spec/04-data-model/schema.md (RLS: rls-policies.md; indexes: indexes.md; migrations: migrations.md). 16 net-new stores added there (memory_conflicts, consolidation_approvals, idempotency_ledger, task_history, injection_quarantine, notifications, push_subscriptions, agent_health_metrics, agent_result_cache, execution_plans, commands, signal_weights, conversations/messages) + fields task_queue.originating_user_id, guardrail_log.escalated_at, deletion_requests two-person-auth. No client_slug on any app table (only mgmt-plane client_registry).
 FR-0.AUTH.001,OAuth as primary login,0,Approved,Must,L360-369;SA10,public,CFG-auth.oauth_enabled;CFG-auth.oauth_provider,UI-LOGIN,auth.users,AC-0.AUTH.001.1;AC-0.AUTH.001.2,,,,
 FR-0.AUTH.002,OAuth only for client-tenant users,0,Approved,Must,L369;L373;OD-018,public,CFG-auth.oauth_enabled,UI-LOGIN,auth.users,AC-0.AUTH.002.1;AC-0.AUTH.002.2,,,,
 FR-0.AUTH.003,Provider toggle is dashboard config,0,Approved,Should,L362;L369,PERM-auth.provider_toggle,CFG-auth.oauth_provider;CFG-auth.oauth_enabled,UI-CONFIG-AUTH,n/a,AC-0.AUTH.003.1,,,,
