@@ -32,10 +32,17 @@ still node-gated per FR-9.CMD.002). Third consecutive clean-no-mint surface (10,
 > freshness/last-updated + breach badges + the honest Live/Reconnecting/Polling indicator + the two protective banners are
 > **mandatory on mobile** — a stale "all-green"/"all caught up" on a phone is the single most dangerous false-healthy view
 > in the product), **nothing lost** (#1: a mobile "disable" retains the definition; a dropped push is recoverable via the
-> in-app notification centre, which persists read/unread until actioned, FR-7.ALR.001/006). (f) Seams PASS. **LOW-1:** the
-> mobile push *delivery mechanism* (APNs/FCM/web-push) is a build detail; flagged as a paper-vs-proven note (the *routing
-> contract* FR-7.VIEW.003 is decided, delivery reliability is a Phase-5 concern) — see Feasibility. **LOW-2:** this banner
-> replaced its "pending" placeholder with the PASS result (done).
+> in-app notification centre, which persists read/unread until actioned, FR-7.ALR.001/006). (f) Seams PASS — the
+> out-of-scope-on-mobile table's attributions each match the reciprocal mobile note in the home surface (config→01,
+> permission-matrix→02, conflict/consolidation→03, Modify→04, fleet→06, agent-capability+rollback→09, command-authoring→10,
+> memory-mutation→11); no double-owned capability. **LOW-1 (fixed):** the Home health-score tile cited FR-7.VIEW.001 (the
+> *technical* ops FR) for the "non-technical rollup" — re-cited to **FR-7.VIEW.002** (the Manager rollup, same source as
+> surface-07 At-a-Glance), the "C7 invents no signal" guarantee kept on AC-7.VIEW.001.1, underlying signals named as the
+> VIEW.001 system-health panel. **LOW-2 (accepted, no change):** "pinned banner" is surface-coined UI chrome —
+> component-07 uses no "banner" wording (AC-7.ALR.008.2/.009.1 say "critical alert / notification centre / Super Admin");
+> rendering a fail-loud condition as a pinned banner is legitimate Phase-3 chrome naming that preserves the guarantee
+> (consistent with surface-05/07). *(A separate paper-vs-proven note — mobile push **delivery** reliability, distinct from
+> the decided routing contract — is flagged in Feasibility for a Phase-5 spike; no Phase-3 FR rests on it.)*
 
 > The **action-on-the-go surface** — the one-handed phone view a manager or user opens away from their laptop to *stay
 > informed and action approvals without needing a desktop* (design-doc "Mobile view" purpose, L316). It is deliberately a
@@ -191,7 +198,7 @@ quick-chat launcher — the "is anything on fire / does anything need me" view.
 **Data bindings:**
 | Element | Source | Notes |
 |---|---|---|
-| Health score | C7 FR-7.VIEW.001 (non-technical rollup, AC-7.VIEW.001.1 — C7 invents no signal) | Same rollup as surface-07 At-a-Glance; a **freshness/last-updated stamp is mandatory** (stale ≠ green). |
+| Health score | C7 FR-7.VIEW.002 (the non-technical Manager rollup — same source as surface-07 At-a-Glance; C7 **invents no signal**, AC-7.VIEW.001.1) | Underlying signals are the VIEW.001 system-health panel (loop status / queue depth / success rate); a **freshness/last-updated stamp is mandatory** (stale ≠ green). |
 | Pending-approvals count | `task_queue` (C5) filtered to viewer's `PERM-action.review` scope | Tap → Approvals tab. A fetch failure shows "—", never "0". |
 | Active-alerts count | `notifications` (C7 FR-7.ALR.001), clearance-scoped | Tap → Alerts tab. |
 | Quick-chat launcher | C9 chat entry (→ `UI-MOBILE-CHAT`) | One tap to the chat composer. |

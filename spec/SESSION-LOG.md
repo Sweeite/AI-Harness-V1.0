@@ -5,6 +5,105 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 42 — 2026-07-01 — SURFACE-12 (MOBILE VIEW · `UI-MOBILE-*`, 6 sub-surfaces) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 13 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-12-mobile.md` — the thirteenth Phase-3 surface (14th file): the **mobile
+view**, the cross-component mobile treatment the prior twelve surfaces each seamed here (every surface 00–11 carries a
+"Mobile" note ending "Detailed mobile treatment: `surface-12-mobile.md`"). Grounded in the design-doc canonical
+**"Dashboard 5 — Mobile view" (`design-doc-v4.md` L3266–3284)** — *"Purpose-built for action on the go. Not a scaled down
+desktop… Deep system management stays on desktop."* — which names exactly **five mobile screens** (Home · Approval queue ·
+Activity feed · Chat interface · Alerts) + the **push-notification contract**. Mobile is granted to **all six canonical
+roles** (design-doc L538). Pattern-matched surfaces 00–11.
+
+**Six sub-surfaces minted:** **`UI-MOBILE-HOME`** (the glance — health score FR-7.VIEW.002 non-technical rollup /
+pending-approvals count / active-alerts count / quick-chat launcher) · **`UI-MOBILE-APPROVALS`** (the design-doc's
+*"primary action surface — one-tap approve/reject"* — Approve/Reject + reason, **Modify degrades to desktop**; one of the
+two Realtime surfaces, FR-6.APR.*/ESC.*, server-authoritative soft-run countdown) · **`UI-MOBILE-ACTIVITY`** (plain-English
+`event_log` feed, the **answer-mode pill** on every AI output FR-4.CID.006 / AC-7.VIEW.002.2 — "mode unknown" never
+silently "Cited") · **`UI-MOBILE-CHAT`** (`/` dispatch, each command node-gated FR-9.CMD.002, destructive-confirm-after-gate
+FR-9.CMD.003.3, `event_log` fail-closed FR-9.CMD.004.3; async results via poll + nudge, **no third Realtime socket**
+AC-7.RTP.001.3) · **`UI-MOBILE-COMMAND-MENU`** (the tap-optimised quick-tap buttons above the keyboard, FR-9.CMD.005 /
+L3915 — most common node-permitted commands; **same node gate + C6 pipeline as typing `/slug`**, no shortcut bypass) ·
+**`UI-MOBILE-ALERTS`** (the notification centre, filterable by severity, the **second Realtime surface** FR-7.RTP.001;
+all 7 alert rules FR-7.ALR.002 + the two self-protective banners alert-engine-stalled/unroutable FR-7.ALR.008/009 +
+Slack-independent durability FR-7.ALR.006). Plus a cross-cutting **push-notification contract** section (FR-7.VIEW.003:
+critical **immediate** · hard-limit **immediate + always, non-suppressible** AC-7.VIEW.003.1 · pending/stale approvals
+**configurable** via `approval_push_frequency_minutes`/`stale_queue_push_hours` AC-7.VIEW.003.2) and a cross-cutting
+**out-of-scope-on-mobile** section (the deep-management set → desktop notice).
+
+**The governing framing — the three non-negotiables on a phone:** **#2 no mobile back-door** — every approve/act/command
+routes the **identical** C1 node gate + C6 pipeline as desktop (FR-9.MODE.003 no-bypass); Restricted needs the same
+explicit audited reveal (FR-1.RST.003); and the deep-management / high-blast-radius set (config edit, permission-matrix
+edit, conflict/consolidation resolution, approval **Modify**, fleet actions, agent-capability edit + plan rollback,
+custom-command authoring, memory mutation) degrades to a *"open on a wider display"* **notice** — never a silent omission —
+consolidating the reciprocal mobile note each of surfaces 01/02/03/04/06/09/10/11 already wrote. **#3 no false-healthy on a
+phone** — freshness/last-updated badges + the honest Live/Reconnecting/Polling indicator (FR-7.RTP.004) + the two
+protective banners are **mandatory on every mobile screen** (a stale "all-green"/"all caught up" on a phone is the single
+most dangerous false-healthy view; empty states gated on a *confirmed-live* connection; every error reads "—"/"can't
+confirm", never "0"/"all clear"/green). **#1 nothing lost** — a mobile "disable" (the one write mobile keeps) retains the
+definition; a dropped push is never the sole record (the in-app notification centre persists it, FR-7.ALR.001/006).
+
+**The clean PERM case — no entry node minted (third consecutive: 10, 11, 12).** Mobile is a **viewport treatment**, not a
+new authority surface: each mobile screen inherits **exactly the same PERM node as its desktop counterpart**
+(`PERM-action.review` for Approvals; `PERM-dashboard.workspace`/`.overview`/`.ops` for Home/Chat/Activity; per-command
+FR-9.CMD.002; the Alerts/notification centre is **node-free clearance-scoped chrome**). Design-doc L538 grants all six
+roles the mobile view; *what* each sees is their existing clearance + nodes. No catalog edit.
+
+**4 ODs raised + resolved (surface-local; recommendations delegated, consistent with surfaces 05–11), logged OD-149–152:**
+- **OD-149** 🔑 — sub-surface decomposition: **six** = the design-doc's five named screens + the tap-optimised command menu
+  (its own FR-9.CMD.005); **push notifications is a cross-cutting delivery contract, not a 7th screen** (faithful to the
+  design-doc's own L3277–3281 grouping).
+- **OD-150** — delivery platform: **responsive web + PWA with web-push for v1** (installable; same auth/RLS/deployment —
+  no per-silo app to provision); **native wrapper deferred → OOS-040**. The FR-7.VIEW.003 routing contract is
+  platform-agnostic; the delivery *mechanism* is flagged paper-vs-proven (Phase-5 spike recommended, not minted).
+- **OD-151** — navigation: **fixed bottom tab bar** (Home/Approvals/Chat/Activity/Alerts) + persistent bell + honest
+  connection indicator + the two protective banners pinned; command menu = in-chat sheet; push settings = a Settings sheet
+  (read-only reflection of the surface-01 config). One-handed target (L3284).
+- **OD-152** — out-of-scope-on-mobile boundary: the deep-management set → a **notice** (never a silent omission); the
+  low-risk writes (Approve/Reject, agent/command **disable**, verify/flag feedback, mark-actioned) stay, each on the
+  identical C6/node path.
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN — 0 HIGH · 0 MED · 2 LOW (both reconciled).**
+(a) Coverage PASS — the five design-doc screens + command menu all addressed; every cited FR/AC resolves + paraphrases
+faithfully (FR-7.VIEW.003/RTP.001-004/ALR.001-009/VIEW.002.2, FR-9.CMD.001-005/SUG.004-005/MODE.003, FR-6.APR.001-003/
+ESC.001-003, FR-4.CID.006, FR-1.RST.003/ROLE.001/PERM.007 — no fabrication, no invented AC). (b) CFG PASS — both push
+keys real (`approval_push_frequency_minutes`=30 LIVE, `stale_queue_push_hours`=4 LIVE), read-only reflected, edited on
+surface-01. (c) DATA PASS — no `client_slug`; the net-new stores correctly Phase-4-flagged (`conversations`/`messages`
+OD-135; the new `push_subscriptions` device-token store owed to C7). (d) PERM PASS — no entry node minted; six roles; all
+inherited nodes resolve in `PERMISSION_NODES.md`; all-six-roles matches L538. (e) #1/#2/#3 sweep PASS — no back-door, no
+false-healthy, nothing lost (strong compliance; empty states gated on confirmed-live). (f) Seams PASS — the
+out-of-scope-on-mobile table's attributions each match the reciprocal home-surface mobile note; no double-owned
+capability. **LOW-1 (fixed):** the Home health-score tile cited FR-7.VIEW.001 (the *technical* ops FR) for the
+"non-technical rollup" — re-cited to **FR-7.VIEW.002** (the Manager rollup, same source as surface-07 At-a-Glance), the
+"C7 invents no signal" guarantee kept on AC-7.VIEW.001.1, underlying signals named as the VIEW.001 system-health panel.
+**LOW-2 (accepted, no change):** "pinned banner" is surface-coined UI chrome — component-07 uses no "banner" wording;
+rendering a fail-loud condition as a pinned banner is legitimate Phase-3 chrome naming that preserves the guarantee
+(consistent with surface-05/07).
+
+**Files changed:** `surface-12-mobile.md` (new); `open-decisions.md` (OD-149–152 🟢 + reserve pointer → OD-153);
+`out-of-scope.md` (OOS-040 native wrapper deferred; pointer → OOS-041); `README.md` (Phase-3 row → 13 of 14 + surface-12
+detail); `phase-playbooks.md` (status → 13 of 14). This log. **No `PERMISSION_NODES.md` change** (no node minted). **No
+matrix change** — consistent with surfaces 00–11 (the six `UI-MOBILE-*` stubs are rendered; the served FRs are existing
+C6/C7/C9/C4/C5 rows). **No new AF minted in Phase 3** (the push-delivery-reliability spike is *recommended* for Phase-5,
+not minted — no Phase-3 FR rests on it; the surface fails safe to the persisted in-app record). **Phase-4 debt flagged
+in-file:** the net-new **`push_subscriptions`** device-token store (RLS-scoped to user, no `client_slug`, owed to C7); the
+`conversations`/`messages` chat store (OD-135) + `task_queue.originating_user_id` reused from surfaces 04/08; the
+clearance-scoping RLS on the feed/queue/alerts/suggestions.
+
+**Note (git):** a stop-hook fired mid-session and the draft + register updates were committed + pushed as a WIP commit
+(honest message: gate still pending) before this finalization; the README/playbook status bump + this SESSION-LOG entry +
+the LOW-1 fix land in the follow-up commit.
+
+**Next step:** **`surface-01b-config-audit-log.md`** — the **final Phase-3 surface**: the config-change audit-log viewer
+(`UI-config-audit-log`, minted by OD-099) that surface-01's per-section "View audit log →" links target. FR source: the
+config-change audit trail (surface-01 references it; the underlying `event_log`/config-audit records, C7 LOG + the
+`PERM-config.*` / `PERM-compliance.download_records` gates). Read-only viewer: who changed which knob, from→to, when, with
+export. Load surface-01's audit-log references + the C7 LOG FRs + the config registry's audit expectations. Copy
+`_TEMPLATE.md`; follow the Phase 3 playbook; run the gate before sign-off. **After surface-01b, Phase 3 is complete →
+Phase 4 (Data model).**
+
+---
+
 ## Session 41 — 2026-07-01 — SURFACE-11 (MEMORY NAVIGATION / ENTITY BROWSER · `UI-MEMORY-NAV`) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF + 3 OWED CATALOG NODES CLOSED — 12 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-11-memory-nav.md` — the twelfth Phase-3 surface: the **memory
