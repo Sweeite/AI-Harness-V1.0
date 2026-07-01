@@ -84,6 +84,12 @@ create type deletion_status     as enum ('received','authorised','executed','rej
 create type config_edit_class   as enum ('live','boot','rebuild','secret');
 ```
 
+> **Documentation enums (not stored as a column):** `config_edit_class` classifies each config key in
+> the Phase-2 registry (it is metadata on the key definition, not a `config_values` column);
+> `step_failure_mode` types each step's failure mode *inside* the `execution_plans.plan_body` /
+> `task_graph_versions.steps` jsonb (default `halt_and_escalate`), not a top-level column. Both are
+> defined here so the value sets are canonical and a build reader doesn't assume a missing column.
+
 > `cost_tokens` uses a nullable `bigint` + a companion `cost_unknown boolean` sentinel (AC-7.LOG.004.1)
 > — a genuinely-costless event records `0`; an uncomputable cost records `cost_unknown=true`, never a
 > silent `0`. See `event_log`.
@@ -715,7 +721,10 @@ create table deletion_requests (
   executed_at          timestamptz,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now(),
-  check (second_authoriser_id is null or second_authoriser_id <> authorized_by)
+  check (second_authoriser_id is null or second_authoriser_id <> authorized_by),
+  -- AC-10.DEL.006.2: the executor cannot be either authoriser (no self-execution of one's own approval)
+  check (executor_id is null or (executor_id <> authorized_by
+         and executor_id is distinct from second_authoriser_id))
 );  -- Restricted/Personal require two-person auth (AC-10.DEL.006.2). Erasure walks the C2 sole-writer path;
 -- audit written to access_audit (retained individual_deletion_audit_years even after data is gone).
 ```

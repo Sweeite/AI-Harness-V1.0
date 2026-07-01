@@ -171,6 +171,12 @@ are **not** `DATA-`-prefixed in the matrix and are added below.
   not an RLS key". OD-096 / FR-10.ISO.001 superseded that: the column **is not created** on any app table.
   Phase 4 carries no `client_slug` anywhere except `client_registry`; a one-line clerical amendment is owed
   to each of those component files (change-control).
+- **R2 — store renames (schema canonical names).** The harvest names below were renamed in `schema.md`
+  to canonical, consistent identifiers; same stores, same owing FRs:
+  - `hard_conflict_quarantine` → **`memory_conflicts`** (C2, FR-2.WRT.002).
+  - C0 `credentials` (webhook secrets) → **`webhook_secrets`**; C3 `credentials` (OAuth) → **`connector_credentials`** (OD-P4-02 split).
+  - `DATA-dynamic_field_store` (matrix id) → **`dynamic_field_values`** (C4, FR-4.BIZ.003).
+  - `DATA-context_envelope` → runtime (Inngest step-state) + durable tail **`task_history`** (OD-P4-04 / AF-115).
 
 ## Net-new stores/fields owed back to a component FR (change-control, Phase-4 step 8)
 
