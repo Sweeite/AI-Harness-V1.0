@@ -1736,6 +1736,40 @@ that file's Open decisions table). All four resolved to the recommendation:
 
 ---
 
+## OD-141…OD-144 — surface-10 (Custom Command Management, `UI-COMMANDS`) layout / invocation-node authority / destructiveness / system-command reference 🟢 RESOLVED (2026-07-01, surface-local; recommendations delegated)
+
+- **OD-141** 🟢 — **Layout.** Custom-command **list landing + Command Builder drawer** (opens over the list, keeps context)
+  **+ a collapsible read-only System-Command Reference section** via section nav — not two symmetric tabs (which would
+  imply system commands are editable here; they are code-registered, read-only), not a single scroll (which buries the
+  reference). Consistent with surface-09's list-landing + detail-drawer (OD-138) and surface-06 (OD-126).
+- **OD-142** 🔑 🟢 — **#2 least-privilege on the invocation gate (pushed to the FR layer via change-control).** When an
+  admin defines a custom command, the invocation PERM node (FR-9.CMD.002) is **chosen from the existing C1 catalog** — **no
+  node is minted per command** (the clean case; `PERM-commands.manage` already gates *managing*). But the FR text alone
+  (default-deny unmapped node, AC-9.CMD.002.3) did **not** stop a manager from gating a powerful custom command on a
+  broadly-held node to **widen its audience past their own authority** over the wrapped agent/capability — a #2 surface-area
+  gap (bounded by the invocation's C6 pipeline + the agent's scope/clearance, but real). Resolved: **the manager may only
+  assign a node they are authorized to assign; a save that would widen a capability past that is rejected at write.**
+  **Pushed into C9 via change-control as AC-9.CMD.006.4** (so the constraint lives in the requirement layer, not only the
+  surface — mirrors surface-04 OD-120→AC-6.APR.003.3). No node mint; no FR re-approval (AC addition tightening an Approved FR).
+- **OD-143** 🔑 🟢 — **#2 containment: destructiveness/tier (pushed to the FR layer via change-control).** A custom
+  command's destructiveness/approval is **governed by the underlying action's C6 tier, not a definition-time flag the
+  author can clear** — every invocation runs the **same C6 guardrail pipeline** as any agent run (FR-9.CMD.008), so the
+  action's tier governs execution regardless of the definition (mirrors AC-9.CMD.003.2 — the UI confirm is never the sole
+  barrier). The author may **add** friction (a UI confirm) but never **remove** a guardrail. **Pushed into C9 via
+  change-control as AC-9.CMD.008.4.**
+- **OD-144** 🟢 — **System-command reference presentation.** A **read-only reference list grouped by home component**,
+  each system command with its default node + destructive flag + reserved-slug badge — visible so an admin sees the
+  reserved namespace and can't collide blindly (proactive complement to the authoritative save-time check,
+  AC-9.CMD.006.2). Not hidden (which turns every collision into a surprise rejection), not editable here (system commands
+  are code-registered, not data — editing them here would fork code and data, a #3/#1 risk; `/tune` *values* live on
+  surface-01).
+
+**No PERM node minted** — `PERM-commands.manage` + `PERM-system.tune` already catalogued (C9 section, `PERMISSION_NODES.md`
+L89–90). Two C9 change-control AC additions (AC-9.CMD.006.4, AC-9.CMD.008.4); one NET-NEW Phase-4 store flagged (`commands`,
+owed to C9/C5).
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1752,4 +1786,7 @@ that file's Open decisions table). All four resolved to the recommendation:
 > OD-129; OD-135 flags a net-new Phase-4 `conversations`/`messages` chat store owed to C5/C9). OD-137–140 by
 > `spec/03-surfaces/surface-09-agent-builder.md` (surface-local; all resolved in-file; OD-137 mints the `PERM-agents.*`
 > Asset Management node family via change-control — encoding the locked OD-080 capability-vs-description authority split).
-> Next OD number: OD-141.
+> OD-141–144 by `spec/03-surfaces/surface-10-commands.md` (surface-local; all resolved in-file; **no PERM node minted** —
+> `PERM-commands.manage` + `PERM-system.tune` already catalogued; OD-142 + OD-143 pushed into C9 via change-control as
+> AC-9.CMD.006.4 + AC-9.CMD.008.4).
+> Next OD number: OD-145.

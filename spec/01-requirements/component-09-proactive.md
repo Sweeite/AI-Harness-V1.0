@@ -10,7 +10,14 @@
   "Commands" feature, modelled on Claude Code skills: admin-created slash-command bindings with a prompt template +
   assigned agent, invoked inline in chat, same dispatch pipeline as system commands). New PERM stub:
   `PERM-commands.manage` (→ PERMISSION_NODES.md, C1 FR-1.PERM.005). New DATA stub: `commands` table (→ Phase 4).
-  OOS-034–038 logged (v2 deferrals: Objectives, Projects, Priority Matrix, Brain Dump, Field Ops). C9 is the
+  OOS-034–038 logged (v2 deferrals: Objectives, Projects, Priority Matrix, Brain Dump, Field Ops).
+  **Change-control addendum (2026-07-01, surface-10 `UI-COMMANDS`):** +AC-9.CMD.006.4 (**OD-142**, #2 authority — a
+  custom command's invocation node must be one the managing caller is authorized to assign; a command cannot be gated
+  to grant a wider audience than the manager's own authority over the wrapped capability — least-privilege, enforced at
+  save) and +AC-9.CMD.008.4 (**OD-143**, #2 containment — a custom-command definition cannot *lower* the C6 tier of its
+  assigned action; the C6 pipeline governs execution regardless of any definition-time flag, which may only add friction,
+  never remove a guardrail). Both close #2 gaps the surface-10 gate surfaced; no FR re-approval (AC additions tightening
+  an Approved FR, mirroring surface-04 OD-120→AC-6.APR.003.3). C9 is the
   **proactive-generation + cold-start-gating + chat-command layer** — what the system does *without being asked*
   (L3654), how proactivity is *gated* before the memory is rich enough to be useful, and the `/` command surface
   for fast direct interaction.
@@ -1002,7 +1009,13 @@
     clear collision message.
   - AC-9.CMD.006.3 — Given a custom command whose assigned agent is disabled, When a user attempts to invoke it,
     Then the system returns "command unavailable" — not a silent no-op.
-- **Open decisions:** —
+  - AC-9.CMD.006.4 — *(OD-142, surface-10 — #2 least-privilege on the invocation gate)* Given a caller creating/editing
+    a custom command, When they set the command's invocation PERM node (CMD.002), Then the node must be one the caller is
+    **authorized to assign** — a command may **not** be gated to grant a wider audience than the manager's own authority
+    over the wrapped agent/capability; a save that would gate a powerful capability on a broadly-held node below its risk
+    is **rejected at write**, not silently accepted (defense-in-depth alongside the invocation's C6 pipeline, CMD.008,
+    and the agent's own scope/clearance, C8 FR-8.SCO.002).
+- **Open decisions:** — *(OD-142 resolved surface-local, surface-10; recorded in open-decisions.md.)*
 - **Feasibility assumptions:** —
 
 #### FR-9.CMD.007 — Custom commands registered in the CMD dispatch alongside system commands
@@ -1059,7 +1072,13 @@
     is surfaced inline — never a silent failure.
   - AC-9.CMD.008.3 — Given a custom command invocation, Then no `task_queue` entry is created; the audit log entry
     (FR-9.CMD.004) is the only persistent record.
-- **Open decisions:** —
+  - AC-9.CMD.008.4 — *(OD-143, surface-10 — #2 containment, a definition can add friction but never remove a guardrail)*
+    Given a custom command invocation, When it is dispatched to its assigned agent, Then it runs the **same C6 guardrail
+    pipeline** as any agent run and the assigned action's **C6 tier governs execution regardless of the command
+    definition** — no definition-time flag may **lower** that tier (an author may mark a command as *requiring* a UI
+    confirm, FR-9.CMD.003, but may never mark a gated action as *not* needing its C6 approval); a custom command is never
+    a way to pre-approve or outrun a guardrail.
+- **Open decisions:** — *(OD-143 resolved surface-local, surface-10; recorded in open-decisions.md.)*
 - **Feasibility assumptions:** —
 
 ---

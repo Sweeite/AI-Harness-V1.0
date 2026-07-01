@@ -5,6 +5,80 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 40 — 2026-07-01 — SURFACE-10 (CUSTOM COMMAND MANAGEMENT · `UI-COMMANDS`) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 11 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-10-commands.md` — the eleventh Phase-3 surface: the **custom-command
+management console** of one client deployment, fed by **C9 (Proactive Intelligence)**. Surface ID **`UI-COMMANDS`** is
+**named by the FRs, not minted here** — FR-9.CMD.006 already assigns it ("Custom commands are created, edited, and deleted
+via `UI-COMMANDS`"), unlike surfaces 04–09 which each minted their own `UI-` id. FR source: the custom-command CRUD
+(FR-9.CMD.006–008) framed inside the broader `/` dispatch contract (FR-9.CMD.001–005). Pattern-matched surfaces 00–09.
+
+**Three sections in two playbook buckets:** **A — Custom Commands** (the `commands` list landing — one row per
+user-defined command: slug / assigned agent / invocation node / active-state; an **inactive** command whose agent was
+disabled reads "unavailable", never a silent no-op, AC-9.CMD.006.3) · **B — Command Builder** (the definition editor —
+slug **collision-checked against all system slugs** AC-9.CMD.006.2 and **never silently renamed**; a `$ARGUMENTS` prompt
+template; a **required assigned agent** from the C8 registry; an invocation-node picker that is **default-deny** if unmapped
+AC-9.CMD.002.3) · **C — System-Command Reference** (the read-only reserved-slug namespace grouped by home component —
+system commands are **code-registered, not data**; `/tune` *values* edit on surface-01). Commands are **invoked on
+surface-08** (chat, inline answer-mode pill, FR-9.CMD.008); this surface only *defines* them.
+
+**The clean PERM case — no node minted.** The two nodes this surface needs — `PERM-commands.manage` (entry + CRUD, Super
+Admin + Admin) and `PERM-system.tune` (referenced on the reference tab) — are **already catalogued** (C9 "Proactive /
+Commands" section, `PERMISSION_NODES.md` L89–90). Unlike surfaces 03/04/06/07/08/09, each of which surfaced a Rule-0
+catalog gap and minted node(s), surface-10 needed **no mint** and **no catalog edit**.
+
+**4 ODs raised + resolved (recommendations delegated, consistent with surfaces 05–09), logged OD-141–144:**
+- **OD-141** — layout: custom-command list landing + Command Builder drawer + a collapsible read-only System-Command
+  Reference section (consistent with surface-09 OD-138 / surface-06 OD-126).
+- **OD-142** 🔑 **#2 least-privilege (pushed to the FR layer).** The FR text (default-deny unmapped node, AC-9.CMD.002.3)
+  did **not** stop a manager from gating a powerful custom command on a broadly-held node to **widen its audience past
+  their own authority** over the wrapped agent/capability — a real #2 surface-area gap (bounded by the invocation's C6
+  pipeline + the agent's scope/clearance, but real). Resolved: a manager may only assign a node they're authorized to
+  assign; a wider save is rejected at write.
+- **OD-143** 🔑 **#2 containment (pushed to the FR layer).** A custom command's destructiveness/approval is governed by
+  the underlying action's **C6 tier**, not a definition-time flag the author can clear — every invocation runs the same
+  C6 guardrail pipeline (FR-9.CMD.008); an author may **add** a UI confirm but never **remove** a guardrail.
+- **OD-144** — system-command reference: read-only, grouped by home component, reserved-slug badges (proactive complement
+  to the authoritative save-time collision check); not hidden (surprise rejections), not editable (code, not data).
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN — 0 HIGH · 1 MED · 2 LOW (all reconciled).**
+(a) Coverage PASS — every FR-9.CMD.001–008 + AC cited resolves and paraphrases faithfully (the gate re-read the CMD
+section L832–1063 and matched each AC verbatim); invocation/agent-definition/config all correctly seamed out
+(surface-08/09/01), no over-claim. (b) CFG PASS — the CMD FRs declare no config keys. (c) DATA PASS — no `client_slug` on
+any binding; the `commands` store correctly NET-NEW Phase-4, user-defined-only (system commands code-registered).
+(d) PERM PASS — both nodes catalogued with the claimed roles/scope; no node minted; no role-string gates ("Agency Owner"
+only as an explicitly-not-a-role reference); six canonical roles used. (e) #1/#2/#3 sweep PASS — no false-healthy state
+(error never reads empty/healthy; collision is loud; disabled-agent = "unavailable"; unmapped node = default-deny; no C6
+outrun; no audience-widening past authority). (f) Seams PASS. **Reconciled: MED-1** — OD-141–144 transcribed into the
+central `open-decisions.md` (the Rule-0 register-sync; pointer bumped to OD-145). **LOW-1** — catalog line-cite tightened
+`L86–90`→`L89–90` (2 sites). **LOW-2** — OD-142/143 **pushed into C9 via change-control** as **AC-9.CMD.006.4**
+(author-authority on the invocation gate) + **AC-9.CMD.008.4** (a definition can never lower the C6 tier), with a
+change-control addendum on the C9 header — so the two #2 constraints live in the requirement layer, not only this surface
+(mirrors surface-04 OD-120→AC-6.APR.003.3).
+
+**Files changed:** `surface-10-commands.md` (new); `component-09-proactive.md` (+AC-9.CMD.006.4 / +AC-9.CMD.008.4 +
+header change-control addendum); `open-decisions.md` (OD-141–144 🟢 + reserve pointer → OD-145); `README.md` (Phase-3 row
+→ 11 of 14 + surface-10 detail); `phase-playbooks.md` (status → 11 of 14). This log. **No `PERMISSION_NODES.md` change**
+(no node minted). **No matrix change** — consistent with surfaces 00–09 (the `UI-COMMANDS` stub is rendered; served FRs
+are existing C9 rows; the two new ACs tighten Approved FRs, not new rows). **No new OOS / AF.** **Phase-4 debt flagged
+in-file:** the net-new **`commands` store** (user-defined only; system commands stay code-registered; no `client_slug`;
+`active` auto-flips on assigned-agent disable — trigger/reconcile pass) owed to C9/C5. **Catalog housekeeping still owed
+(unchanged):** the 3 flagged surface-03/04 nodes (OD-115 ×2, OD-117 ×1) remain to be transcribed when those surfaces are
+next touched; surface-10 does not touch them.
+
+**Next step:** `surface-11-memory-nav.md` — the **memory navigation / entity browser** surface. FR source: **C2 (Memory)**
+— the entity-organised business brain (FR-2.ENT.* entity types, FR-2.RET.* retrieval, FR-2.MNT.* maintenance signals, the
+`[Building]` coverage flag ADR-002, clearance/visibility/Restricted scoping FR-2.RET.004 enforced **before** ranking). This
+is the **read/browse** counterpart to surface-03's memory-*review* queues: surface-03 gates the write path, surface-11
+navigates what's stored (entities, relationships, provenance, sensitivity tiers). Carry-in: **ADR-004** (sole-writer — the
+browser is read-only; any edit routes through the Memory Agent), **C1 clearance** (Restricted never auto-shown, never
+auto-injected), no `client_slug`, the answer-mode-pill seam where AI-derived context is shown. Check `PERMISSION_NODES.md`
+for the Memory-Access nodes (incl. the two OD-115 conflict/consolidation nodes still owed to the catalog — surface-11 is a
+natural place to transcribe them if it touches Memory Access). Copy `_TEMPLATE.md`; load only the C2 retrieval/entity FRs;
+follow the Phase 3 playbook; run the gate before sign-off.
+
+---
+
 ## Session 39 — 2026-07-01 — SURFACE-09 (AGENT FLEET · AGENT BUILDER · ORCHESTRATION) DRAFTED, RESOLVED, GATE-CLEAN-WITH-FIXES, SIGNED OFF — 10 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-09-agent-builder.md` — the tenth Phase-3 surface: the **agent-management
