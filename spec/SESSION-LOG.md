@@ -5,7 +5,12 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
-## Session 45 — 2026-07-01 — PHASE 5 (NON-FUNCTIONAL) ENTERED + DRAFTED, GATE CLEAN — 🟡 AWAITING SIGN-OFF
+## Session 45 — 2026-07-01 — PHASE 5 (NON-FUNCTIONAL) ENTERED, DRAFTED, GATE CLEAN, SIGNED OFF — 🟢 PHASE 5 COMPLETE
+
+**SIGN-OFF (2026-07-01):** operator signed off on Phase 5 ("yep sign off"). README flipped 🟢; the four
+risk-posture ODs (OD-157–160) confirmed as chosen. Repo self-sufficiency test run before commit+push (handoff
+gate into Phase 6). **Operator's stated next intent: a full audit of the whole spec before Phase 6 issue
+decomposition** (discuss scope next).
 
 **What happened:** Entered **Phase 5 (Non-Functional Requirements)**. Per the "finalize before entry" rule,
 first **rewrote the Phase-5 playbook** from approach-altitude to full mechanical detail (9-file output

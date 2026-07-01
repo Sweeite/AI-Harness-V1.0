@@ -135,7 +135,9 @@ Full reference: `id-conventions.md`. Plain-English: `/ACRONYMS.md`.
 
 Authoritative status lives in `README.md` (phase table + ADR line) and the top of `SESSION-LOG.md` —
 always defer to those for the live state.
-As of 2026-06-27: **Phase 0 + Phase 1 COMPLETE** — all 8 ADRs Accepted; **all 11 components C0–C10
-Approved** (the full functional requirements spec). The build-time SPIKE/EVAL feasibility assumptions
-(AF-001/002/004 + the per-component blocks) are deferred to build-time. **Next: Phase 2 (Config
-registry)** — classify + surface every `CFG-*` key.
+As of 2026-07-01: **Phases 0–5 COMPLETE** — all 8 ADRs Accepted; all 11 components C0–C10 Approved
+(functional spec); Config registry, all 14 Surfaces, the Data model, and the Non-Functional
+requirements (~90 `NFR-*` across 8 domains) all signed off. The build-time SPIKE/EVAL feasibility
+assumptions (the six launch-gating spikes AF-068/069/001/067/078/077 + the per-component blocks) are
+tracked in `test-strategy.md`'s AF de-risking schedule. **Next: a full spec audit (operator-requested),
+then Phase 6 (Issue decomposition)** — slice the spec into vertical, buildable issues.
