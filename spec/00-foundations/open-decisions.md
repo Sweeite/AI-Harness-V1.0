@@ -1803,6 +1803,40 @@ dangling-ID debt flagged in that file since surfaces 03/04. One NET-NEW Phase-4 
 
 ---
 
+## OD-149…OD-152 — surface-12 (Mobile View, `UI-MOBILE-*`) sub-surface decomposition / delivery platform / navigation / out-of-scope-on-mobile 🟢 RESOLVED (2026-07-01, surface-local; recommendations delegated)
+
+- **OD-149** 🔑 🟢 — **Sub-surface decomposition.** How many mobile sub-surfaces, and are push / the command menu their
+  own? Resolved: **six sub-surfaces = the design-doc's five named screens** (Home / Approvals / Activity feed / Chat /
+  Alerts, `design-doc-v4.md` L3266–3284) **+ the tap-optimised command menu** (its own FR-9.CMD.005 / L3915). **Push
+  notifications** (FR-7.VIEW.003) is a **cross-cutting delivery contract**, specced as a section governing all six, **not**
+  a seventh screen. Faithful to the design-doc's own list; the command menu earns sub-surface status because it carries its
+  own FR + is referenced as its own surface by surface-08/10.
+- **OD-150** 🟢 — **Delivery platform.** Native app vs responsive PWA vs plain responsive web (affects push delivery).
+  Resolved: **responsive web + PWA with web-push for v1** (installable; same auth / RLS / deployment — no separate app to
+  provision per silo); a **native wrapper is deferred → OOS-040**. The routing contract (FR-7.VIEW.003) is
+  platform-agnostic; the delivery *mechanism* (web-push / APNs / FCM) is a build detail flagged **paper-vs-proven** (a
+  Phase-5 AF `push-delivery-reliability` recommended, not minted in Phase 3 — no Phase-3 FR rests on it; the surface fails
+  safe to the persisted in-app notification centre, FR-7.ALR.006).
+- **OD-151** 🟢 — **Navigation pattern.** Resolved: **fixed bottom tab bar** (Home / Approvals / Chat / Activity / Alerts)
+  + persistent notification bell + the honest Live/Reconnecting/Polling indicator (FR-7.RTP.004) in the top bar + the two
+  protective banners (alert-engine-stalled AC-7.ALR.008.2, unroutable-alert AC-7.ALR.009.1) pinned above content. The
+  command menu is an in-chat sheet, not a tab. Push-frequency settings under a Settings sheet (read-only reflection of the
+  surface-01 config). One-handed operation is the design target (L3284).
+- **OD-152** 🟢 — **Out-of-scope-on-mobile boundary.** Which desktop actions degrade to "open on a wider display."
+  Resolved: the **deep-management set** already named across surfaces 01/02/03/04/06/09/10/11 (config edit,
+  permission-matrix edit, conflict/consolidation resolution, approval **Modify**, fleet actions, agent-capability edit +
+  plan rollback, custom-command authoring, memory mutation) degrades to a **notice** (never a silent omission — the user is
+  told the action lives on desktop). The low-risk retained writes (Approve/Reject, agent/command **disable**, verify/flag
+  feedback, mark-actioned) stay — each runs the **identical** C6 pipeline + node gate as desktop (no #2 back-door).
+
+**No PERM entry node minted** (mobile is a viewport treatment — each screen inherits its desktop counterpart's node; the
+notification centre / Alerts is node-free clearance-scoped chrome). Third consecutive clean-no-mint surface (10, 11, 12).
+**New OOS-040** (native mobile wrapper deferred). One **NET-NEW** Phase-4 binding flagged: a `push_subscriptions`
+device-token store owed to C7 for FR-7.VIEW.003 delivery (RLS-scoped to user, no `client_slug`). No new AF minted in
+Phase 3 (the push-delivery-reliability spike is recommended for Phase 5).
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1823,5 +1857,8 @@ dangling-ID debt flagged in that file since surfaces 03/04. One NET-NEW Phase-4 
 > `PERM-commands.manage` + `PERM-system.tune` already catalogued; OD-142 + OD-143 pushed into C9 via change-control as
 > AC-9.CMD.006.4 + AC-9.CMD.008.4). OD-145–148 by `spec/03-surfaces/surface-11-memory-nav.md` (surface-local; all
 > resolved in-file; **no PERM entry node minted** — memory read is clearance-scoped, OD-145; the 3 long-owed nodes
-> OD-115 ×2 + OD-117 transcribed to `PERMISSION_NODES.md` as housekeeping, 48→51).
-> Next OD number: OD-149.
+> OD-115 ×2 + OD-117 transcribed to `PERMISSION_NODES.md` as housekeeping, 48→51). OD-149–152 by
+> `spec/03-surfaces/surface-12-mobile.md` (surface-local; all resolved in-file; **no PERM entry node minted** — mobile
+> inherits each screen's desktop node, OD-149/151; OD-150 defers a native wrapper → OOS-040 + flags a Phase-5
+> push-delivery-reliability spike; one net-new `push_subscriptions` device-token store owed to C7).
+> Next OD number: OD-153.
