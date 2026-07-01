@@ -21,19 +21,29 @@ and export is gated by the catalogued `PERM-compliance.download_records`. Next O
 > change-control** — config_audit_log view / retention / tamper-evidence / export, mirroring FR-7.LOG.007's shape for
 > guardrail_log (precedent: OD-097 → FR-7.ALR.009, minted into C7 from Phase 2 the same way). C7: 34 → **35 FRs**.
 
-> **Verification gate (independent zero-context subagent, checks a–f): CLEAN — 0 HIGH · 0 MED · 2 LOW (both reconciled).**
-> (a) Coverage PASS — the new FR-7.LOG.008 + its ACs, config-edit-taxonomy rule 4, surface-01's `config_audit_log`
-> bindings, and `PERM-compliance.download_records` all resolve and paraphrase faithfully; no invented AC; over-claims
-> correctly seamed out (config *editing* → surface-01; `event_log`/`guardrail_log`/`access_audit` are other sinks, not
-> rendered here). (b) CFG PASS — the viewer edits no config; `event_log_retention_window` / the config-audit retention
-> floor are reflected read-only. (c) DATA PASS — no `client_slug`; `config_audit_log` is the surface-01 Phase-4 stub
-> (key/old_value/new_value/actor_id/changed_at), key-prefix RLS is the gate. (d) PERM PASS — no entry node minted; view =
-> key-prefix-scoped `PERM-config.*`; export = `PERM-compliance.download_records` (catalogued, unseeded, default-deny);
-> six roles, no role-string gates. (e) #1/#2/#3 sweep PASS — a failed load never reads as an empty history (no
-> false "no changes"); the caller never sees config sections outside their `PERM-config.*` scope; secrets never appear
-> (SECRET rows are not editable in-app so are never written to the log, FR-7.LOG.005); export never silently truncates.
-> (f) Seams PASS. **LOW-1 (fixed):** this banner replaced its "pending" placeholder with the PASS result. **LOW-2
-> (accepted):** "diff view" is surface-coined chrome for rendering `old_value`→`new_value`; legitimate Phase-3 naming.
+> **Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 0 HIGH · 2 MED · 3 LOW (all
+> reconciled).** (a) Coverage PASS — FR-7.LOG.008 + its ACs (AC-7.LOG.008.1–.5), FR-7.LOG.005/006/007, FR-1.PERM.005,
+> FR-1.AUD.003, FR-7.ALR.008/009, FR-7.RTP.001, OD-099, and the OD-097→FR-7.ALR.009 precedent all resolve and paraphrase
+> faithfully; no invented AC; over-claims correctly seamed out (config *editing* → surface-01; `event_log`/`guardrail_log`/
+> `access_audit` are other sinks, not rendered here). (b) CFG PASS — the viewer edits no config; `event_log_retention_window`
+> (BOOT) + `individual_deletion_audit_years` (BOOT) reflected read-only. (c) DATA PASS — no `client_slug`; `config_audit_log`
+> fields match the surface-01 Phase-4 stub (key/old_value/new_value/actor_id/changed_at) exactly; key-prefix RLS is the gate.
+> (d) PERM PASS — no entry node minted; view = key-prefix-scoped `PERM-config.*` (all 10 exist); export =
+> `PERM-compliance.download_records` (catalogued, unseeded, default-deny); six roles, no role-string gates. (e) #1/#2/#3
+> sweep PASS — a failed load never reads as an empty history (Empty/Error distinguish "you can't see any" from "none
+> exist"); the caller never sees config sections outside their `PERM-config.*` scope; secrets never appear (SECRET class is
+> never UI-editable, `config-edit-taxonomy.md` rule 2 — so never written to the log; FR-7.LOG.005 then holds by
+> construction); export is all-or-nothing (Section C Partial = N/A by design, AC-7.LOG.008.1). (f) Seams PASS.
+> **Reconciled — MED-1 (fixed):** the "SECRET never editable in-app" authority was mis-cited to **OD-102** (which actually
+> resolves the `secret_manifest.last_rotated` source, a deploy hook) — re-cited to the **SECRET edit class**
+> (`config-edit-taxonomy.md` line 11 + rule 2) in both this surface **and** the propagated AC-7.LOG.008.5. **MED-2 (fixed
+> at source):** the surface + FR cited `config-edit-taxonomy` **rule 4** for auditing **LIVE/BOOT/REBUILD**, but rule 4 read
+> "LIVE" only — **rule 4 amended via change-control** to cover all three editable classes (a BOOT/REBUILD change going
+> unaudited is a #1/#3 gap; reconciles rule 4 with `config-registry.md` §cross-cutting + surface-01's Save, which already
+> audit BOOT). **LOW-1 (fixed):** "the 11 sections" → "10 editable of the 11" (the 11th, `#secrets`, is SECRET-class,
+> produces no audit rows). **LOW-2 (accepted):** AC-7.MGM.002.4 is cited only as a server-authoritative-time *analogy*
+> ("mirrors … discipline") — legitimate. **LOW-3 (fixed):** the banner's own secrets reasoning re-cited to the SECRET class
+> (not FR-7.LOG.005) — same root as MED-1, conclusion unchanged.
 
 > The **read-back window onto every change to the system's own configuration** — the surface a Super Admin (or a
 > section-scoped config admin) opens to answer *who changed this knob, from what to what, and when*. It renders the
@@ -77,7 +87,9 @@ and export is gated by the catalogued `PERM-compliance.download_records`. Next O
     retention honours the audit/compliance floor (AC-7.LOG.008.2); a compliance erasure of a *user* applies the
     redaction-tombstone to that user's `actor_id` attribution while retaining the change record (AC-7.LOG.008.4).
   - **`FR-7.LOG.005`** (tokens/secrets never appear in a log) — the viewer relies on this: because SECRET config rows are
-    a read-only presence indicator that is **never editable in-app** (surface-01 `#secrets`, OD-102), no secret value is
+    a read-only presence indicator that is **never editable in-app** (the SECRET edit class —
+    `config-edit-taxonomy.md` line 11 + rule 2: "Never shown, never UI-editable"; read-only on surface-01 `#secrets`
+    under `PERM-config.secrets`), no secret value is
     ever written to `config_audit_log`; the viewer can render `old_value`→`new_value` in the clear because they are, by
     construction, never credential material.
   - **`FR-1.PERM.005`** (`PERMISSION_NODES.md` is the source of truth) — the registry-governance context: config changes
@@ -221,7 +233,7 @@ every adjustment to system behaviour.
 | Element | Source | Notes |
 |---|---|---|
 | Change row (one per entry) | `config_audit_log` (surface-01 stub / FR-7.LOG.008) | `key`, `changed_at`, actor (from `actor_id`), a compact `old_value → new_value` summary; **key-prefix-scoped** — only permitted sections appear |
-| Config section label | derived from `key` prefix + `config-registry.md` | Which of the 11 surface-01 sections the key belongs to (auth/memory/tools/prompts/loops/guardrails/observability/agents/proactive/infra) |
+| Config section label | derived from `key` prefix + `config-registry.md` | Which of the **10 editable** surface-01 sections the key belongs to (auth/memory/tools/prompts/loops/guardrails/observability/agents/proactive/infra) — the 11th, `#secrets`, is SECRET-class and never UI-editable, so produces no audit rows |
 | Actor | `actor_id` → `users` (ADR-004) | Display name + role at time of change; a redaction-tombstoned actor reads "redacted (erased user)" (AC-7.LOG.008.4) |
 | Knob description + class | `config-registry.md` (`What it does`, LIVE/BOOT/REBUILD) | Read-only reflection (DRY); binds to the registry, never re-typed |
 | Filter bar | section / key / actor / date range | Client-side + server-side filter over the permitted, key-prefix-scoped set |

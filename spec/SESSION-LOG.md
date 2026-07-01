@@ -5,6 +5,90 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 43 — 2026-07-01 — SURFACE-01b (CONFIG-CHANGE AUDIT LOG VIEWER · `UI-config-audit-log`) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 🟢 PHASE 3 COMPLETE (14 of 14)
+
+**What happened:** Built `spec/03-surfaces/surface-01b-config-audit-log.md` — the **14th and final Phase-3 surface**: the
+**config-change audit-log viewer**, the read/review counterpart to surface-01 (surface-01 *writes* config + appends the
+`config_audit_log` row on every Save; surface-01b *reads back* who changed which knob, from→to, when, with a compliance
+export). Surface ID **`UI-config-audit-log`** is **named by OD-099** (surface-01's per-section "View audit log →" links
+already target it), **not minted here** — like `UI-COMMANDS` on surface-10. Pattern-matched surfaces 00–12. **Three
+sections in two buckets:** **A — Config-Change Timeline** (the filterable trail — config section / key / actor / date
+range; newest-first; key-prefix-scoped) · **B — Change Detail** (one `config_audit_log` entry in full — the
+`old_value`→`new_value` diff, actor + role, timestamp, the knob's `What it does` + LIVE/BOOT/REBUILD class) · **C —
+Compliance Export** (a client-presentable extract, **all-or-nothing**, gated by `PERM-compliance.download_records`).
+
+**KEY FINDING — a Rule-0 governance gap closed via change-control (OD-153).** `config_audit_log` is the system's **third
+audit sink** alongside `event_log` (C7, FR-7.LOG.001/006) and `guardrail_log` (C6 writes, C7 governs FR-7.LOG.007) and
+`access_audit` (C1 content FR-1.AUD.001/002, C7 storage via the FR-1.AUD.003 seam). But `config_audit_log` had **no FR
+owner** for its *governance* (append-only / retention / tamper-evidence / export) — it existed only as a
+`config-edit-taxonomy.md` rule-4 *write* mandate + a surface-01 Phase-4 schema stub. An unlogged / tamperable /
+un-exportable record of *who changed the system's own behaviour* is a **#1/#3 violation**. **Resolved: minted
+`FR-7.LOG.008` in C7 via change-control** (config_audit_log view / retention / tamper-evidence / export, mirroring
+FR-7.LOG.007 for guardrail_log + the FR-1.AUD.003 content→storage seam). **C7 34 → 35 FRs.** Precedent: OD-097 →
+FR-7.ALR.009, minted into C7 from Phase 2 the same way. New ACs: **AC-7.LOG.008.1** (export all-or-nothing, no silent
+truncation) · **.2** (retention floor ≥ `individual_deletion_audit_years`) · **.3** (append-only + tamper-evident) ·
+**.4** (redaction-tombstone on user-erasure — `config_audit_log` now owed to the C2 FR-2.MNT.017 / C10 FR-10.DEL.004
+erasure walk, a carry-forward) · **.5** (secrets never appear — SECRET rows are never UI-editable so never logged).
+
+**The clean PERM case — no entry node minted (fourth-plus consecutive: 10/11/12/01b).** The viewer needs **no new
+`PERM-config.view_audit` node** (OD-155): entry requires **≥1 `PERM-config.*` node**, and the row set is **key-prefix-
+scoped** to the caller's held config sections — the identical RLS surface-01 mandates for `config_values`/`config_audit_log`.
+A caller sees only the audit history of sections they may **manage** (a Finance-config admin never reads the infra-config
+trail; `#infra` history stays Super-Admin-only). Export is the distinct, higher act, gated by the already-catalogued
+**`PERM-compliance.download_records`** (Super Admin, unseeded — default-deny). No catalog edit.
+
+**4 ODs raised + resolved (surface-local; recommendations delegated, consistent with surfaces 05–12), logged OD-153–156:**
+- **OD-153** 🔑 **#1/#3 Rule-0 governance gap** → mint `FR-7.LOG.008` in C7 via change-control (above).
+- **OD-154** — layout: single filterable Config-Change Timeline landing + per-change Change Detail drawer + header Export
+  action (consistent with surface-06/09/11's list-landing + detail-drawer).
+- **OD-155** ⚠️ **#2 read authority (clean, no node)** — key-prefix-scoped `PERM-config.*` entry; export via
+  `PERM-compliance.download_records` (above).
+- **OD-156** — export behaviour: key/section/old→new/actor/changed_at over the filtered, key-prefix-scoped range,
+  all-or-nothing (AC-7.LOG.008.1); field-level diff; secrets never appear (SECRET class never UI-editable).
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN-WITH-FIXES — 0 HIGH · 2 MED · 3 LOW (all
+reconciled).** (a) Coverage PASS (FR-7.LOG.008 + ACs, FR-7.LOG.005/006/007, FR-1.PERM.005/AUD.003, FR-7.ALR.008/009,
+FR-7.RTP.001, OD-099, the OD-097→FR-7.ALR.009 precedent all resolve + paraphrase faithfully; over-claims seamed out).
+(b) CFG PASS (`event_log_retention_window` + `individual_deletion_audit_years`, both BOOT, read-only reflected).
+(c) DATA PASS (`config_audit_log` fields match the surface-01 stub exactly; no `client_slug`; Phase-4-flagged).
+(d) PERM PASS (no node minted; view = key-prefix `PERM-config.*`, all 10 exist; export = `PERM-compliance.download_records`
+unseeded; six roles). (e) #1/#2/#3 sweep PASS (no false "no changes" on a failed load; no out-of-scope config history;
+secrets never appear; export all-or-nothing). (f) Seams PASS. **Reconciled: MED-1** — the "SECRET never editable in-app"
+authority was mis-cited to **OD-102** (which actually resolves the `secret_manifest.last_rotated` deploy-hook source) →
+re-cited to the **SECRET edit class** (`config-edit-taxonomy.md` line 11 + rule 2) in **both** the surface and the
+propagated **AC-7.LOG.008.5**. **MED-2 (fixed at source)** — the surface + FR cited `config-edit-taxonomy` **rule 4** for
+auditing **LIVE/BOOT/REBUILD**, but rule 4 read "LIVE" only → **rule 4 amended via change-control** to cover all three
+editable classes (a BOOT/REBUILD change going unaudited is a #1/#3 gap; reconciles rule 4 with `config-registry.md`
+§cross-cutting + surface-01's Save, which already audit BOOT; SECRET produces no row). **LOW-1** — "the 11 sections" →
+"10 editable of the 11" (the 11th, `#secrets`, is SECRET-class, no audit rows). **LOW-2 (accepted)** — AC-7.MGM.002.4
+cited only as a server-authoritative-time analogy. **LOW-3** — the banner's own secrets reasoning re-cited to the SECRET
+class (same root as MED-1).
+
+**Files changed:** `surface-01b-config-audit-log.md` (new); `component-07-observability.md` (+FR-7.LOG.008 / AC.1–.5;
+header 34→35 FRs / LOG ×8; traceability footer 33→35); `config-edit-taxonomy.md` (rule 4 amended LIVE → LIVE/BOOT/REBUILD,
+change-control); `open-decisions.md` (OD-153–156 🟢 + rule-4-amendment note + reserve pointer → OD-157);
+`traceability-matrix.csv` (+FR-7.LOG.008 row); `README.md` (Phase-3 row → 🟢 COMPLETE 14 of 14 + surface-01b detail);
+`phase-playbooks.md` (Phase-3 status → 🟢 COMPLETE). This log. **No `PERMISSION_NODES.md` change** (no node minted). **No
+new OOS / AF.** **Phase-4 debt flagged in-file:** `config_audit_log` append-only + key-prefix RLS + indexes; owed to the
+C2 FR-2.MNT.017 / C10 FR-10.DEL.004 erasure walk (actor-attribution redaction-tombstone, mirroring how session 27 added
+event_log/guardrail_log via AC-2.MNT.017.4).
+
+**Note (git):** a stop-hook fired mid-session; the draft + change-control mint + register updates were committed + pushed
+as a WIP commit (honest message: gate pending) before this finalization. The gate reconciliation (MED/LOW fixes),
+README/playbook status bump, and this SESSION-LOG entry land in the follow-up commit.
+
+**🟢 PHASE 3 IS COMPLETE (14 of 14 surfaces signed off).** **Next step: Phase 4 — Data Model.** Consolidate every
+`DATA-`/`table.field` reference across the 14 surfaces + the 11 components into one coherent schema: tables, types, RLS
+policies (intra-client only, no `client_slug` — ADR-001/006), indexes (incl. HNSW per ADR / VEC), and migrations
+(`migration-discipline.md`). **Load the Phase-4 playbook** (`phase-playbooks.md` §"Phase 4"). The surfaces have already
+enumerated the Phase-4 data-binding stubs — start by harvesting every "Phase 4 data binding notes" section (each surface
+file has one) + each component's `DATA-` footer. **Net-new stores owed from Phase 3** (flagged across surfaces, none yet
+schema'd): `config_audit_log` (append-only, key-prefix RLS — surface-01/01b) · `conversations`/`messages` chat store
+(OD-135, surface-08) · `push_subscriptions` device-token store (surface-12) · `commands` user-defined-command store
+(surface-10) · the agent-health metric store + execution-plan store (surface-09) · `notifications` net fields
+(surface-07). Also resolve the historical `client_slug` question (already killed by ADR-001/OD-096 — confirm no app table
+carries it). Run the standing verification gate at Phase-4's close as usual.
+
 ## Session 42 — 2026-07-01 — SURFACE-12 (MOBILE VIEW · `UI-MOBILE-*`, 6 sub-surfaces) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 13 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-12-mobile.md` — the thirteenth Phase-3 surface (14th file): the **mobile

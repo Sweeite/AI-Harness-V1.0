@@ -1869,7 +1869,10 @@ Phase 3 (the push-delivery-reliability spike is recommended for Phase 5).
   (FR-7.LOG.005 by construction, AC-7.LOG.008.5). Export mirrors the caller's permitted view (never wider, #2); values
   shown plainly (the value change *is* the record — redacting it would defeat the audit).
 
-**FR-7.LOG.008 minted via change-control** (C7 34→35); **no PERM entry node minted** (view = existing `PERM-config.*`
+**FR-7.LOG.008 minted via change-control** (C7 34→35); **`config-edit-taxonomy.md` rule 4 amended via change-control**
+(gate MED-2) — the audit mandate broadened from "LIVE" to **all three editable classes (LIVE/BOOT/REBUILD)**, reconciling
+it with `config-registry.md` §cross-cutting + surface-01's Save (which already audit BOOT); SECRET produces no audit row
+(never UI-editable). **No PERM entry node minted** (view = existing `PERM-config.*`
 key-prefix scope; export = catalogued `PERM-compliance.download_records`). **`UI-config-audit-log` is named by OD-099**,
 not minted here (like `UI-COMMANDS`). Carry-forward logged: `config_audit_log` owed to the C2 FR-2.MNT.017 / C10
 FR-10.DEL.004 erasure walk (actor-attribution redaction-tombstone, Phase-4/C10). **Surface-01b is the fourteenth and

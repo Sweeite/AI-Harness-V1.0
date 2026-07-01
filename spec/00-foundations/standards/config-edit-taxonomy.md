@@ -22,7 +22,14 @@ Every config key is classified into exactly one edit class:
    justified exception, and it is still represented on a surface.
 3. **Each editable CFG row must specify:** validation rule (type, min/max, enum), default,
    the `PERM-` node required to edit it, and the `UI-` surface it lives on.
-4. **Changing a LIVE value must be audited** (who/when/old→new) in the config audit log.
+4. **Changing any editable value — LIVE, BOOT, or REBUILD — must be audited** (who/when/old→new)
+   in the config audit log. **SECRET produces no audit row** because it is never UI-editable (see
+   the SECRET class above + rule 2); a secret value therefore never reaches the log (this is what
+   `config_audit_log`/`FR-7.LOG.008 AC-7.LOG.008.5` rely on). *(Amended via change-control 2026-07-01,
+   session 43 / OD-153: broadened from "LIVE" to all three editable classes — a BOOT or REBUILD change
+   to a security-relevant knob going unaudited would be a #1/#3 gap; reconciles this rule with
+   `config-registry.md` §"cross-cutting rules" and surface-01's per-section Save, which already audit
+   BOOT changes.)*
 5. **REBUILD changes require explicit confirmation** and surface the rebuild's progress.
 
 ## The Config Admin surface (defined in Phase 3)

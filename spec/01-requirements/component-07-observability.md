@@ -409,8 +409,10 @@ node, OD-155); export is gated by `PERM-compliance.download_records`.
   `event_log` + `guardrail_log` in the erasure walk (AC-2.MNT.017.4, session 27); `config_audit_log` is now owed to
   that same walk (Phase-4/C10 carry-forward, logged this session).
 - **AC-7.LOG.008.5** — No credential material ever appears in `config_audit_log` (FR-7.LOG.005 holds by construction):
-  SECRET config rows are a read-only presence indicator, **never editable in-app** (surface-01 `#secrets`, OD-102), so
-  they never produce an audit row — `old_value`/`new_value` are, by construction, never secret values.
+  SECRET config rows are a read-only presence indicator, **never UI-editable** (the SECRET edit class —
+  `config-edit-taxonomy.md` line 11 + rule 2, "Never shown, never UI-editable"; read-only on surface-01 `#secrets` under
+  `PERM-config.secrets`), so they never produce an audit row — `old_value`/`new_value` are, by construction, never secret
+  values.
 
 ### RTP — Real-time vs polling
 
