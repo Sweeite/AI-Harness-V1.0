@@ -9,8 +9,13 @@ next session reads the top entry to know exactly where to resume.
 
 **SIGN-OFF (2026-07-01):** operator signed off on Phase 5 ("yep sign off"). README flipped 🟢; the four
 risk-posture ODs (OD-157–160) confirmed as chosen. Repo self-sufficiency test run before commit+push (handoff
-gate into Phase 6). **Operator's stated next intent: a full audit of the whole spec before Phase 6 issue
-decomposition** (discuss scope next).
+gate into Phase 6) — **PASS** (fresh chat can resume from the repo alone). **Operator's stated next intent: a
+full whole-spec audit (Phases 0–5) before Phase 6 issue decomposition** — the repeatable procedure is written
+in **`spec/00-foundations/pre-phase-6-audit-playbook.md`** (six dimensions · adversarial-verify pass ·
+mechanical pre-pass · sharding rules · workflow-or-parallel orchestration · pass criteria). **The audit may run
+in a NEW CHAT** (this one's context is heavy) — a fresh chat reads `CLAUDE.md` → `README.md` → that playbook
+and executes. **NEXT ACTION:** run the audit (kick-off prompt is in the playbook's "How to kick this off"
+section); a clean audit clears Phase 6.
 
 **What happened:** Entered **Phase 5 (Non-Functional Requirements)**. Per the "finalize before entry" rule,
 first **rewrote the Phase-5 playbook** from approach-altitude to full mechanical detail (9-file output
