@@ -31,9 +31,11 @@ OD-129 — `PERM-dashboard.overview` + `PERM-dashboard.ops`, formalising the FR-
 surface-05's `view_ops` working name) = **44 catalogued**; **+1 Dashboard Access node** transcribed 2026-07-01
 (surface-08 / OD-133 — `PERM-dashboard.workspace`, the third node of the family, anticipated by OD-129) = **45
 catalogued**; **+3 Asset Management nodes** transcribed 2026-07-01 (surface-09 / OD-137 — the `PERM-agents.*` family,
-homing the design-doc's "Create / edit agents" row + encoding the OD-080 two-tier split) = **48 catalogued**; plus **3
-owed** (surface-03 OD-115 ×2, surface-04 OD-117 ×1
-— defined in `open-decisions.md`, not yet transcribed, flagged below). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
+homing the design-doc's "Create / edit agents" row + encoding the OD-080 two-tier split) = **48 catalogued**; **+2 Memory Access nodes** transcribed 2026-07-01 (surface-11 /
+OD-115 — `PERM-memory.review_conflict` + `PERM-memory.approve_consolidation`, into the C2 — Memory section) + **+1
+Approval Authority node** transcribed 2026-07-01 (surface-11 / OD-117 — `PERM-action.review`, new Approval Authority
+section) = **51 catalogued** (closing the standing OD-115 ×2 / OD-117 ×1 owed-node debt: those three were defined in
+`open-decisions.md` since surfaces 03/04 but not transcribed until now). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
 they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM-memory.write`,
 `PERM-prompt.rollback`, `PERM-prompt.view_history`, `PERM-system.add_sensitivity`.
 
@@ -69,6 +71,8 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 | `PERM-ingestion.initiate` | Initiate memory / document ingestion | Super Admin, Admin | intra-client | C2 |
 | `PERM-ingestion.interview` | Run onboarding interviews | Super Admin, Admin | intra-client | C2 |
 | `PERM-ingestion.review` | Review the ingestion queue (include / defer) | Super Admin, Admin | intra-client | C2 |
+| `PERM-memory.review_conflict` | Resolve a quarantined hard-conflict write (keep-new / keep-existing / keep-both-with-note) on the surface-03 Conflicts queue | Super Admin, Admin | intra-client (+ matching clearance to view a Personal/Restricted memory in the conflict) | surface-03 / OD-115 |
+| `PERM-memory.approve_consolidation` | Approve/reject a Personal-tier merge or episodic→semantic summarise held for human approval (FR-2.MNT.014) on the surface-03 Consolidation queue | Super Admin — only | intra-client (**requires Personal clearance** — the queue is Personal-tier by definition) | surface-03 / OD-115 |
 
 ### C3 — Tool layer (homed in C1 / C6)
 | Node | Description | Default roles | Scope | Added-in |
@@ -135,6 +139,17 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 | `PERM-agents.edit_description` | Edit an agent's `description` / `max_tokens` / per-agent registry tuning; **roll back an execution-plan version** (PLAN.004, the Asset Management "task graphs" row) | Super Admin, Admin | intra-client | surface-09 / OD-137 |
 | `PERM-agents.edit_capability` | Edit `memory_scope` / `tools_allowed` / `enabled`; **add** a new agent; **disable** an agent (capability grants — an authority decision, OD-080, #2) | Super Admin — only | intra-client | surface-09 / OD-137 |
 
+### Approval Authority — the `PERM-action.*` family (FR-1.PERM.007 category; surface-04 / OD-117, minted via change-control 2026-06-30)
+> The FR-1.PERM.007 **Approval Authority** category was homed but had **no concrete node id** for *deciding* a held agent
+> action — the C5/C6/C7 FRs said "a human approves" (FR-5.QUE.005), "reviewer role" (FR-6.APR.005), "human resolutions"
+> (FR-6.ESC.003) but cited no node (`PERM-guardrail.edit_autonomy` gates the autonomy *config*, not a queue item).
+> surface-04 OD-117 mints the node under this existing category. Per-item authority is further narrowed at the item by
+> contextual routing (FR-6.APR.005), **no-self-approval** (caller ≠ item `originating_user_id`, AC-6.APR.005.3), and the
+> matching sensitivity clearance.
+| Node | Description | Default roles | Scope | Added-in |
+|---|---|---|---|---|
+| `PERM-action.review` | Enter the surface-04 approval queue and Approve / Reject / Modify a held agent action (a `task_queue` item in `awaiting_approval` or `flagged`) | Super Admin, Admin (Finance / Account Manager **only when granted** + only for items routed to their role, FR-6.APR.005) | intra-client (+ no-self-approval + matching clearance, per-item) | surface-04 / OD-117 |
+
 ### Guardrails — autonomy (pre-existing, glossary)
 | Node | Description | Default roles | Scope | Added-in |
 |---|---|---|---|---|
@@ -153,11 +168,12 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 | `PERM-fleet.offboard` | Initiate + execute client offboarding (FR-10.OFF.*); **hard-delete additionally requires two-person auth — a distinct second `PERM-fleet.offboard` holder, no self-second** (AC-10.DEL.006) | Super Admin — never delegable | management-plane | surface-06 / OD-125 |
 | `PERM-fleet.rotate_token` | Rotate a deployment's `internal_token` (FR-10.MGT.004) | Super Admin — never delegable | management-plane | surface-06 / OD-125 |
 
-> **⚠️ Owed to this catalog (known drift, flagged not hidden — #3):** two surface-03 nodes (OD-115
-> `PERM-memory.review_conflict`, `PERM-memory.approve_consolidation`) and one surface-04 node (OD-117
-> `PERM-action.review`) were minted via change-control and fully defined in `open-decisions.md` but have not yet been
-> transcribed into this catalog. They are build obligations (FR-1.PERM.005) and should be added here when their owning
-> surfaces are next touched. surface-06's nodes are transcribed above immediately, per this file's add-on-ship rule.
+> **✅ Owed-node debt CLOSED (2026-07-01, surface-11):** the two surface-03 nodes (OD-115 `PERM-memory.review_conflict`,
+> `PERM-memory.approve_consolidation`) and the one surface-04 node (OD-117 `PERM-action.review`) — minted via
+> change-control and defined in `open-decisions.md` since surfaces 03/04 but not previously transcribed — are now in the
+> catalog above (the two Memory nodes in the C2 — Memory section; `PERM-action.review` in the new Approval Authority
+> section). Catalog count 48→51. No node is owed-but-untranscribed as of this session; the add-on-ship rule holds going
+> forward.
 
 ---
 

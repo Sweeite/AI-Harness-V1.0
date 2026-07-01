@@ -5,6 +5,93 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 41 — 2026-07-01 — SURFACE-11 (MEMORY NAVIGATION / ENTITY BROWSER · `UI-MEMORY-NAV`) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF + 3 OWED CATALOG NODES CLOSED — 12 of 14 surfaces done
+
+**What happened:** Built `spec/03-surfaces/surface-11-memory-nav.md` — the twelfth Phase-3 surface: the **memory
+navigation / entity browser** of one client deployment, fed by **C2 (Memory)**. Minted **`UI-MEMORY-NAV`** (C2 references
+"entity browser", "entity detail", "memory detail view", and the dual keyword+vector search by description —
+FR-2.ENT.001/003/004, FR-2.MEM.002, FR-2.RET.002 — but assigns no `UI-` id). This is the **read/browse** counterpart to
+surface-03's memory-*review* queues: surface-03 gates the **write path**, surface-11 navigates **what is stored**.
+Pattern-matched surfaces 00–10.
+
+**Four sections in two playbook buckets:** **A — Entity Browser** (the entity-organised spine FR-2.ENT.001 — one card per
+cleared entity, type-filtered FR-2.ENT.002, Maturity % + `[Building]` marker FR-2.MAT.002/003, a duplicate-cluster flag
+for the fragmentation/AF-082 risk FR-2.ENT.005/MNT.010; Internal Org distinguished + walled FR-2.ENT.003) · **B — Entity
+Detail** (one entity's memories grouped by type FR-2.MEM.001 + filled/empty knowledge slots FR-2.MAT.001 + `external_refs`
+pointers FR-2.ENT.004) · **C — Memory Detail** (one row in full FR-2.MEM.002 — content, provenance source/source_ref,
+confidence + lifecycle FR-2.MNT.001, visibility×sensitivity tags FR-2.TAG, the **drillable supersede/summary chain**
+FR-2.MNT.006/007 nothing overwritten) · **D — Memory Search** (the dual keyword+vector search FR-2.RET.002, **clearance
+filter runs BEFORE ranking** FR-2.RET.004 — never shown-then-hidden).
+
+**The governing framing:** surface-11 is the **human window into the three memory non-negotiables** — **#1** integrity
+made *visible* (drillable supersede chains nothing overwritten MNT.007; a fragmented entity visible + mergeable
+ENT.005/AF-082; audited erasure cascade MNT.017) · **#2** clearance/visibility/Restricted enforced **before display**
+everywhere (RET.004, never ranked-then-stripped — a leak vector), Restricted **never auto-shown** (explicit+audited reveal
+only, RST.003), Internal Org walled from client-facing agents (ENT.003), every human edit routes through the **sole
+writer** (ADR-004 — never a direct `UPDATE`) · **#3** embed-failed memories were never stored so can't appear as a silent
+partial (WRT.007), low-confidence/contradicted memories shown *with state* not silently trusted (MNT.001), a failed/stale
+load reads "—" never a false-empty brain.
+
+**The clean PERM case — no entry node minted.** Memory *read* authority **is** the C1 clearance/visibility model applied
+at the row (FR-2.RET.004 / FR-1.RLS.003), the same model that decides what retrieval injects into any task — introducing a
+browse node would make this the *only* node-gated memory-read path, an inconsistency. Entry is any authenticated user; the
+row filter shows each user exactly their cleared subset; Restricted never auto-shown. Every **mutation** stays node-gated
+(`PERM-memory.write` writer-routed / `PERM-memory.delete`; conflict/consolidation decisions route to surface-03). Second
+consecutive no-mint surface (like surface-10).
+
+**4 ODs raised + resolved (recommendations delegated), logged OD-145–148:**
+- **OD-145** 🔑 **#2 read authority (clean, no node).** No new `PERM-memory.browse` — entry is clearance-scoped at the row
+  (above); mutations node-gated.
+- **OD-146** — layout: Entity Browser grid landing + detail drawer + Memory Detail + persistent Memory Search bar
+  (consistent with surface-06/09).
+- **OD-147** — entity-type + expected-slot **config** is edited on surface-01 (`PERM-config.*`); surface-11 reflects it
+  read-only + links out (keeps surface-11 a browser, DRY config home).
+- **OD-148** 🔑 **#2/#1 sole-writer edit model.** Read-first: verify/flag = a logged feedback signal (MNT.016); a content
+  correction routes *through* the sole-writer validate-and-commit (WRT.006), never a direct `UPDATE` (ADR-004).
+
+**CATALOG HOUSEKEEPING — the 3 long-owed nodes CLOSED (separate from surface-11's ODs).** The nodes flagged "owed" in
+`PERMISSION_NODES.md` since surfaces 03/04 — `PERM-memory.review_conflict` + `PERM-memory.approve_consolidation`
+(surface-03 / OD-115, into the **C2 — Memory** section) and `PERM-action.review` (surface-04 / OD-117, into a **new
+Approval Authority** section under FR-1.PERM.007) — were **transcribed into the catalog** with their full 4-field defs
+(matching `open-decisions.md` verbatim). Catalog **48→51**; the "⚠️ Owed to this catalog" block flipped to "✅ CLOSED".
+surface-11 is in the Memory neighborhood, the natural point the session-40 handoff named for this.
+
+**Verification gate (independent zero-context subagent, checks a–f): CLEAN — 0 HIGH · 0 MED · 2 LOW (both benign).**
+(a) Coverage PASS — every cited C2 FR/AC (MEM/ENT/TAG/RET/MNT/MAT) resolves + paraphrases faithfully; no invented AC; no
+over-claim (pill → C4/C8, ingestion → surface-03, agent-actions → surface-04 seamed out; never writes memory directly).
+(b) CFG PASS — all four keys real, read-only (edited surface-01), `cold_start_full_threshold` = 80% verified. (c) DATA
+PASS — no `client_slug`; read is row-level clearance RLS, no `service_role` browse; MEM.002/ENT.004 field lists match.
+(d) PERM PASS — no entry node minted; the 3 transcribed nodes present with 4-field defs matching open-decisions.md; count
+51, owed-debt CLOSED; six roles, no role-string gates. (e) #1/#2/#3 sweep PASS — clearance/Restricted enforced *before*
+display everywhere (no shown-then-hidden leak); Restricted explicit+audited; Internal Org walled; supersede chains
+drillable/retained; failed load never an empty brain; every edit sole-writer-routed. (f) Seams PASS. **LOW-1 (not a
+surface defect — the surface was MORE correct than its source):** the surface's duplicate-cluster cite `FR-2.MNT.010` is
+right; **the C2 component's own L219 prose mis-cited it as `FR-2.MNT.011`** (structural vs relevance erosion) — **the stale
+C2 cross-ref was corrected this session** (anti-hallucination reference-verify). **LOW-2:** the gate banner's "pending"
+placeholder replaced with the PASS result.
+
+**Files changed:** `surface-11-memory-nav.md` (new); `PERMISSION_NODES.md` (+2 Memory nodes / +1 Approval Authority
+section+node / Status count 48→51 / owed-block → CLOSED); `component-02-memory.md` (FR-2.ENT.005 L219 stale cross-ref
+MNT.011→MNT.010); `open-decisions.md` (OD-145–148 🟢 + reserve pointer → OD-149); `README.md` (Phase-3 row → 12 of 14 +
+surface-11 detail); `phase-playbooks.md` (status → 12 of 14). This log. **No matrix change** — consistent with surfaces
+00–10 (the `UI-MEMORY-NAV` stub is rendered; served FRs are existing C2 rows; the 3 transcribed PERM nodes are catalog
+additions, not FR rows). **No new OOS / AF** (AF-067 latency + AF-082 fragmentation are existing, cited not minted).
+**Phase-4 debts flagged in-file:** the clearance-scoped browse read-path (`DATA-memories` / `DATA-entities`, RLS-gated, no
+`service_role` browse, no `client_slug`), the expected-slots fill-state derivation, the `access_audit` write on
+Confidential/Restricted/Internal-Org view, and the sole-writer submit path for human corrections. **Catalog housekeeping:
+now fully current** — no node owed-but-untranscribed as of this session.
+
+**Next step:** **`surface-12-mobile.md`** — the **mobile surfaces** (6 sub-surfaces). FR source is cross-component: the
+mobile treatments the prior surfaces each seamed here — the **mobile command menu** (C9 FR-9.CMD.005, tap-optimised quick
+commands, distinct from surface-10's *management*), mobile chat/approvals/notifications (surfaces 04/07/08), the
+read-mostly mobile degrades noted on surfaces 09/10/11. Load the per-surface "Mobile" sections already written
+(00–11 each carry one) + FR-9.CMD.005 + the C7 RTP realtime contract (the two Realtime surfaces on mobile). The **one
+remaining after that is `surface-01b-config-audit-log.md`** (`UI-config-audit-log`, OD-099 — the config-change audit-log
+viewer surface-01's "View audit log →" links to). Copy `_TEMPLATE.md`; follow the Phase 3 playbook; run the gate before
+sign-off. **After surface-12 + surface-01b, Phase 3 is complete → Phase 4 (Data model).**
+
+---
+
 ## Session 40 — 2026-07-01 — SURFACE-10 (CUSTOM COMMAND MANAGEMENT · `UI-COMMANDS`) DRAFTED, RESOLVED, GATE-CLEAN, SIGNED OFF — 11 of 14 surfaces done
 
 **What happened:** Built `spec/03-surfaces/surface-10-commands.md` — the eleventh Phase-3 surface: the **custom-command

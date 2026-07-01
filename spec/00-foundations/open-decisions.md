@@ -1770,6 +1770,39 @@ owed to C9/C5).
 
 ---
 
+## OD-145…OD-148 — surface-11 (Memory Navigation / Entity Browser, `UI-MEMORY-NAV`) read-authority / layout / config-ownership / sole-writer-edit 🟢 RESOLVED (2026-07-01, surface-local; recommendations delegated)
+
+- **OD-145** 🔑 🟢 — **#2 read authority (clean case — no node minted).** Does a memory browser need a new
+  `PERM-memory.view`/`.browse` entry node, or is memory *read* governed by the existing clearance model? Resolved: **no new
+  node — entry is any authenticated user; the row-level clearance/visibility/Restricted RLS (FR-2.RET.004 / FR-1.RLS.003)
+  is the gate**, showing each user exactly the cleared subset their retrieval would surface (Restricted never auto-shown,
+  RST.003). Memory *read* authority **is** the C1 clearance model everywhere else (retrieval is clearance-scoped, not
+  node-gated); a browse node would make this the *only* node-gated memory-read path — an inconsistency that would either
+  over-gate (hiding a user's own cleared business knowledge) or be redundant. Every **mutation** stays node-gated
+  (`PERM-memory.write` writer-routed / `PERM-memory.delete`); conflict/consolidation decisions route to surface-03. Like
+  surface-10, a clean no-mint case.
+- **OD-146** 🟢 — **Layout.** Entity Browser grid/list **landing + per-entity detail drawer + a Memory Detail view within
+  it + a persistent Memory Search bar** (dual keyword+vector) in the header. Not fully tabbed (separates a memory from its
+  entity), not a single scroll (buries search + detail). Consistent with surface-06/09 grid-landing + detail-drawer
+  (OD-126/OD-138).
+- **OD-147** 🟢 — **Entity-type + expected-slot config ownership.** The config *values* (entity-type list FR-2.ENT.002,
+  expected slots FR-2.MAT.001) live in the config registry, **edited on surface-01 (`PERM-config.*`)**; surface-11
+  **reflects them read-only and links out** — keeping surface-11 a *browser*, not a config editor (DRY, single config
+  home, no split authority).
+- **OD-148** 🔑 🟢 — **#2/#1 sole-writer edit model.** Given ADR-004 (the Memory Agent is the sole writer), a cleared user
+  "corrects" a memory as follows: **read-first — a verify/flag is a logged feedback signal (FR-2.MNT.016); a content/tier
+  correction is an authorized request (`PERM-memory.write`) that routes *through* the sole-writer validate-and-commit
+  (per-entity lock + contradiction check, FR-2.WRT.006), never a direct `UPDATE`.** A direct row edit would break the
+  invariant that protects knowledge integrity; no-edit-at-all would drop the mandated human-correction loop.
+
+**No PERM entry node minted** (OD-145 clean case). **Catalog housekeeping this session (separate from surface-11's ODs):**
+the 3 long-owed nodes — `PERM-memory.review_conflict` + `PERM-memory.approve_consolidation` (surface-03 / OD-115) +
+`PERM-action.review` (surface-04 / OD-117) — **transcribed into `PERMISSION_NODES.md`** (count 48→51), closing the standing
+dangling-ID debt flagged in that file since surfaces 03/04. One NET-NEW Phase-4 read binding note (`DATA-memories` /
+`DATA-entities` clearance-scoped browse); one C2 stale cross-ref corrected (FR-2.ENT.005 L219: MNT.011→**MNT.010**).
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1788,5 +1821,7 @@ owed to C9/C5).
 > Asset Management node family via change-control — encoding the locked OD-080 capability-vs-description authority split).
 > OD-141–144 by `spec/03-surfaces/surface-10-commands.md` (surface-local; all resolved in-file; **no PERM node minted** —
 > `PERM-commands.manage` + `PERM-system.tune` already catalogued; OD-142 + OD-143 pushed into C9 via change-control as
-> AC-9.CMD.006.4 + AC-9.CMD.008.4).
-> Next OD number: OD-145.
+> AC-9.CMD.006.4 + AC-9.CMD.008.4). OD-145–148 by `spec/03-surfaces/surface-11-memory-nav.md` (surface-local; all
+> resolved in-file; **no PERM entry node minted** — memory read is clearance-scoped, OD-145; the 3 long-owed nodes
+> OD-115 ×2 + OD-117 transcribed to `PERMISSION_NODES.md` as housekeeping, 48→51).
+> Next OD number: OD-149.

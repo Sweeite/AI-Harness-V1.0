@@ -216,7 +216,7 @@
 - **Behaviour:**
   - Happy path: a mention carrying a system ID resolves by `external_refs`; otherwise a normalised name + type match resolves it; a confident match links to the existing entity.
   - Branches: an ambiguous/low-confidence match → per OD-033, either flag for human confirmation or create-and-flag-for-merge (never silently guess into the wrong entity, #1).
-  - Edge / failure: duplicate entities that slip through are caught by the **structural erosion** check (FR-2.MNT.011, duplicate clusters) and a merge path.
+  - Edge / failure: duplicate entities that slip through are caught by the **structural erosion** check (FR-2.MNT.010, duplicate clusters — *corrected 2026-07-01 from a stale FR-2.MNT.011 cross-ref; MNT.010 is structural erosion, MNT.011 is relevance erosion; surface-11 gate*) and a merge path.
 - **Data touched:** `DATA-entities` (read/match/create).
 - **Permissions:** resolution runs in the writer's `service_role` path.
 - **Config dependencies:** an entity-match confidence threshold (Phase 2).
