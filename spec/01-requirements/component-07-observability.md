@@ -3,8 +3,10 @@
 - **Status:** 🟢 **Approved 2026-06-26 (session 24)** — 33 FRs, verification gate run + all 13 findings reconciled;
   ODs **OD-067…OD-074** resolved (OD-068 cost-ladder ownership + OD-074 log-erasure user-decided; the rest
   delegated); feasibility **block R (AF-118…AF-120)** logged. **Change-control 2026-06-27 (session 28): +FR-7.ALR.009
-  (alert routing config + unroutable-alert-fails-loud), closing OD-097 — now 34 FRs.** Area codes: LOG ×7 · RTP ×4 ·
-  ALR ×9 · COST ×4 · MGM ×5 · VIEW ×3 · OPT ×2 (**34 FRs**). C7 is
+  (alert routing config + unroutable-alert-fails-loud), closing OD-097 — now 34 FRs.** **Change-control 2026-07-01
+  (session 43, from surface-01b): +FR-7.LOG.008 (config_audit_log view/retention/tamper-evidence/export), closing
+  OD-153 — the third audit sink now has a governance owner, mirroring FR-7.LOG.007 for guardrail_log — now 35 FRs.**
+  Area codes: LOG ×8 · RTP ×4 · ALR ×9 · COST ×4 · MGM ×5 · VIEW ×3 · OPT ×2 (**35 FRs**). C7 is
   the **observability backbone** — the data + logic layer of "how you know what the system is doing": the
   `event_log`, the real-time-vs-polling contract, the alerting rules + routing + escalation, cost tracking, the
   management-plane cross-deployment push, and log retention/export. **The dashboard *surfaces* (the five role views,
@@ -379,6 +381,37 @@ compliance minimum, never below it).
   events) while the subject is unidentifiable; the redaction is itself a tamper-evident, logged operation (it does
   not violate AC-7.LOG.007.3's integrity check, which distinguishes an authorized redaction from tampering).
 
+#### FR-7.LOG.008 — The `config_audit_log` view, retention, tamper-evidence, and export (config-config audit backbone)
+**Status:** Approved · **Cites:** OD-153 (surface-01b); `standards/config-edit-taxonomy.md` rule 4; surface-01
+`config_audit_log` schema stub; parallels FR-7.LOG.007 (guardrail_log) + FR-1.AUD.003 (C1-content → C7-storage seam)
+· **Added via change-control 2026-07-01 (session 43, from surface-01b)**
+C7 owns the **dedicated dashboard view, retention, tamper-evidence, and export** of the `config_audit_log` — the
+system's **third audit sink** alongside `event_log` (FR-7.LOG.001/006) and `guardrail_log` (FR-7.LOG.007). The
+**write** side stays with the config save path (`config-edit-taxonomy.md` rule 4 — every LIVE/BOOT/REBUILD change is
+audited who/when/old→new; surface-01's per-section Save appends the row), exactly as C6 writes `guardrail_log` and C7
+governs it. The trail is compliance-grade trust evidence (*who changed the system's own behaviour*); an unlogged,
+tamperable, or un-exportable config-change record is a **#1/#3 violation**. Rendered on **`UI-config-audit-log`**
+(surface-01b, OD-099); read authority is key-prefix-scoped to the caller's `PERM-config.*` nodes (no separate view
+node, OD-155); export is gated by `PERM-compliance.download_records`.
+- **AC-7.LOG.008.1** — An export of `config_audit_log` over a selected range + `PERM-config.*` key-prefix scope
+  returns **every** matching row (no silent truncation) in a client-presentable format, or **fails loudly** — never a
+  silent partial file (an all-or-nothing export; a partial read aborts to an error).
+- **AC-7.LOG.008.2** — `config_audit_log` retention honours the audit/compliance floor (the same floor as
+  `event_log`/`guardrail_log`, ≥ the `individual_deletion_audit_years` legal minimum); a pruning run never removes a
+  floor-window row and is itself logged (never silent).
+- **AC-7.LOG.008.3** — **Append-only + tamper-evident**: any post-hoc modification of a `config_audit_log` row is
+  detectable (append-only + integrity check, outside authorized retention pruning) — the record of who changed
+  system behaviour is as immutable as the `guardrail_log` (AC-7.LOG.007.3).
+- **AC-7.LOG.008.4** — Compliance erasure of a *user* (C10 FR-10.DEL.004 / C2 FR-2.MNT.017's transitive walk) applies
+  the **redaction-tombstone** to that user's `actor_id` attribution: the change record + `key`/`old_value`/
+  `new_value`/`changed_at` are **retained** (a config change happened), the actor is made unidentifiable — the erasure
+  is itself a tamper-evident, logged operation. **Carry-forward:** C2 FR-2.MNT.017 / C10 FR-10.DEL.004 name
+  `event_log` + `guardrail_log` in the erasure walk (AC-2.MNT.017.4, session 27); `config_audit_log` is now owed to
+  that same walk (Phase-4/C10 carry-forward, logged this session).
+- **AC-7.LOG.008.5** — No credential material ever appears in `config_audit_log` (FR-7.LOG.005 holds by construction):
+  SECRET config rows are a read-only presence indicator, **never editable in-app** (surface-01 `#secrets`, OD-102), so
+  they never produce an audit row — `old_value`/`new_value` are, by construction, never secret values.
+
 ### RTP — Real-time vs polling
 
 #### FR-7.RTP.001 — The hybrid real-time/polling contract
@@ -697,5 +730,6 @@ yet have; v1 does not silently imply it exists.
 
 ## Traceability
 
-**33 rows** (LOG ×7 · RTP ×4 · ALR ×8 · COST ×4 · MGM ×5 · VIEW ×3 · OPT ×2) wired into `traceability-matrix.csv`;
-`system-map/07-observability.md` built.
+**35 rows** (LOG ×8 · RTP ×4 · ALR ×9 · COST ×4 · MGM ×5 · VIEW ×3 · OPT ×2) wired into `traceability-matrix.csv`;
+`system-map/07-observability.md` built. *(Count updated via change-control: +FR-7.ALR.009 session 28, OD-097;
++FR-7.LOG.008 session 43, OD-153/surface-01b.)*

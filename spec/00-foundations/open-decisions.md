@@ -1837,6 +1837,46 @@ Phase 3 (the push-delivery-reliability spike is recommended for Phase 5).
 
 ---
 
+## OD-153…OD-156 — surface-01b (Config-Change Audit Log Viewer, `UI-config-audit-log`) governance-owner / layout / read-authority / export-behaviour 🟢 RESOLVED (2026-07-01, surface-local; recommendations delegated)
+
+- **OD-153** 🔑 🟢 **#1/#3 Rule-0 governance gap (change-control mint).** `config_audit_log` is the system's **third
+  audit sink** (alongside `event_log` FR-7.LOG.001/006 and `guardrail_log` FR-7.LOG.007), but had **no FR owner** for its
+  governance — only a `standards/config-edit-taxonomy.md` **rule-4** *write* mandate (who/when/old→new) + a surface-01
+  Phase-4 schema stub. An unlogged / tamperable / un-exportable config-change record is a **#1/#3 violation** (the record
+  of who changed system behaviour is safety-critical). **Resolved: mint `FR-7.LOG.008` in C7 via change-control** —
+  config_audit_log view / retention / tamper-evidence / export, mirroring FR-7.LOG.007 (guardrail_log) + the FR-1.AUD.003
+  seam (C1 owns audit *content*, C7 owns storage/retention/export). C7 **34 → 35 FRs**. Precedent: **OD-097 →
+  FR-7.ALR.009** minted into C7 from Phase 2 the same way. New ACs: AC-7.LOG.008.1 (export all-or-nothing, no silent
+  truncation) · .2 (retention floor) · .3 (append-only + tamper-evident) · .4 (redaction-tombstone on user-erasure —
+  `config_audit_log` now owed to the C2 FR-2.MNT.017 / C10 FR-10.DEL.004 erasure walk, a carry-forward) · .5
+  (secrets-never-appear-by-construction — SECRET rows aren't editable in-app so never logged).
+- **OD-154** 🟢 — **Layout.** How to structure timeline + detail + export. Resolved: **a single filterable
+  Config-Change Timeline landing + a per-change Change Detail drawer + a header Export action** — the natural
+  audit-review shape (scan time, drill a change); consistent with surface-06/09/11's list-landing + detail-drawer
+  (OD-126/138/146). Not tabbed, not per-section sub-pages (both fragment the trail).
+- **OD-155** ⚠️ 🟢 **#2 read authority (clean, no node).** Does the viewer need a new `PERM-config.view_audit` node?
+  Resolved: **no new node — entry requires ≥1 `PERM-config.*` node; the row set is key-prefix-scoped to the caller's held
+  config sections** (the identical RLS surface-01 mandates for `config_values`/`config_audit_log`); a caller sees only
+  the audit history of sections they may **manage** (a Finance-config admin never reads the infra-config trail;
+  `PERM-config.infra` history stays Super-Admin-only). **Export** is the distinct, higher act, gated by the catalogued
+  **`PERM-compliance.download_records`** (Super Admin, unseeded — default-deny) and itself key-prefix-scoped. A separate
+  view node would fork read authority from the edit authority that produced the rows. **No node minted** (a clean case,
+  like surfaces 10/11/12).
+- **OD-156** 🟢 — **Export behaviour + diff rendering + secret handling.** Resolved: the export = key / section /
+  old→new / actor / changed_at over the **filtered, key-prefix-scoped** range, **all-or-nothing** (AC-7.LOG.008.1 — every
+  row or a loud failure, never a silent partial); old→new rendered as a **field-level diff**; **secrets never appear**
+  because SECRET rows are a read-only presence indicator, never editable in-app, so never produce an audit row
+  (FR-7.LOG.005 by construction, AC-7.LOG.008.5). Export mirrors the caller's permitted view (never wider, #2); values
+  shown plainly (the value change *is* the record — redacting it would defeat the audit).
+
+**FR-7.LOG.008 minted via change-control** (C7 34→35); **no PERM entry node minted** (view = existing `PERM-config.*`
+key-prefix scope; export = catalogued `PERM-compliance.download_records`). **`UI-config-audit-log` is named by OD-099**,
+not minted here (like `UI-COMMANDS`). Carry-forward logged: `config_audit_log` owed to the C2 FR-2.MNT.017 / C10
+FR-10.DEL.004 erasure walk (actor-attribution redaction-tombstone, Phase-4/C10). **Surface-01b is the fourteenth and
+final Phase-3 surface — Phase 3 is now COMPLETE.**
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1860,5 +1900,8 @@ Phase 3 (the push-delivery-reliability spike is recommended for Phase 5).
 > OD-115 ×2 + OD-117 transcribed to `PERMISSION_NODES.md` as housekeeping, 48→51). OD-149–152 by
 > `spec/03-surfaces/surface-12-mobile.md` (surface-local; all resolved in-file; **no PERM entry node minted** — mobile
 > inherits each screen's desktop node, OD-149/151; OD-150 defers a native wrapper → OOS-040 + flags a Phase-5
-> push-delivery-reliability spike; one net-new `push_subscriptions` device-token store owed to C7).
-> Next OD number: OD-153.
+> push-delivery-reliability spike; one net-new `push_subscriptions` device-token store owed to C7). OD-153–156 by
+> `spec/03-surfaces/surface-01b-config-audit-log.md` (surface-local; all resolved in-file; **OD-153 mints `FR-7.LOG.008`
+> in C7 via change-control** — the config_audit_log governance owner, C7 34→35; **no PERM entry node minted** — view is
+> key-prefix-scoped `PERM-config.*`, export is catalogued `PERM-compliance.download_records`, OD-155).
+> Next OD number: OD-157.
