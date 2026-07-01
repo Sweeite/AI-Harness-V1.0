@@ -344,17 +344,141 @@ Claude drafts, harvests, finds gaps, verifies.
 **Hand-off:** the finished schema underpins Phase 5 (NFR — security/backup rest on it) and the
 Phase 6 build issues (every issue's data layer is now unambiguous).
 
-## Phase 5 — Non-Functional  *(approach altitude — finalize before entry)*
+## Phase 5 — Non-Functional  *(full mechanical detail — finalized 2026-07-01, session 45)*
 
-**Goal:** All NFRs explicit (`NFR-*`).
+**Goal:** Every non-functional requirement made explicit and traceable (`NFR-*`) — the *how-safe /
+how-reliable / how-compliant / how-fast / how-provable* overlay on top of the functional spec.
 
-**Approach:** Security, infrastructure/deploy, observability, cost (envelope + ladder per ADR-003),
-compliance, **backup & disaster recovery** (resolve **OD-009** — ownership/verification under
-client-owned Supabase; a *tested* restore), and the test strategy (how `AC-*` become real tests
-and reach `Verified`).
+**Why this phase exists (plain English):** Phases 1–4 nailed down *what the system does*, *what it
+looks like*, and *what its data is*. But "the memory brain must never silently lose knowledge,"
+"a client's data must physically never leak to another silo," "cost must stay under the envelope,"
+"a restore must actually work," and "every acceptance criterion must become a real test" are not
+features you can point at in one component — they are **cross-cutting properties** that live in the
+seams between components. Phase 5 is where those properties stop being implied and become named,
+owned, testable requirements. It is the phase that turns the three non-negotiables
+(never lose knowledge · never do what it shouldn't · never fail silently) from a slogan at the top
+of `CLAUDE.md` into `NFR-*` rows a builder and an auditor can check off.
 
-**Done when:** every NFR domain has explicit requirements; OD-009 resolved. **Who decides:** user
-on risk posture + backup ownership.
+**The cardinal rule of this phase — reference, don't re-spec.** Most non-functional *machinery*
+already exists as the functional half of a component: security enforcement lives in **C6**
+(guardrails) + **ADR-007** (injection posture) + **ADR-001** (isolation boundary); observability
+lives in **C7**; infra/provisioning/deploy in **C10** + **ADR-005**; cost in **ADR-003** + C7's
+meter; compliance/erasure/residency in **C10**; backup/DR in **ADR-008**. Phase 5 does **not**
+re-write those FRs. Each `NFR-*` **cites** the FRs/ADRs that implement it and adds only what is
+genuinely non-functional and not yet written: a **posture** (the risk stance), a **threshold/target**
+(a number the design implied but never stated — p95 latency, RPO, cost ceiling), a **duty** (a
+property that must hold across components, e.g. "no audit sink is ever silently mutable"), or a
+**verification method** (how we will *prove* the property — DOCS/SPIKE/EVAL/LOAD). If a Phase-5
+sweep finds a property with **no** functional owner, that is a real gap → mint the missing FR back
+into its component via **change-control** (exactly as Phase 3 minted PERM nodes and Phase 4 minted
+owed-back `DATA-` cites).
+
+**The feasibility register is the spine of the test-strategy domain.** Every `AF-*` in
+`feasibility-register.md` is a paper-not-proven claim with a verification method. Phase 5's
+`test-strategy.md` is where those become a **de-risking schedule**: each AF gets an owner, a
+go/no-go gate, and a link to the `NFR-*`/FR it currently holds on paper. The priority spikes
+(**AF-001** cost · **AF-002** retrieval · **AF-004** provisioning · **AF-068** injection red-team ·
+**AF-069/070/072** backup restore/health/dump-window · **AF-019/067** LOAD) are the load-bearing
+ones. No `NFR-*` may claim a property is *proven* — only *specified*, with the spike that will prove
+it named.
+
+**Scope call (locked at entry):**
+- **OD-009 is already RESOLVED → ADR-008** (2026-06-23). Phase 5 does **not** re-decide backup
+  ownership/governance — it **specs the machinery** ADR-008 locked (restore rehearsal, off-platform
+  job, backup-health push, RPO/RTO posture). The playbook's older "resolve OD-009" wording is
+  superseded by "implement ADR-008 as `NFR-DR.*`."
+- **Disaster-recovery posture is backup-restore-with-downtime, not hot failover** (ADR-008, at
+  ADR-001's ≤~20-user scale). Phase 5 states the RPO/RTO numbers; it does not introduce HA.
+- **Backup/DR storage-*schema* concerns already landed in Phase 4** (or are on the mgmt plane).
+  Phase 5 owns the *operational* backup/DR requirements, not new tables.
+- **Accessibility (`NFR-A11Y`)** is included only as a **baseline** (keyboard/contrast/semantic
+  markup for the 14 surfaces) — the design doc never specified an a11y standard, so per
+  anti-hallucination we set a modest floor and log anything richer as OOS, not invent WCAG-AAA.
+
+**ID-convention amendment (one line, change-control):** the `NFR-*` domain codes
+(`SEC/INF/OBS/COST/CMP/PERF/TEST/A11Y`) already exist in `id-conventions.md`, **but there is no
+backup/DR code.** Add **`DR` — disaster recovery / backup** to the `id-conventions.md` NFR domain
+list at Phase-5 entry (backup/DR is a first-class domain in the plan and warrants its own file +
+ID space rather than being buried under `INF`).
+
+### Output file structure (`spec/05-non-functional/`)
+
+| File | Domain | Contents |
+|---|---|---|
+| `_nfr-inventory.md` | — | The **harvest** — every non-functional concern surfaced across the 11 components, 14 surfaces, ADRs, config registry, and the AF register, deduplicated, with owning source + which NFR domain it belongs to. The working ledger the domain files are built from (like Phase-4's `_data-inventory.md`). |
+| `security.md` | `NFR-SEC` | Isolation boundary as a security property (ADR-001 §3/§7 — physical, never an RLS predicate); injection containment posture (ADR-007 + AF-068 red-team); secrets custody (the 11 registry secrets, rotation, mgmt-plane token); auth/session posture (C0 Block J); data custody + least-privilege (`service_role` blast radius). |
+| `infrastructure.md` | `NFR-INF` | Provisioning reliability (ADR-005 §5 + AF-004); the release model (auto-deploy · canary/release-train · rollback-by-redeploy · version-skew bound — C10 DEP); migration propagation + per-deployment failure isolation (C10 MIG + AF-065); runtime/environment reliability + the mgmt-plane separation. |
+| `performance.md` | `NFR-PERF` | The numeric targets the design implied but never stated: retrieval latency + quality (AF-002/019), RLS hot-path cost (`(select …)` initPlan, AF-067), HNSW recall-under-RLS (AF-019), queue/loop throughput, and the **scale envelope** (≤~20 users/silo per ADR-001) every target is stated against. |
+| `observability.md` | `NFR-OBS` | The **#3 (never fail silently)** duty made a requirement: the silent-failure detector as an NFR (not just a panel), alert-delivery guarantees + the self-watching alert engine, log-sink durability/retention/immutability, the mgmt-plane health push completeness. References C7; adds the *bar*, not new panels. |
+| `cost.md` | `NFR-COST` | The economic envelope + ladder (ADR-003 applied): estimate-grade metering, the soft/hard thresholds, cost-per-client viability (AF-001), and the ladder's enforce-path (C6 FR-6.RTL.004 decides, C5 executes, C7 meters). States the numbers + the "cost-unknown never reads $0" duty. |
+| `compliance.md` | `NFR-CMP` | Data residency (AU / `ap-southeast-2`, AF-071); intentional-retention + the erasure/offboarding rigor (C10 DEL/OFF + C2 MNT.017); audit-sink immutability as a compliance requirement (the three sinks + the append-only trigger from Phase-4 re-audit); legal minimums (AF-136). |
+| `backup-dr.md` | `NFR-DR` | ADR-008 as operational requirements: RPO (~1 h default) / RTO (downtime-restore) targets; the hourly off-platform dump (AF-072 dump-window) + client-owned encrypted destination; the operator-run restore rehearsal (AF-069); backup-health on the mgmt-plane push (AF-070 + FR-7.MGM.005); the billing-lapse-deletion early-warning. |
+| `test-strategy.md` | `NFR-TEST` | How every `AC-*` becomes a real test and reaches `Verified`: the test-layer taxonomy (unit/integration/RLS-policy/E2E/LOAD/EVAL/red-team); the **AF de-risking schedule** (each AF → owner + gate + the NFR/FR it holds); the verification-gate lineage (Phase 1–4 gates → build-time tests); the confidence story (paper-vs-proven, stated openly). |
+
+Create `spec/05-non-functional/` and these nine files. There is no single "spine" file (unlike
+Phase-4's `schema.md`); the spine is the **three non-negotiables**, and each domain file shows how
+its `NFR-*` rows uphold them. `test-strategy.md` is the closing keystone — it proves every other
+file's claims are testable.
+
+### Steps
+
+1. **Harvest (subagent fan-out).** Offload the bulk read (context discipline). Independent subagents:
+   one over the 11 components' seams + `⚠️ FEASIBILITY` tags + the "never fail silently / never lose /
+   never do what it shouldn't" hooks; one over the 14 surfaces' error/stale-state treatments (these
+   are latent `NFR-OBS`/`NFR-SEC` requirements); one over the ADRs (001/003/005/007/008) for the
+   posture each locked; one over `feasibility-register.md` (every AF → domain + method + what it
+   holds); one over the config registry for the tunable safety/cost/perf thresholds. Merge into
+   `_nfr-inventory.md`, tagged by domain, deduplicated, each with a source cite.
+2. **Amend `id-conventions.md`** — add the `DR` domain code (change-control, one line + a dated note).
+3. **Draft each domain file's `NFR-*` rows.** One row per genuine non-functional property. Each row:
+   an ID (`NFR-<domain>.<nnn>`), a one-line statement, the **posture/target/duty** it fixes, the
+   **FRs/ADRs it cites** (reference-don't-re-spec), the **AF** that will prove it (if paper-not-proven),
+   and `AC-NFR-*` acceptance criteria where the property is checkable. Zero-pad 3 digits, sequential
+   per domain.
+4. **Gap-sweep → change-control.** Where a property has no functional owner (no FR implements it),
+   mint the missing FR back into its component via change-control and cite it. Where a property is
+   only paper, ensure its AF exists (add to the register if missing).
+5. **Write `test-strategy.md`** — the AF de-risking schedule + the AC→test mapping + the confidence
+   story. Every AF gets an owner, a go/no-go gate, and the NFR/FR it currently holds on paper.
+6. **Log Open Decisions (`OD-*`)** for every genuine risk-posture fork the user must own (a threshold
+   with a real trade-off, an "accept-this-risk-for-v1-vs-harden-now" call, an a11y floor choice).
+   Options + recommendation each. **User resolves.**
+7. **Run the verification gate** (independent zero-context subagent, checks a–f below). Reconcile
+   every finding.
+8. **Update** `traceability-matrix.csv` (NFR- rows), `README.md` (Phase-5 status), `SESSION-LOG.md`.
+   **User sign-off** → commit.
+
+### Verification gate (independent subagent, checks a–f)
+
+- **(a) Domain coverage** — every NFR domain (SEC/INF/OBS/PERF/COST/CMP/DR/TEST + A11Y baseline) has
+  explicit `NFR-*` rows; no domain left implicit.
+- **(b) Reference integrity** — every `NFR-*` cites the FR(s)/ADR(s) it rests on, and those cites
+  resolve (no dangling FR/ADR ref); no `NFR-*` silently re-specs a functional requirement that
+  contradicts its source.
+- **(c) Three-non-negotiables sweep** — each non-negotiable is provably covered: #1 (no silent
+  knowledge loss — audit-sink immutability, backup restore-proven, erasure-walk intact), #2 (no
+  over-broad authority — isolation boundary, `service_role` blast-radius bounded, least-privilege),
+  #3 (no silent failure — the observability duty, the self-watching detectors, cost-unknown≠$0).
+- **(d) Feasibility spine** — every paper-not-proven `NFR-*` names the `AF-*` that will prove it;
+  every load-bearing AF (001/002/004/068/069/070/072/019/067) appears in the test-strategy schedule
+  with an owner + gate; no property claimed *proven* that is only *specified*.
+- **(e) No new silent gaps** — the gap-sweep found + change-controlled every property lacking a
+  functional owner; no residency/retention/security/cost duty left without either an FR or a logged OD.
+- **(f) Testability** — `test-strategy.md` maps every NFR domain to a concrete test layer; every
+  `AC-NFR-*` is checkable; the AC→`Verified` path is defined (how a criterion becomes a passing test).
+
+**Done when:** every NFR domain has explicit `NFR-*` requirements citing their functional owners;
+the AF de-risking schedule is complete with owners + gates; gap-sweep change-controls landed; ODs
+resolved; verification gate clean; user signed off.
+
+**Who decides:** user on **risk posture** — the accept-for-v1-vs-harden-now calls, the thresholds
+with real trade-offs, the a11y floor. (Backup ownership is already decided — ADR-008.) Claude
+drafts, harvests, finds gaps, verifies.
+
+**Hand-off:** with NFRs explicit and every AF on a de-risking schedule, Phase 6 can slice the spec
+into build issues where each issue inherits both its FR acceptance criteria **and** the `NFR-*`
+constraints (+ the spikes that must pass) as its definition of done. Phase 5 is the last hardening
+pass before the backlog.
 
 ## Phase 6 — Issue Decomposition  *(approach altitude — finalize before entry)*
 

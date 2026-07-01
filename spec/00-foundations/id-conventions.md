@@ -49,7 +49,12 @@ SEC   security        INF   infrastructure/deploy
 OBS   observability   COST  cost/economics
 CMP   compliance      PERF  performance
 TEST  testing         A11Y  accessibility
+DR    disaster recovery / backup
 ```
+
+> `DR` added 2026-07-01 (Phase-5 entry, change-control): backup & disaster recovery is a
+> first-class NFR domain in the plan (implements ADR-008) and warrants its own file + ID space
+> rather than being folded under `INF`.
 
 ## Numbering rules
 
