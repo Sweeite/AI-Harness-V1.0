@@ -227,17 +227,115 @@ verification gate is clean.
 
 **Hand-off:** data bindings (table.field stubs) feed Phase 4 schema consolidation.
 
-## Phase 4 — Data Model  *(approach altitude — finalize before entry)*
+## Phase 4 — Data Model  *(full mechanical detail — finalized 2026-07-01)*
 
-**Goal:** One coherent schema.
+**Goal:** One coherent, buildable schema — every `DATA-` reference across the 11 components and 14
+surfaces consolidated into typed tables, with RLS policies, indexes, and migrations, so that no
+build issue ever has to guess a column, a type, or a policy.
 
-**Approach:** Consolidate every `DATA-` reference into tables/fields/types; define RLS policies
-(intra-client only, per ADR-001/006), indexes (incl. HNSW per design), and migrations. Resolve
-schema contradictions surfaced earlier (e.g. the historical `client_slug` / `memories` issue —
-already killed by ADR-001).
+**Why this phase exists (plain English):** Phases 1–3 described *what the system does* and *what it
+looks like*, but the database that underpins it all lives only as hundreds of scattered `DATA-`
+stubs and `Data touched:` footers. Phase 4 is where those stop being notes and become one master
+schema whose tables provably agree with each other — the last thing that must be true before the
+spec can be sliced into build issues (Phase 6) and hardened (Phase 5).
 
-**Done when:** every DATA- ref consolidated, typed, consistent; RLS + indexes + migrations defined.
-**Hand-off:** schema underpins build issues.
+**Scope call (locked at entry):** the schema is defined as **drizzle-shaped tables + column types +
+constraints + RLS predicates + indexes + the migration story**, expressed in markdown (SQL-flavoured
+DDL sketches allowed, but this is a *spec*, not the migration files — those are a build artifact,
+same as `PERMISSION_NODES.md`). Actual `.sql`/drizzle files are written at build. Backup/DR schema
+concerns → Phase 5 (ADR-008). Cross-deployment `client_registry` (mgmt plane) is in-scope but lives
+on the **separate management deployment**, not a client silo (ADR-001 §7) — flag it as such.
+
+### Output file structure (`spec/04-data-model/`)
+
+| File | Contents |
+|---|---|
+| `_data-inventory.md` | The **harvest** — every `DATA-`/table.field binding, deduplicated, with owning component + source cites. The working ledger the schema is built from (like Phase 2's registry harvest). |
+| `schema.md` | The consolidated schema — one section per table: columns, types, nullability, defaults, PK, FKs, constraints, and a one-line "owned by / written by" note. Enums/domains consolidated in a leading `## Types` section. |
+| `rls-policies.md` | Every table's RLS: the `(select …)` initPlan predicate, human-path vs agent-path (`service_role`) division, intra-client scope, no `client_slug`. Per ADR-006 + `standards/rbac.md`. |
+| `indexes.md` | Every index incl. the HNSW vector index (VEC / ADR), the clearance/relevance scoping indexes surfaces flagged, and the `(status, created_at)` queue indexes. |
+| `migrations.md` | The migration set + ordering + the expand-contract story per `standards/migration-discipline.md`; the per-deployment propagation + failure-isolation (C10 MIG). |
+
+Create `spec/04-data-model/` and these five files. `schema.md` is the spine; the other four hang off it.
+
+### The net-new stores owed from Phase 3 (must all be designed, none skipped)
+
+Phase 3 flagged **seven** stores that features assume but no component ever schema'd. Each gets a full
+table design in `schema.md` **and** an "owed back to component X" note (Rule 0 — the FR that needs it
+must gain a `DATA-` cite via change-control):
+
+1. `config_audit_log` (append-only, key-prefix RLS) — surface-01/01b; owed to C7 FR-7.LOG.008.
+2. `conversations` + `messages` (chat thread store, RLS-scoped) — surface-08 OD-135; owed to C5/C9.
+3. `push_subscriptions` (device-token store, RLS-scoped to user) — surface-12; owed to C7 FR-7.VIEW.003.
+4. `commands` (user-defined custom commands; system commands stay code-registered) — surface-10; owed to C9/C5.
+5. the **agent-health metric store** (HLTH.001–003 + producer heartbeat) — surface-09; owed to C8.
+6. the **execution-plan store** (PLAN.004 versioned plans) — surface-09; owed to C8/C5.
+7. `notifications` net-new fields / `task_queue.originating_user_id` / `escalated_at` — surfaces 04/07/08; owed to C5/C7/C6.
+
+Harvest may surface more; if so, add them to this list and log the owed-back note.
+
+### Steps
+
+1. **Harvest (subagent fan-out).** Offload the bulk read to independent subagents (context discipline):
+   one pass over the 14 surfaces' "Phase 4 data binding notes" sections, one over the 11 components'
+   `Data touched: DATA-*` footers + `DATA-` inline cites, one over the config-registry's structured
+   objects + secrets. Each returns a structured list: `table · field · type-hint · owning-component ·
+   RLS-hint · index-hint · source-cite`. Merge into `_data-inventory.md`, deduplicated by table.field.
+2. **Cluster into tables.** Group every binding by table. For each table draft the column set: name,
+   type, nullability, default, PK/FK. Reconcile conflicting field mentions (a field named two ways →
+   one canonical name + a note). Flag every net-new store from the list above.
+3. **Consolidate types.** Pull every enum/domain into the `## Types` section — sensitivity tiers,
+   visibility, `task_queue.status`, `guardrail_type`, answer-mode, etc. One definition each; tables
+   reference them. No inline enum re-declared per table.
+4. **Write RLS (`rls-policies.md`).** Per ADR-006: static, data-driven, `(select …)` initPlan
+   (wrapped so it evaluates once per statement — AF-067). Human-path tables carry RLS keyed to the
+   caller's held PERM nodes + clearance; agent-path writes go through `service_role` (the sole-writer
+   pattern, ADR-004). **No `client_slug` in any predicate** (ADR-001 §3 / OD-096) — confirm table by
+   table. Restricted never a row default (C1).
+5. **Write indexes (`indexes.md`).** HNSW on the memory embedding column (VEC / ADR; built
+   `CONCURRENTLY`). The `(status, created_at)` queue indexes (task_queue, guardrail_log,
+   ingestion_queue). The clearance/relevance scoping indexes surfaces named. Every index cites the
+   query it serves.
+6. **Write migrations (`migrations.md`).** The initial schema as the first migration; the
+   expand-contract discipline (`standards/migration-discipline.md`) for anything that will later
+   change; the per-deployment propagation + failure-isolation model (C10 FR-10.MIG.*). Note AF-065
+   (expand-contract-keeps-mixed-fleet-safe) is paper-until-tested.
+7. **Log Open Decisions (`OD-*`)** for every genuine schema fork a builder couldn't resolve from the
+   spec alone (a type choice with trade-offs, a normalize-vs-denormalize call, a nullable-vs-required
+   with a real consequence). Options + recommendation each. **User resolves.**
+8. **Change-control the owed-back cites.** For each net-new store, add the `DATA-` reference to its
+   owning FR(s) via change-control (mirrors how Phase 3 minted PERM nodes back into components) so the
+   requirement layer points at the schema, not just the surface.
+9. **Run the verification gate** (independent zero-context subagent, checks a–f below). Reconcile
+   every finding.
+10. **Update** `traceability-matrix.csv` (DATA- rows / column), `README.md` (Phase-4 status),
+    `SESSION-LOG.md`. **User sign-off** → commit.
+
+### Verification gate (independent subagent, checks a–f)
+
+- **(a) Coverage** — every `DATA-` / `Data touched:` reference in all 11 components + 14 surfaces maps
+  to a table.field in `schema.md`. No orphaned data reference; no table referenced-but-undefined.
+- **(b) Net-new completeness** — all seven (or more) net-new stores are designed **and** owed-back to
+  a component FR via change-control. None left as a dangling surface-only note.
+- **(c) Types** — every enum/status/tier value used anywhere resolves to a `## Types` definition;
+  no field typed two ways.
+- **(d) RLS** — every table has a policy; intra-client only; **no `client_slug` anywhere**;
+  human-path vs agent-path (`service_role`) division explicit; consistent with ADR-006 + C1 RLS FRs.
+- **(e) #1/#2/#3 sweep** — no store can silently lose data (append-only where the spec demands it;
+  cascade/erasure walks intact — FR-2.MNT.017 / C10 FR-10.DEL.004); no over-broad grant (#2); no
+  write path that can fail silently (embed-fail-never-stores WRT.007; audit sinks append-only).
+- **(f) Migrations** — expand-contract respected; no DROP/RENAME beside its replacement; vector index
+  `CONCURRENTLY`; migrations re-runnable (failure-isolation).
+
+**Done when:** every `DATA-` ref is consolidated, typed, and consistent; every table has RLS +
+indexes; migrations defined; net-new stores designed + owed-back; ODs resolved; gate clean;
+user signed off.
+
+**Who decides:** user resolves schema ODs (type/shape/normalization calls with real trade-offs).
+Claude drafts, harvests, finds gaps, verifies.
+
+**Hand-off:** the finished schema underpins Phase 5 (NFR — security/backup rest on it) and the
+Phase 6 build issues (every issue's data layer is now unambiguous).
 
 ## Phase 5 — Non-Functional  *(approach altitude — finalize before entry)*
 
