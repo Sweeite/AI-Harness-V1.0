@@ -132,6 +132,8 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `ranking_weights` | How much recency, confidence, entity-match and similarity each count when ranking memories | App. A | LIVE | object; sum = 1.0 |
 | `expected_slots` | Which key facts the system expects to know about each kind of entity | App. A | LIVE | object; 5–8 per entity type |
 | `entity_types` | The list of categories things can be filed under (e.g. Client, Person) — "Internal Org" always present | App. A | BOOT | array unique; "Internal Org" locked-present |
+| `haiku_audit_window_days` | How long the cheap "should this be remembered?" gate runs in shadow mode — tagging what it *would* drop without actually dropping it — before it's trusted to act on its own | 21 | LIVE | int days ≥ 0 (0 = go autonomous immediately) |
+| `haiku_gate_disagree_threshold` | The most the shadow gate may disagree with what was actually written before it's allowed to go autonomous — higher means more tolerant | 0.05 | LIVE | float 0–1 |
 
 ## F. Tool layer / connectors — `PERM-config.tools` · `UI-config-admin#tools`
 

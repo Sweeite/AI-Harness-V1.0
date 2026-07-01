@@ -115,7 +115,7 @@ markup on the 14 surfaces; screen-reader labels on action controls. Anything ric
 | PERF-b | **Vector search recall-under-RLS** — pgvector HNSW returns relevant memories with the RLS predicate applied without recall starvation (ANN-then-filter) | FR-2.VEC.* · indexes.md | **AF-019** | feasibility:43; indexes.md |
 | PERF-c | **Retrieval quality/relevance** — the memory retrieval surfaces the *right* memories (the whole system's usefulness rests here) | FR-2.RET.* | **AF-002** | feasibility:24 |
 | PERF-d | **Entity-resolution accuracy at scale** — the fragmentation/duplicate risk; entities don't shard into near-dupes | FR-2.ENT.005 · AC-2.MNT.010 | **AF-082** | C2 ENT; surface-11:76 |
-| PERF-e | Scale envelope — every target stated against ADR-001's **≤~20 users / silo**; not designed for hot failover or high concurrency | ADR-001 posture | — | ADR-001:91; ADR-008:145 |
+| PERF-e | Scale envelope — every target stated against the **≤~20 users / silo** figure (ADR-006 §Axis-2 + ADR-008 posture; ADR-001 speaks of ~20 *clients* by year two — distinct); not designed for hot failover or high concurrency | ADR-006 §Axis-2 · ADR-008 posture | — | ADR-006:84; ADR-008:145 |
 | PERF-f | Memory-injection cap — `memories_injected_per_task=7` (token-cost lever) | config · FR-2.RET | — | config:116 |
 | PERF-g | Chain-depth limit — `chain_depth_limit=6`, enforced at plan-build (bounded chains, never silent truncation) | FR-8.PLAN.003 · config | — | C8:856; config:235 |
 | PERF-h | Compression threshold — `compression_threshold_tokens=8000`; longer chains summarize, **originals retained** in durable `task_history` (economy never = knowledge loss) | FR-5.ENV.003 · config | AF-114/115 | C5:327; config:169 |

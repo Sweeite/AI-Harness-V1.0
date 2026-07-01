@@ -1880,6 +1880,42 @@ final Phase-3 surface — Phase 3 is now COMPLETE.**
 
 ---
 
+## OD-157…OD-160 — Phase 5 (NFR) risk-posture decisions 🟢 RESOLVED (2026-07-01, session 45, operator-decided)
+
+The four genuine risk-posture calls the Phase-5 playbook reserves for the operator ("who decides:
+user on risk posture"). Surfaced from the NFR harvest as RP-1…RP-4; the operator chose the
+recommended option for each. Locked here (Rule 0) so `test-strategy.md` and the domain files cite a
+written decision, not a conversation.
+
+- **OD-157 (RP-1) — The launch-gating spike set.** 🟢 Resolved: **six** paper-not-proven `AF-*` are
+  **launch-blocking** (must PASS before go-live) — **AF-068** (injection containment red-team, #2),
+  **AF-069** (restore actually works, #1), **AF-001** (cost viability), **AF-067** (RLS hot-path
+  latency), **AF-078** (webhook forgery/replay, #2), **AF-077** (brute-force defense, #2). The
+  accuracy-EVAL spikes (retrieval AF-002, entity-res AF-082, anomaly AF-116/117, routing/proactive
+  AF-121–131, cost-estimate AF-042, Haiku-gate AF-043/035) ship **fast-follow**, each behind an
+  already-safe posture (shadow-retain / flag-only / human-in-loop / fails-safe). Distinct from
+  *blocking-by-posture* mechanisms (isolation, audit-sink immutability, freeze gate, RLS coverage,
+  expand-contract, the #3 watchdogs) which are locked-ADR/FR requirements built regardless, their
+  `AF-*` a build-time proof. **Applied in:** `test-strategy.md` §2–4; every domain file's Launch-gate
+  field. *This is the #1/#2 trade-off the three-non-negotiables rule required be surfaced, not
+  silently taken.*
+- **OD-158 (RP-2) — Backup restore-rehearsal cadence.** 🟢 Resolved: **monthly automated rehearsal +
+  on every schema-migration release** (ADR-008 §4 said "periodic"; Phase 5 fixes the number).
+  **Applied in:** `backup-dr.md` NFR-DR.003.
+- **OD-159 (RP-3) — Accessibility floor.** 🟢 Resolved: a **baseline** floor (keyboard-navigable +
+  sufficient contrast + semantic markup + labelled action controls on the 14 surfaces) as
+  `NFR-A11Y.001`; a full **WCAG 2.1 AA** conformance audit is deferred → **OOS-041**. The design-doc
+  named no a11y standard, so per anti-hallucination we set a modest floor, not an invented target.
+  **Applied in:** `observability.md` NFR-A11Y.001/002; OOS-041.
+- **OD-160 (RP-4) — Performance-target philosophy.** 🟢 Resolved: **aspirational, spike-confirmed**
+  targets — `performance.md` states concrete numbers (retrieval p95 < ~2 s, RLS predicate overhead
+  < ~50 ms/statement, ANN recall ≥ ~0.9 recall@10 under RLS) each explicitly tagged "**to be
+  CONFIRMED by AF-067/019/002 — not yet proven (paper target)**", never a binding SLO (the
+  anti-hallucination rule forbids claiming an unmeasured number as proven). **Applied in:**
+  `performance.md` NFR-PERF.001–004.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1907,4 +1943,5 @@ final Phase-3 surface — Phase 3 is now COMPLETE.**
 > `spec/03-surfaces/surface-01b-config-audit-log.md` (surface-local; all resolved in-file; **OD-153 mints `FR-7.LOG.008`
 > in C7 via change-control** — the config_audit_log governance owner, C7 34→35; **no PERM entry node minted** — view is
 > key-prefix-scoped `PERM-config.*`, export is catalogued `PERM-compliance.download_records`, OD-155).
-> Next OD number: OD-157.
+> OD-157–160 are the Phase-5 (NFR) risk-posture decisions (RP-1…RP-4, resolved above).
+> Next OD number: OD-161.

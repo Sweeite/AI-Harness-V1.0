@@ -551,9 +551,23 @@ on by:** C2 AC-2.MNT.017.5, C10 AC-10.DEL.003.4. Gates the *#1/#2 no-residue cla
 by:** the C10 verification gate (finding M1). Adjacent to but distinct from AF-134 (recall of *finding* the data) —
 this is completeness of *deleting* it.
 
+### Block V — Phase 5 (NFR / mobile)
+
+**AF-138 — Mobile web-push delivery of a "critical, immediate, always" alert (SPIKE/LOAD, fast-follow).**
+surface-12 ships mobile as responsive web + PWA with web-push (OD-150 / OOS-040). The push *routing
+contract* (FR-7.VIEW.003: critical=immediate · hard-limit=immediate+always+non-suppressible) is approved,
+but **background web-push delivery reliability** — whether a browser/OS actually delivers a critical push
+promptly when the PWA is backgrounded/closed (iOS Safari web-push constraints, FCM/APNs bridging, battery
+throttling) — is unproven. The unproven assumption: a "critical, immediate, always" alert reaches the phone
+within a usable window. **Method:** SPIKE/LOAD — instrument web-push across the target device/OS matrix,
+measure delivery latency + drop rate for backgrounded PWAs. **Relied on by:** surface-12 push contract
+(FR-7.VIEW.003), the mobile NFR-OBS alert-delivery rows. **Fails safe:** a dropped push falls back to the
+persisted in-app notification centre (FR-7.ALR.001/006) — **no FR rests on delivery**, so this is fast-follow,
+not launch-gating. **Surfaced by:** the Phase-3 surface-12 spec (flagged for Phase 5) + the Phase-5 harvest.
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-138
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-139
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
