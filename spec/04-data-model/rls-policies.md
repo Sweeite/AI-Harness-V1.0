@@ -64,7 +64,7 @@ Each is invoked as `(select user_perms(auth.uid()))` inside a policy so it runs 
 | `guardrail_log` | `PERM-action.review` / `PERM-dashboard.ops` | forward status transition only (append-only) | service_role append |
 | `injection_quarantine` | `PERM-action.review` | resolve only | service_role |
 | `event_log` | clearance + relevance scoped (own/relevant rows); ops sees all via `PERM-dashboard.ops` | **append-only** | service_role append |
-| `notifications` | **clearance-scoped to recipient** (viewer) | mark read/actioned | service_role insert |
+| `notifications` | `recipient = auth.uid()` **OR** (`recipient is null` **AND** `recipient_role` ∈ caller's roles) — i.e. direct rows **and** role-broadcast rows, all clearance-scoped; a null-recipient broadcast must never be invisible-to-all (#3) | mark read/actioned | service_role insert |
 | `config_values` / `config_audit_log` | **key-prefix-scoped** to caller's `PERM-config.*` group | `config_values`: matching `PERM-config.*`; `config_audit_log`: append-only | service_role |
 | `secret_manifest` | `PERM-config.secrets` (Super Admin) — presence only | — | service_role |
 | `push_subscriptions` | **owner only** (`user_id = auth.uid()`) | owner | service_role delivery read |
@@ -86,8 +86,11 @@ appears in a policy — and only as the registry's own natural key, not a tenanc
 
 ## The three non-negotiables in the RLS layer
 
-- **#1 (never lose knowledge):** append-only sinks have no UPDATE/DELETE policy (only the retention job
-  and the redaction-tombstone path, which is itself logged). Erasure scrubs PII in place, retaining the row.
+- **#1 (never lose knowledge):** the append-only sinks' immutability is **enforced by a `BEFORE UPDATE OR
+  DELETE` trigger** (`enforce_audit_append_only`, schema.md §Immutability enforcement) that fires **regardless
+  of role** — RLS alone is insufficient because the writer is `service_role` (RLS-exempt). The only permitted
+  mutations are a whitelisted forward status transition and the one-way redaction-tombstone (itself logged);
+  DELETE is revoked. Erasure scrubs PII in place, retaining the row.
 - **#2 (never do what it shouldn't):** default-deny baseline; capability edits (agents, restricted grants,
   infra config) are Super-Admin-only; Restricted is never a row/role default and never auto-injected; the
   `memory_scope` filter is **fail-closed** on the service_role path (returns nothing if the predicate is

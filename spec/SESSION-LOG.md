@@ -74,6 +74,33 @@ RLS predicate"). (3) `traceability-matrix.csv` wired (Phase-4 header note: every
 consolidated in `schema.md`). (4) README + playbook + this log → 🟢. **7 OD-P4 resolutions accepted as
 recommended.**
 
+**POST-SIGN-OFF RE-AUDIT (same session, operator-requested "full quality check start to finish").** A
+**second independent zero-context adversarial audit** (distinct from the sign-off gate) re-read the repo and
+tried to break Phase 4. Structure verified clean (coverage, 16 net-new cites all landed in their component FRs,
+`client_slug` isolation, type consolidation, RLS table-coverage, migrations — all PASS with file:line evidence).
+It found **3 real defects the first gate missed** (the first gate checked for append-only *wording*, not a
+*mechanism*) — all now **fixed**:
+- **HIGH-1 (fixed)** — audit-sink immutability (`event_log`/`guardrail_log`/`access_audit`/`config_audit_log`)
+  was asserted append-only but enforced **only by RLS**, which the `service_role` writer **bypasses** — so a
+  buggy/compromised writer could silently rewrite/delete history (#1 + #3, and it undercut the AC-7.LOG.008.3
+  tamper-evident claim). **Fix:** added `enforce_audit_append_only()` `BEFORE UPDATE OR DELETE` trigger fired
+  **regardless of role** (whitelists only the forward status transition + one-way redaction-tombstone; DELETE
+  revoked) — `schema.md` §Immutability enforcement; `rls-policies.md` #1 restated to point at the trigger.
+- **MED-1 (fixed)** — `deletion_requests` two-person CHECK was NULL-permissive (`<>` passes when a side is
+  NULL) and asymmetric; **my earlier "no-self-execution now DB-enforced" claim was overstated.** **Fix:** both
+  comparisons now `is distinct from` (NULL-safe) + a new CHECK requiring three non-null distinct people at
+  `status='executed'`. **Now** genuinely DB-enforced.
+- **MED-2 (fixed)** — `notifications.recipient IS NULL` = broadcast-to-role, but the RLS predicate was stated
+  only as "recipient = viewer", so broadcast alerts would be **invisible to everyone** (a #3 silent alert-drop).
+  **Fix:** RLS predicate now `recipient = auth.uid()` **OR** (`recipient is null` AND `recipient_role` ∈ caller
+  roles).
+- **LOW-2 (fixed)** — README C9 count was stale (28 → **31**; the CMD.006–008 addendum was never bumped).
+- **LOW-1 / LOW-3 (accepted, logged)** — `permission_node`/`perm_node` are free text (no FK to the markdown
+  node catalog — seed-time validation, default-deny posture) and version-tables rely on `previous_version_id`
+  convention. Known trade-offs, lower risk than the audit sinks; noted for build-time seed validation, no
+  schema change. **New feasibility item AF candidate at build:** trigger-based immutability + a seed-time
+  perm-node validation pass. Verdict after fixes: **Phase 4 sound and the #1/#3 enforcement gap closed.**
+
 **Next step — Phase 5 (Non-Functional):** `NFR-*` requirements across security, infrastructure/deploy,
 observability, cost (envelope + ladder per ADR-003), compliance, **backup & disaster recovery (resolve OD-009
 under ADR-008 — client-owned Supabase ownership/verification + a *tested* restore)**, and the **test strategy**

@@ -1,5 +1,13 @@
 # Phase 4 — Independent Verification Gate Report
 
+> **⚠️ ADDENDUM (post-sign-off re-audit, 2026-07-01):** a **second** independent adversarial audit found
+> **3 defects this gate missed** — most notably **HIGH-1**: the audit sinks' append-only guarantee was
+> checked here for *wording*, not a *mechanism*, and was in fact enforced only by RLS (which the `service_role`
+> writer bypasses). All 3 (HIGH-1 audit-sink immutability trigger · MED-1 NULL-safe two-person CHECK · MED-2
+> broadcast-notification RLS) are now **fixed**. See the SESSION-LOG Session-44 "POST-SIGN-OFF RE-AUDIT" entry.
+> Lesson: a gate that greps for an invariant's *description* can pass a schema that never *enforces* it.
+
+
 **Date:** 2026-07-01 · **Scope:** `schema.md`, `rls-policies.md`, `indexes.md`, `migrations.md`
 against `_data-inventory.md` and spot-checks of `spec/01-requirements/*` + `spec/03-surfaces/*` +
 `spec/02-config/config-registry.md`. **Method:** zero-context re-read of the four Phase-4 outputs,
