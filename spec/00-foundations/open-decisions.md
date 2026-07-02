@@ -1983,6 +1983,11 @@ decision, or require a genuine architectural call. Each is logged here per `stan
   carve-out AC) is retired. `AF-068` no longer needs to gate a "floored-set containment" claim for this path, since
   there is no Act-tier external-send path left to contain. **The operator should be aware this reverses a
   previously operator-decided call (OD-088)** — flagged explicitly, not buried in a batch of mechanical fixes.
+  **✅ OPERATOR CONFIRMED (2026-07-02):** the reversal was surfaced to the operator directly (the carried-forward
+  Session-46 handoff note), who reviewed the trade-off (Prepare-only loses only the final auto-send on non-client
+  low-risk email — one human tap; all detection + drafting preserved) and **confirmed the rollback stands**. The
+  Session-46 operator-awareness note is hereby discharged; ADR-007 stays untouched. No further action; Phase-6 issues
+  may be cut from FR-9.MODE.004 as it now stands (Prepare-only).
 
 - **OD-162 — Define the "local mirror" of `client_registry.status` the C5 dispatch gate and C10 erasure
   precondition both depend on but no FR ever specifies.** — **#1/#2**

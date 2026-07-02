@@ -5,6 +5,30 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 47 — 2026-07-02 — OD-161 OPERATOR CONFIRMATION (carried-forward note discharged)
+
+**What happened:** Operator pulled the Session-46 audit-reconciliation commits to local and asked to review the one
+carried-forward operator note before Phase 6. Walked the operator through **OD-161** (the rollback of
+`FR-9.MODE.004`'s Act-tier autonomous low-risk-external send → **Prepare-only**, reversing part of the previously
+operator-decided **OD-088**): the collision with locked **ADR-007** ("no config change can override a hard limit",
+twice verbatim), the duplication of the **OD-047** carve-out rejected one day earlier, and the actual cost
+(Prepare-only loses only the final auto-send on non-client cold-lead/nurture email — one human tap; all opportunity
+detection + full drafting preserved). Gut-checked the one scenario that would justify reopening (unattended
+high-volume cold outreach, where "tap each one" defeats the purpose → would warrant a deliberate ADR-007 amendment
+instead). **Operator confirmed the rollback stands.**
+
+**Files changed:** `open-decisions.md` (OD-161 → +✅ OPERATOR CONFIRMED annotation; the Session-46 awareness note
+discharged; ADR-007 stays untouched), this log. No spec mechanics changed — OD-161 was already fully applied in
+Session 46; this session only records the operator's explicit sign-off on it.
+
+**Next step: Phase 6 (Issue decomposition)** — unchanged and unblocked. Finalize the Phase-6 playbook (approach →
+full mechanical detail, per the finalize-before-entry rule), then slice the spec into vertical, independently-buildable
+issues (each inheriting its FR `AC-*` + `NFR-*` constraints + the six launch-gating spikes OD-157 as DoD, with a
+build-order/dependency map). FR-9.MODE.004 may now be cut as Prepare-only. *(No `to-issues` skill installed as of
+2026-07-02 — follow the playbook procedure directly; re-check for the skill first.)*
+
+---
+
 ## Session 46 — 2026-07-02 — PRE-PHASE-6 FULL-SPEC AUDIT RUN + FULLY RECONCILED — 🟢 PHASE 6 GATE CLEARED
 
 **What happened:** Ran the **pre-Phase-6 full-spec audit** (`spec/00-foundations/pre-phase-6-audit-playbook.md`),
