@@ -84,11 +84,11 @@ go/no-go spikes · `POSTURE` = blocking-by-posture mechanism, AF is build-time p
 | AF-004 | Provisioning SPIKE | ADR-005 §5 end-to-end provisioning green (NFR-INF.006) | INF | POSTURE (near-launch — provisioning must work to onboard) |
 | AF-064 | DOCS+SPIKE | Railway canary/release-train + build-history rollback (NFR-INF.001) | INF | FAST-FOLLOW |
 | AF-066 | EVAL | Synthetic canary corpus catches regressions (NFR-INF.008) | INF | FAST-FOLLOW |
-| AF-013 | DOCS ✅ | Google production verification lead-time (NFR-INF.006) | INF | DOCS (verified) |
-| AF-020/021 | DOCS ✅ | Railway auto-deploy + operator↔client-Supabase connection (NFR-INF.006) | INF | DOCS (verified) |
+| AF-013 | DOCS | Google production verification lead-time — a scheduling/lead-time risk, not yet cleared (NFR-INF.007) | INF | FAST-FOLLOW |
+| AF-020/021 | DOCS+SPIKE | Railway auto-deploy + operator↔client-Supabase connection — DOCS-sharpened, build-time smoke checks still pending (NFR-INF.006) | INF | POSTURE (build-time) |
 | AF-132 | SPIKE | Offboarding deprovision completeness (NFR-INF.013 / NFR-CMP.008) | INF/CMP | FAST-FOLLOW |
 | AF-112 / AF-063 | LOAD/SPIKE | Loop catch-up idempotency + no post-outage stampede (AF-112); Inngest per-key concurrency serialises same-entity steps (AF-063) — both hold NFR-INF.014 | INF | POSTURE (idempotency keys present) |
-| AF-113 | LOAD/EVAL | Parallel-DAG safety — no irreversible side effect outruns a pending approval (NFR-PERF.010) | PERF | POSTURE |
+| AF-113 | LOAD/EVAL | Parallel-DAG safety — no irreversible side effect outruns a pending approval (FR-5.OPT.001/OD-056; no dedicated NFR row) | PERF | POSTURE |
 | AF-114/115 | SPIKE | Compression fidelity; originals-store retention (NFR-PERF.008) | PERF | POSTURE |
 | AF-019 | LOAD | pgvector HNSW recall under the RLS predicate (NFR-PERF.002) | PERF | FAST-FOLLOW |
 | AF-002 | SPIKE+EVAL | Retrieval surfaces the right memories; re-rank/HyDE earn cost (NFR-PERF.003 / NFR-COST.010) | PERF/COST | FAST-FOLLOW |
@@ -97,7 +97,8 @@ go/no-go spikes · `POSTURE` = blocking-by-posture mechanism, AF is build-time p
 | AF-118 | Fault-inject SPIKE | Absence-of-signal liveness — the watchdog/detector can't itself stall (NFR-OBS.001/004) | OBS | POSTURE |
 | AF-119 | Induce-DB-failure SPIKE | Out-of-band log path reachable when Postgres is down (NFR-OBS.002) | OBS | POSTURE |
 | AF-120 | DOCS/SPIKE | Clock-sync / escalation-window math anchored receiver-side (NFR-OBS.006/007) | OBS | POSTURE |
-| AF-116/117 | EVAL | Anomaly-check accuracy; injection pattern/embedding library coverage (NFR-SEC.006) | SEC/OBS | FAST-FOLLOW |
+| AF-116 | EVAL | Anomaly-check accuracy — FR-6.ANM.002/003/004/005 (no dedicated NFR row) | OBS | FAST-FOLLOW |
+| AF-117 | EVAL | Injection pattern/embedding library coverage (NFR-SEC.006) | SEC | FAST-FOLLOW |
 | AF-124 | EVAL | Dead-agent/drift detection reliable (NFR-OBS.005, flag-only) | OBS | FAST-FOLLOW |
 | AF-121–123, 126–131 | EVAL/SPIKE | Routing accuracy, confidence calibration, proactive signal/ranking/ETA/tag accuracy | (C8/C9 quality) | FAST-FOLLOW |
 | AF-042 | Reconcile vs bill | Cost estimate stays biased-above the real invoice (NFR-OBS.013 / NFR-COST.005) | OBS/COST | FAST-FOLLOW |

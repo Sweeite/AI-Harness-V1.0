@@ -92,6 +92,14 @@ and tuned per client to their spend tolerance:**
 | **Throttle** | `cost_throttle_daily_usd: 75` (1.5×) | Pause **non-critical** work (proactive suggestions, insight agent, self-improvement, consolidation/summaries, medium-loop batch); reduce loop frequency. User-facing + urgent untouched. |
 | **Hard ceiling** | `cost_hard_ceiling_daily_usd: 100` (2×) | **Kill switch.** Halt all non-critical work; allow only **urgent fast-loop triggers + human-initiated requests + human-approved actions + guardrails.** |
 
+- **Reconciliation (2026-07-02, config-registry build — OD-164, naming correction, not a decision
+  change):** `config-registry.md` ships these four rungs under different literal key names:
+  `cost_alert_daily_usd` → `cost_ladder_soft_threshold_daily_usd`; `cost_alert_weekly_usd` →
+  `cost_ladder_soft_threshold_weekly_usd`; `cost_throttle_daily_usd` → `cost_ladder_throttle_threshold`;
+  `cost_hard_ceiling_daily_usd` → `cost_ladder_hard_kill_threshold`. The decision above is unchanged —
+  three ladder rungs plus independently-editable daily/weekly soft-alerts, deliberately not a multiple
+  of each other — only the literal key names drifted; `config-registry.md` / `cost.md` are the naming
+  source of truth going forward.
 - **Critical (never killed):** human-initiated requests, urgent fast-loop triggers (new leads,
   flagged messages, overdue tasks), human-approved actions, guardrail/security functions.
 - **Auto-actions are daily-anchored.** The weekly soft alert is human-attention only (a sustained
@@ -103,7 +111,9 @@ from event-log token counts × a price table. It is **not** the vendor invoice, 
 boundary means it never will be. Three binding conditions make an estimate fit to anchor a kill
 switch:
 1. **Price table is a config key** (`cost.price_table`), not hardcoded — tracks Anthropic/OpenAI
-   price changes without a deploy.
+   price changes without a deploy. **Reconciliation (2026-07-02 — OD-164, naming correction, not a
+   decision change):** ships as `price_table`, with no `cost.` namespace. Decision unchanged — an
+   operator-editable price table outside code.
 2. **All vendors counted** — Sonnet **+** Haiku **+** OpenAI embeddings (`text-embedding-3-small`).
    A ceiling blind to the OpenAI bill does not bound total client cost.
 3. **Fail-safe bias — the estimator rounds *up*** (count retries, no optimistic cache/batch
@@ -184,7 +194,11 @@ to run unsupervised.
 - **Config registry (Phase 2):** new keys `cost_throttle_daily_usd` (75), `cost_hard_ceiling_daily_usd`
   (100), `cost.price_table` (per-model $/token, all vendors), plus existing `cost_alert_daily_usd`
   (50) / `cost_alert_weekly_usd` (200) — **all per-deployment, operator-editable.** Note the daily
-  ≠ weekly×7 relationship as intentional.
+  ≠ weekly×7 relationship as intentional. **Reconciliation (2026-07-02 — OD-164):** shipped as
+  `cost_ladder_throttle_threshold`, `cost_ladder_hard_kill_threshold`, `price_table` (no `cost.`
+  namespace), `cost_ladder_soft_threshold_daily_usd`, `cost_ladder_soft_threshold_weekly_usd` — see
+  the §2 reconciliation note for the full name mapping; the key set and per-deployment editability
+  are unchanged.
 - **Cost estimator:** token→$ computation over the event log, all vendors, fail-safe round-up.
   Feeds dashboards, the ladder, and the Super Admin `cost-to-date` push.
 - **Memory component:** code noise-filter → Haiku selective-writing gate → Haiku pre-checks →

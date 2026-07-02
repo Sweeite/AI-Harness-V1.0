@@ -9,7 +9,7 @@
   - FR-1.PERM.005 — PERM node catalog (this surface consumes 11 new `PERM-config.*` nodes)
   - FR-7.MGM.* — Management-plane config values feed the push payload
   - FR-7.ALR.009 — Alert routing (unroutable alert fails loud); `alert_routing_rules` edited here
-- **CFG dependencies:** All 117 scalar + 11 secret + 10 structured-object keys in `spec/02-config/config-registry.md` groups A–N (see per-section breakdown below)
+- **CFG dependencies:** Every scalar key, secret, and structured-object key in `spec/02-config/config-registry.md` groups A–N (see per-section breakdown below)
 - **PERM gates:**
   - Entry: `PERM-config.auth` OR any `PERM-config.*` the caller holds (a user who holds at least one section gate can enter the screen; they see only the sections they are gated for — see Access below)
   - Per-section: each section's `PERM-config.<area>` gate (detailed inline)
@@ -29,7 +29,7 @@
 
 ## Overview
 
-The Config Admin screen is the single privileged surface where Super Admins (and, for non-sensitive sections, delegated Admins) view and edit every tunable knob in the harness. It presents all 117 scalar keys, 10 structured objects, and 11 secret presence indicators from the Phase 2 config registry, organised into 11 sections matching the registry's groups A–N. Each saved change is audited (who/when/old→new). LIVE changes take effect immediately; BOOT changes apply on next deploy; REBUILD changes trigger a background pipeline after explicit confirmation.
+The Config Admin screen is the single privileged surface where Super Admins (and, for non-sensitive sections, delegated Admins) view and edit every tunable knob in the harness. It presents every scalar key, structured object, and secret presence indicator in the Phase-2 config registry, organised into 11 sections matching the registry's groups A–N. Each saved change is audited (who/when/old→new). LIVE changes take effect immediately; BOOT changes apply on next deploy; REBUILD changes trigger a background pipeline after explicit confirmation.
 
 ---
 
@@ -157,6 +157,8 @@ Every save appends to `config_audit_log` (old value → new value, actor, timest
 | `ranking_weights` | `config_values.value` WHERE key = 'ranking_weights' | Structured sub-table (4 float fields: recency · confidence · entity_match · vector_similarity); LIVE; sum must = 1.0 at write, else rejected |
 | `expected_slots` | `config_values.value` WHERE key = 'expected_slots' | Structured sub-table keyed by entity type → slot name array (5–8 per type); LIVE |
 | `entity_types` | `config_values.value` WHERE key = 'entity_types' | Array list; BOOT; unique strings; soft-disable only (no delete); "Internal Org" locked-present (delete rejected) |
+| `haiku_audit_window_days` | `config_values.value` WHERE key = 'haiku_audit_window_days' | int days ≥ 7; LIVE; shadow-retain trust window before the cheap retention gate is trusted to act autonomously (OD-036) |
+| `haiku_gate_disagree_threshold` | `config_values.value` WHERE key = 'haiku_gate_disagree_threshold' | float 0–1; LIVE |
 | Last updated / actor | `config_values.updated_at`, `config_values.updated_by` | Shown per row |
 
 **Actions:**
@@ -272,6 +274,7 @@ Every save appends to `config_audit_log` (old value → new value, actor, timest
 | `checkpoint_step_threshold` | `config_values.value` WHERE key = 'checkpoint_step_threshold' | int ≥ 1; LIVE |
 | `checkpoint_response_timeout_minutes` | `config_values.value` WHERE key = 'checkpoint_response_timeout_minutes' | int ≥ 1; LIVE |
 | `max_retries_before_dead_letter` | `config_values.value` WHERE key = 'max_retries_before_dead_letter' | int ≥ 0; LIVE |
+| `dlq_stale_alert_hours` | `config_values.value` WHERE key = 'dlq_stale_alert_hours' | int hours ≥ 1; LIVE |
 | Last updated / actor | `config_values.updated_at`, `config_values.updated_by` | Shown per row |
 
 **Actions:**
@@ -312,7 +315,8 @@ Every save appends to `config_audit_log` (old value → new value, actor, timest
 | `rate_limit_memory_writes_per_minute` | `config_values.value` WHERE key = 'rate_limit_memory_writes_per_minute' | int ≥ 1; LIVE; never unlimited |
 | `rate_limit_concurrent_tasks` | `config_values.value` WHERE key = 'rate_limit_concurrent_tasks' | int ≥ 1; LIVE; never unlimited |
 | `approval_pattern_sample_size` | `config_values.value` WHERE key = 'approval_pattern_sample_size' | int ≥ 1; LIVE |
-| `cost_ladder_soft_threshold` | `config_values.value` WHERE key = 'cost_ladder_soft_threshold' | currency ≥ 0; LIVE; must be < throttle threshold |
+| `cost_ladder_soft_threshold_daily_usd` | `config_values.value` WHERE key = 'cost_ladder_soft_threshold_daily_usd' | currency ≥ 0; LIVE; must be < throttle threshold |
+| `cost_ladder_soft_threshold_weekly_usd` | `config_values.value` WHERE key = 'cost_ladder_soft_threshold_weekly_usd' | currency ≥ 0; LIVE; independently editable — deliberately not 7× daily (ADR-003, OD-164) |
 | `cost_ladder_throttle_threshold` | `config_values.value` WHERE key = 'cost_ladder_throttle_threshold' | currency; LIVE; must be between soft and hard |
 | `cost_ladder_hard_kill_threshold` | `config_values.value` WHERE key = 'cost_ladder_hard_kill_threshold' | currency; LIVE; must be > throttle |
 | `anomaly_thresholds` | `config_values.value` WHERE key = 'anomaly_thresholds' | Structured sub-table (5 checks: confidence · volume · contradiction · scope_expansion · sentiment); each: threshold (typed) + severity {soft_alert, hard_approval}; LIVE |
@@ -497,6 +501,7 @@ Every save appends to `config_audit_log` (old value → new value, actor, timest
 | `deploy_max_version_skew` | `config_values.value` WHERE key = 'deploy_max_version_skew' | int ≥ 1; LIVE |
 | `canary_soak_minutes` | `config_values.value` WHERE key = 'canary_soak_minutes' | int ≥ 1; LIVE |
 | `deployment_region` | `config_values.value` WHERE key = 'deployment_region' | enum select; BOOT; v1 locked to ap-southeast-2 (Sydney) — rendered read-only with "Locked for v1" badge unless multi-region is unlocked in a future phase |
+| `recovery_tier` | `config_values.value` WHERE key = 'recovery_tier' | enum select {daily_in_project, hourly_off_platform, pitr}; BOOT; moving to `daily_in_project` (below hourly) requires a logged downgrade exception per `change-control.md` — never a silent default (`backup-dr.md` NFR-DR.001; PITR = paid upsell) |
 | Last updated / actor | `config_values.updated_at`, `config_values.updated_by` | Shown per row |
 
 **Actions:**

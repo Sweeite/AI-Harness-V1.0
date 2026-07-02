@@ -384,7 +384,7 @@ Gates the *detection-quality claim*, not the FR machinery. **Surfaced by:** C6 d
 
 ---
 
-## Block R — Component 7 (Observability) — AF-118…AF-120
+## Block R — Component 7 (Observability) — AF-118…AF-120, AF-139
 
 **AF-118 — Absence-of-signal detection is only as live as its evaluator (SPIKE, build-time).** C7 leans hard on
 "absence of signal is itself a signal" — the management-plane staleness check (AC-7.MGM.002.3) and the alert-engine
@@ -410,6 +410,24 @@ math is anchored receiver-side — so a skewed reporter clock can't make a dead 
 window miscompute and skip its secondary alert (#3). **Method:** DOCS (Railway/Supabase NTP guarantees) + SPIKE
 (inject skew, confirm receiver-side anchoring holds). **Relied on by:** AC-7.MGM.002.4, AC-7.ALR.005.3. Gates the
 *window-correctness claim*. **Surfaced by:** C7 verification gate (finding F6).
+
+**AF-139 — Out-of-band external monitor for the management plane itself (SPIKE, build-time).** The entire "watcher
+watches the watcher" chain — the alert-evaluation-engine watchdog (FR-7.ALR.008), the mgmt-plane staleness evaluator
+(FR-7.MGM.002), and the DLQ-liveness heartbeat (AC-5.JOB.006.2) — runs on the **same operator-hosted infrastructure
+it watches** (Railway + the management-plane Supabase); there is no monitor **external to / out-of-band of** that
+infrastructure. If the operator's own Railway account, region, or the management-plane deployment itself goes fully
+dark (not just one silo), every internal watchdog goes dark with it — the meta-#3 one layer above AF-118 (that AF
+covers an evaluator stalling; this one covers the evaluator's *host infrastructure* disappearing). The unbuilt
+assumption: **an out-of-band external monitor** — a synthetic uptime check / dead-man's-switch service, hosted
+outside the operator's own Railway infra — watches the management-plane deployment itself and alerts a human when
+*it* stops responding. **Method:** SPIKE — stand up an external synthetic-check/dead-man's-switch service against
+the management-plane's public health endpoint, fault-inject a full management-plane outage (kill the Railway
+project/region), and confirm the external monitor fires when nothing internal can. **Relied on by:** FR-7.ALR.008,
+FR-7.MGM.002 (both already gate on their evaluator surviving; this AF gates the evaluator's *host infrastructure*
+surviving). Gates **the #3 guarantee's own foundation** — C7 cannot claim "never fail silently" while every one of
+its watchdogs shares a single point of failure (the operator's own infra) with the thing it watches. **Surfaced by:**
+whole-spec audit (H48) — this residual risk was not previously logged as an OD or AF anywhere, unlike almost every
+other risk in this component.
 
 ## Block S — Component 8 (Agent Design), session 25 (2026-06-26)
 
@@ -567,13 +585,13 @@ not launch-gating. **Surfaced by:** the Phase-3 surface-12 spec (flagged for Pha
 
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-139
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-140
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
 > block H uses AF-068; backup/DR block I uses AF-069–072; **Supabase Auth block J uses AF-073–077**;
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
 > AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**; **Component-5
-> block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**; **Component-7 block R uses AF-118–120**;
-> **Component-8 block S uses AF-121–126**; **Component-9 block T uses AF-127–131**).
+> block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**; **Component-7 block R uses AF-118–120,
+> AF-139**; **Component-8 block S uses AF-121–126**; **Component-9 block T uses AF-127–131**).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

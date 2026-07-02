@@ -156,7 +156,7 @@
 
 | Code | Area | Scope |
 |---|---|---|
-| **LOG** | Event log + log retention | The `event_log` schema (silo-reconciled) + the 8-value event_type enum; log-intent semantics; append-only; completeness; duration/cost capture; token-no-leak; retention; the C7 side of the `guardrail_log` (view/retention/export) |
+| **LOG** | Event log + log retention | The `event_log` schema (silo-reconciled) + the 15-value event_type enum (8 lifecycle + 6 alert types + reporter_push); log-intent semantics; append-only; completeness; duration/cost capture; token-no-leak; retention; the C7 side of the `guardrail_log` (view/retention/export) |
 | **RTP** | Real-time vs polling | The hybrid contract (Realtime for approval-queue + notifications; polling elsewhere); per-surface cadences; configurable intervals; the per-silo connection budget + degrade-to-polling; subscription lifecycle |
 | **ALR** | Alerting | The notification centre (dashboard-first, persistent); the seven alert rules + configurable thresholds; routing-by-type (RBAC); every alert logged; escalation-window → secondary alert; delivery durability; the C5/C6→C7 delivery seam; the watchdog on the alert engine itself |
 | **COST** | Cost tracking | Estimate-grade accounting (ADR-003); per-task-type aggregation from day one; the cost ladder (meter + trigger; enforcement seamed); the cost-threshold alert |
@@ -294,7 +294,10 @@ The system maintains an append-only `event_log` table — the single unified tim
 with columns: `id`, `task_id`, `event_type`, `entity_ids`, `summary`, `payload`, `duration_ms`, `cost_tokens`,
 `created_at`. **`client_slug` is dropped intra-silo** (OD-067 → single-tenant). `event_type` is one of the
 enumerated set: `task_started` · `tool_called` · `memory_read` · `memory_written` · `guardrail_hit` ·
-`approval_requested` · `task_completed` · `task_failed`. The log is **append-only** — rows are never updated or
+`approval_requested` · `task_completed` · `task_failed` · `task_failure_spike` · `queue_backup` ·
+`memory_confidence_drop` · `approval_queue_stale` · `cost_threshold_breach` · `loop_missed` · `reporter_push` (the
+last seven extend the enum so **every alert raised** is recordable per FR-7.ALR.004's six alert types plus the
+FR-7.MGM.001.3 reporter-attempt log). The log is **append-only** — rows are never updated or
 deleted in place (retention pruning per FR-7.LOG.006 is the only removal path).
 - **AC-7.LOG.001.1** — A write that would `UPDATE` or `DELETE` an existing `event_log` row (outside the LOG.006
   retention job) is rejected at the data layer.
@@ -541,6 +544,12 @@ silently stop firing while every surface stays green — the worst #3.
 - **AC-7.ALR.008.2** — A stalled alert engine raises a critical alert via the watchdog (and the management-plane
   push carries the condition, so a fully-down silo still surfaces on the Super Admin grid). ⚠️ FEASIBILITY:
   **AF-118** (absence-of-signal detection is only as live as its evaluator).
+- **Residual risk (not yet an FR):** this watchdog — and the FR-7.MGM.002 staleness evaluator, and the DLQ-liveness
+  heartbeat (AC-5.JOB.006.2) — all run on the **same operator-hosted infrastructure they watch**; none is observed
+  by anything external. An **out-of-band external monitor** (a synthetic uptime check / dead-man's-switch service
+  hosted outside the operator's own Railway infra, watching the management-plane deployment itself) is a **build-time
+  addition still needed**, not yet specced as an FR. ⚠️ FEASIBILITY: **AF-139** (out-of-band external monitor for the
+  management plane itself).
 
 #### FR-7.ALR.009 — Alert routing is configured, and an unroutable alert fails loud
 **Status:** Approved (change-control 2026-06-27, session 28) · **Cites:** OD-097; non-negotiable #3; extends
@@ -640,6 +649,12 @@ treated as a signal, never shown as a healthy green card.
 - **AC-7.MGM.002.4** — The staleness window is computed against a **single server-authoritative timestamp**, never a
   reporter-asserted clock — a fast reporter clock cannot make a dead deployment's snapshot look fresh (#3). ⚠️
   FEASIBILITY: **AF-120**.
+- **Residual risk (not yet an FR):** this staleness evaluator — and the FR-7.ALR.008 alert-engine watchdog, and the
+  DLQ-liveness heartbeat (AC-5.JOB.006.2) — all run on the **same operator-hosted infrastructure they watch**; none
+  is observed by anything external. An **out-of-band external monitor** (a synthetic uptime check / dead-man's-switch
+  service hosted outside the operator's own Railway infra, watching the management-plane deployment itself) is a
+  **build-time addition still needed**, not yet specced as an FR. ⚠️ FEASIBILITY: **AF-139** (out-of-band external
+  monitor for the management plane itself).
 
 #### FR-7.MGM.003 — Deployment health grid
 **Status:** Approved · **Cites:** L3188–3191; reconciliation #2
@@ -693,9 +708,9 @@ The five role surfaces exist and are **RBAC-gated** — Super Admin (cross-deplo
 (non-technical), Standard User, Mobile — each surfacing **only the signals its role may see** (C1 is the authority).
 The **answer-mode pill** (Cited / Inferred / Unknown, from C4 FR-4.CID.006) is rendered on **every AI-output item** in
 the activity feeds and chat. The *thresholding* of "a high proportion of Inferred/Unknown on an entity → a
-thin-coverage signal" is **seamed to C2** (the memory-coverage owner, FR-2.MNT.*); C7 renders the pill and forwards
-the per-entity pill mix, it does not define the coverage threshold. **Full surface specification (layout, every
-state, mobile interaction design) → Phase 3.**
+thin-coverage signal" is **seamed to C2** (the Maturity/[Building] owner, FR-2.MAT.003 / FR-2.RET.007); C7 renders
+the pill and forwards the per-entity pill mix, it does not define the coverage threshold. **Full surface
+specification (layout, every state, mobile interaction design) → Phase 3.**
 - **AC-7.VIEW.002.1** — A role sees only the panels/signals its C1 permissions allow; an unpermitted signal is not
   rendered to it.
 - **AC-7.VIEW.002.2** — Every AI-output item in an activity feed/chat carries its answer-mode pill (C4-sourced).

@@ -209,7 +209,7 @@ Upholds / Implemented by / Target / Verification / **Launch gate** / Acceptance 
 - **Upholds:** #1 (a crash mid-seed loses no completed output — the graph resumes, prior work reused) + #3 (retry-duplication and backfill stampede are prevented, never silently multiplying work/cost).
 - **Implemented by:** FR-5.GRP.003 (resume-from-incomplete, reuse) · FR-5.GRP.004 (idempotency keys) · FR-5.LOP.004 (single catch-up) · FR-0.SEED.003 (idempotent seed).
 - **Target / threshold:** resume from first incomplete step; exactly-once via idempotency keys; ≤ 1 catch-up per missed loop window.
-- **Verification:** build-time tests (crash mid-graph → resume reuses prior outputs; replayed step → no duplicate; missed loop window → single catch-up) — AF-112 (crash-window resume) + AF-063 (catch-up / no stampede).
+- **Verification:** build-time tests (crash mid-graph → resume reuses prior outputs; replayed step → no duplicate; missed loop window → single catch-up) — AF-063 (Inngest per-key concurrency serializes same-entity steps) + AF-112 (catch-up / no stampede).
 - **Launch gate:** blocking (foundational — the #1 crash-window and no-stampede properties rest on locked C5/C0 FRs); the AF-112/063 confirmations are build-time.
 - **Acceptance criteria:**
   - AC-NFR-INF.014.1 — Given a crash mid-seed, When the graph resumes, Then it restarts from the first incomplete step and reuses prior completed outputs (no re-run of done work).
@@ -223,6 +223,7 @@ Upholds / Implemented by / Target / Verification / **Launch gate** / Acceptance 
 verified against the C10 / C5 / C7 / C0 components, ADR-005, ADR-001 §7, and the config registry at
 draft (canary_soak_minutes=60 · deploy_max_version_skew=3 · deploy_max_skew_days=14); AF ids
 (AF-004/013/020/021/063/064/065/066/112/132/135) confirmed against the feasibility register. Launch-gate
-postures per RP-1: blocking spikes are AF-004 (provisioning end-to-end), AF-065 (expand-contract mixed
-fleet), AF-135 (freeze propagation); AF-064/066 (canary), AF-013 (Google verification), AF-020/021
+postures: AF-004 (provisioning end-to-end), AF-065 (expand-contract mixed
+fleet), AF-135 (freeze propagation) are blocking-by-posture (locked-ADR/FR mechanisms built regardless, not
+one of the RP-1 six); AF-064/066 (canary), AF-013 (Google verification), AF-020/021
 (provisioning smoke), AF-132 (deprovision) are fast-follow / build-time.*

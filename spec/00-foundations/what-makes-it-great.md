@@ -37,7 +37,7 @@ These map onto the dimensions table below. Every component in Phase 1 is checked
 | # | Dimension | The *great* bar | Where it lives | Status |
 |---|---|---|---|---|
 | 1 | **Failure handling** | per-step failure modes decided upfront (retry/skip/halt) · idempotent retries · graceful degradation (partial results) · detects *silent* failures | failure-mode map L2821 · per-step retry/skip/halt L3483 · DLQ L2585 · graceful degradation L2109 · silent-failure prevention L2857; idempotency ADR-004 | ✅🔵 |
-| 1a | ↳ **compensation / rollback of partially-done chains** | a chain that already acted on the world (updated CRM) then halts has a defined cleanup/compensation story | not addressed — only halt+resume | 🔴 **OD-010** |
+| 1a | ↳ **compensation / rollback of partially-done chains** | a chain that already acted on the world (updated CRM) then halts has a defined cleanup/compensation story | resolved OD-010 (2026-06-26): on halt, C6 records already-applied side effects and queues an explicit, human-visible compensation/cleanup task for a reversible external write; an irreversible applied effect is surfaced as non-compensable — no auto-rollback (#2) — **FR-6.ESC.003** (+AC-6.ESC.003.2/.3) | ✅ |
 | 2 | **Memory compounds (doesn't rot)** | contradiction detection · consolidation (episodic→semantic, evidence kept) · erosion detection · confidence feedback loop | contradiction L1608 · consolidation L1776 · decay L1800 · erosion L1819 · feedback L1848 · confidence lifecycle L1662; ADR-002/003/004 | ✅🔵 + ⚠️ AF-002/031 (retrieval & writer *quality* unproven) |
 | 3 | **Concurrency correctness** | per-entity serialize · idempotency · validate-and-commit; correct under fan-out | ADR-004 (was a doc gap, now closed) | 🔵 + ⚠️ AF-061/062/063 |
 | 4 | **Cost discipline w/o quality loss** | controls-before-gates · model routing · cost ladder **with quality telemetry** (a silent quality regression is caught) | ADR-003 (dual-track AF-035) | 🔵 + ⚠️ AF-001/040-043 |
@@ -54,9 +54,12 @@ These map onto the dimensions table below. Every component in Phase 1 is checked
 
 **Mostly yes, and on purpose.** Dimensions 1–10 are designed in and several are ADR-hardened. The
 *honest* picture:
-- **🔴 One genuine gap left, tracked:** compensation/rollback of partial chains (OD-010). Backup/DR
-  (was OD-009) is now decided — ADR-008 (hourly client-owned off-platform snapshot default + PITR opt-in
-  upsell + tested restore + golden rule), residual is the paper-until-proven restore (AF-069).
+- **✅ Both former gaps are now resolved:** compensation/rollback of partial chains (OD-010, resolved
+  2026-06-26) is realized as **FR-6.ESC.003** (+AC-6.ESC.003.2/.3) — on halt, C6 queues an explicit
+  compensation/cleanup task for an already-applied reversible external effect and surfaces an irreversible
+  one as non-compensable; no auto-rollback (#2). Backup/DR (was OD-009) is also decided — ADR-008 (hourly
+  client-owned off-platform snapshot default + PITR opt-in upsell + tested restore + golden rule), residual
+  is the paper-until-proven restore (AF-069).
 - **⚠️ The rest of the risk is "great on paper, must be proven":** retrieval quality, writer
   quality, concurrency under load, cost envelope, pill accuracy — all in the feasibility register,
   to be tested by spikes. Greatness here is *claimed*, not yet *proven* — and that's stated, not hidden.

@@ -345,7 +345,7 @@ business lens; the technical event log is surface-05's Event Log panel.
 | Element | Source | Notes |
 |---|---|---|
 | Activity items | C7 `event_log` (FR-7.LOG.001–006), clearance-scoped (ADR-006) | Plain-English "what happened" rows; redaction-tombstone retention honoured (AC-7.LOG.006.3); a viewer sees only rows their clearance permits |
-| **Answer-mode pill** | **C4 FR-4.CID.006** (Cited / Inferred / Unknown) | Rendered on **every AI-output item** (AC-7.VIEW.002.2); the pill *meaning* binds DRY to C4 — never re-typed here. `[Building]` entity-coverage is a **C2** flag (FR-2.MNT.*), seamed not redefined |
+| **Answer-mode pill** | **C4 FR-4.CID.006** (Cited / Inferred / Unknown) | Rendered on **every AI-output item** (AC-7.VIEW.002.2); the pill *meaning* binds DRY to C4 — never re-typed here. `[Building]` entity-coverage is a **C2** flag (FR-2.MAT.003/FR-2.RET.007), seamed not redefined |
 | Per-entity pill mix (forwarded) | AC-7.VIEW.002.2 | The proportion of Inferred/Unknown per entity is **forwarded to C2** for the thin-coverage signal; **the threshold is C2's**, not this surface's |
 | Item detail | C7 `event_log` row | Expand for the plain-English detail; a "view trace" deep-link is a technical affordance (surface-05), gated separately |
 

@@ -262,7 +262,7 @@ opens the Builder (Section B). This is the act-on landing for surface-05's self-
 **Data bindings:**
 | Element | Source | Notes |
 |---|---|---|
-| Agent card (one per row) | C8 `agents` (FR-8.REG.001) | `name`, `description` (the routing signal), domain, `enabled` state, `version`, `model` |
+| Agent card (one per row) | C8 `agents` (FR-8.REG.001) | `name`, `description` (the routing signal), domain, `enabled` state, `version`, plus `model` — **read-only, config-derived** (not an `agents.model` column; FR-8.REG.001 defines none — model is selected by complexity per FR-8.COST.001, sourced from `default_model` / `lightweight_model` config, surface-01) |
 | Enabled / disabled state | `agents.enabled` (FR-8.REG.005) | A disabled agent is **retained + shown greyed**, never routed (AC-8.REG.005.1); never silently dropped |
 | Health badge | Agent-health metric store (FR-8.HLTH.001) | Success/failure rate + last-run; a **glance** — the full agent-health / self-improvement panel is **surface-05** (seam). Polls 60 s |
 | Drift flag | FR-8.HLTH.002 (`drift_threshold`) | Surfaced, **never auto-corrected** (AC-8.HLTH.002.1) — a "review scope" badge links to the Builder |

@@ -198,6 +198,7 @@ are **not** `DATA-`-prefixed in the matrix and are added below.
 | 14 | two-person-auth record | C10 (AC-10.DEL.006) | surface-06 |
 | 15 | `conversations` + `messages` | C5/C9 (OD-135) | surface-08/12 |
 | 16 | `config_audit_log` governance | C7 (FR-7.LOG.008 — already minted) | surface-01b |
+| 17 | `connector_deletion_flags` | C10 (FR-10.DEL.006(a) / AC-10.DEL.006.1/.3/.4) | audit H18 |
 
 ## Open Decisions surfaced (for `schema.md` step 7 — options + rec to user)
 

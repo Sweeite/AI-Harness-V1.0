@@ -55,6 +55,7 @@ behind a confirm-the-rebuild dialog), with the plain-English description shown a
 - **Validation is enforced at write time** — out-of-range/enum-violating/cross-constraint-breaking
   writes are rejected, never silently clamped (#3).
 - **Cross-key constraints** (must hold at write): `confidence_floor ≤ amber_zone_threshold` ·
+  `retrieval_confidence_threshold < amber_zone_threshold` (audit H27) ·
   `injection_semantic_threshold ≤ injection_quarantine_threshold` ·
   `cold_start_basic ≤ cold_start_proactive ≤ cold_start_full` · `ranking_weights` sum = 1.0 ·
   `routing_weights` sum = 1.0 · `backoff_initial_ms ≤ backoff_max_ms` ·
@@ -110,9 +111,9 @@ RBAC's tunable knob set is two values; roles/perms/clearances are Tier-1 records
 
 | Key | What it does (plain English) | Default | Class | Validation |
 |---|---|---|---|---|
-| `amber_zone_threshold` | Confidence level below which a memory is flagged as shaky before it's fully distrusted | 0.65 | LIVE | float 0–1; ≥ confidence_floor |
+| `amber_zone_threshold` | Confidence level below which a memory is flagged as shaky before it's fully distrusted | 0.75 | LIVE | float 0–1; ≥ confidence_floor; > retrieval_confidence_threshold (audit H27 — amber must fire before, not after, a memory drops below the retrieval floor) |
 | `confidence_floor` | The lowest confidence a memory can decay to — it's never deleted, just parked here | 0.5 | LIVE | float 0–1; ≤ amber_zone_threshold |
-| `retrieval_confidence_threshold` | How confident a memory must be before the AI is allowed to use it | 0.7 | LIVE | float 0–1 |
+| `retrieval_confidence_threshold` | How confident a memory must be before the AI is allowed to use it | 0.7 | LIVE | float 0–1; < amber_zone_threshold |
 | `retrieval_sufficiency_threshold` | How much memory must be found before an answer counts as well-supported rather than thin | 0.6 | LIVE | float 0–1 |
 | `memories_injected_per_task` | How many relevant memories the AI pulls in when working on a task | 7 | LIVE | int 1–50 (token-cost lever) |
 | `merge_similarity_threshold` | How alike two memories must be before they're combined into one | 0.92 | LIVE | float 0–1 |

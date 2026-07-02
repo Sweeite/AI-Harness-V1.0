@@ -287,7 +287,7 @@ OD-010 no-auto-rollback. AFs block S = AF-121…AF-126. All six original ODs + t
   - Edge / failure: a step with no assignable failure mode defaults to halt-and-escalate (PLAN.002).
 - **Data touched:** writes `execution_plan` into the context envelope (C5 FR-5.ENV.*); `event_log`.
 - **Permissions:** N/A.
-- **Config dependencies:** CFG-chain_depth_limit, CFG-parallel_execution (L948–949).
+- **Config dependencies:** CFG-chain_depth_limit, CFG-parallel_execution_enabled (L948–949).
 - **Surfaces:** N/A.
 - **Observability:** the plan logged + versioned (ORC.007 / PLAN.004).
 - **Acceptance criteria:**
@@ -1141,7 +1141,9 @@ OD-010 no-auto-rollback. AFs block S = AF-121…AF-126. All six original ODs + t
 
 #### FR-8.COST.003 — Emit the per-route cost model for C7 metering / C6 ladder
 - **Statement:** The system shall record the cost-relevant shape of each routing decision (one call per orchestrator
-  decision, one per specialist, up to three per memory-write event) so C7 can meter and C6 can apply the cost ladder.
+  decision, one per specialist, exactly one Sonnet call wrapped in up to three Haiku calls — up to four calls total,
+  dominated by the Sonnet writer — per memory-write event, per ADR-003 §4) so C7 can meter and C6 can apply the cost
+  ladder.
 - **Source:** L3598, ADR-003, OD-068
 - **Status:** Approved
 - **Priority:** Must

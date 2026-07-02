@@ -139,7 +139,8 @@ load-bearing for same-entity correctness.
 
 **`memory_writes_per_minute: 30` (`L974`) makes serialization free.** 30/min ≈ one write per 2s;
 even fully serialized, same-entity writes never queue meaningfully. The cap is the safety ceiling;
-per-entity serialization runs far below it. No throughput objection survives.
+per-entity serialization runs far below it. No throughput objection survives. (Key name: see
+Reconciliation note under Consequences → Config.)
 
 ## Consequences
 
@@ -152,6 +153,12 @@ per-entity serialization runs far below it. No throughput objection survives.
   supersede (§5). A negative FR: "no agent other than the Memory Agent writes memory."
 - **Config:** `memory_write_serialization: per_entity` (vs `global`/`off` for debugging), and the
   existing `memory_writes_per_minute: 30` is reaffirmed as the ceiling, not the concurrency model.
+  - **Reconciliation (2026-07-02, config-registry build — clarification, not a decision change):**
+    the built `config-registry.md` ships this key as **`rate_limit_memory_writes_per_minute`**
+    (`config-registry.md:201`), matching its sibling `rate_limit_*` key family — not the bare
+    `memory_writes_per_minute` named above. The registry name is canonical; only the literal key
+    name drifted. The underlying decision (30/minute, per-entity, safety ceiling not the
+    concurrency model) is unchanged.
 - **Inngest job config:** memory-write function gets a concurrency key on primary entity (§2 opt).
 
 **Ruled out:** global write serialization (B); locks held across LLM calls (C); optimistic-only

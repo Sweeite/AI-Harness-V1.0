@@ -1,8 +1,8 @@
 # Component 6 — Guardrails (what stops it doing something catastrophic)
 
-- **Status:** 🟢 **Approved 2026-06-26 (session 23)** — 35 FRs, verification gate run + all findings reconciled;
+- **Status:** 🟢 **Approved 2026-06-26 (session 23)** — 36 FRs, verification gate run + all findings reconciled;
   ODs **OD-060…OD-066** resolved (+ carry-forwards **OD-047** and **OD-010** resolved here); feasibility
-  **block Q (AF-116…AF-117)** logged. Area codes: HRD ×4 · APR ×6 · ANM ×5 · RTL ×3 · ESC ×4 · INJ ×6 · LOG ×4 ·
+  **block Q (AF-116…AF-117)** logged. Area codes: HRD ×4 · APR ×6 · ANM ×5 · RTL ×4 · ESC ×4 · INJ ×6 · LOG ×4 ·
   OPT ×2 · FMM ×1. C6 is the **enforcement layer** — "the code half" of system safety; detection/alert delivery →
   C7, orchestration → C8, the per-component *mechanisms* → C2/C3/C5 are seams.
 - **Sign-off:** ☑ **Approved 2026-06-26, user-authorized (delegated)** — the four #2-touching calls all resolved
@@ -78,7 +78,7 @@
   limits, physical isolation, sole-writer memory are the controls that ignore prompt content entirely.
   **Detection is demoted to a signal** (part 3): the cheap deterministic layers (boundary tagging, regex
   tripwires, webhook auth) stay always-on for logging; the **embedding-similarity scan ships OFF by default**
-  (`injection_semantic_detection`, part 3) and when on may only **flag content for human review, never
+  (`injection_semantic_detection_enabled`, part 3) and when on may only **flag content for human review, never
   autonomously gate**. **Fail-safe = retain + route to human** (part 4): a quarantine **holds and retains**
   content (shadow-retain), never machine-discards — discard is a human-only logged decision (#1). The
   thresholds `injection_semantic_threshold` (0.85) / `injection_quarantine_threshold` (0.95) are **reframed as
@@ -138,7 +138,7 @@
 1. **`client_slug` on `guardrail_log` (L2897) is a label, not an RLS key** — cross-client isolation is physical
    (ADR-001 §3/§4); it appears in no RLS predicate. (Mirrors C1–C5.)
 2. **The injection thresholds (0.85 / 0.95, L3017–3027) are signal-tuning knobs, NOT safety dials** — per ADR-007
-   part 5. The semantic-similarity scan is **off by default** (`injection_semantic_detection`); the always-on
+   part 5. The semantic-similarity scan is **off by default** (`injection_semantic_detection_enabled`); the always-on
    deterministic **regex** layer is what runs unconditionally. The design's step-1 "regex + semantic" reads as
    "regex always, semantic when enabled."
 3. **Quarantine = retain-and-route-to-human, never machine-discard** — ADR-007 part 4. The design's step-4
@@ -245,7 +245,7 @@ silently swallowed (#3). → FR-6.FMM.001.
 
 ### OD-062 — Rate-limit guardrail ownership split 🟢 RESOLVED → (a)
 **Why it matters:** the five caps (L2811–2816) overlap existing owners: `max memory writes/min` is C2/ADR-004
-(`memory_writes_per_minute`), `max concurrent tasks` + `max retries → DLQ` are C5 (FR-5.JOB.*), `max tool writes
+(`rate_limit_memory_writes_per_minute`), `max concurrent tasks` + `max retries → DLQ` are C5 (FR-5.JOB.*), `max tool writes
 per task` + `max external comms/hour` are C6/C3.
 **Recommendation:** **(a)** C6 **frames all five as guardrails** — configurable, never-unlimited (L2809), breach
 → `guardrail_log` (type `rate_limit`) + the ladder — and **delegates the enforcement mechanism** to the home
@@ -339,8 +339,10 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
 - **Source:** L2768; ADR-007 part 4 (loud logging, #3); FR-6.LOG.001.
 - **Seam:** alert **delivery** (dashboard + Slack channel) → C7; C6 produces the event + the requirement.
 - **ACs:**
-  - AC-6.HRD.002.1 — *Given* a hard-limit hit, *When* the gate fires, *Then* a `guardrail_log` row is written
-    in the same transaction as the block (the block is never applied without the record).
+  - AC-6.HRD.002.1 — *Given* a hard-limit hit, *When* the gate fires, *Then* the block is applied and a
+    `guardrail_log` row is written to record it; per AC-6.LOG.003.3 the block **holds regardless of the
+    log-write's success** — the row is best-effort logging of an already-final decision, never a transactional
+    co-requisite the block waits on or rolls back for.
   - AC-6.HRD.002.2 — *Given* the row is written, *When* C7's alert delivery is unavailable, *Then* the failure
     to alert is itself surfaced (a dropped alert is not a silent loss — reuses the C5 DLQ-heartbeat pattern,
     AC-5.JOB.006.2).
@@ -387,48 +389,42 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
     *Given* soft/hard, *Then* C5 moves it to `awaiting_approval` per FR-5.QUE.005.
 
 #### FR-6.APR.002 — Mandatory hard-approval set
-- **Statement:** The system shall require **hard approval** (never auto, never soft) for: **floored external
-  communications** — communications to **existing clients or systems of record** — financial-record operations, and
-  Confidential- or Restricted-tagged memory operations (L2783–2784) — plus the FR-6.HRD.004 gated extensions (bulk
-  export, mass-delete, connector spend, destructive config). **Low-risk external communication** (cold-lead /
-  templated nurture to **non-client contacts**) is **not** in this floor — it is governed by the **C9
-  action-autonomy matrix (FR-9.MODE.004)** + **contextual approval routing (FR-6.APR.005)**, operator-configurable
-  down to Prepare or up to Act after a trust period. The Confidential/Restricted triggers consume C1 sensitivity
-  tags (FR-1.CLR.001/004).
-- **Source:** L2783–2784; consumes C1 FR-1.CLR.*, FR-1.RST.003; **amended OD-088 (2026-06-27)**.
+- **Statement:** The system shall require **hard approval** (never auto, never soft) for: **external
+  communications** — any outbound communication to a party outside the deployment, with no sub-type exemption
+  (L2783–2784) — financial-record operations, and Confidential- or Restricted-tagged memory operations
+  (L2783–2784) — plus the FR-6.HRD.004 gated extensions (bulk export, mass-delete, connector spend, destructive
+  config). The Confidential/Restricted triggers consume C1 sensitivity tags (FR-1.CLR.001/004).
+- **Source:** L2783–2784; consumes C1 FR-1.CLR.*, FR-1.RST.003; **amended OD-088 (2026-06-27), reverted OD-161
+  (2026-07-02)**.
 - **ACs:**
-  - AC-6.APR.002.1 — *Given* a **floored** action — an external communication to an **existing client / system of
-    record**, a financial operation, or a Confidential/Restricted memory action — *When* tiered, *Then* it is
-    hard-approval regardless of any config that would lower it (the floor, mirroring the C4 principles hard-floor).
+  - AC-6.APR.002.1 — *Given* a **floored** action — **any external communication**, a financial operation, or a
+    Confidential/Restricted memory action — *When* tiered, *Then* it is hard-approval regardless of any config
+    that would lower it (the floor, mirroring the C4 principles hard-floor); no external-comms sub-type is
+    exempt from the floor (OD-161 — the low-risk-external carve-out is retired).
   - AC-6.APR.002.2 — *Given* a Restricted-tagged memory operation, *When* gated, *Then* the hard-approval routes
     to a grantee/Super-Admin per C1's Restricted model, and the access is audited in `access_audit` (C1 OD-024),
     distinct from the `guardrail_log` `approval_gate` row.
-  - AC-6.APR.002.3 — *(OD-088)* *Given* a **low-risk external** communication (cold-lead / non-client templated
-    nurture), *When* tiered, *Then* it is **not** floored to hard — its tier is the one assigned by the C9
-    action-autonomy matrix (FR-9.MODE.004); but *Given* the recipient is an existing client / system-of-record, or
-    the content is financial / Confidential / Restricted, *Then* it **remains floored to hard** and the matrix
-    **cannot** lower it.
 
-> **Change-control (2026-06-27 · C9 session 26 · OD-088, operator-decided #2):** the mandatory-hard **external**
-> element is **narrowed** from "all external communications" to **existing-client / system-of-record** comms.
-> Low-risk external (cold-lead / templated nurture to non-client contacts) is removed from the floor and governed by
-> the new C9 **action-autonomy matrix (FR-9.MODE.004)** — operator-configurable down to Prepare or up to Act after a
-> trust period, bounded by the C6 rate caps (max external comms/hour, FR-6.RTL.001) and full audit. **Financial,
-> existing-client / system-of-record, and Confidential/Restricted comms remain floored to hard, never configurable
-> below.** This also refines **OD-056 / FR-6.APR.003**: the blanket "external-communication never auto-executes"
-> becomes "**floored**-external never auto-executes"; an Act-tier low-risk external send is a **conscious,
-> operator-opt-in, trust-gated, rate-capped** exception to the no-irreversible-auto default — bounded to the
-> non-client low-risk sub-type only (see FR-9.MODE.004 for the bounds; surfaced, not hidden).
+> **Change-control (2026-06-27 · C9 session 26 · OD-088, operator-decided #2 — SUPERSEDED 2026-07-02 by OD-161):**
+> the mandatory-hard **external** element was **narrowed** from "all external communications" to
+> **existing-client / system-of-record** comms, with low-risk external (cold-lead / templated nurture to
+> non-client contacts) routed to the new C9 **action-autonomy matrix (FR-9.MODE.004)** — operator-configurable
+> down to Prepare or up to Act after a trust period. **OD-161 (2026-07-02) reverts this narrowing:** ADR-007's
+> "no user role, no agent instruction, no config change can override a hard limit" (L2066) forecloses a
+> config-gated autonomous external send for any sub-type, so the mandatory-hard floor is **restored to all
+> external communications, with no exception**; `AC-6.APR.002.3` (the floored-sub-type carve-out AC) is
+> **retired**; `FR-9.MODE.004`'s low-risk-external sub-type is capped at **Prepare only** (draft-ready, a human
+> sends). **Financial, external, and Confidential/Restricted comms all remain floored to hard, never
+> configurable below.**
 
 #### FR-6.APR.003 — Soft-approval auto-execute is reversible-only
 - **Statement:** The system shall auto-execute a **soft-approval** action after its configurable delay only if
-  the action is **reversible**; any irreversible / **floored-external** (existing-client / system-of-record) /
-  financial / Confidential / Restricted action is hard-approval by definition (FR-6.APR.002) and **never**
-  auto-executes on human inaction — reconciling C5 **OD-056** (no irreversible action auto-executes). The one
-  bounded exception is an **Act-tier low-risk external** send authorized via the C9 action-autonomy matrix
-  (FR-9.MODE.004, OD-088) — operator-opt-in + trust-gated + rate-capped — which is *not* a soft-approval timeout
-  path but an explicitly configured autonomy grant for the non-client low-risk sub-type only. [OD-064, OD-088]
-- **Source:** L2779–2780; OD-064; consumes C5 OD-056; **amended OD-088 (2026-06-27)**; **amended OD-120 (2026-06-30, surface-04 change-control — reviewer-side Hold)**.
+  the action is **reversible**; any irreversible / **external-communication** / financial / Confidential /
+  Restricted action is hard-approval by definition (FR-6.APR.002) and **never** auto-executes on human inaction
+  — reconciling C5 **OD-056** (no irreversible action auto-executes). External communication never auto-executes
+  on inaction, with no sub-type exception. [OD-064; narrowed by OD-088, reverted by OD-161]
+- **Source:** L2779–2780; OD-064; consumes C5 OD-056; **amended OD-088 (2026-06-27), reverted OD-161
+  (2026-07-02)**; **amended OD-120 (2026-06-30, surface-04 change-control — reviewer-side Hold)**.
 - **ACs:**
   - AC-6.APR.003.1 — *Given* a soft-approval action whose delay elapses with no human action, *When* the timer
     fires, *Then* it executes **only if** flagged reversible; an irreversible action could not have been soft-tier
@@ -553,7 +549,7 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
 #### FR-6.RTL.002 — Ownership split (policy here, mechanism at the home owner)
 - **Statement:** The system shall frame all five caps as guardrails owned by C6 (policy + breach response) while
   **delegating the enforcement mechanism** to the home owner: memory-writes/min → C2/ADR-004
-  (`memory_writes_per_minute`), concurrent-tasks + retries-to-DLQ → C5 (FR-5.JOB.*), tool-writes/task +
+  (`rate_limit_memory_writes_per_minute`), concurrent-tasks + retries-to-DLQ → C5 (FR-5.JOB.*), tool-writes/task +
   external-comms/hour → C6 with C3's connector tracker. C6 does not re-implement counters that already exist. [OD-062]
 - **Source:** OD-062; consumes C2 ADR-004, C5 FR-5.JOB.*, C3 FR-3.RL.*.
 - **ACs:**
@@ -653,7 +649,8 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
 - **Statement:** The system shall ensure **every flag is resolved** — a flagged item **cannot be silently
   abandoned** (L2881). A configurable **escalation timeout** triggers a reminder notification chain; an
   un-actioned flag escalates (alert + badge) until resolved, reusing the standardized **C1 OD-028 / C2 OD-032 /
-  C5 AC-5.QUE.005.2 escalate-don't-abandon pattern** (the system's three wait-points now share one rule).
+  C5 AC-5.QUE.005.2 escalate-don't-abandon pattern** (this FR is a fourth wait-point sharing the same rule; C7
+  FR-7.ALR.005 makes it a fifth).
 - **Source:** L2881; reuses C1 OD-028, C2 OD-032, C5 AC-5.QUE.005.2.
 - **ACs:**
   - AC-6.ESC.004.1 — *Given* a flagged item un-actioned past its escalation timeout, *When* the timeout fires,
@@ -699,14 +696,14 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
 
 #### FR-6.INJ.003 — Step 1b: semantic-similarity scan is OFF by default
 - **Statement:** The system shall ship the **embedding semantic-similarity scan OFF by default**
-  (`injection_semantic_detection`, ADR-007 part 3). When enabled, it embeds content, compares to a library of
+  (`injection_semantic_detection_enabled`, ADR-007 part 3). When enabled, it embeds content, compares to a library of
   known injection embeddings, and **flags** above `injection_semantic_threshold` (default 0.85) — as an
   **additive signal for human review, never an autonomous gate**. The threshold is a signal knob, not a safety
   dial (reconciliation #2). [OD-066]
 - **Source:** L2959–2963, L3017–3022; ADR-007 parts 3 + 5; OD-066.
 - **⚠️ FEASIBILITY: AF-117** — the known-injection-embedding library's coverage/quality is an EVAL gate.
 - **ACs:**
-  - AC-6.INJ.003.1 — *Given* a fresh deployment, *When* inspected, *Then* `injection_semantic_detection` is off;
+  - AC-6.INJ.003.1 — *Given* a fresh deployment, *When* inspected, *Then* `injection_semantic_detection_enabled` is off;
     the regex layer (FR-6.INJ.002) still defends.
   - AC-6.INJ.003.2 — *Given* the semantic scan is on and content scores above 0.85, *When* handled, *Then* it
     flags for review (raises the combined score toward quarantine) — it never autonomously blocks or discards.
@@ -746,7 +743,7 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
   - AC-6.INJ.006.2 — *Given* a human reviewer, *When* they choose discard, *Then* the decision is logged
     (who/when) and the task continues without the content; *When* they choose include, *Then* the content is
     admitted only after explicit approval.
-  - AC-6.INJ.006.3 — *Given* a quarantine while `injection_semantic_detection` is off, *When* a high-confidence
+  - AC-6.INJ.006.3 — *Given* a quarantine while `injection_semantic_detection_enabled` is off, *When* a high-confidence
     literal regex match scores above the bar, *Then* quarantine still functions on the deterministic layer alone
     (OD-066).
   - AC-6.INJ.006.4 — *(Verification gate — M5, quarantine review has a staleness owner.)* *Given* a quarantine
@@ -759,7 +756,7 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
 
 #### FR-6.LOG.001 — The `guardrail_log` schema + five types
 - **Statement:** The system shall maintain a `guardrail_log` table — `id`, `task_id`, `guardrail_type`,
-  `description` (plain English), `action_blocked`, `status` (`pending` | `approved` | `rejected`), `reviewed_by`,
+  `description` (plain English), `action_blocked`, `status` (`pending` | `approved` | `rejected` | `modified`), `reviewed_by`,
   `reviewed_at`, `client_slug`, `created_at` — with `guardrail_type` ∈ {`hard_limit`, `approval_gate`, `anomaly`,
   `rate_limit`, `prompt_injection`} (L2887–2899, L3007–3014). `client_slug` is a **label, not an RLS key**
   (reconciliation #1). *(Phase-4 reconciliation: the column is DELETED, not label-only — OD-096 / FR-10.ISO.001; it exists only in management-plane `client_registry`.)* (Schema: new field `guardrail_log.escalated_at` — consolidated in `spec/04-data-model/schema.md`, Phase 4.)
@@ -770,7 +767,7 @@ an external side effect.** Promote to an ADR only if it proves cross-cutting bey
   - AC-6.LOG.001.2 — *Given* the `status` field, *When* set, *Then* `approved` is invalid for a `hard_limit` row
     (FR-6.HRD.003); `hard_limit` rows terminate at the recorded-block state.
   - AC-6.LOG.001.3 — *(Verification gate — L1, `pending` disambiguation.)* *Given* the design's
-    `status` ∈ {`pending`, `approved`, `rejected`}, *When* an event is unresolved, *Then* `pending` covers
+    `status` ∈ {`pending`, `approved`, `rejected`, `modified`}, *When* an event is unresolved, *Then* `pending` covers
     **all** unresolved review states (approval-gate wait, quarantine-review wait, anomaly/rate-limit review)
     disambiguated by `guardrail_type` — a reviewer reads the type, not the status, to tell an approval-gate
     `pending` from a quarantine `pending`. (The `flagged` *task* status, C5 OD-054, is the task-level state; this
@@ -871,5 +868,5 @@ reconciled in-file (the new ACs carry a `(Verification gate — Hn/Mn/Ln, …)` 
 
 ## Traceability
 
-35 rows wired into `traceability-matrix.csv` (FR-6.* — HRD ×4 · APR ×6 · ANM ×5 · RTL ×3 · ESC ×4 · INJ ×6 ·
+36 rows wired into `traceability-matrix.csv` (FR-6.* — HRD ×4 · APR ×6 · ANM ×5 · RTL ×4 · ESC ×4 · INJ ×6 ·
 LOG ×4 · OPT ×2 · FMM ×1). `system-map/06-guardrails.md` built; `system-map/README.md` marks 06 ✅.

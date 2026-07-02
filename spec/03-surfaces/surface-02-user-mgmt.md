@@ -18,7 +18,7 @@
 - **FRs served:**
   - **UI-USER-MGMT (Users tab)** — FR-1.USR.001 (assign/change role), FR-1.USR.002 (deactivate / reactivate — revocation not deletion), FR-1.USR.003 (reset 2FA), FR-1.USR.004 (view activity log), FR-1.ROLE.005 (last-Super-Admin protection), FR-1.RLS.006 (changes effective on next query); **+ C0 invite lifecycle** FR-0.INV.001 (invite-only, no self-registration), FR-0.INV.002 (link generation + ≤24 h expiry), FR-0.INV.003 (custom-SMTP send + failure surfacing), FR-0.INV.006 (revoke / resend / re-issue), FR-0.INV.007 (delivery-failure + bounce surfacing)
   - **UI-ROLE-MGMT (Roles tab)** — FR-1.ROLE.001 (six default roles), FR-1.ROLE.002 (runtime CRUD, no migration), FR-1.ROLE.003 (Super-Admin-only), FR-1.ROLE.004 (delete-if-unused + protected roles), FR-1.ROLE.005 (last-Super-Admin protection)
-  - **UI-PERMISSION-MATRIX (Permissions tab)** — FR-1.PERM.004 (role × node grid, toggle-to-grant), FR-1.PERM.002 (default-deny), FR-1.PERM.005 (`PERMISSION_NODES.md` is the catalog source), FR-1.PERM.007 (12-category seed catalog), FR-1.PERM.006 (denied surfaces absent)
+  - **UI-PERMISSION-MATRIX (Permissions tab)** — FR-1.PERM.004 (role × node grid, toggle-to-grant), FR-1.PERM.002 (default-deny), FR-1.PERM.005 (`PERMISSION_NODES.md` is the catalog source), FR-1.PERM.007 (thirteen-category seed catalog), FR-1.PERM.006 (denied surfaces absent)
   - **UI-CLEARANCE-MGMT (Clearances tab)** — FR-1.USR.005 (grant/revoke above-Standard clearance), FR-1.CLR.002 (per-role default clearances), FR-1.CLR.003 (explicit-never-inherited), FR-1.CLR.004 (entity-type scope), FR-1.CLR.001 (the four tiers — informational)
   - **UI-CLEARANCE-REVIEW (Reviews tab)** — FR-1.CLR.005 (configurable-cadence review; un-actioned = flag + escalate, never auto-revoke / never silently retain)
   - **UI-RESTRICTED-GRANT (Restricted tab)** — FR-1.RST.001 (per-named-individual, never per role, Super-Admin-only), FR-1.RST.002 (who/when/why audit; instant revoke), FR-1.RST.003 (never auto-injected — informational note)
@@ -85,7 +85,7 @@ header with the tab bar, and a content pane per tab:
 - **Users tab** — a searchable/filterable table of users (one row per user) + a primary **"Invite user"** action;
   clicking a row opens a right-hand **detail drawer** (role, clearances summary, 2FA status, activity log).
 - **Roles tab** — a list of roles (six defaults + any custom) + **"New role"**; a role opens an editor.
-- **Permissions tab** — the role × permission-node matrix, grouped by the 12 catalog categories (OD-110).
+- **Permissions tab** — the role × permission-node matrix, grouped by the thirteen catalog categories (OD-110).
 - **Clearances tab** — a list of above-Standard clearance grants (user/role × tier × entity-type scope) + grant action.
 - **Reviews tab** — the clearance-review queue (due + overdue), with an overdue-escalation banner (OD-111).
 - **Restricted tab** — the per-individual Restricted-grant register + grant action.
@@ -135,8 +135,8 @@ change roles, deactivate/reactivate, reset 2FA, and inspect activity. Super Admi
 | View activity (drawer) | Opens the read-only activity log (FR-1.USR.004) | `PERM-user.view_activity` |
 
 **Real-time / poll:** User list **static on page load + on-demand refresh**. **Invite delivery status** polls
-(or subscribes via the C7 RTP contract) so a `Send failed` / `Bounced` outcome appears without a manual refresh
-(FR-0.INV.003/.007 — a throttled or bounced invite must never read as "sent", #3). Activity drawer fetches on open.
+so a `Send failed` / `Bounced` outcome appears without a manual refresh (FR-0.INV.003/.007 — a throttled or
+bounced invite must never read as "sent", #3). Activity drawer fetches on open.
 
 **States:**
 - **Loading:** Skeleton table rows; drawer shows a skeleton on open.
@@ -190,7 +190,7 @@ from `PERMISSION_NODES.md` (FR-1.PERM.005). **Super Admin only.**
 
 | Element | Source | Notes |
 |---|---|---|
-| Node rows | `PERMISSION_NODES.md` catalog (12 categories — FR-1.PERM.007) | Every catalog node renders as a row; none hardcoded or omitted (AC-1.PERM.005.2) |
+| Node rows | `PERMISSION_NODES.md` catalog (thirteen categories — FR-1.PERM.007) | Every catalog node renders as a row; none hardcoded or omitted (AC-1.PERM.005.2) |
 | Node description / scope / added-in | `PERMISSION_NODES.md` (Description / Scope / Added-in fields) | Helper text binds to the catalog (DRY) — never re-typed; a missing description is a catalog defect, not a surface fallback |
 | Role columns | `roles` | One column per role (defaults + custom) |
 | Grant cell (toggle) | `role_permissions` (role × node row presence) | Checked = granted; unchecked = default-deny (FR-1.PERM.002) |
@@ -353,7 +353,7 @@ matrix on a phone is out of scope). The detailed mobile dashboard treatment live
 | # | Question | Resolution |
 |---|---|---|
 | OD-109 🟢 | One tabbed "Users & Access" surface, or six separate nav routes? | **(a)** One tabbed surface (Users/Roles/Permissions/Clearances/Reviews/Restricted) with per-tab PERM gating — the six are tightly coupled, share the same Super-Admin audience, and this mirrors surface-01's sectioned model. Admins (Users-only) just see one tab. |
-| OD-110 🟢 | Matrix layout for ~37 nodes (12 categories) × 6+ roles? | **(a)** Category-grouped accordion — each category a node-row × role-column sub-grid with a sticky role header + node search. A flat grid is too wide to scan; grouping by the 12 catalog categories (FR-1.PERM.007) keeps a node findable. |
+| OD-110 🟢 | Matrix layout for ~37 nodes (thirteen categories) × 6+ roles? | **(a)** Category-grouped accordion — each category a node-row × role-column sub-grid with a sticky role header + node search. A flat grid is too wide to scan; grouping by the thirteen catalog categories (FR-1.PERM.007) keeps a node findable. The accordion is category-driven, not a fixed count — it renders one section per catalog category (now thirteen, not twelve), so no layout change is needed to accommodate the corrected count. |
 | OD-111 🟢 | Clearance review (FR-1.CLR.005): own tab or inline badges? | **(a)** A separate "Reviews" tab surfacing due+overdue with an escalation banner — the escalate-don't-revoke posture is the surface's sharpest #3 expression and deserves a dedicated, countable queue (mirrors surface-00's overdue-pinning). |
 | OD-112 🟢 | Reason mandatory on sensitive non-Restricted mutations (deactivate, role-delete, clearance-revoke)? | **(a)** Optional free-text reason, captured to `access_audit` when given; mandatory only for Restricted grants — keeps consistency with the locked OD-029 (audit every mutation; reason mandatory only for Restricted per FR-1.RST.002) while still capturing a why when provided. |
 

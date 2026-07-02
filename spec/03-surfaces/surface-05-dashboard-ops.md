@@ -136,8 +136,8 @@ mint. Next OD: OD-125.
     FR-1.PERM.006).
   - **Export** (Guardrail-Log / Event-Log export, FR-6.LOG.004 / FR-7.LOG.007): gated by `PERM-compliance.download_records`
     (the existing Compliance-category node, homed in C1) — exporting trust evidence is a compliance action.
-  - **DLQ requeue/discard** (FR-5.JOB.006): an *action*, not a view — gated to operators who may re-drive jobs (working
-    name a System-Functions node; exact id in `PERMISSION_NODES.md`). See OD-121's action-gating note.
+  - **DLQ requeue/discard** (FR-5.JOB.006): an *action*, not a view — gated to operators who may re-drive jobs
+    (`PERM-ops.dlq_manage`, Operations Actions category — `PERMISSION_NODES.md`). See OD-121's action-gating note.
   - All nodes default-deny (FR-1.PERM.002).
 - **DATA bindings** (Phase-4 stubs; **no `client_slug` rendered** — single-tenant per silo, ADR-001 §3 / OD-096, a
   **closed** decision: C10 FR-10.ISO.001 deleted `client_slug` from all app tables):
@@ -145,7 +145,7 @@ mint. Next OD: OD-125.
     guardrail_hit, approval_requested, task_completed, task_failed}, `entity_ids`, `summary`, `payload`, `duration_ms`,
     `cost_tokens` *(nullable / `cost_unknown` sentinel — FR-7.LOG.004)*, `created_at`). Append-only; retention per
     `event_log_retention_window`; compliance erasure = redaction-tombstone (FR-7.LOG.006).
-  - **C5-owned** `task_queue` (`id`, `status` ∈ {queued, running, awaiting_approval, completed, failed, flagged}, the
+  - **C5-owned** `task_queue` (`id`, `status` ∈ {pending, running, awaiting_approval, completed, failed, flagged}, the
     error history + `attempts` + final failure reason for DLQ rows, `created_at`). The DLQ view = `task_queue` rows in
     the failed/exhausted-retry state (Inngest's failed-function queue projected here); queue depth + success rate
     aggregate over it.
@@ -213,8 +213,8 @@ is a **false-healthy view**: a panel that failed to load must say so, never show
 never sees the "Operations" nav item and a direct URL returns 404 (FR-1.PERM.006 — denied surfaces are absent, not
 visible-but-empty). **Per-panel scoping is enforced at the panel** (AC-7.VIEW.002.1): a caller who may enter but lacks
 a given panel's node does not see that panel rendered (it is absent). **Export and DLQ requeue/discard are action-gated**
-beyond entry (FR-6.LOG.004 / FR-7.LOG.007 export → `PERM-compliance.download_records`; DLQ actions → a System-Functions
-node — OD-121).
+beyond entry (FR-6.LOG.004 / FR-7.LOG.007 export → `PERM-compliance.download_records`; DLQ actions → `PERM-ops.dlq_manage`
+— OD-121 / OD-167).
 
 ---
 
@@ -343,7 +343,7 @@ health (FR-3.DSC.005/006) — so a quietly-dead integration is visible before it
 **Actions:**
 | Action (label) | What it does | PERM gate |
 |---|---|---|
-| Reconnect / re-auth | Initiates the C3 re-auth flow for a degraded connector (FR-3.TOK.004) | Tool-Access node (OD-121) |
+| Reconnect / re-auth | Initiates the C3 re-auth flow for a degraded connector (FR-3.TOK.004) | `PERM-ops.connector_reconnect` (OD-121 / OD-167) |
 | View connector detail | Opens that connector's status history | same as entry |
 
 **Real-time / poll:** **Polls every `polling_interval_health_metrics_s` (default 30 s)** for status (FR-7.RTP.002); the
@@ -447,8 +447,8 @@ history + final failure reason; **nothing here is auto-retried** — an operator
 **Actions:**
 | Action (label) | What it does | PERM gate |
 |---|---|---|
-| Requeue | Explicitly re-drives the task (the *only* path back — never automatic, AC-5.JOB.006.1); confirm + audited | System-Functions DLQ-action node (OD-121) |
-| Discard | Explicitly drops the task with a mandatory reason; audited | System-Functions DLQ-action node (OD-121) |
+| Requeue | Explicitly re-drives the task (the *only* path back — never automatic, AC-5.JOB.006.1); confirm + audited | `PERM-ops.dlq_manage` (OD-121 / OD-167) |
+| Discard | Explicitly drops the task with a mandatory reason; audited | `PERM-ops.dlq_manage` (OD-121 / OD-167) |
 | View error history | Opens the full per-attempt error trail | same as entry |
 
 **Real-time / poll:** **Polls every `polling_interval_health_metrics_s` (default 30 s)** (FR-7.RTP.002). The
@@ -608,7 +608,7 @@ owned by C7 and delivered to surface-07/mobile — not this surface. Detailed mo
 
 | # | Question | Options | Recommendation |
 |---|---|---|---|
-| OD-121 | **Per-panel role-scoping + action-gating** (FR-7.VIEW.002 / AC-7.VIEW.002.1): which of the six roles sees which of the nine panels, and which existing/new PERM nodes gate entry, export, DLQ requeue/discard, and connector re-auth? The FRs say "RBAC-gated, C1 is the authority" but give no panel→node map. | (a) Entry via a **Dashboard Access (ops)** node (Super Admin + Admin full); **Finance** → Cost panel only; others hidden by default. Export → `PERM-compliance.download_records`; DLQ actions + connector re-auth → **System-Functions / Tool-Access** nodes. All node ids materialise in `PERMISSION_NODES.md` (FR-1.PERM.005) — **no new category, no mint** (the categories exist). (b) One coarse "ops view" node, no per-panel scoping (simpler, but violates AC-7.VIEW.002.1's least-privilege). (c) Mint a fresh "Operations" category. | **(a)** — least-privilege per AC-7.VIEW.002.1, reuses existing categories (Dashboard Access, Observability, Compliance, System Functions, Tool Access), and mirrors how surface-01/02 bound to existing `PERM-config.*`/`PERM-user.*` nodes. Records a panel×role×node table; **no FR re-approval, no ADR supersede** — a build-artifact enumeration, not a new decision. |
+| OD-121 | **Per-panel role-scoping + action-gating** (FR-7.VIEW.002 / AC-7.VIEW.002.1): which of the six roles sees which of the nine panels, and which existing/new PERM nodes gate entry, export, DLQ requeue/discard, and connector re-auth? The FRs say "RBAC-gated, C1 is the authority" but give no panel→node map. | (a) Entry via a **Dashboard Access (ops)** node (Super Admin + Admin full); **Finance** → Cost panel only; others hidden by default. Export → `PERM-compliance.download_records`; DLQ actions → `PERM-ops.dlq_manage`; connector re-auth → `PERM-ops.connector_reconnect` (minted under the new **Operations Actions** category per **OD-167**, since neither action fit an existing category — see `PERMISSION_NODES.md`). (b) One coarse "ops view" node, no per-panel scoping (simpler, but violates AC-7.VIEW.002.1's least-privilege). (c) Mint a fresh "Operations" category. | **(a)** — least-privilege per AC-7.VIEW.002.1, reuses existing categories where they fit (Dashboard Access, Observability, Compliance), mints **Operations Actions** (`PERM-ops.dlq_manage`, `PERM-ops.connector_reconnect`) per **OD-167** where they didn't, and mirrors how surface-01/02 bound to existing `PERM-config.*`/`PERM-user.*` nodes. Records a panel×role×node table; **no FR re-approval, no ADR supersede** — a build-artifact enumeration, not a new decision. |
 | OD-122 | **Layout** — single-scroll sectioned dashboard vs tabbed panels? | (a) **Single-scroll, sectioned**, with a sticky health-summary strip + anchor nav + collapsible, independently-polled panels. (b) Tabbed (one panel per tab). | **(a)** — a monitoring dashboard is glanced as a whole; tabs hide a degrading panel behind an unselected tab (a #3 risk — the failure you don't see). The summary strip gives the at-a-glance; anchors give fast access; independent per-panel polling + error states keep one bad panel from taking down the glass. |
 | OD-123 ⚠️ **Rule-0 config gap** | AC-5.JOB.006.2 mandates an escalating signal when a DLQ entry sits "**beyond a configurable age**," but **no config-registry key exists** for that age (`max_retries_before_dead_letter`=3 is the *retry* cap, not the staleness age). The DLQ-unattended escalation currently has **no editable knob** — a #3 hole (the loud-condition's threshold is unspecified), the same shape as OD-097. | (a) **Mint `dlq_stale_alert_hours`** (default **24 h**, **LIVE**, `#loops`, `PERM-config.loops`) via change-control to `config-registry.md` — the knob AC-5.JOB.006.2 already assumes exists. (b) Hard-code 24 h (violates "configurable"). (c) Reuse `connector_disconnection_escalation_window` (wrong domain). | **(a)** — mint `dlq_stale_alert_hours` (24 h default, LIVE, `#loops`) via change-control. Closes a real Rule-0 gap: an FR's AC references a config that doesn't exist. Mirrors OD-097's resolution (a config key the FRs assumed but the registry lacked). Adds one registry row; no FR re-approval (it satisfies an existing AC). |
 | OD-124 | **Single-deployment vs cross-deployment scope** — does surface-05 render any cross-deployment/management-plane signal (FR-7.MGM.*), or is that exclusively surface-06? | (a) **Exclusively surface-06** — surface-05 is strictly **this one deployment**; a Super Admin here sees only the local deployment, and the fleet grid / cross-deployment cost/health/CI-CD (FR-7.MGM.001–005) lives on surface-06. (b) Embed a fleet summary here for Super Admins. | **(a)** — clean seam, matches ADR-001 §3 isolation (no `client_slug`, no cross-silo data on a per-deployment surface) and the playbook's surface split (06 = "Super Admin dashboard + management-plane screens"). A Super Admin reaches the fleet via surface-06; surface-05 stays single-deployment. |
@@ -645,10 +645,11 @@ owned by C7 and delivered to surface-07/mobile — not this surface. Detailed mo
   surface-03, the actionable agent config is surface-09.
 - **`access_audit`** (C1, append-only) — every Export and every view of a Personal/Restricted-touching log row is an
   audited access (FR-1.AUD.001/002). Immutable; C7 owns retention/export.
-- **PERM nodes (OD-121)** — entry + per-panel + action nodes all resolve to **existing categories** (Dashboard Access,
-  Observability, Compliance, System Functions, Tool Access — FR-1.PERM.007); exact ids materialise in `PERMISSION_NODES.md`
-  at build (FR-1.PERM.005). **No new category, no node mint, no ADR supersede** — unlike surface-03/04 (which minted
-  nodes because no category fit). The panel×role×node table is recorded with OD-121.
+- **PERM nodes (OD-121)** — entry + per-panel nodes resolve to **existing categories** (Dashboard Access, Observability,
+  Compliance — FR-1.PERM.007); exact ids materialise in `PERMISSION_NODES.md` at build (FR-1.PERM.005). The DLQ and
+  connector-reconnect **action** nodes (`PERM-ops.dlq_manage`, `PERM-ops.connector_reconnect`) needed no existing
+  category and were minted under a new **Operations Actions** category per **OD-167** — like surface-03/04 (which
+  minted nodes because no category fit). The panel×role×node table is recorded with OD-121.
 - **Owed to the config registry (OD-123):** `dlq_stale_alert_hours` (default 24 h, LIVE, `#loops`, `PERM-config.loops`)
   — a change-control addition closing the AC-5.JOB.006.2 gap.
 - **No `client_slug`** rendered on any binding (ADR-001 §3 / OD-096); surface-05 is **single-deployment** (OD-124).

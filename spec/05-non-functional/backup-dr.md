@@ -137,6 +137,20 @@
   - AC-NFR-DR.008.1 — Given a recovery scenario, When the durability layers are inspected, Then a proven restore, an append-only tamper-evident audit history, and shadow-retain each independently preserve knowledge; no single-layer failure is total loss.
 - **Notes / OD:** the audit-sink immutability spec lives in `compliance.md` (CMP-f) — see there for the trigger + tamper-evidence detail.
 
+### NFR-DR.009 — Off-platform backup-purge flag: the compliance-erasure leg this domain owns
+
+- **Requirement:** The system shall receive and process the compliance-erasure purge flag raised by FR-2.MNT.017 (AC-2.MNT.017.2) — an erased target's Personal data present in **pre-erasure off-platform snapshots** shall be **purged/expired within the snapshot's normal retention rotation, bounded to the next scheduled off-platform dump cycle (≤ the NFR-DR.001 hourly cadence) or the next restore rehearsal (NFR-DR.003), whichever confirms clearance first** — and the purge's completion (or a still-pending flag) shall be **logged**, never silently dropped.
+- **Type:** duty + verification.
+- **Upholds:** #1 (erased data does not silently persist/reappear in a restored off-platform snapshot) + #3 (a still-pending purge is logged loud, not silently carried forward).
+- **Implemented by:** FR-2.MNT.017 (AC-2.MNT.017.2, the flag's origin) · ADR-008 (this file's owning ADR; mechanics homed here per OD-038) · AF-137 (transitive-erasure completeness verification, which names the off-platform backup-purge flag as one of the legs it spikes).
+- **Target / threshold:** flagged snapshots purged/expired within one dump-cycle rotation of the erasure completing (≤ 1 hour, NFR-DR.001 cadence); clearance confirmed at the next scheduled restore rehearsal (NFR-DR.003, monthly/per-migration cadence); a flag still open past that checkpoint is a logged exception, not a silent gap.
+- **Verification:** **SPIKE (AF-137)** — the transitive-erasure spike plants a residue in a pre-erasure off-platform snapshot and asserts the purge flag clears it within the stated window; build-time wiring confirms the flag is received + actioned, not just raised.
+- **Launch gate:** blocking (the same #1/#2 legal-erasure guarantee as FR-2.MNT.017 — an erasure that doesn't reach the off-platform copy is not a completed erasure).
+- **Acceptance criteria:**
+  - AC-NFR-DR.009.1 — Given FR-2.MNT.017's off-platform purge flag, When it is raised, Then this domain's snapshot pipeline receives it and purges/expires the target's Personal data from pre-erasure off-platform snapshots within the next scheduled dump cycle.
+  - AC-NFR-DR.009.2 — Given a purge flag still open past its dump-cycle window, When the next restore rehearsal (NFR-DR.003) or backup-health check (NFR-DR.006) runs, Then the open flag is surfaced as a logged exception, never silently carried forward or reported clear.
+- **Notes / OD:** closes **H46** — FR-2.MNT.017 (AC-2.MNT.017.2) names this leg as "mechanics owned by Phase 5"; this row is that ownership. **AC-2.MNT.017.5's completeness check should be extended to explicitly include this leg** (flagged here for the C2-side AC edit; not yet applied in this file, tracked separately).
+
 ---
 
 *Drafted session 45 (2026-07-01). This domain IS ADR-008 turned into operational NFRs. RPO ~1 hour

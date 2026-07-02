@@ -36,7 +36,7 @@
 - **Requirement:** The system shall store only **pointers + enrichment** over systems of record, **never copies** of the source data; every memory row shall carry a `source_ref` to its system of record, and source files shall be referenced, never copied into the brain.
 - **Type:** posture (the governing data-model invariant).
 - **Upholds:** #1 (the brain's blast radius excludes source-of-record data; recent loss is re-derivable by re-ingesting) + #2 (the system holds no more of the client's regulated data than pointers + derived enrichment).
-- **Implemented by:** ADR-008 Context (design `L1634`) · FR-2.* (memory model) · schema.md `memories.source_ref` / `entities.source_ref`.
+- **Implemented by:** ADR-008 Context (design `L1634`) · FR-2.* (memory model) · schema.md `memories.source_ref` / `entities.external_refs`.
 - **Target / threshold:** binary — every memory/entity row carries a `source_ref`; ingested files are referenced, never copied into Storage (ADR-008 §6, OOS-013).
 - **Verification:** DOCS (schema — `source_ref` present on memory rows; the ingestion path stores pointers) + build-time test (no source-file copy path into the brain).
 - **Launch gate:** blocking (foundational data-model invariant governing what is even stored/backed up).

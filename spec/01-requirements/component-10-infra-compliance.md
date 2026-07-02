@@ -68,7 +68,9 @@
     backup-health, cost overview). C10 owns the **ingest endpoint + the `client_registry` it writes**; C7 owns the
     **reporter that pushes + the dashboard that reads**.
   - **Backup / DR** — hourly off-platform snapshot, PITR upsell, restore-rehearsal → **Phase 5** + **ADR-008**. C10
-    references it (offboarding flags backups for purge via C2 AC-2.MNT.017.2); it does not own the schedule/restore.
+    references it — **individual erasure** flags the per-record backup-purge via C2 AC-2.MNT.017.2 (FR-10.DEL.006(a));
+    **offboarding** separately flags the client's entire off-platform backup for purge/retention-expiry
+    (FR-10.OFF.005 AC-10.OFF.005.6, H30) — it does not own the schedule/restore.
   - **All rendering** — the Super-Admin offboarding wizard, the Admin deletion queue, the fleet version grid →
     **Phase 3**. C10 owns the *workflow + state contract*; Phase 3 renders.
   - **The migration-discipline standard** (`standards/migration-discipline.md`) is a binding cross-component
@@ -182,7 +184,7 @@
     FEASIBILITY: AF-136** (the specific lawful minimums are jurisdiction-dependent — the floor is a *configurable
     safeguard*, the actual legal value requires the legal review of FR-10.LEG.001).
 - **Data touched:** `CFG-*` (Phase 2 config registry).
-- **Permissions:** `PERM-config.edit` (Super Admin).
+- **Permissions:** `PERM-config.infra` (Super Admin).
 - **Config dependencies:** itself (these are the configs).
 - **Surfaces:** a retention-policy config surface (Phase 3).
 - **Observability:** each change → `event_log` (who/old/new/when).
@@ -397,7 +399,8 @@
   - Branches: the flag is tracked-until-acknowledged (not fire-and-forget); the harness never auto-deletes from a SoR.
   - Edge / failure: the same person being both executor and second authoriser is **rejected** (#2); an un-acknowledged
     connector flag escalates rather than silently closing (#3).
-- **Data touched:** a connector-deletion flag record; the authorisation record on the request.
+- **Data touched:** `DATA-connector_deletion_flags` (a per-system, tracked-until-acknowledged flag record); the
+  authorisation record on the request.
 - **Permissions:** Admin / Super Admin ×2 distinct (for Restricted/Personal).
 - **Config dependencies:** `CFG-deletion_two_person_auth_required`.
 - **Surfaces:** the connector-deletion checklist + the two-person confirm (Phase 3).
@@ -423,17 +426,18 @@
   deployment is in an offboarding **retention freeze** (FR-10.OFF.004), erasure is part of the deletion path that
   retention governs, and a stray write is rejected by the freeze gate (FR-10.OFF.004 / OD-091). Erasure never
   proceeds on a deployment whose state forbids writes without surfacing the conflict.
-- **Source:** design-doc-v4.md L4054–4056 (freeze); **OD-091**.
+- **Source:** design-doc-v4.md L4054–4056 (freeze); **OD-091**; **OD-162**.
 - **Status:** Approved
 - **Priority:** Should
 - **Actor / trigger:** erasure execution under a deployment-state check.
-- **Preconditions:** deployment status readable (`client_registry.status` via the local mirror / FR-10.MGT.002).
+- **Preconditions:** deployment status readable via `deployment_settings.frozen_at` (a local read in the client's
+  own Supabase, no cross-deployment query — OD-162; written by FR-10.OFF.004).
 - **Behaviour:**
   - Happy path: a normal-state deployment executes erasure as specified.
   - Branches: an `offboarding`/`frozen` deployment routes erasure through the offboarding deletion path, not the
     ad-hoc workflow.
   - Edge / failure: an erasure attempted on a frozen deployment is surfaced + blocked, never silently no-op'd.
-- **Data touched:** reads deployment status.
+- **Data touched:** reads `deployment_settings.frozen_at`.
 - **Permissions:** as FR-10.DEL.001.
 - **Config dependencies:** —
 - **Surfaces:** a state conflict message (Phase 3).
@@ -441,7 +445,8 @@
 - **Acceptance criteria:**
   - AC-10.DEL.007.1 — Given a frozen/offboarding deployment, When an ad-hoc erasure is attempted, Then it is blocked
     + surfaced, not silently dropped.
-- **Open decisions:** OD-091 (freeze enforcement) — consumes its resolution.
+- **Open decisions:** OD-091 (freeze enforcement) — consumes its resolution; OD-162 (`deployment_settings.frozen_at`
+  as the local freeze read) — consumes its resolution.
 - **Feasibility assumptions:** —
 - **Notes:** Keeps the two delete paths from racing on a deployment being torn down.
 
@@ -460,19 +465,19 @@
 - **Preconditions:** Super-Admin auth on the management plane; the deployment exists in `client_registry`.
 - **Behaviour:**
   - Happy path: Super Admin initiates → the deployment's `client_registry.status` moves to `offboarding`, recording
-    `offboarding_initiated_at`.
+    `offboarding_at`.
   - Branches: contract-end auto-surfacing presents a prompt; the human still confirms (no auto-offboard without a
     Super Admin action).
   - Edge / failure: a non-Super-Admin attempt is rejected; an accidental trigger is recoverable only **before** the
     retention window's hard-deletion step (the sequence is "cannot be reversed once started" past Step 4, L4103).
-- **Data touched:** `client_registry.status` / `offboarding_initiated_at` (management plane).
+- **Data touched:** `client_registry.status` / `offboarding_at` (management plane).
 - **Permissions:** Super Admin only.
 - **Config dependencies:** contract-end date (optional, config).
 - **Surfaces:** the Super Admin offboarding wizard (Phase 3).
 - **Observability:** initiation → management-plane log + `event_log`.
 - **Acceptance criteria:**
   - AC-10.OFF.001.1 — Given a Super Admin initiates offboarding, When confirmed, Then `client_registry.status` →
-    `offboarding` and `offboarding_initiated_at` is set.
+    `offboarding` and `offboarding_at` is set.
   - AC-10.OFF.001.2 — Given a non-Super-Admin, When they attempt to initiate, Then RBAC rejects it.
   - AC-10.OFF.001.3 — Given a contract-end date passes, When tracked, Then it surfaces a prompt but does not
     auto-execute offboarding.
@@ -562,32 +567,42 @@
   period** (`CFG-client_offboarding_retention_days`, default 90) for disputes / legal holds / reactivation. During
   the freeze the deployment status is `offboarding`/`frozen` and the harness **writes no new data, runs no agents,
   executes no loops** — enforced by a freeze gate the trigger/queue layer (C5) checks before any dispatch (OD-091).
-  The deployment shows `offboarding` in the Super Admin dashboard.
-- **Source:** design-doc-v4.md L4049–4058; **OD-091**; **C5** trigger/queue layer.
+  Setting `client_registry.status = frozen` in the management plane **also writes `deployment_settings.frozen_at`**
+  directly into the client's own Supabase project, using the client's custodied `service_role` key (the same
+  provisioning credential path ADR-001 §7 already establishes) — this local, client-side row is what the C5 dispatch
+  gate actually reads (OD-162), never a cross-deployment query. The deployment shows `offboarding` in the Super
+  Admin dashboard.
+- **Source:** design-doc-v4.md L4049–4058; **OD-091**; **OD-162**; **C5** trigger/queue layer.
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** the post-export retention window.
-- **Preconditions:** export acknowledged (FR-10.OFF.003); the C5 dispatch path reads deployment status.
+- **Preconditions:** export acknowledged (FR-10.OFF.003); the C5 dispatch path reads `deployment_settings.frozen_at`
+  locally in the client's own Supabase (OD-162).
 - **Behaviour:**
-  - Happy path: status `frozen`; no writes/agents/loops run; data intact + retrievable for reactivation; the clock
-    counts down `client_offboarding_retention_days`.
+  - Happy path: status `frozen`; `deployment_settings.frozen_at` is set in the client's Supabase; no
+    writes/agents/loops run; data intact + retrievable for reactivation; the clock counts down
+    `client_offboarding_retention_days`.
   - Branches: reactivation **within** the window unfreezes (status → active) — data was never destroyed.
   - Edge / failure: an agent/loop/trigger that **runs anyway** during a freeze (no enforcement consumer) is the
-    #2/#3 failure — so the freeze is an **enforced gate** (C5 checks `status` before dispatch, fails closed), not a
-    dashboard label. **⚠️ FEASIBILITY: AF-135** (freeze propagates to every dispatch path — Inngest, triggers,
-    loops, manual actions).
-- **Data touched:** `client_registry.status`; the C5 dispatch gate reads it.
+    #2/#3 failure — so the freeze is an **enforced gate** (C5 checks `deployment_settings.frozen_at` before dispatch,
+    fails closed), not a dashboard label. **⚠️ FEASIBILITY: AF-135** (freeze propagates to every dispatch path —
+    Inngest, triggers, loops, manual actions).
+- **Data touched:** `client_registry.status` (management plane); `deployment_settings.frozen_at` (the client's own
+  Supabase, written via the custodied `service_role` key — the local freeze flag the C5 dispatch gate reads,
+  OD-162).
 - **Permissions:** Super Admin to freeze/unfreeze.
 - **Config dependencies:** `CFG-client_offboarding_retention_days`.
 - **Surfaces:** the `offboarding` deployment state (Phase 3).
 - **Observability:** freeze entry/exit + any blocked-by-freeze dispatch → log.
 - **Acceptance criteria:**
   - AC-10.OFF.004.1 — Given export sign-off, When the retention window starts, Then status → `frozen` for
-    `client_offboarding_retention_days` and the data remains intact + retrievable.
+    `client_offboarding_retention_days`, `deployment_settings.frozen_at` is written into the client's own Supabase,
+    and the data remains intact + retrievable.
   - AC-10.OFF.004.2 — Given a frozen deployment, When any trigger/agent/loop dispatch is attempted, Then the C5
-    freeze gate blocks it (fails closed) — no new data is written.
+    freeze gate reads `deployment_settings.frozen_at` (a local read, no cross-deployment query) and blocks it (fails
+    closed) — no new data is written.
   - AC-10.OFF.004.3 — Given a reactivation request within the window, When approved, Then the deployment unfreezes
-    with all data intact.
+    with all data intact, using the same write path in reverse to clear `deployment_settings.frozen_at`.
   - AC-10.OFF.004.4 — *(Gate H1 — frozen ≠ dead; the C10↔C7 staleness seam.)* Given a frozen deployment stops
     pushing health snapshots (no agents/loops run, FR-10.OFF.004), When C7's staleness path (FR-7.MGM.002) evaluates
     it, Then it reads the **server-authoritative `client_registry.status`** and shows the deployment as
@@ -598,7 +613,8 @@
     owns the `status` source-of-truth + this requirement; C7 owns the staleness-path consumption — a small C10↔C7
     seam to wire at the C7/Phase-3 surface pass.)*
 - **Open decisions:** OD-091 (freeze enforcement + the C5 consumer) — **resolved** (this FR + the C5 change-control
-  AC, mirroring the C8 OD-081 memory-scope wiring).
+  AC, mirroring the C8 OD-081 memory-scope wiring); OD-162 (the "local mirror" defined as
+  `deployment_settings.frozen_at`, written via the custodied `service_role` key) — **resolved** (this FR).
 - **Feasibility assumptions:** AF-135 (freeze propagation completeness, build-time).
 - **Notes:** Without an enforcement consumer the freeze is a label; the C5 dispatch gate is what makes "no agents
   run" true.
@@ -606,27 +622,35 @@
 ### FR-10.OFF.005 — Step 4: hard deletion + deprovision (atomic-or-escalate, never partial-silent)
 - **Statement:** After the retention window expires, the system shall **permanently delete + deprovision** in a
   tracked sequence: truncate + drop all tables in the client's Supabase, **deprovision the Supabase project**,
-  **deprovision the Railway service**, **hard-delete credentials** from the credentials table, and **revoke all
-  connector OAuth tokens** via each connector's revocation endpoint (C3). Each sub-step is **idempotent + its result
-  recorded**; a sub-step failure holds the offboarding in a `deletion_failed` state with escalation — the
+  **deprovision the Railway service**, **hard-delete credentials** from the credentials table, **revoke all
+  connector OAuth tokens** via each connector's revocation endpoint (C3), and **flag the client's off-platform
+  backup** (ADR-008's hourly, client-owned off-platform snapshot — engineered to **survive** the Supabase project
+  deletion above) **for purge / retention-expiry**. This backup-purge flag is distinct from, and in addition to, the
+  individual-erasure backup-purge flag (C2 AC-2.MNT.017.2, raised per-erasure by the DEL workflow) — offboarding
+  purges the client's **entire** off-platform backup, not a per-record flag. Each sub-step is **idempotent + its
+  result recorded**; a sub-step failure holds the offboarding in a `deletion_failed` state with escalation — the
   offboarding is **never marked complete on a partial deprovision**, and deprovision steps are **not auto-rolled-back**
   (you cannot un-delete; you fix forward).
-- **Source:** design-doc-v4.md L4060–4071; **C3 FR-3.TOK.*** (revocation); **OD-089**; **OD-010** (no auto-rollback).
+- **Source:** design-doc-v4.md L4060–4071; **ADR-008 §2** (off-platform backup survives project deletion); **C3
+  FR-3.TOK.*** (revocation); **OD-089**; **OD-010** (no auto-rollback).
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** offboarding Step 4 (post-retention).
 - **Preconditions:** retention window expired; export acknowledged (FR-10.OFF.003); Super-Admin confirmation.
 - **Behaviour:**
   - Happy path: each sub-step (DB truncate/drop → Supabase deprovision → Railway deprovision → credential delete →
-    token revoke) runs, records success, and the meta-record (FR-10.OFF.006) lists each system as deprovisioned.
+    token revoke → **off-platform backup flagged for purge**) runs, records success, and the meta-record
+    (FR-10.OFF.006) lists each system as deprovisioned.
   - Branches: a connector whose revocation endpoint is unreachable retries; an already-deprovisioned resource is a
-    no-op (idempotent).
+    no-op (idempotent); the backup-purge flag is tracked until the off-platform destination confirms purge (mechanics
+    owned by Phase 5 / ADR-008), mirroring FR-10.DEL.006(a)'s tracked-until-acknowledged pattern.
   - Edge / failure: a sub-step that fails leaves the offboarding in `deletion_failed` — **not** "done" — with the
-    per-system status recorded + escalation, so a half-deprovisioned client (orphaned Supabase, live OAuth token) is
-    surfaced, never silently left (#2/#3). **⚠️ FEASIBILITY: AF-132** (the end-to-end deprovision actually completes
-    on every system — Supabase + Railway + connector revocation).
+    per-system status recorded + escalation, so a half-deprovisioned client (orphaned Supabase, live OAuth token,
+    **an un-purged off-platform backup that outlives the "airtight deletion" claim**) is surfaced, never silently
+    left (#2/#3). **⚠️ FEASIBILITY: AF-132** (the end-to-end deprovision actually completes on every system —
+    Supabase + Railway + connector revocation + off-platform backup purge).
 - **Data touched:** the client's entire Supabase (truncate/drop/deprovision); Railway service; `credentials`; OAuth
-  tokens (via C3).
+  tokens (via C3); the off-platform backup-purge flag (Phase 5 / ADR-008).
 - **Permissions:** Super Admin (final confirmation).
 - **Config dependencies:** —
 - **Surfaces:** the deletion-execution step + per-system status (Phase 3).
@@ -648,15 +672,23 @@
     runs, Then `internal_token` revocation (FR-10.MGT.004.3) is performed **first / independently re-driven to
     completion**, so even a partial `deletion_failed` state never leaves a torn-down deployment holding a valid
     management-plane push credential (#2).
+  - AC-10.OFF.005.6 — *(Gate H30 — the off-platform backup is designed to survive the deprovision above; it must be
+    flagged too.)* Given Step 4 runs, When Supabase project deprovision is recorded, Then the sequence **also**
+    raises a flag on the client's off-platform backup (ADR-008) for purge/retention-expiry — tracked until the
+    off-platform destination confirms purge — and this flag's raise/acknowledge status is recorded in the
+    FR-10.OFF.006 meta-record; offboarding is **not** "airtight deletion evidence" (FR-10.ISO.002) while this flag
+    is un-raised.
 - **Open decisions:** OD-089 (partial-deprovision failure handling) — **resolved** (this FR).
 - **Feasibility assumptions:** AF-132 (deprovision completeness, build-time SPIKE).
 - **Notes:** Deprovisioning the client's Supabase project = airtight deletion evidence (ADR-001 §Consequences) — the
-  isolation model is what makes "their data is gone" provable (FR-10.ISO.002).
+  isolation model is what makes "their data is gone" provable (FR-10.ISO.002). The off-platform backup-purge flag
+  (AC-10.OFF.005.6) is what closes the gap ADR-008 §2 opens — a backup **engineered to survive** the project
+  deletion above cannot be left unflagged, or the "airtight" claim is false (H30).
 
 ### FR-10.OFF.006 — Step 5: the offboarding compliance meta-record (in the operator's system, no client data)
 - **Statement:** On offboarding completion the system shall create a **meta-record in the operator's management
   plane** (not the client's deployment — which no longer exists) confirming: the deployment's `client_registry`
-  identity, `offboarding_initiated_at`, `export_delivered_at`, `export_acknowledged_at`, `retention_window_end`,
+  identity, `offboarding_at`, `export_delivered_at`, `export_acknowledged_at`, `retention_window_end`,
   `deletion_executed_at`, `deletion_executed_by`, `systems_deprovisioned[]`, `tokens_revoked[]`. It is **compliance
   evidence**, retained for the legally required period, containing **no client business data** — only confirmation
   the process completed correctly.

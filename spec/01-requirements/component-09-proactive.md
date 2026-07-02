@@ -1,6 +1,6 @@
 # Component 9 — Proactive Intelligence (what it does without being asked)
 
-- **Status:** 🟢 **Approved 2026-06-27 (session 26)** — 28 FRs `Approved`. **Sign-off:** user-authorized ("i am
+- **Status:** 🟢 **Approved 2026-06-27 (session 26)** — 31 FRs `Approved`. **Sign-off:** user-authorized ("i am
   happy"; OD-082…087 delegated, **OD-088 operator-decided #2** — the configurable action-autonomy matrix, amending C6
   FR-6.APR.002/003 via change-control, accepted at sign-off). Feasibility **block T (AF-127…AF-131)** logged,
   OOS-031/032 logged. **Verification gate run** — orphan/contradiction CLEAN (all 6 traps PASS) + **critical
@@ -183,10 +183,12 @@
 - **Behaviour:**
   - Happy path: C6 tier `auto-approve` → **Act**; `soft` → **Prepare** (do the work, queue for the soft window);
     `hard` → **Suggest** or **Prepare**-to-hard-queue (work prepared but blocked on explicit human approval).
-  - Branches: an action in C6's **floored hard set** (FR-6.APR.002 as amended by OD-088 — **existing-client /
-    system-of-record external comms**, financial operations, Confidential/Restricted memory) is **never Act** — at
-    most Prepare-to-hard-queue. **Low-risk external** (cold-lead / non-client templated nurture) is **not** floored:
-    its tier comes from the action-autonomy matrix (FR-9.MODE.004), configurable down to Prepare / up to Act.
+  - Branches: an action in C6's **floored hard set** (FR-6.APR.002, reverted by **OD-161** to its original blanket
+    scope — **all external communications**, with no sub-type exemption, any financial operation, any
+    Confidential/Restricted memory action) is **never Act** — at most Prepare-to-hard-queue. **Low-risk external**
+    (cold-lead / non-client templated nurture) is **also** floored to hard-approval; the action-autonomy matrix
+    (FR-9.MODE.004) governs only how much prep work the AI does within that floor (Suggest or Prepare), never
+    whether the floor can be bypassed.
   - Edge / failure: C6 tier unavailable → default **Suggest** (MODE.001 conservative default).
 - **Data touched:** `proactive_suggestions` (write).
 - **Permissions:** N/A.
@@ -195,10 +197,10 @@
 - **Acceptance criteria:**
   - AC-9.MODE.002.1 — Given a low-risk (auto-approve) action, When mode-assigned, Then it is **Act**; given a
     high-risk (hard-approval) action, Then it is **Suggest** or Prepare-to-hard-queue — never Act.
-  - AC-9.MODE.002.2 — Given an action in C6's **floored** hard set (FR-6.APR.002 as amended by OD-088 —
-    existing-client/system-of-record external comms, financial, Confidential/Restricted), When mode-assigned, Then
-    it is never assigned **Act** (verified against FR-6.APR.002 + the FR-9.MODE.004 floor).
-- **Open decisions:** OD-083, OD-088.
+  - AC-9.MODE.002.2 — Given an action in C6's **floored** hard set (FR-6.APR.002, reverted by **OD-161** to its
+    original blanket scope — **all external communications**, financial, Confidential/Restricted), When
+    mode-assigned, Then it is never assigned **Act** (verified against FR-6.APR.002 + the FR-9.MODE.004 floor).
+- **Open decisions:** OD-083, OD-088 (Act-tier portion superseded by OD-161).
 - **Feasibility assumptions:** —
 
 #### FR-9.MODE.003 — Proactive actions traverse the same guardrails as reactive
@@ -230,54 +232,55 @@
 
 #### FR-9.MODE.004 — Configurable action-autonomy matrix (with a non-negotiable floor)
 - **Statement:** The system shall provide an **operator-configurable action-autonomy matrix** that maps an action's
-  **risk sub-type** to its permitted maximum proactivity mode (Suggest / Prepare / Act), with a **non-negotiable
-  floor**: **low-risk external** communication (cold-lead / templated nurture to **non-client contacts**) is
-  configurable **down to Prepare or up to Act after a trust period**; **everything in the floored set —
-  existing-client / system-of-record external comms, any financial operation, any Confidential/Restricted data
-  action — is fixed at hard-approval and the matrix cannot lower it to Act or Prepare**. Act for a low-risk external
-  send is a conscious, **opt-in, trust-gated, rate-capped** autonomy grant (bounded by C6 `max external comms/hour`,
-  FR-6.RTL.001), and is the **only** exception to the no-irreversible-auto-execute default (OD-056), confined to the
-  non-client low-risk sub-type.
-- **Source:** OD-088 (operator-decided #2); amends C6 FR-6.APR.002 / FR-6.APR.003 via change-control; rides
-  contextual routing FR-6.APR.005; bounded by FR-6.RTL.001.
+  **risk sub-type** to its permitted maximum proactivity mode (Suggest / Prepare), with a **non-negotiable floor**:
+  **low-risk external** communication (cold-lead / templated nurture to **non-client contacts**) is configurable
+  between Suggest and **Prepare** — the AI drafts, a human sends it with one tap — and is **never** configurable to
+  Act; **everything in the floored set — existing-client / system-of-record external comms, any financial
+  operation, any Confidential/Restricted data action — is fixed at hard-approval and the matrix cannot lower it**.
+  No autonomy-matrix configuration may reach autonomous **Act** for any sub-type, external or otherwise — the
+  Act-tier low-risk-external send OD-088 introduced is **retired** (**OD-161**, superseding the Act-tier portion of
+  OD-088: ADR-007's "no user role, no agent instruction, no config change can override a hard limit" forecloses a
+  config-gated autonomous external send for any sub-type; OD-047 already held that legitimate low-risk automation
+  flows through the approval-gate layer, never autonomously).
+- **Source:** OD-088 (operator-decided #2); **amended OD-088 (2026-06-27), reverted OD-161 (2026-07-02)**; amends C6
+  FR-6.APR.002 / FR-6.APR.003 via change-control (C6's mandatory-hard "external" element is restored to **all**
+  external communications, with no sub-type exemption); rides contextual routing FR-6.APR.005.
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** A Super Admin editing the matrix; the engine reading it at mode assignment (MODE.002).
 - **Preconditions:** Each action carries a risk sub-type (floored vs low-risk-external) resolved from C6 + C1 tags
   (recipient = client/non-client; content = financial / Confidential / Restricted?).
 - **Behaviour:**
-  - Happy path: a low-risk external nurture action → matrix permits Prepare by default; after the operator opts in +
-    the trust period elapses, it may be configured to Act (still rate-capped + audited).
+  - Happy path: a low-risk external nurture action → matrix permits Suggest or **Prepare** (draft-ready, a human
+    sends with one tap) per the operator's configuration — never Act.
   - Branches: any attempt to configure a floored sub-type (client/SoR comms, financial, Confidential/Restricted)
     below hard is **rejected at write** — the floor is enforced before the config commits (mirrors C4 principles
-    hard-floor + C6 AC-6.APR.002.1).
+    hard-floor + C6 AC-6.APR.002.1). Any attempt to configure **any** sub-type, floored or low-risk-external, to
+    **Act** is likewise **rejected at write** — Act is no longer a reachable value in the matrix.
   - Edge / failure: sub-type ambiguous (can't prove the recipient is a non-client) → treat as **floored**
-    (conservative — defaults to hard, never to Act).
+    (conservative — defaults to hard, never lower).
 - **Data touched:** `CFG-action_autonomy_matrix` (config, write — Super Admin); risk sub-type (read, C6/C1).
 - **Permissions:** `PERM-guardrail.edit_autonomy` (Super Admin only).
-- **Config dependencies:** CFG-action_autonomy_matrix, CFG-external_act_trust_period (Phase 2); bounded by
-  FR-6.RTL.001 caps.
+- **Config dependencies:** CFG-action_autonomy_matrix (Phase 2).
 - **Surfaces:** the autonomy-matrix editor (Phase 3).
 - **Acceptance criteria:**
-  - AC-9.MODE.004.1 — Given a Super Admin sets a low-risk external sub-type to Act after the trust period, When
-    saved, Then nurture sends to non-client contacts may auto-execute, rate-capped (FR-6.RTL.001) and audited.
+  - AC-9.MODE.004.1 — Given a Super Admin edits the low-risk-external sub-type, When saved, Then its ceiling is
+    **Prepare** — the matrix accepts no value above Prepare for this or any sub-type; there is no path to
+    autonomous Act (OD-161; retires the prior Act-after-trust-period behaviour).
   - AC-9.MODE.004.2 — Given any attempt to set a **floored** sub-type (existing-client/SoR comms, financial,
     Confidential/Restricted) below hard-approval, When saved, Then it is **rejected at write** — the floor holds.
   - AC-9.MODE.004.3 — Given an action whose sub-type cannot be proven non-client/low-risk, When mode-assigned, Then
-    it is treated as floored (hard), never Act.
+    it is treated as floored (hard), never lowered.
   - AC-9.MODE.004.4 — Given a matrix edit, When attempted by a non-Super-Admin, Then it is denied
     (`PERM-guardrail.edit_autonomy` is Super-Admin-only) and logged.
-  - AC-9.MODE.004.5 — *(gate H1 — the confident-but-wrong tag)* Given an Act-tier low-risk external send, When it
-    is about to execute, Then the recipient's client/non-client status is **re-resolved against the system of record
-    at send time** (not only at matrix-config or generation time); if the recipient matches **any** existing-client
-    / system-of-record record, or the content resolves financial / Confidential / Restricted, the send is
-    **re-floored to hard-approval** and not auto-executed. The floor is defended *upstream of the tag*, not only by
-    the tag.
-  - AC-9.MODE.004.6 — *(gate M4 — precedence)* Given an action whose risk sub-type resolves to **floored**, When the
+  - AC-9.MODE.004.5 — *(gate M4 — precedence)* Given an action whose risk sub-type resolves to **floored**, When the
     mode is assigned, Then the floor caps the mode at hard-approval **regardless** of what the autonomy matrix or the
     FR-9.MODE.001 indeterminate-default ("Suggest") would otherwise assign — the floor always wins.
-- **Open decisions:** OD-088.
-- **Feasibility assumptions:** AF-068 (containment of the floored set under the new matrix); **AF-131** (accuracy of
+  - *(Retired, OD-161: the prior `AC-9.MODE.004.5` — gate H1, send-time client/non-client re-resolution for an
+    Act-tier send — is removed; it existed solely to bound the now-removed Act path. The former `AC-9.MODE.004.6`
+    is renumbered `.5` above; no other AC content changed.)*
+- **Open decisions:** OD-088 (Act-tier portion superseded by OD-161).
+- **Feasibility assumptions:** AF-068 (containment of the floored set under the matrix); **AF-131** (accuracy of
   the non-client / content-sensitivity classification the floor rests on).
 
 ### PRO — the seven proactive generators
@@ -716,7 +719,8 @@
   - Branches: thresholds must remain ordered (basic ≤ proactive ≤ full); an out-of-order set is rejected.
   - Edge / failure: invalid value → rejected with validation error, prior value retained.
 - **Data touched:** config store (read/write).
-- **Permissions:** `PERM-system.tune` (or the threshold-config node), per OD-086.
+- **Permissions:** gated by `PERM-system.tune` (Admin+, via `/tune`) **OR** `PERM-config.proactive` (Super-Admin,
+  via surface-01) — either suffices (equivalent-guarantee alternate paths, reconciled M17).
 - **Config dependencies:** self (the three CFG keys, L930–934).
 - **Surfaces:** config UI (Phase 2/3).
 - **Acceptance criteria:**
@@ -1053,7 +1057,10 @@
   template (substituting `$ARGUMENTS` with supplied args, or an empty string if none are provided), dispatch to
   the command's assigned agent, and return the result **inline in the chat thread** — same answer-mode pill as
   FR-9.CMD.004, same PERM-node gate as FR-9.CMD.002, subject to the same C6 guardrail pipeline as any agent run.
-  No `task_queue` entry is created; the invocation is synchronous from the user's perspective.
+  The invocation **creates (or reuses) a `task_queue` row exactly like any other agent action** (**OD-165**); when
+  the wrapped action resolves above auto-approve / reversible-soft, it routes to the **surface-04** approval queue
+  like any other agent action, and the inline chat response completes once execution (or the approval hold)
+  resolves.
 - **Source:** Change-control, Phase 3 entry 2026-06-28.
 - **Status:** Approved
 - **Priority:** Should
@@ -1064,24 +1071,31 @@
   - Branches: `$ARGUMENTS` present in template but no args supplied → substituted with empty string, not an error
     (the prompt author is responsible for graceful handling). Agent returns an error → surfaced inline, never silent.
   - Edge / failure: assigned agent unavailable mid-invocation → inline error, logged (CMD.004 audit applies).
-- **Data touched:** `commands` table (read template + agent assignment); agent execution (C5/C8).
+- **Data touched:** `commands` table (read template + agent assignment); `task_queue` (write/reuse, **OD-165**);
+  agent execution (C5/C8).
 - **Permissions:** CMD.002.
 - **Config dependencies:** —
-- **Surfaces:** chat inline response (Phase 3).
+- **Surfaces:** chat inline response (Phase 3); the approval queue, surface-04 (when the wrapped action resolves
+  above auto-approve/reversible-soft, **OD-165**).
 - **Acceptance criteria:**
   - AC-9.CMD.008.1 — Given a valid custom command with args, When invoked, Then `$ARGUMENTS` is substituted and the
     result appears inline in chat with an answer-mode pill.
   - AC-9.CMD.008.2 — Given a custom command invocation, When the assigned agent returns an error, Then the error
     is surfaced inline — never a silent failure.
-  - AC-9.CMD.008.3 — Given a custom command invocation, Then no `task_queue` entry is created; the audit log entry
-    (FR-9.CMD.004) is the only persistent record.
-  - AC-9.CMD.008.4 — *(OD-143, surface-10 — #2 containment, a definition can add friction but never remove a guardrail)*
-    Given a custom command invocation, When it is dispatched to its assigned agent, Then it runs the **same C6 guardrail
-    pipeline** as any agent run and the assigned action's **C6 tier governs execution regardless of the command
-    definition** — no definition-time flag may **lower** that tier (an author may mark a command as *requiring* a UI
-    confirm, FR-9.CMD.003, but may never mark a gated action as *not* needing its C6 approval); a custom command is never
-    a way to pre-approve or outrun a guardrail.
-- **Open decisions:** — *(OD-143 resolved surface-local, surface-10; recorded in open-decisions.md.)*
+  - AC-9.CMD.008.3 — *(OD-165 — routes through the standard approval-hold pipeline, not a bypass)* Given a custom
+    command invocation, Then a `task_queue` row is **created (or reused)** exactly like any other agent action; When
+    the wrapped action resolves **above auto-approve / reversible-soft**, it routes to the **surface-04** approval
+    queue like any other agent action — the audit log entry (FR-9.CMD.004) is written in addition to, not instead
+    of, the `task_queue` record.
+  - AC-9.CMD.008.4 — *(OD-143, surface-10 — #2 containment, a definition can add friction but never remove a
+    guardrail; restated per OD-165)* Given a custom command invocation, When it is dispatched to its assigned agent,
+    Then it runs the **same C6 guardrail pipeline** as any agent run, and **the created `task_queue` row carries the
+    wrapped action's real C6 tier — a custom command can never resolve to a lower tier than its wrapped action would
+    outside the command path**; no definition-time flag may **lower** that tier (an author may mark a command as
+    *requiring* a UI confirm, FR-9.CMD.003, but may never mark a gated action as *not* needing its C6 approval); a
+    custom command is never a way to pre-approve or outrun a guardrail.
+- **Open decisions:** — *(OD-143 resolved surface-local, surface-10; OD-165 resolved 2026-07-02 audit
+  reconciliation; both recorded in open-decisions.md.)*
 - **Feasibility assumptions:** —
 
 ---
@@ -1120,4 +1134,4 @@ Carry-ins relied on: **AF-034** (Maturity/Sufficiency, C2), **AF-068** (hard-lim
 
 ## Traceability
 
-All **28** FRs wired into `traceability-matrix.csv` (2026-06-27). `system-map/09-proactive.md` built.
+All **31** FRs wired into `traceability-matrix.csv` (2026-06-27). `system-map/09-proactive.md` built.

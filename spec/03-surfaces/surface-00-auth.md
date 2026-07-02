@@ -193,7 +193,7 @@ Admin → email+password+2FA) and give a stuck user a way out.
 
 **States:**
 - **Loading:** Inline spinner on Verify while the code is checked.
-- **Empty:** N/A.
+- **Empty:** N/A — the code field is always present; there's no fetched data set that could be empty.
 - **Error:**
   - *Wrong code* — "That code is incorrect." with remaining-attempts hint as the soft-lock nears.
   - *Soft-locked* (after `mfa_softlock_threshold`, default 5, consecutive wrong codes) — "Too many incorrect codes. Try again in `mfa_softlock_minutes` minutes." A security `event_log` entry is written (FR-0.AUTH.007). The lock is **shown**, never a silent rejection (#3).
@@ -227,7 +227,7 @@ a login method, then is activated and routed to their role-default view (FR-0.IN
 
 **States:**
 - **Loading:** Card skeleton while the token is validated server-side.
-- **Empty:** N/A.
+- **Empty:** N/A — a validated token always resolves to method options to render; an invalid/expired token is the Error state below, not an empty one.
 - **Error:**
   - *Invalid / already-used token* — "This setup link is no longer valid." with "Request a new link" → opens the support-request modal (FR-0.REC.002). The seeded-admin recovery path is a deliberate env-change re-run (FR-0.SEED.003), surfaced to the operator as guidance, not a self-service button.
   - *Expired token* (>24 h) — "This setup link has expired (links are valid for up to 24 hours)." → "Request a new link".
@@ -259,7 +259,7 @@ work** (FR-0.SESS.007), while any already-running server-side task continues as 
 
 **States:**
 - **Loading:** Re-auth in progress → spinner on the modal's primary button; the underlying page stays rendered (dimmed) so context is visibly preserved.
-- **Empty:** N/A.
+- **Empty:** N/A — the modal only renders once triggered by an expired/revoked session, so a sign-in path is always present.
 - **Error:** Re-auth fails → "We couldn't sign you back in." with retry; the user stays logged out with no partial/ambiguous state (FR-0.SESS.007). Reuse-detection revocations (FR-0.SESS.003) show "For your security, this session was ended. Please sign in again."
 - **Partial:** Some preserved fields restorable, others not → restore what's possible and flag "Some unsaved changes couldn't be restored." rather than silently dropping them (#3).
 - **Offline / stale:** "You're offline — reconnect to sign back in." The page stays in its dimmed preserved state; nothing is discarded.
@@ -292,9 +292,11 @@ is authenticated and gated.
 > This queue is **not** a credential-reset tool (OD-019) — an admin resolves a request by checking the user's
 > access/membership/role, not by resetting a password the system doesn't hold.
 
-**Real-time / poll:** **Real-time** via the C7 RTP subscription contract (FR-7.RTP.*) — a new `pending` request
-appears without a manual refresh, and on submit all Super Admin + Admin are notified in-dashboard + email
-(FR-0.REC.006). Fallback to polling per the C7 degrade-to-polling rule if the realtime budget is exceeded.
+**Real-time / poll:** **Polls** (same cadence family as the other non-Realtime surfaces, FR-7.RTP.002) — this is
+**not** one of the product's two Realtime/WebSocket surfaces (those are surface-04's approval queue and
+surface-07's notification centre, FR-7.RTP.001/AC-7.RTP.001.3, OD-163). A new `pending` request appears on the
+next poll / on-demand refresh, and on submit all Super Admin + Admin are notified in-dashboard + email
+(FR-0.REC.006).
 **If a notification fails to send**, the failure is logged and re-surfaced rather than swallowed (FR-0.REC.006 —
 "don't let a dropped alert hide a stuck user"); the request still lands in this queue regardless, so a delivery
 failure never loses the request itself. Notification *delivery* mechanics are a C7 seam — this surface owns only
@@ -304,7 +306,7 @@ that the queue remains the durable source of truth (#3).
 - **Loading:** Skeleton list rows while `support_requests` is fetched.
 - **Empty:** "No open support requests." — the healthy zero-state (no CTA needed).
 - **Error:** Fetch failure → "Couldn't load support requests." with retry; **does not** render an empty list (which would falsely read as "no one needs help" — #3).
-- **Partial:** List loads but the realtime subscription drops → show "Live updates paused — showing data as of [time]. Refresh for the latest." (stale-but-labelled, never silently frozen).
+- **Partial:** List loads but a poll cycle is missed/delayed → show "Live updates paused — showing data as of [time]. Refresh for the latest." (stale-but-labelled, never silently frozen).
 - **Offline / stale:** Connectivity lost → the stale banner above; actions disabled until reconnect so an admin doesn't think a resolve landed when it didn't.
 
 ---

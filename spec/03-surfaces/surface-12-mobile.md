@@ -114,11 +114,11 @@ still node-gated per FR-9.CMD.002). Third consecutive clean-no-mint surface (10,
     **Modify degrades to desktop** on mobile — a #2 edit is not a phone task).
   - **C5 — the queue counts:** **FR-5.QUE.001 / FR-5.JOB.*** (the `task_queue` the Home pending-count + the Approvals
     list read, filtered to the viewer).
-- **CFG dependencies (both read-only here — edited on `surface-01-config-admin.md` `#observability`):**
+- **CFG dependencies (both read-only here — edited on `surface-01-config-admin.md` `#proactive`):**
   - `approval_push_frequency_minutes` — *"How often you're pinged about items waiting for your approval"* — **30**, LIVE,
-    int minutes ≥ 1 (config-registry L267; satisfies AC-7.VIEW.003.2).
+    int minutes ≥ 1 (config-registry L279; satisfies AC-7.VIEW.003.2).
   - `stale_queue_push_hours` — *"How long approvals sit untouched before you get a nudge"* — **4**, LIVE, int hours ≥ 1
-    (config-registry L268; satisfies AC-7.VIEW.003.2).
+    (config-registry L280; satisfies AC-7.VIEW.003.2).
   - *(Descriptions bind to `config-registry.md` — DRY; not re-typed.)*
 - **PERM gates:** **no entry node minted.** Mobile is a viewport treatment: each mobile screen inherits **the same PERM
   node as its desktop counterpart** — Home/Chat/Activity via the viewer's Dashboard Access node (`PERM-dashboard.workspace`
@@ -388,7 +388,7 @@ all six screens; not a screen itself.
 | Stale approval queue | Configurable | `stale_queue_push_hours` (4, LIVE) |
 
 **Settings surface:** the two frequencies are shown read-only on the mobile Settings sheet (edited on `surface-01`
-`#observability`); the hard-limit/critical classes are **not** user-suppressible (a #3 guarantee). A push is a *delivery*,
+`#proactive`); the hard-limit/critical classes are **not** user-suppressible (a #3 guarantee). A push is a *delivery*,
 never the *record*: every pushed item also persists in the notification centre (FR-7.ALR.006) so a missed/dropped push
 loses nothing (#1).
 
