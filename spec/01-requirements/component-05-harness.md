@@ -142,7 +142,7 @@
 | Hard-limit / approval-gate **enforcement**; the three approval tiers; injection sanitization; **anomaly detection** + thresholds | **C6** | C5 *invokes* the check at the step boundary (FR-5.ASM.007) and *records* the resulting state (OD-054); C6 owns the policy + mechanism |
 | Approval **routing** (which person approves which task by context) | **C6** | C5 moves a `requires_approval` task to `awaiting_approval` and blocks (FR-5.QUE.005); C6 owns the routing rules |
 | **Event-log** sink, metrics, alert **delivery**, ops-dashboard rendering, cost **meter + ladder signal** | **C7** | C5 *emits* run/loop/DLQ events + completion records (FR-5.LOP.005, FR-5.JOB.006, FR-5.ASM.009); C7 owns the sinks + alerting + the cost meter |
-| Cost-ladder **enforcement** (throttle non-critical / hard-kill on a C7 breach signal) | **C6 decides, C5 executes** | Per ADR-003 the cost ladder is a C6 guardrail class; C7 signals the breach (FR-7.COST.003), C6 decides, the C5 harness executes the throttle/kill. *(Change-control 2026-06-26: corrected from the prior "C7 enforces"; the explicit C6 cost-ladder FR is owed — see C7 OD-068.)* |
+| Cost-ladder **enforcement** (throttle non-critical / hard-kill on a C7 breach signal) | **C6 decides, C5 executes** | Per ADR-003 the cost ladder is a C6 guardrail class; C7 signals the breach (FR-7.COST.003), C6 decides via **FR-6.RTL.004**, the C5 harness executes the throttle/kill. *(Change-control 2026-06-26: corrected from the prior "C7 enforces".)* |
 | Orchestrator **routing**, agent registry, multi-agent dispatch, `agents.system_prompt` reconciliation | **C8** | C5 assembles + runs *an* agent's stack; C8 owns which agent and the registry |
 | Memory **read/write mechanisms**, ranking, sole-writer commit | **C2** | C5 *sequences* the calls within a task graph (FR-5.ASM.006, GRP steps); C2 owns the internals |
 | Tool **execution**, connector token lifecycle, rate-limit ladder | **C3** | C5 *issues* tool read/write steps; C3 owns the runtime |
@@ -167,12 +167,14 @@ a dashboard UI button), **chained** (the output of one task triggers the next). 
   `scheduled | event | human | chained` and no other value is accepted.
 - **AC-5.TRG.001.2** — *Given* each of the four trigger sources fires, *When* a task is created, *Then* exactly
   one task_queue row is created with the matching `type` and the originating `payload`.
-- **AC-5.TRG.001.3** — *(Change-control 2026-06-27, session 27 — C10 OD-091 deployment-freeze gate.)* *Given* the
-  deployment is in an offboarding **retention freeze** (`client_registry.status = frozen` / `offboarding`, C10
-  FR-10.OFF.004), *When* any of the four triggers would fire **or** the harness would dispatch a queued task to run,
-  *Then* the dispatch is **blocked and fails closed** (no task created, no agent/loop runs, no new data written) and
-  the block is logged — the freeze is an **enforced gate at the dispatch boundary**, not a status label. (Mirrors the
-  C8 OD-081 memory-scope wiring: the policy is set by C10, the enforcement consumer is C5.) Gated by **AF-135**
+- **AC-5.TRG.001.3** — *(Change-control 2026-06-27, session 27 — C10 OD-091 deployment-freeze gate; amended per
+  **OD-162**.)* *Given* the deployment is in an offboarding **retention freeze**, signaled by a **local** read of
+  `deployment_settings.frozen_at` (a per-deployment table living inside this client's own Supabase project, set by
+  the management plane via the client's custodied `service_role` key when C10's offboarding trigger fires,
+  C10 FR-10.OFF.004), *When* any of the four triggers would fire **or** the harness would dispatch a queued task to
+  run, *Then* the dispatch is **blocked and fails closed** (no task created, no agent/loop runs, no new data written)
+  and the block is logged — the freeze is an **enforced gate at the dispatch boundary**, not a status label. (Mirrors
+  the C8 OD-081 memory-scope wiring: the policy is set by C10, the enforcement consumer is C5.) Gated by **AF-135**
   (freeze-propagation completeness across every dispatch path).
 
 **FR-5.TRG.002 — Triggers are config-defined, not hardcoded** · *Approved*
@@ -516,13 +518,20 @@ consumes **C2 FR-2.RET.*, FR-1.CLR.006**.
   SCO area depends on.)*
 
 **FR-5.ASM.007 — Per-step execution order** · *Approved*
-Each task-graph step executes in the order **anomaly check → tool read → AI call → tool write → memory write**
-(as applicable to the step). *(The harness owns that the anomaly check runs at the step boundary; the
-**detection mechanism + thresholds** are C6 — seam. The check **cadence** — per-step vs per-AI-call — is a
-cost/efficiency note seamed to C6 + ADR-003.)* — cites **L3346**.
+Each task-graph step executes in the order **anomaly check → tool read → sanitize + boundary-tag tool-read
+output (per ADR-007 / C6 FR-6.INJ.004/006 pipeline) → AI call → tool write → memory write** (as applicable to
+the step). *(The harness owns that the anomaly check runs at the step boundary; the **detection mechanism +
+thresholds** are C6 — seam. The harness likewise owns that the C6 injection-sanitization pipeline runs at this
+named call site, between tool-read and AI-call, per **AC-6.INJ.001.2**; the pipeline's **mechanism** (pattern
+detection, boundary-tagging, quarantine) is C6's. The check **cadence** — per-step vs per-AI-call — is a
+cost/efficiency note seamed to C6 + ADR-003.)* — cites **L3346**; consumes **C6 FR-6.INJ.004/006, AC-6.INJ.001.2**.
 - **AC-5.ASM.007.1** — *Given* a step with a tool-write side effect, *When* it executes, *Then* the C6 anomaly
   check is invoked before the side effect; a failed/flagged check routes the task per C6 (and FR-5.QUE.003 /
   OD-054) rather than proceeding silently.
+- **AC-5.ASM.007.2** — *Given* a step with a tool read, *When* the tool-read output is returned, *Then* the
+  harness invokes the C6 sanitize + boundary-tag pipeline (FR-6.INJ.004/006) **before** the AI call — the
+  content never reaches the AI call un-sanitized/un-tagged; a quarantine result routes the task per C6
+  FR-6.INJ.006 rather than proceeding silently.
 
 **FR-5.ASM.008 — Answer-mode pill on every output** · *Approved*
 Every substantive AI output produced within a task carries an answer-mode pill — **[Cited] [Inferred]

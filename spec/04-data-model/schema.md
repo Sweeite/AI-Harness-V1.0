@@ -13,8 +13,10 @@ ADR-003 (cost), ADR-004 (sole-writer memory), ADR-006 (static data-driven RLS), 
 ## Global rules (enforced across every table)
 
 - **No `client_slug` (or any client-identity column) on any application table.** OD-096 / C10
-  FR-10.ISO.001. The only `client_slug` in the product is on `client_registry` (§13, management
-  deployment). Isolation is physical (one Supabase per client); RLS is intra-client only.
+  FR-10.ISO.001. `client_slug` is confined to the **management-plane deployment** (§13) — never a
+  client silo — where it appears on `client_registry` plus the two mgmt-only rollup tables that key
+  off it (`deployment_health`, `offboarding_records`). Isolation is physical (one Supabase per
+  client); RLS is intra-client only.
 - **Primary keys:** `uuid` default `gen_random_uuid()` unless a natural key is noted.
 - **Timestamps:** `timestamptz`; server-authoritative (`now()`), never client-asserted (AC-7.ALR.005.3).
 - **Versioned tables** (`prompt_layers`, `tools`, `agents`, `task_graph_versions`, `execution_plans`)
@@ -41,12 +43,14 @@ begin
     raise exception 'audit sink %: DELETE forbidden (append-only)', tg_table_name;
   end if;                                             -- UPDATE: allow only whitelisted mutations
   if tg_table_name = 'guardrail_log'
-     and old.status = 'pending' and new.status in ('approved','rejected')
+     and old.status = 'pending' and new.status in ('approved','rejected','modified')
      and new.description = old.description and new.task_id = old.task_id then
     return new;                                       -- forward status transition (still append-only in spirit)
   end if;
-  if new.redacted_at is not null and old.redacted_at is null then
-    return new;                                       -- one-way redaction-tombstone (FR-7.LOG.006 / OD-074)
+  if tg_table_name <> 'guardrail_log' then             -- guardrail_log has no redacted_at column (H43 fix)
+    if new.redacted_at is not null and old.redacted_at is null then
+      return new;                                     -- one-way redaction-tombstone (FR-7.LOG.006 / OD-074)
+    end if;
   end if;
   raise exception 'audit sink %: in-place UPDATE forbidden (append-only / tamper-evident)', tg_table_name;
 end $$;
@@ -99,12 +103,15 @@ create type task_status         as enum ('pending','running','awaiting_approval'
 
 -- Guardrails (C6)
 create type guardrail_type      as enum ('hard_limit','approval_gate','anomaly','rate_limit','prompt_injection');
-create type guardrail_status    as enum ('pending','approved','rejected');
+create type guardrail_status    as enum ('pending','approved','rejected','modified');   -- 'modified' = FR-6.ESC.003 modify resolution
 create type quarantine_decision as enum ('discard','approved_safe');          -- null = pending
 
 -- Observability (C7)
 create type event_type          as enum ('task_started','tool_called','memory_read','memory_written',
-                                          'guardrail_hit','approval_requested','task_completed','task_failed');
+                                          'guardrail_hit','approval_requested','task_completed','task_failed',
+                                          'task_failure_spike','queue_backup','memory_confidence_drop',
+                                          'approval_queue_stale','cost_threshold_breach','loop_missed',
+                                          'reporter_push');   -- FR-7.ALR.004 alert types (6) + FR-7.MGM.001.3 reporter-attempt log
 create type notification_read   as enum ('unread','read','actioned');
 create type alert_type          as enum ('task_failure_spike','queue_backup','memory_confidence_drop',
                                           'approval_queue_stale','hard_limit_hit','cost_threshold_breach','loop_missed',
@@ -121,6 +128,7 @@ create type answer_mode         as enum ('cited','inferred','unknown','building'
 -- Infra / compliance (C10)
 create type client_status       as enum ('initialising','active','offboarding','frozen');
 create type deletion_status     as enum ('received','authorised','executed','rejected');
+create type connector_deletion_flag_state as enum ('raised','acknowledged','resolved');
 
 -- Config
 create type config_edit_class   as enum ('live','boot','rebuild','secret');
@@ -269,6 +277,8 @@ create table entities (
   name          text not null,
   external_refs jsonb not null default '{}',            -- GHL/Slack/Drive ids — resolution join key
   is_internal_org boolean not null default false,       -- singleton per deployment (FR-2.ENT.003)
+  maturity      numeric(4,3),                           -- filled slots / expected slots (ADR-002); stored, recomputed daily + on memory-write (FR-2.MAT.002)
+  maturity_updated_at timestamptz,                       -- last recompute (slow-loop daily job or write-triggered)
   created_at    timestamptz not null default now()
 );
 
@@ -287,14 +297,17 @@ create table memories (
   sensitivity    sensitivity_tier not null,             -- never auto-restricted (app-enforced)
   superseded_by  uuid references memories(id),          -- CAS chain; null = live
   content_hash   text not null,                         -- idempotency component
+  idempotency_key text not null,                        -- hash(source_ref, sorted entity_ids, content_hash) — ADR-004 §4
   expires_at     timestamptz,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
   check (cardinality(entity_ids) >= 1),
-  check (source = 'system_pointer' or confidence is not null)
+  check (source = 'system_pointer' or confidence is not null),
+  unique (idempotency_key)                              -- DB-level idempotency: retried step = no-op insert (ON CONFLICT DO NOTHING; ADR-004 §4)
 );
--- Sole-writer: service_role (Memory Agent) only. Idempotency: unique(source_ref, entity_ids-hash, content_hash).
+-- Sole-writer: service_role (Memory Agent) only. Idempotency: unique(idempotency_key), modelled on idempotency_ledger (C3).
 -- HNSW on embedding (indexes.md). RLS = C1 visibility/sensitivity/Restricted, clearance-before-ranking.
+-- Per-entity watermark: (entity_ids, updated_at) index (indexes.md, ADR-004 §6) makes the top-k check cheap.
 
 create table ingestion_queue (
   id               uuid primary key default gen_random_uuid(),
@@ -338,7 +351,11 @@ create table consolidation_approvals (
 );
 ```
 `entity_types`, `expected_slots`, `ranking_weights` are config structured objects in `config_values`
-(§12), not tables. Per-entity Maturity + Retrieval Sufficiency are derived at read (ADR-002), not stored.
+(§12), not tables. Per-entity Maturity is **stored** (`entities.maturity`), recomputed on the daily
+slow loop and on memory-write for the touched entity (ADR-002 / FR-2.MAT.002); Aggregate Maturity
+has no separate table — it is a rollup (`avg(entities.maturity)`) over that same stored column, cheap
+because the per-entity values are already persisted. Retrieval Sufficiency is the other half of
+ADR-002 and, unlike Maturity, genuinely **is** derived inline per query, not stored (FR-2.MAT.003).
 
 ## 4. Tools & Connectors  (C3)
 
@@ -772,6 +789,29 @@ create table deletion_requests (
          or (authorized_by is not null and second_authoriser_id is not null and executor_id is not null))
 );  -- Restricted/Personal require two-person auth (AC-10.DEL.006.2). Erasure walks the C2 sole-writer path;
 -- audit written to access_audit (retained individual_deletion_audit_years even after data is gone).
+
+-- net-new (FR-10.DEL.006(a)): per-system connector-notify flag, tracked-until-acknowledged, never silently closed
+create table connector_deletion_flags (
+  id                   uuid primary key default gen_random_uuid(),
+  deletion_request_id  uuid not null references deletion_requests(id) on delete cascade,
+  connector            text not null,                          -- e.g. ghl | slack | google — SoR holding the person's data
+  state                connector_deletion_flag_state not null default 'raised',
+  raised_at            timestamptz not null default now(),
+  acknowledged_at      timestamptz,
+  acknowledged_by      uuid references profiles(id),
+  escalated_at         timestamptz,                             -- un-acknowledged past window (AC-10.DEL.006.3)
+  created_at           timestamptz not null default now()
+);  -- the harness never deletes from a SoR itself; this flag is the tracked reminder (AC-10.DEL.006.1/.3).
+
+-- OD-162: the "local mirror" of client_registry.status (management plane) — lives INSIDE each client's own
+-- Supabase project, not the management plane. Single row per deployment; written by a management-plane
+-- action using the client's custodied service_role key (ADR-001 §7) when C10 sets
+-- client_registry.status = 'frozen' (FR-10.OFF.004). Read locally (no cross-deployment query) by the C5
+-- dispatch gate (FR-5.TRG.001.3) and the C10 erasure precondition (FR-10.DEL.007).
+create table deployment_settings (
+  frozen_at    timestamptz,                                     -- null = not frozen
+  frozen_reason text
+);  -- single row per deployment (seeded at first boot alongside the Internal-Org singleton; app never inserts a second row).
 ```
 
 ---

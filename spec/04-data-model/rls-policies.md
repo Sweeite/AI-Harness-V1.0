@@ -19,8 +19,9 @@
    data row; no policy redeploy).
 4. **Default-deny.** Baseline `REVOKE ALL`; every readable table needs an explicit policy. A permission
    node absent from `role_permissions` = denied. Restricted is never a role default.
-5. **aal2 gate.** Human-path policies additionally require `user_aal() = 'aal2'` where the surface demands
-   step-up (C0/C1) — a benign session continues, a consequential action re-checks (FR-1.RLS.007).
+5. **aal2 gate — universal baseline, no exemptions.** Every protected table's human-path policy additionally
+   requires `user_aal() = 'aal2'` (C0/C1, FR-1.RLS.005) — no table is reachable at `aal1`; this is not a
+   selective step-up gate, it is a baseline clause on every predicate in the per-table summary below.
 
 ## Helper functions (SECURITY DEFINER, STABLE — called via `(select …)`)
 
@@ -38,17 +39,21 @@ Each is invoked as `(select user_perms(auth.uid()))` inside a policy so it runs 
 
 ## Per-table policy summary
 
+Every Human-path predicate below carries the `aal2` baseline clause from rule 5 above (FR-1.RLS.005) in
+addition to what's listed in its cell — omitted per-row for brevity, but universal: no table in this
+summary is reachable at `aal1`.
+
 | Table | Human-path read | Human-path write | Agent path |
 |---|---|---|---|
-| `profiles` | self + `PERM-user.view` | `PERM-user.manage` | service_role |
+| `profiles` | self-row (`auth.uid() = id`) **OR** caller holds any User-Management-category node | `PERM-user.deactivate` (deactivation — the only `profiles` write path; self-row edits are not PERM-gated) | service_role |
 | `support_requests` | `PERM-support.view` | **public INSERT-only** intake (cannot SELECT existing) + `PERM-support.resolve` for updates | — |
 | `webhook_secrets` / `connector_credentials` | **none** (never surfaced) | — | service_role only (Vault decrypt) |
 | `webhook_replay_cache` | none | — | service_role |
 | `roles` / `role_permissions` | any authenticated (read) | `PERM-system.role_manage` (Super Admin) | service_role reads for helpers |
-| `user_roles` | self + `PERM-user.view` | `PERM-user.manage` | service_role |
-| `sensitivity_clearances` | `PERM-clearance.view` | `PERM-clearance.grant` | service_role |
-| `restricted_grants` | `PERM-clearance.view` + own grants | `PERM-restricted.grant` (Super Admin) | service_role |
-| `access_audit` | `PERM-audit.view` (Personal/Restricted rows re-audited on view) | **append-only**; no UPDATE/DELETE | service_role append |
+| `user_roles` | self-row (`auth.uid() = user_id`) **OR** caller holds any User-Management-category node | `PERM-user.assign_role` (role assignment — the only `user_roles` write path) | service_role |
+| `sensitivity_clearances` | self-row (`auth.uid() = user_id`) **OR** caller holds `PERM-user.grant_clearance` | `PERM-user.grant_clearance` | service_role |
+| `restricted_grants` | self-row (`auth.uid() = grantee_user_id`) **OR** caller holds `PERM-user.grant_restricted` | `PERM-user.grant_restricted` (Super Admin) | service_role |
+| `access_audit` | `PERM-compliance.view_audit` (Personal/Restricted rows re-audited on view) | **append-only**; no UPDATE/DELETE | service_role append |
 | `memories` | **clearance predicate** (visibility ∩ sensitivity ∩ Restricted), applied **before ranking** (FR-2.RET.004) | **none** (sole-writer) | **service_role write only** (Memory Agent) |
 | `entities` | clearance-scoped (Internal-Org walled from client-facing) | none | service_role |
 | `ingestion_queue` | `PERM-ingestion.review` (+ clearance on Personal/Restricted rows) | `PERM-ingestion.review` | service_role |
@@ -58,20 +63,20 @@ Each is invoked as `(select user_perms(auth.uid()))` inside a policy so it runs 
 | `rate_limit_tracker` / `idempotency_ledger` | ops read via `PERM-dashboard.ops` (tracker only) | — | service_role |
 | `prompt_layers` | `PERM-prompt.*` (view/edit split; principles Super-Admin-only) | `PERM-prompt.edit` / `.edit_principles` | service_role read at assembly |
 | `dynamic_field_values` | `PERM-config.prompts` | same | service_role read at assembly |
-| `task_queue` | `PERM-action.review` (approval rows) + **own rows** via `originating_user_id = auth.uid()` (My Queue); sensitive rows clearance-gated | `PERM-action.review` (approve/reject) | service_role |
+| `task_queue` | `PERM-action.review` (approval rows) + **own rows** via `originating_user_id = auth.uid()` (My Queue); sensitivity scoping on `payload`/`action_payload` is **harness-level, not RLS** (no `sensitivity_tier`/entity-linkage column on `task_queue` for an RLS clearance predicate) | `PERM-action.review` (approve/reject) | service_role |
 | `task_graph_versions` / `execution_plans` | `PERM-agents.edit_description` | same (versioned) | service_role read at run |
 | `task_history` | ops/audit read only | — | service_role |
 | `guardrail_log` | `PERM-action.review` / `PERM-dashboard.ops` | forward status transition only (append-only) | service_role append |
 | `injection_quarantine` | `PERM-action.review` | resolve only | service_role |
 | `event_log` | clearance + relevance scoped (own/relevant rows); ops sees all via `PERM-dashboard.ops` | **append-only** | service_role append |
-| `notifications` | `recipient = auth.uid()` **OR** (`recipient is null` **AND** `recipient_role` ∈ caller's roles) — i.e. direct rows **and** role-broadcast rows, all clearance-scoped; a null-recipient broadcast must never be invisible-to-all (#3) | mark read/actioned | service_role insert |
+| `notifications` | `recipient = auth.uid()` **OR** (`recipient is null` **AND** `recipient_role` ∈ caller's roles) — i.e. direct rows **and** role-broadcast rows (harness-level, not RLS-level, sensitivity scoping — no `sensitivity_tier`/entity-linkage column on `notifications`); a null-recipient broadcast must never be invisible-to-all (#3) | mark read/actioned | service_role insert |
 | `config_values` / `config_audit_log` | **key-prefix-scoped** to caller's `PERM-config.*` group | `config_values`: matching `PERM-config.*`; `config_audit_log`: append-only | service_role |
 | `secret_manifest` | `PERM-config.secrets` (Super Admin) — presence only | — | service_role |
 | `push_subscriptions` | **owner only** (`user_id = auth.uid()`) | owner | service_role delivery read |
 | `agents` | `PERM-agents.view` | `PERM-agents.edit_description` / `.edit_capability` (capability = Super Admin only, OD-080) | service_role (routing) |
 | `agent_health_metrics` | `PERM-dashboard.ops` / `PERM-agents.view` | — | service_role write |
 | `agent_result_cache` | — | — | service_role only |
-| `proactive_suggestions` | **clearance-scoped to recipient** | dismiss/act (act routes through C6) | service_role insert |
+| `proactive_suggestions` | sensitivity scoping to recipient is **harness-level, not RLS** (no `sensitivity_tier`/entity-linkage column on `proactive_suggestions` for an RLS clearance predicate) | dismiss/act (act routes through C6) | service_role insert |
 | `commands` | `PERM-commands.manage` | `PERM-commands.manage` (author-authority bound, AC-9.CMD.006.4) | service_role read at dispatch |
 | `signal_weights` | — | — | service_role |
 | `conversations` / `messages` | **owner only** (`owner_user_id = auth.uid()`) | owner insert | service_role insert (agent replies) |

@@ -21,16 +21,21 @@ The first migration creates every type + table + index + RLS policy in `schema.m
 
 1. **Extensions:** `create extension if not exists vector;` `pgcrypto` (for `gen_random_uuid`).
 2. **Types** (§Types) — all enums first (tables reference them).
-3. **Tables in dependency order:** `profiles` → `roles` → `role_permissions`/`user_roles`/clearances →
-   `entities` → `memories` (FKs to entities) → `agents` (before `prompt_layers`, `commands`, `tools`
-   refs) → `prompt_layers` → `tools`/`connector_credentials`/`rate_limit_tracker` → `task_queue` →
+3. **Tables in dependency order:** `profiles` → `roles` → `role_permissions`/`user_roles`/
+   `sensitivity_clearances` → `entities` → `restricted_grants`/`access_audit` (now ordered after
+   `entities`, satisfying `restricted_grants.entity_id`'s FK) → `memories` (FKs to entities) →
+   `agents` (before `prompt_layers`, `commands`, `tools` refs) → `prompt_layers` →
+   `tools`/`connector_credentials`/`rate_limit_tracker` → `task_queue` →
    `task_graph_versions`/`task_history`/`execution_plans` → `guardrail_log`/`injection_quarantine` →
    `event_log`/`notifications`/`config_audit_log`/`push_subscriptions` → `agent_health_metrics`/
    `agent_result_cache` → `proactive_suggestions`/`commands`/`signal_weights` → `conversations`/
-   `messages` → `config_values`/`secret_manifest` → `deletion_requests`.
-   *(Circular refs `agents ⇄ prompt_layers` and `memories ⇄ restricted_grants`/`entities` are resolved by
-   adding the FK constraint in a later `alter table` step within the same migration, after both tables
-   exist.)*
+   `messages` → `config_values`/`secret_manifest` → `deletion_requests`/`connector_deletion_flags` →
+   `deployment_settings` (no FKs; a standalone single-row table, ordered last for convenience only).
+   *(`restricted_grants.entity_id` is a real, one-directional FK to `entities(id)` — not a circular ref —
+   so it is simply ordered after `entities` here; no later `alter table` step is needed. `agents ⇄
+   prompt_layers` and `agents`/`tools` are likewise **not** circular: `prompt_layers.agent_id` is the only
+   FK between that pair (agents already precedes it above), and `agents.tools_allowed` is a plain `uuid[]`
+   with no enforced FK to `tools` at all — neither pair needs a deferred `alter table` step.)*
 4. **Indexes** — vector + heavy indexes `CONCURRENTLY` (outside the txn block; see note).
 5. **RLS** — `alter table … enable row level security;` + policies + the SECURITY DEFINER helpers
    (search_path pinned).

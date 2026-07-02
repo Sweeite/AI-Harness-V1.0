@@ -120,7 +120,7 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
   - Edge / failure: switching provider while sessions exist does not retroactively invalidate active sessions (it governs *new* logins).
 - **Config dependencies:** `CFG-auth.oauth_provider` (enum google|microsoft), `CFG-auth.oauth_enabled` (bool) — **edit-class TBD in Phase 2** (likely BOOT/REBUILD if the IdP app wiring is read at boot; flag for config taxonomy).
 - **Permissions:** `PERM-auth.provider_toggle`.
-- **Surfaces:** `UI-CONFIG-AUTH` (Phase 3).
+- **Surfaces:** `UI-config-admin#auth` (Phase 3).
 - **Observability:** config-change `audit` entry (who/old/new).
 - **Acceptance criteria:**
   - AC-0.AUTH.003.1 — Given a Super Admin changes `oauth_provider`, When saved, Then the next login uses the new provider with no deploy.
@@ -748,22 +748,22 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
   not a phone-verify flow.
 - **Superseded by:** FR-0.SEED.002/003 (external-admin recovery) + FR-0.REC.002/006 (generic support intake).
 
-### FR-0.REC.005 — Request status tracking (pending / in-progress / resolved)
-- **Statement:** The system shall track every login-support request through the states pending → in-progress → resolved.
+### FR-0.REC.005 — Request status tracking (pending / in_progress / resolved)
+- **Statement:** The system shall track every login-support request through the states pending → in_progress → resolved.
 - **Source:** design-doc-v4.md L387; **reframed by OD-019**
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** State transitions during handling.
 - **Preconditions:** A request exists.
 - **Behaviour:**
-  - Happy path: pending (created) → in-progress (an admin picks it up) → resolved (access fixed / question answered). *(The old "contacted" state was tied to the retired phone-verify flow.)*
+  - Happy path: pending (created) → in_progress (an admin picks it up) → resolved (access fixed / question answered). *(The old "contacted" state was tied to the retired phone-verify flow.)*
   - Edge / failure: invalid transitions blocked; a resolved request is immutable history.
 - **Data touched:** `DATA-support_requests.status`.
 - **Permissions:** `PERM-support.resolve` for transitions.
 - **Surfaces:** `UI-SUPPORT-REQUESTS`.
 - **Observability:** status-transition `audit`.
 - **Acceptance criteria:**
-  - AC-0.REC.005.1 — Given a pending request, When an admin marks it in-progress then resolved, Then the status history reflects pending→in-progress→resolved with actor + timestamp on each.
+  - AC-0.REC.005.1 — Given a pending request, When an admin marks it in_progress then resolved, Then the status history reflects pending→in_progress→resolved with actor + timestamp on each.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
 
@@ -830,12 +830,12 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** Any inbound webhook to a connector endpoint.
-- **Preconditions:** The connector's verification secret/keys are available (`DATA-credentials`).
+- **Preconditions:** The connector's verification secret/keys are available (`DATA-webhook_secrets`).
 - **Behaviour:**
   - Happy path: signature/JWT verified → hand the *verified* payload to the ingesting component (C2/C3).
   - Branches: per-connector mechanism — GHL (FR-0.WHK.002), Google (FR-0.WHK.003), Slack (FR-0.WHK.004).
   - Edge / failure: verification fails → reject `401`, **do not process**, log as `prompt_injection` (FR-0.WHK.005).
-- **Data touched:** `DATA-credentials` (read); `guardrail_log` (write on failure).
+- **Data touched:** `DATA-webhook_secrets` (read); `guardrail_log` (write on failure).
 - **Permissions:** N/A (machine-to-machine; the signature *is* the auth).
 - **Config dependencies:** —
 - **Surfaces:** N/A (operator sees failures via alerts, FR-0.WHK.005).
@@ -893,11 +893,11 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** Inbound Slack webhook.
-- **Preconditions:** Slack signing secret in `DATA-credentials`.
+- **Preconditions:** Slack signing secret in `DATA-webhook_secrets`.
 - **Behaviour:**
   - Happy path: timestamp within 5 min → build base string → HMAC → constant-time compare → match → process.
   - Edge / failure: stale timestamp (replay) **or** signature mismatch → `401` + log.
-- **Data touched:** `DATA-credentials.slack_signing_secret` (read); `guardrail_log` (write).
+- **Data touched:** `DATA-webhook_secrets.secret_value` (secret_kind='slack_signing') (read); `guardrail_log` (write).
 - **Permissions:** N/A.
 - **Config dependencies:** `CFG-webhook.replay_window_seconds` (default 300).
 - **Surfaces:** N/A.
@@ -958,11 +958,11 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
 - **Status:** Approved
 - **Priority:** Should
 - **Actor / trigger:** Operator rotating a webhook secret (runbook).
-- **Preconditions:** `DATA-credentials` holds the per-connector secret(s).
+- **Preconditions:** `DATA-webhook_secrets` holds the per-connector secret(s).
 - **Behaviour:**
   - Happy path: new secret added → both old and new accepted for the dual-accept window → old secret retired → only new accepted.
   - Edge / failure: a webhook signed with the retired secret after the window → rejected `401` + logged (FR-0.WHK.005).
-- **Data touched:** `DATA-credentials` (versioned secret per connector) — read/write.
+- **Data touched:** `DATA-webhook_secrets` (versioned secret per connector) — read/write.
 - **Permissions:** operator/runbook (service-role provisioning).
 - **Config dependencies:** `CFG-webhook.secret_rotation_window`.
 - **Surfaces:** N/A (runbook).
@@ -1025,11 +1025,11 @@ Carried priorities from entry-finalization: **OAuth is primary, email+password+2
 `PERM-user.invite` · `PERM-auth.provider_toggle` · `PERM-support.view` · `PERM-support.resolve`
 
 ### UI- (Phase 3)
-`UI-LOGIN` (OAuth-primary + email/password fallback + "Trouble signing in?") · `UI-2FA-ENROLL` · `UI-2FA-CHALLENGE` · `UI-INVITE-SETUP` · `UI-REAUTH-PROMPT` · `UI-SUPPORT-REQUESTS` · `UI-USER-MGMT` · `UI-CONFIG-AUTH`
+`UI-LOGIN` (OAuth-primary + email/password fallback + "Trouble signing in?") · `UI-2FA-ENROLL` · `UI-2FA-CHALLENGE` · `UI-INVITE-SETUP` · `UI-REAUTH-PROMPT` · `UI-SUPPORT-REQUESTS` · `UI-USER-MGMT` · `UI-config-admin#auth`
 
 ### DATA- (Phase 4)
-- `DATA-support_requests` (id, email, name, issue_description, status[pending|in-progress|resolved], assigned_to, created_at, updated_at) — **C0-owned**. *(No phone/contacted_by — the phone-verify flow is retired, OD-019.)*
-- `DATA-credentials` (per-connector webhook secrets, **versioned** for rotation: `ghl_webhook_secret`, `slack_signing_secret`, Google audience) — read by WHK; broader connector creds are **C3**.
+- `DATA-support_requests` (id, email, name, issue_description, status[pending|in_progress|resolved], assigned_to, created_at, updated_at) — **C0-owned**. *(No phone/contacted_by — the phone-verify flow is retired, OD-019.)*
+- `DATA-webhook_secrets` (per-connector webhook secrets, **versioned** for rotation: `ghl_webhook_secret`, `slack_signing_secret`, Google audience) — read by WHK; broader connector creds are **C3**.
 - `DATA-webhook_replay_cache` (seen event IDs + window) — FR-0.WHK.008.
 - Supabase-managed: `auth.users`, `auth.identities`, `auth.mfa_factors`, session store (referenced, not owned).
 - Shared: `guardrail_log` (webhook failures, `prompt_injection`), `event_log`, `audit`.

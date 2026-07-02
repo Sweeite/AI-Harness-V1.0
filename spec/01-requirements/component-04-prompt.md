@@ -335,7 +335,7 @@ sole control for a non-negotiable. — cites **L2442–2446, L2756, L399**.
 **FR-4.STO.001 — The prompt store** · *Approved*
 Prompt layers are persisted in a `prompt_layers` store with: `id`, `layer`
 (`core`|`business`|`memory`|`task_template`), `name`, `content`, `agent_id`, `client_slug` (label, not RLS
-key), `enabled`, `version`, `created_at`, `updated_at`, `created_by`, `previous_version_id`, and
+key), `enabled`, `version`, `created_at`, `created_by`, `previous_version_id`, and
 `change_reason`. — cites **L2457–2473**. *(DATA stub `DATA-prompt_layers`.)*
 - **AC-4.STO.001.1** — *Given* the schema, *When* a prompt layer is persisted, *Then* all listed fields are
   present and `client_slug` is used only as a label (no RLS policy keys on it). *(Phase-4 reconciliation: the column is DELETED, not label-only — OD-096 / FR-10.ISO.001; it exists only in management-plane `client_registry`.)*

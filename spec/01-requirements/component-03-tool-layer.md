@@ -10,8 +10,8 @@
 
 - **Status:** 🟢 **Approved 2026-06-25** — **53 FRs**, verification gate run + reconciled; research-first
   gate PASSED + all C3 ODs resolved (session 19). **53 FRs** =
-  40 generic runtime (CONN ×5 · REG ×4 · TOK ×6 · RL ×8 · ACT-limits ×2 · TRIG ×5 · OPT ×4 · DSC ×6) +
-  13 connector instances (OBS ×4 · ACT ×5 · TOK ×3 · TRIG ×1). All three dossiers gate-passed:
+  38 generic runtime (CONN ×5 · REG ×4 · TOK ×6 · RL ×8 · ACT-limits ×2 · TRIG ×3 · OPT ×4 · DSC ×6) +
+  15 connector instances (OBS ×4 · ACT ×5 · TOK ×3 · TRIG ×3). All three dossiers gate-passed:
   **GHL 🟢 · Google 🟢 · Slack 🟡**. Vendor facts cite the dossiers, not the design doc. **Three viability
   gates** hold specific FRs back from build until cleared: Slack history ingest
   (FR-3.OBS.002/TOK.009/TRIG.004/TRIG.006 Slack arms) → **AF-083/084**; GHL webhook (FR-3.TRIG.004 GHL arm)
@@ -369,7 +369,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: provisioning requests the dossier-pinned minimal scopes — read scopes for observation tools, write scopes only when an action tool exists; a deployment that uses only reads never requests a write scope.
   - Branches: Google Drive scope is **OD-045-resolved** — `drive.file` (non-sensitive, no CASA) is the default; escalate to `drive.readonly` (restricted, CASA) only for full-corpus ingest with client acceptance (google-gmail.md §8, OD-045); Slack email resolution adds `users:read.email` only if email is needed (slack.md §8 L114–119).
   - Edge / failure: a tool whose required scope was not granted is unavailable and degrades gracefully (FR-3.OPT.004), never silently returns empty.
-- **Data touched:** `DATA-credentials.scopes` (read).
+- **Data touched:** `DATA-connector_credentials.scopes` (read).
 - **Permissions:** N/A.
 - **Config dependencies:** —
 - **Surfaces:** connector setup / OAuth screen (Phase 3).
@@ -466,7 +466,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: each client's deployment has its own `tools`/`credentials`/`rate_limit_tracker` tables in its own Supabase; no policy filters by `client_slug`.
   - Branches: the label may appear for human readability/labelling, never in a security predicate.
   - Edge / failure: any policy or query that tried to use `client_slug` to separate clients is a defect — cross-client separation is the physical silo, full stop.
-- **Data touched:** `DATA-tools`, `DATA-credentials`, `DATA-rate_limit_tracker` (label field only).
+- **Data touched:** `DATA-tools`, `DATA-connector_credentials`, `DATA-rate_limit_tracker` (label field only).
 - **Permissions:** N/A.
 - **Config dependencies:** —
 - **Surfaces:** N/A.
@@ -492,7 +492,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: access + refresh tokens are stored encrypted (Vault); reads decrypt only in the runtime at call time; `expires_at`, `scopes`, `created/updated_at` accompany them.
   - Branches: rotation-enabled connectors store the new refresh token on every rotation (FR-3.TOK.005).
   - Edge / failure: any code path that would write a token to a log line, env var, UI field, or config file is forbidden — a leak is a #2 violation; redaction is enforced at the logging boundary.
-- **Data touched:** `DATA-credentials` (encrypted access/refresh, expires_at, scopes, timestamps).
+- **Data touched:** `DATA-connector_credentials` (encrypted access/refresh, expires_at, scopes, timestamps).
 - **Permissions:** decrypt = runtime/`service_role` only; never a human-readable surface.
 - **Config dependencies:** —
 - **Surfaces:** connector status only ever shows *metadata* (last refresh, expiry countdown), never token material (FR-3.DSC.005).
@@ -515,7 +515,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: the job finds tokens with `expires_at` within `CFG-token_refresh_lead_minutes` (default 30) and refreshes them, persisting new access (and rotated refresh, FR-3.TOK.005) tokens.
   - Branches: connectors with non-expiring tokens (Slack `xoxb` default, FR-3.TOK.009) are skipped.
   - Edge / failure: a refresh failure here does not yet fail a user call (Layer 2 still catches it); a hard failure escalates toward Layer 3 re-auth (FR-3.TOK.004) and surfaces on the health panel.
-- **Data touched:** `DATA-credentials` (read expiry; write new tokens).
+- **Data touched:** `DATA-connector_credentials` (read expiry; write new tokens).
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** CFG-token_refresh_interval_minutes (15), CFG-token_refresh_lead_minutes (30).
 - **Surfaces:** N/A (health panel shows results).
@@ -538,7 +538,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: 401 → refresh token → retry the same call once → success.
   - Branches: if the retry also fails (or refresh fails), the call fails and the connector moves toward degraded/re-auth (FR-3.TOK.004); never retry-loop on 401.
   - Edge / failure: a 401 on a high-risk write does not auto-retry indefinitely — single retry only, then halt (composes with FR-3.RL.006 / approval rules).
-- **Data touched:** `DATA-credentials` (refresh).
+- **Data touched:** `DATA-connector_credentials` (refresh).
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** —
 - **Surfaces:** N/A.
@@ -561,7 +561,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: connector → `degraded`; dependent tasks pause; the dashboard shows a one-click OAuth re-connect (FR-3.DSC.002); on reconnect, paused tasks auto-resume (FR-3.DSC.003).
   - Branches: refresh-token death causes per connector — Google (6-mo unused / password reset / 100-token overflow), GHL (1-yr unused / rotation-persist miss), Slack (uninstall / `auth.revoke`) — all converge to this same degraded→re-auth path.
   - Edge / failure: never drop a task on the floor — it pauses and is recoverable; the degradation is loudly surfaced (#3), not a silent failure.
-- **Data touched:** `DATA-credentials` (state); paused-task references.
+- **Data touched:** `DATA-connector_credentials` (state); paused-task references.
 - **Permissions:** re-auth action = Admin/Super-Admin for system-wide connectors (RBAC); the OAuth consent is the connecting user's.
 - **Config dependencies:** —
 - **Surfaces:** degraded-connector modal/banner (FR-3.DSC.002); health panel (FR-3.DSC.005).
@@ -584,7 +584,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: refresh call returns a new access **and** new refresh token → both persisted in one atomic write → only then is the new access token used for calls.
   - Branches: GHL — every refresh rotates (single-use; old invalidated); a 30s concurrency window returns the same token for racing refreshes (gohighlevel.md §2 L60). Slack — only if rotation is enabled (default OFF per OD-040); when on, the `xoxe-1-` refresh token must be persisted each rotation. Google — does **not** rotate on normal refresh (google-gmail.md §2 L65), so persist-new is a no-op there but harmless.
   - Edge / failure: if persistence fails, never use a new token whose refresh half was not saved (this is the #1 "silently lose access" trap the runtime exists to close). **The refresh (external HTTP) and the persist (local DB write) are not one transaction** — once the vendor rotates, the *old* refresh token is already dead server-side, so "retry with old state" will fail. The recovery path must retry the persist within the vendor's same-token grace window (GHL 30s, gohighlevel.md §2 L60) and, if that window is missed, move the connector to `degraded`/re-auth (FR-3.TOK.004) **loudly** — never silently retry-fail.
-- **Data touched:** `DATA-credentials` (atomic write of access + refresh).
+- **Data touched:** `DATA-connector_credentials` (atomic write of access + refresh).
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** CFG-slack_token_rotation_enabled (default false, OD-040).
 - **Surfaces:** N/A.
@@ -1034,7 +1034,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: the runtime marks the connector `degraded` and classifies the scope; dependent tasks pause (FR-3.TOK.004).
   - Branches: system-wide (e.g. app uninstalled, refresh dead) vs individual (one user's grant revoked) drives the surfacing (FR-3.DSC.002) and reconnect authority.
   - Edge / failure: an undetected disconnection causing silent task failure is the failure mode this FR exists to prevent (#3).
-- **Data touched:** `DATA-credentials`/connector state.
+- **Data touched:** `DATA-connector_credentials`/connector state.
 - **Permissions:** N/A (detection); reconnect authority per FR-3.DSC.002.
 - **Config dependencies:** —
 - **Surfaces:** health panel (FR-3.DSC.005).
@@ -1126,7 +1126,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: per connector, the panel shows status (connected/degraded), last-call timestamp, token expiry countdown, and rate-limit headroom (FR-3.RL.001); never token material (FR-3.TOK.001).
   - Branches: a degraded connector is visually flagged with its re-auth action (FR-3.DSC.002).
   - Edge / failure: missing/stale health data is itself shown as a warning, not a blank.
-- **Data touched:** connector state, `DATA-credentials` (metadata only), `DATA-rate_limit_tracker`.
+- **Data touched:** connector state, `DATA-connector_credentials` (metadata only), `DATA-rate_limit_tracker`.
 - **Permissions:** view = Admin/Super-Admin (RBAC).
 - **Config dependencies:** —
 - **Surfaces:** connector health panel (Phase 3 / C7).
@@ -1148,7 +1148,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: a token nearing expiry (<`CFG-token_expiry_alert_days`, default 7) emails the owner; degradation raises the modal (FR-3.DSC.002); unresolved past window escalates (FR-3.DSC.004).
   - Branches: alert recipients differ by scope (owner vs Super Admin).
   - Edge / failure: an alert that cannot be delivered is itself surfaced — alerting failure is not silent (#3).
-- **Data touched:** `DATA-credentials` (expiry); alert records.
+- **Data touched:** `DATA-connector_credentials` (expiry); alert records.
 - **Permissions:** N/A (system-initiated).
 - **Config dependencies:** CFG-token_expiry_alert_days (default 7).
 - **Surfaces:** email + dashboard alerts (C7).
@@ -1393,7 +1393,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: access ~1h (use returned `expires_in`, not a constant); refresh persists but is **not** rotated on refresh (google-gmail.md §2 L65) → FR-3.TOK.005 persist-new is a harmless no-op; new refresh only via `prompt=consent`.
   - Branches: refresh death triggers — user revoke / 6-mo unused / password change / 100-token overflow (oldest silently invalidated) / Workspace admin restriction (google-gmail.md §2 L67–68) → all to Layer-3 re-auth (FR-3.TOK.004).
   - Edge / failure: the **100-token cap** can silently invalidate the oldest token → monitor token count; the unused-client deletion (≥6mo idle, eff. 2025-10-27) can delete the whole OAuth client → alert on long idle (⚠️ AF-107).
-- **Data touched:** `DATA-credentials` (Google).
+- **Data touched:** `DATA-connector_credentials` (Google).
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** —
 - **Surfaces:** health panel (FR-3.DSC.005).
@@ -1416,7 +1416,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: access ~24h (`expires_in: 86399`); each refresh returns a new refresh token and invalidates the old → FR-3.TOK.005 atomically persists it before use (gohighlevel.md §2 L60–61).
   - Branches: concurrent refreshes within a 30s window return the same token (race-safe, gohighlevel.md §2 L60).
   - Edge / failure: failing to persist the rotated token **silently loses GHL access** (the #1 trap this connector most exemplifies); refresh dies after 1yr unused → Layer-3 re-auth.
-- **Data touched:** `DATA-credentials` (GHL).
+- **Data touched:** `DATA-connector_credentials` (GHL).
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** —
 - **Surfaces:** health panel (FR-3.DSC.005).
@@ -1438,7 +1438,7 @@ until the BAA chain is resolved (not an OD — a legal feasibility item, but it 
   - Happy path: default `xoxb` is non-expiring → no proactive refresh needed (FR-3.TOK.002 skips it); revocation via app uninstall / `auth.revoke`, signalled by `app_uninstalled` + `tokens_revoked` (slack.md §2 L58) → Layer-3 re-auth.
   - Branches: **rotation is OFF by default (OD-040, CFG-slack_token_rotation_enabled=false)**; if turned on it is irreversible → 12h `xoxe.xoxb-` access + `xoxe-1-` refresh that must be persisted each rotation (FR-3.TOK.005, slack.md §2 L57).
   - Edge / failure: no documented per-account token cap (slack.md §2 L59) → treat as one `xoxb` per workspace; revocation ordering of `app_uninstalled` vs `tokens_revoked` is not guaranteed.
-- **Data touched:** `DATA-credentials` (Slack).
+- **Data touched:** `DATA-connector_credentials` (Slack).
 - **Permissions:** runtime/`service_role`.
 - **Config dependencies:** CFG-slack_token_rotation_enabled (default false).
 - **Surfaces:** health panel.

@@ -296,7 +296,7 @@
   - AC-1.PERM.005.2 — Given the catalog, When the admin matrix renders, Then every catalog node appears as a configurable row (no node hardcoded or omitted).
 - **Open decisions:** —
 - **Feasibility assumptions:** —
-- **Notes:** This is a **build-time discipline** captured now as a requirement so Phase 6 issues inherit it. The 74 seed nodes (12 categories, L509–615) are this catalog's v1 content. Codified in `standards/rbac.md`.
+- **Notes:** This is a **build-time discipline** captured now as a requirement so Phase 6 issues inherit it. The 74 seed nodes (13 categories, L509–615) are this catalog's v1 content. Codified in `standards/rbac.md`.
 
 ### FR-1.PERM.006 — Denied-access behavior: hidden in UI, refused at the API, never silent
 - **Statement:** The system shall, for a denied permission, omit the corresponding surface from the user's UI **and** refuse a direct programmatic attempt with an explicit authorization error, logging the refusal — never returning a silent empty/partial success.
@@ -320,15 +320,15 @@
 - **Open decisions:** OD-026 (exact error semantics — 403 vs 404-to-avoid-enumeration — and whether to log at info or security level).
 - **Feasibility assumptions:** —
 
-### FR-1.PERM.007 — The permission-node catalog (12 categories) is homed here
-- **Statement:** The system shall recognize the design's twelve permission-node categories as the seed catalog and shall home the `PERM-*` nodes that Component 0 referenced as stubs.
+### FR-1.PERM.007 — The permission-node catalog (13 categories) is homed here
+- **Statement:** The system shall recognize the design's thirteen permission-node categories as the seed catalog and shall home the `PERM-*` nodes that Component 0 referenced as stubs.
 - **Source:** design-doc-v4.md L509–615 (the full matrix); C0 stubs (FR-0.AUTH.003, FR-0.INV.001, REC)
 - **Status:** Approved
 - **Priority:** Must
 - **Actor / trigger:** N/A (a cataloging requirement).
 - **Preconditions:** —
 - **Behaviour:**
-  - Happy path: the catalog (in `PERMISSION_NODES.md`, FR-1.PERM.005) contains the twelve categories — **Memory Access · Sensitivity Clearance · Dashboard Access · Tool Access · Agent Invocation · Asset Management · System Functions · User Management · Approval Authority · Ingestion & Initialisation · Compliance · Observability · Chat Commands** (L509–615) — with their seed role-default assignments.
+  - Happy path: the catalog (in `PERMISSION_NODES.md`, FR-1.PERM.005) contains the thirteen categories — **Memory Access · Sensitivity Clearance · Dashboard Access · Tool Access · Agent Invocation · Asset Management · System Functions · User Management · Approval Authority · Ingestion & Initialisation · Compliance · Observability · Chat Commands** (L509–615) — with their seed role-default assignments.
   - Branches: **C0 stubs homed** → `PERM-auth.provider_toggle` (under System Functions / "Manage deployment config", L564); `PERM-user.invite` (User Management / "Invite users", L572, Super Admin + Admin); `PERM-support.view` / `PERM-support.resolve` (the "trouble signing in" support queue, visible to Super Admin + Admin per C0 REC / L385). These are the existing stub IDs; the catalog reconciles them with the design's node names.
   - Edge / failure: a C0-referenced node missing from the catalog would orphan a C0 FR (caught by the verification gate).
 - **Data touched:** `PERMISSION_NODES.md`; `DATA-role_permissions` (seed defaults).
@@ -337,7 +337,7 @@
 - **Surfaces:** `UI-PERMISSION-MATRIX`.
 - **Observability:** —
 - **Acceptance criteria:**
-  - AC-1.PERM.007.1 — Given the seed catalog, When inspected, Then all twelve categories and every C0 stub node are present with default-role assignments.
+  - AC-1.PERM.007.1 — Given the seed catalog, When inspected, Then all thirteen categories and every C0 stub node are present with default-role assignments.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
 - **Notes:** The full per-node enumeration lives in `PERMISSION_NODES.md` (build artifact) and is surfaced in Phase 3's admin matrix — not duplicated row-by-row here, per L504/L629 ("tracked during the build").
@@ -421,7 +421,7 @@
   - Happy path: a Finance role with "Confidential, scoped to finance entities" sees Confidential **finance** memories but **not** Confidential client-strategy memories (L450).
   - Branches: a "Global" scope (e.g. Super Admin) applies across all entity types.
   - Edge / failure: a memory whose entity type is outside the user's clearance scope is **excluded entirely** before ranking (L464, L1725) — never ranked-then-hidden.
-- **Data touched:** `DATA-sensitivity_clearances.entity_type_scope`; evaluated against `DATA-memories.entity_type` (C2).
+- **Data touched:** `DATA-sensitivity_clearances.entity_type_scope`; evaluated against `DATA-memories.entity_ids` joined to `DATA-entities.type` (C2).
 - **Permissions:** N/A (evaluation).
 - **Config dependencies:** —
 - **Surfaces:** `UI-CLEARANCE-MGMT` (scope selector).
@@ -440,16 +440,17 @@
 - **Preconditions:** `CFG-clearance_review_cadence_days` (default 90).
 - **Behaviour:**
   - Happy path: at each cadence, the dashboard surfaces every above-Standard clearance for the Super Admin to **confirm** (still appropriate) or **revoke**.
-  - Branches: an **un-actioned** review (cadence elapsed, Super Admin hasn't responded) → **flagged + escalated (alert)**, per OD-028 — **not** auto-revoked (avoid silent #1 access loss) and **not** silently left as if reviewed (avoid silent #3 staleness).
+  - Branches: an **un-actioned** review (cadence elapsed, Super Admin hasn't responded) → **flagged + escalated (alert)**, per OD-028 — **not** auto-revoked (avoid silent #1 access loss) and **not** silently left as if reviewed (avoid silent #3 staleness), **unless** the deployment has opted into `CFG-clearance_review_fail_closed` (LIVE, default `false`), in which case an un-actioned overdue review **auto-revokes** the clearance instead of merely flagging it — still logged and still escalated as an alert, never silent.
   - Edge / failure: a revoked clearance takes effect instantly (FR-1.RLS.006).
-- **Data touched:** `DATA-sensitivity_clearances` (read; `last_reviewed_at`); `audit` on confirm/revoke.
+- **Data touched:** `DATA-sensitivity_clearances` (read; `last_reviewed_at`); `audit` on confirm/revoke/auto-revoke.
 - **Permissions:** `PERM-user.grant_clearance` (to action a review).
-- **Config dependencies:** `CFG-clearance_review_cadence_days` (LIVE, default 90).
+- **Config dependencies:** `CFG-clearance_review_cadence_days` (LIVE, default 90); `CFG-clearance_review_fail_closed` (LIVE, default `false` — per-deployment opt-in to auto-revoke instead of flag-and-persist, OD-028).
 - **Surfaces:** `UI-CLEARANCE-REVIEW` (Phase 3).
 - **Observability:** review-due, confirm, revoke, and overdue-escalation `event_log`/`audit`.
 - **Acceptance criteria:**
-  - AC-1.CLR.005.1 — Given a clearance whose review cadence has elapsed without action, When the next cycle runs, Then it is flagged and escalated, and is neither auto-revoked nor marked reviewed.
-- **Open decisions:** OD-028 (un-actioned-review handling).
+  - AC-1.CLR.005.1 — Given a clearance whose review cadence has elapsed without action, When `clearance_review_fail_closed` is `false` (default), Then it is flagged and escalated, and is neither auto-revoked nor marked reviewed.
+  - AC-1.CLR.005.2 — Given a clearance whose review cadence has elapsed without action, When `clearance_review_fail_closed` is `true`, Then it is auto-revoked, the revocation is audited, and the Super Admin is still alerted (never a silent revoke).
+- **Open decisions:** OD-028 (un-actioned-review handling; resolved — default flag+escalate, fail-closed is a per-deployment opt-in).
 - **Feasibility assumptions:** —
 
 ### FR-1.CLR.006 — Clearance + visibility enforced before ranking/injection (harness) and at the DB (RLS)
@@ -927,7 +928,7 @@
 
 **DATA-** (Phase 4 / data-model): `roles`, `role_permissions`, `user_roles`, `sensitivity_clearances` (with `entity_type_scope`, `last_reviewed_at`), `restricted_grants` (granter/grantee/reason/scope/time), `access_audit` (append-only); helper functions `user_clearances(uid)`, `user_visibility(uid)`, `user_restricted(uid)`, `user_aal()`; a generic RLS policy per table; indexes on policy columns.
 
-**PERM-** (catalog, FR-1.PERM.005 / `PERMISSION_NODES.md`): the 12 categories' nodes (L509–615) seeded with default-role assignments; C0 stubs homed: `PERM-system.role_manage`, `PERM-user.assign_role`, `PERM-user.deactivate`, `PERM-user.reset_2fa`, `PERM-user.view_activity`, `PERM-user.grant_clearance`, `PERM-user.grant_restricted`, `PERM-user.invite` (C0), `PERM-auth.provider_toggle` (C0), `PERM-support.view`/`PERM-support.resolve` (C0), `PERM-compliance.download_records`.
+**PERM-** (catalog, FR-1.PERM.005 / `PERMISSION_NODES.md`): the 13 categories' nodes (L509–615) seeded with default-role assignments; C0 stubs homed: `PERM-system.role_manage`, `PERM-user.assign_role`, `PERM-user.deactivate`, `PERM-user.reset_2fa`, `PERM-user.view_activity`, `PERM-user.grant_clearance`, `PERM-user.grant_restricted`, `PERM-user.invite` (C0), `PERM-auth.provider_toggle` (C0), `PERM-support.view`/`PERM-support.resolve` (C0), `PERM-compliance.download_records`.
 
 **AF-** (feasibility): AF-067 (RLS hot-path perf — existing), AF-076 (`aal2` coverage — existing, from C0), AF-068 (containment red-team — existing, referenced by FR-1.RLS.007), **AF-079** (RLS coverage completeness — new), **AF-080** (harness/RLS non-drift, sharpened to runtime divergence — new), **AF-081** (agent-path access-audit completeness — new).
 

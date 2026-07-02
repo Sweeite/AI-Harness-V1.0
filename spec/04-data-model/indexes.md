@@ -18,6 +18,16 @@ create index concurrently memories_embedding_hnsw
   clearance filtering can starve recall. Retrieval strategy (over-fetch + filter, or partial indexes per
   clearance band) is a Phase-5 spike, not decided here.
 
+## Memory write-path (sole-writer idempotency + watermark — ADR-004)
+
+```sql
+create index concurrently memories_entity_ids_updated_at on memories (entity_ids, updated_at);  -- ADR-004 §3/§6 per-entity watermark
+```
+`memories.idempotency_key` is already indexed by its own `UNIQUE` constraint (`schema.md`) — no separate
+index needed. `memories_entity_ids_updated_at` backs the optimistic validate-and-commit's `v0≠v1` re-check:
+a cheap "most recent write touching this entity" lookup, so the lock wraps only the DB validate-and-commit,
+never the LLM call (ADR-004 §3).
+
 ## Queue / oldest-first / overdue (the `(status, created_at)` family)
 
 ```sql
@@ -97,6 +107,15 @@ create index concurrently proactive_recipient_state on proactive_suggestions (re
 create index concurrently proactive_floor on proactive_suggestions (is_floor) where state in ('generated','surfaced');
 create index concurrently task_history_task_step on task_history (task_id, step_index);
 ```
+
+## Compliance workflow (C10)
+
+```sql
+create index concurrently connector_deletion_flags_state_raised on connector_deletion_flags (state, raised_at);
+```
+Serves the tracked-until-acknowledged connector-flag queue (oldest-first + escalation sweep, AC-10.DEL.006.3),
+same `(status, created_at)`-family shape as the other review queues above. `deployment_settings` is a
+single-row-per-deployment table (schema.md) — no index needed.
 
 ## Management plane
 

@@ -313,14 +313,16 @@
   - Happy path: a save-worthy event passes to Filter 2 / the writer; an irrelevant one is dropped with no Sonnet cost (the gate's whole purpose, ADR-003).
   - Branches: the gate runs on **Haiku** (cheap) — it must filter enough volume to pay for itself (AF-043).
   - Edge / failure: **during the shadow-retain trust window (ADR-003 §8), a "would-drop" is written + tagged rather than lost**, so the gate's accuracy can be audited before it is trusted to discard — see OD-036 for the window's retain mechanics + exit criteria.
-- **Data touched:** writes nothing on a true drop (post-trust-window); during the window writes a tagged shadow record.
+  - Edge / failure: **after graduation to live-discard, a sampled audit continues** so the gate can't silently drift (OD-036) — 5% of live Filter-1 drops (minimum 20/week) are logged to the Haiku-decision review queue for a weekly human spot-check; a week with zero sampled drops reviewed is itself logged as a missed-audit condition (FR-2.MNT.015).
+- **Data touched:** writes nothing on a true drop (post-trust-window); during the window writes a tagged shadow record; post-graduation writes a sampled-drop audit record.
 - **Permissions:** runs in the `service_role` write path.
-- **Config dependencies:** Haiku-gate + trust-window keys (Phase 2).
-- **Surfaces:** the Haiku-decision review queue (Phase 3) — the trust-window audit surface.
-- **Observability:** every Filter-1 decision logged to the Haiku decision log (ADR-003 §8).
+- **Config dependencies:** Haiku-gate + trust-window keys (Phase 2); post-graduation sample rate (5%, minimum 20/week) + weekly review cadence (Phase 2).
+- **Surfaces:** the Haiku-decision review queue (Phase 3) — the trust-window audit surface and the post-graduation sampled-audit surface.
+- **Observability:** every Filter-1 decision logged to the Haiku decision log (ADR-003 §8); post-graduation, the sampled-audit run (rate, count reviewed, disagreements found) is logged under FR-2.MNT.015's job-run log so a missed or empty audit run is never silent.
 - **Acceptance criteria:**
   - AC-2.ING.001.1 — Given casual banter with no entity link, When ingested, Then it is discarded and no Sonnet writer call occurs.
   - AC-2.ING.001.2 — Given the trust window is active, When Filter 1 would drop an item, Then a tagged shadow record is retained for review (not lost).
+  - AC-2.ING.001.3 — Given the gate has graduated to live-discard, When Filter 1 drops items over a week, Then at least 5% of drops (minimum 20/week) are sampled into the Haiku-decision review queue and logged as a reviewed audit run.
 - **Open decisions:** ✅ RESOLVED — OD-036 (trust-window shadow-retain mechanics + exit criteria).
 - **Feasibility assumptions:** ⚠️ FEASIBILITY: AF-043 (the gate pays for itself + is accurate enough to trust).
 - **Notes:** Reconciliation #1 — Filter 1 = ADR-003's single self-funding Haiku gate; not a new model.
@@ -508,11 +510,11 @@
 - **Preconditions:** —
 - **Behaviour:**
   - Happy path: ingested items pass the same gates as live-task writes; no pipeline writes directly to `DATA-memories`.
-  - Branches: bulk ingestion still serializes same-entity writes (ADR-004) and respects `memory_writes_per_minute`.
+  - Branches: bulk ingestion still serializes same-entity writes (ADR-004) and respects `rate_limit_memory_writes_per_minute`.
   - Edge / failure: a pipeline that inserts rows directly (skipping the writer) is forbidden (#1/#2) — the sole-writer invariant has no exceptions for ingestion.
 - **Data touched:** `DATA-memories` (only via the writer).
 - **Permissions:** `service_role` writer.
-- **Config dependencies:** `memory_writes_per_minute` (default 30, ADR-004).
+- **Config dependencies:** `rate_limit_memory_writes_per_minute` (default 30, ADR-004).
 - **Surfaces:** —
 - **Observability:** —
 - **Acceptance criteria:**
@@ -646,7 +648,7 @@
   - **Mid-task authorization (gate Finding 2 — consumes C1 FR-1.RLS.007):** the commit txn **is** "the next consequential side effect" FR-1.RLS.007 governs. Because the Sonnet writer ran **unlocked** for seconds, the commit must re-check that the **originating user is still active and the relied-on clearance/Restricted grant is still in force**; if it was revoked/deactivated mid-write, the commit **halts + quarantines** the pending memory (never persists on a stale snapshot) per FR-1.RLS.007. A benign **session-expiry** is not a revocation and does not halt (C0 FR-0.SESS.006).
 - **Data touched:** `DATA-memories` (write under lock); reads originating-identity status/clearance (C1 helpers).
 - **Permissions:** writer (`service_role`), bound to its originating identity (FR-1.RLS.007).
-- **Config dependencies:** `memory_writes_per_minute` (default 30).
+- **Config dependencies:** `rate_limit_memory_writes_per_minute` (default 30).
 - **Surfaces:** —
 - **Observability:** lock contention / re-check / bounce metrics; a mid-task-revocation halt → `audit` + quarantine.
 - **Acceptance criteria:**
@@ -884,23 +886,23 @@
 - **Feasibility assumptions:** —
 
 ### FR-2.MNT.003 — Amber-zone + bulk-drop alerts
-- **Statement:** The system shall raise a proactive dashboard flag when a memory's confidence crosses below `amber_zone_threshold` (0.65) — firing **before** the floor is hit — and shall raise a separate systemic alert when more than `bulk_drop_alert_count` (10) memories drop within `bulk_drop_alert_window_minutes` (60).
+- **Statement:** The system shall raise a proactive dashboard flag when a memory's confidence crosses below `amber_zone_threshold` (0.75) — firing **before** the memory drops below `retrieval_confidence_threshold` (0.7) and becomes invisible to retrieval — and shall raise a separate systemic alert when more than `bulk_drop_alert_count` (10) memories drop within `bulk_drop_alert_window_minutes` (60).
 - **Source:** design-doc-v4.md L1697, L1823; config L918, L924–925
 - **Status:** Approved
 - **Priority:** Should
 - **Actor / trigger:** The decay/feedback path crossing a threshold.
 - **Preconditions:** —
 - **Behaviour:**
-  - Happy path: a memory crossing 0.65 is flagged for review proactively (before it stops being injected).
+  - Happy path: a memory crossing 0.75 is flagged for review proactively (before it stops being injected at the 0.7 retrieval floor).
   - Branches: a burst of drops (>10 in 60 min) → a systemic alert (something changed wholesale — a connector broke, a bad ingestion).
   - Edge / failure: the alert makes erosion *visible* (#3) rather than letting the brain quietly degrade.
 - **Data touched:** `DATA-memories`; alert sink.
 - **Permissions:** —
-- **Config dependencies:** `CFG-amber_zone_threshold` (0.65), `CFG-bulk_drop_alert_count` (10), `CFG-bulk_drop_alert_window_minutes` (60) — LIVE.
+- **Config dependencies:** `CFG-amber_zone_threshold` (0.75), `CFG-bulk_drop_alert_count` (10), `CFG-bulk_drop_alert_window_minutes` (60) — LIVE.
 - **Surfaces:** memory health dashboard (amber flags + systemic alert).
 - **Observability:** amber + bulk alerts logged.
 - **Acceptance criteria:**
-  - AC-2.MNT.003.1 — Given a memory crossing below 0.65, When detected, Then a proactive review flag is raised.
+  - AC-2.MNT.003.1 — Given a memory crossing below 0.75, When detected, Then a proactive review flag is raised.
   - AC-2.MNT.003.2 — Given 11 memories dropping in 30 minutes, When detected, Then a systemic alert fires.
 - **Open decisions:** —
 - **Feasibility assumptions:** —
@@ -944,7 +946,7 @@
 - **Observability:** merge-job run logged.
 - **Acceptance criteria:**
   - AC-2.MNT.005.1 — Given two ≥0.92-similar Standard memories, When the merge job runs, Then they collapse into one richer memory.
-  - AC-2.MNT.005.2 — Given two ≥0.92-similar Personal memories, When the merge job runs, Then they are not auto-merged (FR-2.MNT.016).
+  - AC-2.MNT.005.2 — Given two ≥0.92-similar Personal memories, When the merge job runs, Then they are not auto-merged (FR-2.MNT.014).
 - **Open decisions:** ✅ RESOLVED — OD-037 (Personal-consolidation gate mechanism — skip vs human-approval queue).
 - **Feasibility assumptions:** —
 
@@ -978,7 +980,7 @@
 - **Preconditions:** —
 - **Behaviour:**
   - Happy path: 10+ new episodics on an entity → a semantic summary linked to that cluster; the episodics persist as evidence.
-  - Branches: Personal episodics are not folded without human approval (FR-2.MNT.016).
+  - Branches: Personal episodics are not folded without human approval (FR-2.MNT.014).
   - Edge / failure: the evidence layer is **never** deleted (L1796) — drill-down from fact → events must always work (#1).
 - **Data touched:** `DATA-memories` (new semantic + cluster reference).
 - **Permissions:** `service_role` job.
@@ -1152,9 +1154,9 @@
 - **Actor / trigger:** The scheduler (loops/cron — seam to the harness/observability components).
 - **Preconditions:** —
 - **Behaviour:**
-  - Happy path: each job (real-time filters/checks; daily decay/supersede/structural/coverage/amber; weekly summarise/merge/health-report/queue-refresh; monthly relevance/cold-storage/embedding/clearance-review-trigger) runs on cadence and logs run/outcome/records.
+  - Happy path: each job (real-time filters/checks; daily decay/supersede/structural/coverage/amber; weekly summarise/merge/health-report/queue-refresh/Haiku-gate sampled-drop audit; monthly relevance/cold-storage/embedding/clearance-review-trigger) runs on cadence and logs run/outcome/records.
   - Branches: a failed run is logged loudly + alerts (#3), never swallowed; the completion-rate metric flags a backlog.
-  - Edge / failure: a silent job failure is the exact thing this FR forbids — it would let the brain degrade invisibly (#1/#3).
+  - Edge / failure: a silent job failure is the exact thing this FR forbids — it would let the brain degrade invisibly (#1/#3); the weekly Haiku-gate sampled-drop audit (FR-2.ING.001, OD-036) is subject to the same rule — a skipped or empty audit week logs a job-run record and is not silently swallowed.
 - **Data touched:** job-run log; `DATA-memories` (per job).
 - **Permissions:** `service_role`.
 - **Config dependencies:** the cadence schedules (Phase 2).
@@ -1163,6 +1165,7 @@
 - **Acceptance criteria:**
   - AC-2.MNT.015.1 — Given any maintenance job, When it runs or fails, Then a log record captures time/outcome/records-affected.
   - AC-2.MNT.015.2 — Given a job failure, When it occurs, Then it is surfaced/alerted, not silent.
+  - AC-2.MNT.015.3 — Given the weekly Haiku-gate sampled-drop audit (FR-2.ING.001), When the week's run completes with zero drops reviewed, Then a job-run record is still logged and flagged (not silently skipped).
 - **Open decisions:** —
 - **Feasibility assumptions:** —
 - **Notes:** The **clearance-review trigger** (monthly, L1899) fires C1's FR-1.CLR.005 review on `CFG-clearance_review_cadence_days` (90); the scheduler mechanism is a harness/observability seam (C6/C7).

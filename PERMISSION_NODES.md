@@ -35,7 +35,17 @@ homing the design-doc's "Create / edit agents" row + encoding the OD-080 two-tie
 OD-115 — `PERM-memory.review_conflict` + `PERM-memory.approve_consolidation`, into the C2 — Memory section) + **+1
 Approval Authority node** transcribed 2026-07-01 (surface-11 / OD-117 — `PERM-action.review`, new Approval Authority
 section) = **51 catalogued** (closing the standing OD-115 ×2 / OD-117 ×1 owed-node debt: those three were defined in
-`open-decisions.md` since surfaces 03/04 but not transcribed until now). **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
+`open-decisions.md` since surfaces 03/04 but not transcribed until now).
+
+**Recount correction (2026-07-02 audit, M27):** the running math above never rolled `PERM-guardrail.edit_autonomy`
+(the pre-existing Guardrails — autonomy node, homed since C6/C9, predating the 2026-06-28 consolidation harvest) into
+any of its running totals — the physical row count in the catalog below was actually **52**, not 51, going into this
+session. **+1 Compliance node** transcribed 2026-07-02 (OD-166 — `PERM-compliance.view_audit`, gating `access_audit`
+reads, replacing the nonexistent `PERM-audit.view` miscited in `rls-policies.md`) = **53 catalogued**; **+2 Operations
+Actions nodes** transcribed 2026-07-02 (OD-167 — `PERM-ops.dlq_manage` + `PERM-ops.connector_reconnect`, new
+Operations Actions category, replacing surface-05's never-transcribed "System Functions"/"Tool Access" gate names) =
+**55 catalogued**. **55 real nodes** as of this session (52 reconciled baseline + 3 minted this session), matching a
+physical recount of the table rows below. **5 nodes carry no explicit seed holder yet** (marked ⚠️ —
 they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, `PERM-memory.write`,
 `PERM-prompt.rollback`, `PERM-prompt.view_history`, `PERM-system.add_sensitivity`.
 
@@ -98,6 +108,7 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 |---|---|---|---|---|
 | `PERM-config.edit` | Edit infra / compliance CFG-* values | Super Admin | deployment | C10 |
 | `PERM-compliance.download_records` ⚠️ | Export / download compliance audit records | Super Admin (unseeded) | intra-client | C1 (specced C7) |
+| `PERM-compliance.view_audit` | Read the `access_audit` table (the audit trail) | Super Admin + Compliance-holding roles | intra-client | C1 (specced C7) / OD-166 |
 
 ### Config Admin — the `PERM-config.*` family (Phase 2; all default **Super Admin only**)
 | Node | Description | Default roles | Scope | Added-in |
@@ -174,6 +185,16 @@ they default-deny per OD-030 until seeded): `PERM-compliance.download_records`, 
 > catalog above (the two Memory nodes in the C2 — Memory section; `PERM-action.review` in the new Approval Authority
 > section). Catalog count 48→51. No node is owed-but-untranscribed as of this session; the add-on-ship rule holds going
 > forward.
+
+### Operations Actions — the `PERM-ops.*` family (surface-05 / OD-121's dangling gate names; minted via change-control 2026-07-02, OD-167)
+> surface-05 (OD-121) gated **DLQ requeue/discard** and **connector reconnect** behind a "System Functions" node and a
+> "Tool Access" node that were never actually minted into this catalog (audit Dim5 H32) — an unguarded-at-build-time gate
+> for two consequential operations. OD-167 mints the family under this new Operations Actions category; surface-05 is
+> re-cited to the real node names below.
+| Node | Description | Default roles | Scope | Added-in |
+|---|---|---|---|---|
+| `PERM-ops.dlq_manage` | Requeue / discard a dead-lettered `task_queue` row on the surface-05 DLQ panel (FR-5.JOB.006) | Super Admin, Admin | intra-client | surface-05 / OD-167 |
+| `PERM-ops.connector_reconnect` | Trigger the C3 connector reconnect / re-auth action from the surface-05 connectors panel (FR-3.TOK.004) | Super Admin, Admin | intra-client | surface-05 / OD-167 |
 
 ---
 
