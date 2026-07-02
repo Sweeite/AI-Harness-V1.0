@@ -5,6 +5,85 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 46 — 2026-07-02 — PRE-PHASE-6 FULL-SPEC AUDIT RUN + FULLY RECONCILED — 🟢 PHASE 6 GATE CLEARED
+
+**What happened:** Ran the **pre-Phase-6 full-spec audit** (`spec/00-foundations/pre-phase-6-audit-playbook.md`),
+operator-authorized as a **Workflow** ("run it as a Workflow (Recommended)"). First attempt stalled mid-run (a
+session interruption killed 3 in-flight agents around Dimension 6/Verify, ~34/38 agents cached) — resumed via
+`resumeFromRunId`, which replayed all completed agents from cache and finished cleanly. **154 total agents, 0
+errors, 6.7M subagent tokens.**
+
+**Audit result:** 110 raw candidate findings across the 6 dimensions (ID resolution · traceability completeness ·
+cross-phase consistency · change-control integrity · contradiction hunt · three-non-negotiables end-to-end) →
+after adversarial verification (a dedicated refutation agent per HIGH/MED candidate, default-to-false-positive):
+**48 confirmed HIGH, 46 confirmed MED, 10 LOW (cosmetic, unverified), 6 refuted.** Full report: `spec/00-foundations/
+audit/_audit-report.md` (+ `dim-1`…`dim-6` evidence files + `_mechanical-prepass.md`). The volume is mostly
+**cross-phase reference decay** — Phase 4 (data model) split/renamed things Phase 1 (components) had already cited
+by their old names, and no prior verification gate had ever checked *across* phases, only within one. A smaller set
+(~7) were genuine architectural contradictions — two different Approved parts of the spec describing incompatible
+system behavior.
+
+**Reconciliation (same session, operator-delegated "I trust your recommendation"):** Judgment calls on the 7
+architectural findings were made directly (not delegated to fix-agents) and logged as **OD-161…OD-167** in
+`open-decisions.md`, each with options considered + rationale, per `standards/change-control.md`:
+- **OD-161 🔑 the big one** — `FR-9.MODE.004`'s Act-tier autonomous external-send (added via OD-088, a direct
+  **operator** decision at C9 finalization) collided with **ADR-007**'s locked "no config change can override a
+  hard limit" text, and reproduced exactly the carve-out **OD-047** (one day earlier) explicitly rejected. Resolved:
+  rolled back to **Prepare-only** — the AI still drafts, a human still sends. This reverses part of a prior
+  *operator*-decided call, so it's flagged here explicitly, not buried in the batch. `C6 FR-6.APR.002/003`'s OD-088
+  narrowing reverted to the original blanket external-comms floor; `AC-6.APR.002.3` retired; the now-pointless
+  `act_trust_period_days`/`external_act_trust_period` config fields removed everywhere (config-registry.md,
+  surface-01, component-09).
+- **OD-162** — defined the previously-undefined "local mirror" of `client_registry.status` (cited by FR-5.TRG.001.3/
+  FR-10.DEL.007/FR-10.OFF.004 but never specified, since `client_registry` lives only in the management-plane
+  deployment and ADR-001 §7 is push-only). Resolved: a new `deployment_settings.frozen_at` table **inside each
+  client's own Supabase**, written by the management plane via the client's already-custodied `service_role` key
+  (ADR-001 §7) — reuses existing infrastructure, doesn't reopen the push-only boundary.
+- **OD-163** — `UI-SUPPORT-REQUESTS` (surface-00, predates the "exactly two Realtime surfaces" rule) corrected from
+  Realtime to polling.
+- **OD-164** — ADR-003's cost-ladder key names reconciled against the shipped config-registry.md (dated in-place
+  note, same pattern as OD-046); the daily/weekly soft-alert figures restored to independently-editable keys
+  (`cost_ladder_soft_threshold_daily_usd`/`_weekly_usd`) per ADR-003's actual requirement.
+- **OD-165** — custom-command dispatch (`FR-9.CMD.008`) now creates/reuses a `task_queue` row like any other agent
+  action, closing a #2 gap where a command resolving to hard-approval had no described enforcement path.
+- **OD-166/167** — PERM-node catalog reconciliation: minted `PERM-compliance.view_audit` and two `PERM-ops.*`
+  (DLQ manage / connector reconnect) nodes for citations that resolved to nothing.
+- **Dim5-H28 (regex-quarantine vs ADR-007) — reviewed, no fix needed.** Read the actual ADR-007 text directly
+  (`L163-164`: quarantine is explicitly framed as part of the "signal + human-routing layer") plus FR-6.INJ.006
+  ("never proceeds without explicit human approval") — the audit's finding was a misreading, not a defect. Logged in
+  the OD-161–167 block so a future session doesn't re-open ADR-007 over it.
+
+**Mechanical fixes** (dangling/renamed IDs, missing matrix rows, stale FR/node counts, schema gaps) applied via a
+**second Workflow**: 30 file-scoped agents running in parallel (one per file/tightly-coupled file group, to avoid
+concurrent-edit conflicts on shared files like `traceability-matrix.csv`/`PERMISSION_NODES.md`/`config-registry.md`/
+`schema.md`), each executing a precise pre-decided checklist — no independent judgment left to the fix agents.
+0 errors, all 30 completed with clear per-item completion notes (several correctly flagged out-of-scope items rather
+than guessing, e.g. surface-07's agent found the audit's line-count for M26 was slightly imprecise and fixed only
+the one real occurrence). Two cross-agent loose ends closed manually afterward: `amber_zone_threshold`'s corrected
+default (0.65→0.75, H27) propagated to `config-registry.md` + a new cross-key validation constraint; two
+`DATA-credentials` references in `surface-05-dashboard-ops.md` that no agent's checklist covered; the OD-161
+removal's ripple into `surface-01-config-admin.md`'s Data-bindings table (the now-deleted trust-period fields were
+still described there); README's stale C6 FR-count (35→36, RTL ×3→×4).
+
+**Files changed:** ~35 files across `spec/00-foundations/` (open-decisions.md +OD-161-167, ADR-003/ADR-004
+reconciliation notes, what-makes-it-great.md, feasibility-register.md +AF-139, tool-integrations/gohighlevel.md),
+`PERMISSION_NODES.md`, `traceability-matrix.csv`, all of `spec/02-config/config-registry.md`, `spec/04-data-model/`
+(schema.md +2 tables, indexes.md, migrations.md, rls-policies.md), 9 of the 11 `spec/01-requirements/` component
+files, 9 of the 14 `spec/03-surfaces/` surface files, 4 of the 9 `spec/05-non-functional/` files, `README.md`,
+this log. New audit evidence files in `spec/00-foundations/audit/`. Committed in stages as the workflows produced
+output (honest WIP commits when stop-hooks fired mid-run, per the established pattern from sessions 42/43),
+final reconciliation commit + this entry.
+
+**Next step: Phase 6 (Issue decomposition)** — gate is clear. Finalize the Phase-6 playbook (approach → full
+mechanical detail, per the finalize-before-entry rule used for every prior phase), then slice the spec into
+vertical, independently-buildable issues, each inheriting its FR `AC-*` + the `NFR-*` constraints + the six
+launch-gating spikes (OD-157) as its definition of done, with a build-order/dependency map. The `to-issues` skill is
+available for this. **Operator note carried forward: OD-161 reverses part of a previously operator-decided call
+(OD-088, low-risk-external autonomous send) — worth a explicit look before Phase 6 issues get cut from FR-9.MODE.004,
+in case there's context this session didn't have.**
+
+---
+
 ## Session 45 — 2026-07-01 — PHASE 5 (NON-FUNCTIONAL) ENTERED, DRAFTED, GATE CLEAN, SIGNED OFF — 🟢 PHASE 5 COMPLETE
 
 **SIGN-OFF (2026-07-01):** operator signed off on Phase 5 ("yep sign off"). README flipped 🟢; the four

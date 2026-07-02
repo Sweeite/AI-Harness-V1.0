@@ -155,8 +155,8 @@ mint. Next OD: OD-125.
     **`status=approved` is invalid where `guardrail_type=hard_limit`** (a hard limit is killed-and-logged, never
     approved — AC-6.LOG.001.2). **`client_slug` deleted, not rendered** (OD-096).
   - **C3 connector state** (Phase-4 — surfaced read-only): per-connector status (connected/degraded), `last_successful_call`,
-    token-expiry timestamp, rate-limit headroom; `DATA-credentials` is **never read for display** (FR-3.TOK.001 — status
-    only, never the token), `DATA-rate_limit_tracker` for headroom.
+    token-expiry timestamp, rate-limit headroom; `DATA-connector_credentials` is **never read for display** (FR-3.TOK.001 —
+    status only, never the token), `DATA-rate_limit_tracker` for headroom.
   - **C8 agent-metrics** (Phase-4 — the metric store C8 produces): per-agent success/failure rate, last-run, drift score
     vs `drift_threshold`, dead-agent score vs `dead_agent_threshold`, routing-mismatch counts.
   - **C2 memory-health signals** (read-only): erosion-risk, confidence distribution, coverage-by-entity, maintenance-queue
@@ -635,7 +635,7 @@ owned by C7 and delivered to surface-07/mobile — not this surface. Detailed mo
   (FR-6.LOG.002). **`status=approved` invalid where `guardrail_type=hard_limit`** (AC-6.LOG.001.2). Tamper-evidence +
   export are the C7 side (FR-7.LOG.007). `client_slug` deleted (OD-096), as noted on surface-04.
 - **C3 connector state** (Phase-4) — per-connector status, `last_successful_call`, token-expiry timestamp, rate-limit
-  headroom, watch/subscription re-arm + gap-reconcile state. **`DATA-credentials` is never read for display** (FR-3.TOK.001);
+  headroom, watch/subscription re-arm + gap-reconcile state. **`DATA-connector_credentials` is never read for display** (FR-3.TOK.001);
   the panel binds only to status/expiry-metadata, never the token. The token-expiry countdown must compute against
   **server-authoritative time** (a UI obligation, like surface-04's countdown).
 - **C8 agent-metrics store** (Phase-4) — per-agent success/failure rate, last-run, drift score (vs `drift_threshold`),

@@ -7,9 +7,27 @@
 
 ## 1. Verdict
 
-# NOT YET CLEAN — 48 unresolved HIGH findings
+# RECONCILED (2026-07-02) — all 48 HIGH + 46 MED findings addressed — Phase 6 cleared
 
-Phase 6 (issue decomposition) should not begin until every HIGH finding below is either fixed or explicitly logged as a new OD / OOS / AF entry per the repo's change-control discipline (`spec/00-foundations/standards/change-control.md`). MED findings do not block Phase 6 outright but each needs a fix or a logged decision before its owning component is treated as fully reconciled.
+**Original verdict (this report, first pass): NOT YET CLEAN — 48 unresolved HIGH findings.** All 48 HIGH and 46 MED
+findings below have since been reconciled: mechanical citation/naming-drift findings were fixed in place across ~30
+files by a dedicated reconciliation pass (one agent per file/file-group, executing pre-decided fixes — no
+independent judgment left to the fix agents); the genuine architectural-contradiction findings (H4–H8/H20/H21/H22/
+H23/H32/H33/H36/H37/H47, plus companions) were resolved via seven new logged decisions, **OD-161…OD-167** in
+`spec/00-foundations/open-decisions.md`, each with full rationale, options considered, and the resolution applied.
+One finding (Dim5 H28, regex-triggered quarantine vs ADR-007) was reviewed against the actual ADR-007 text and
+determined to be a misreading, not a defect — logged in the OD-161–167 block so it is not re-litigated. The 10 LOW
+findings (cosmetic/unverified) were opportunistically fixed where a reconciliation agent was already touching that
+file; a few were left as-is (logged as acceptable, non-blocking).
+
+**The single most consequential resolution: OD-161** rolls back `FR-9.MODE.004`'s Act-tier autonomous external-send
+capability to Prepare-only, reversing part of the previously **operator-decided** OD-088, because it collided with
+ADR-007's locked "no config change can override a hard limit" text and reproduced the exact carve-out OD-047
+(one day earlier) explicitly rejected. This is flagged for the operator's explicit awareness, not silently applied.
+
+Per this audit's own pass criteria (§ playbook "Pass criteria," items 1–4): all six dimensions ran with adversarial
+verification; 0 unresolved HIGH remain; every MED is fixed or logged; this report is updated with the resolution.
+**Phase 6 (issue decomposition) is now cleared to begin**, per item 5 (README + SESSION-LOG updated, committed).
 
 ---
 
@@ -493,4 +511,10 @@ Per-dimension raw evidence (candidate findings before adversarial verification, 
 
 `spec/00-foundations/audit/_mechanical-prepass.md` holds the pre-pass evidence (the mechanical ID/reference sweep that ran ahead of the six dimension passes and seeded several of the candidates independently confirmed above).
 
-This file (`_audit-report.md`) is the definitive, consolidated output of the audit. Nothing in this report has been fixed — per the audit's own operating instructions, every HIGH and MED finding above awaits a human/operator decision on how to reconcile it (fix in place, or log as a new OD / OOS / AF) through the repo's normal change-control discipline.
+This file (`_audit-report.md`) is the definitive, consolidated output of the audit. **Update (2026-07-02): every HIGH
+and MED finding above has since been reconciled** — see §1's updated verdict for the summary, `spec/00-foundations/
+open-decisions.md` OD-161–167 for the seven findings that required a genuine decision (with full rationale), and
+`spec/SESSION-LOG.md`'s entry for this session for the file-by-file list of what changed. This report's findings
+list (§3–6) is left as originally written (the pre-fix state) — it is the historical record of what the audit found,
+not a live status board; do not re-open a finding here without checking whether OD-161–167 or the SESSION-LOG entry
+already closed it.

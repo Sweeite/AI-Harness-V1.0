@@ -1218,8 +1218,9 @@ authority** — `memory_scope`/`tools_allowed`/`enabled` changes = **Super Admin
 principles-are-tighter); `description`/routing-weight tuning = Super Admin + Admin; mandatory `change_reason` + audit
 on every change; (b) Super Admin + Admin for all (like general prompt editing); (c) Super Admin only for everything.
 **✅ Resolution → (a)** (delegated, accepted rec). Homed in REG.004 (capability changes flagged) + the permission
-notes across REG/SCO/PLAN FRs. *(New permission node implied — to wire at C1 reconciliation: `PERM-agent.edit_capability`
-Super-Admin-only vs `PERM-agent.edit_routing` Admin-allowed.)*
+notes across REG/SCO/PLAN FRs. *(New permission node implied — wired at OD-137 as `PERM-agents.edit_capability`
+(plural "agents") Super-Admin-only vs `PERM-agents.edit_description` Admin-allowed; the singular spelling above was
+this OD's original working name, corrected repo-wide by the pre-Phase-6 audit's H9 finding, 2026-07-02.)*
 
 ## OD-081 — Per-agent `memory_scope` enforcement wiring 🟢 RESOLVED (2026-06-26, C8 session 25 — change-control to C5+C2) — **#2, surfaced by the C8 gate**
 **Surfaced by:** the C8 verification gate (quality finding H1), 2026-06-26. **Blocked `Ready` on:** FR-8.SCO.001,
