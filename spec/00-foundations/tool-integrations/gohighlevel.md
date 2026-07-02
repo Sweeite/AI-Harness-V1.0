@@ -245,11 +245,11 @@ chain (#2 — AF-098).
   token lifecycle (rotation persistence), rate-limit throttling, contact/opportunity/conversation/calendar
   ingest, the five write actions, and webhook receipt + Ed25519 verification + dedup. *(Citing this dossier,
   not the design doc, for vendor facts.)*
-- **Config keys this implies (Phase 2):** `CFG-GHL-RATE-BURST=100/10s`, `CFG-GHL-RATE-DAILY=200000/day`
-  (per app per location), `CFG-GHL-ACCESS-TTL=expires_in` (~86399s, design to returned value),
-  `CFG-GHL-REFRESH-TTL=1yr-unused`, `CFG-GHL-VERSION-HEADER=2021-07-28` (pin), `CFG-GHL-SCOPES=<the 9-scope
-  set above>`, `CFG-GHL-WEBHOOK-PUBKEY=<Ed25519 PEM, as config not hardcoded>`,
-  `CFG-GHL-REVERIFY=2026-12-25` (or 90-day per OD-043).
+- **Config keys this implies (Phase 2):** filed as real rows in `config-registry.md` §F (`PERM-config.tools`):
+  `ghl_rate_burst_cap` (100/10s), `ghl_rate_daily_cap` (200,000/day, per app per location), `ghl_access_token_ttl`
+  (~86399s, design to returned `expires_in`), `ghl_refresh_token_max_idle` (1yr-unused), `ghl_api_version_header`
+  (pinned `2021-07-28`), `ghl_oauth_scopes` (the 9-scope set above), `ghl_webhook_pubkey` (Ed25519 PEM, config
+  not hardcoded), `ghl_dossier_reverify_days` (90-day per OD-043).
 
 ## Verification-gate result
 **PASS.** An independent, zero-context verification subagent re-checked the stale/refuted/load-bearing

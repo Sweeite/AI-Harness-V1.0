@@ -99,11 +99,12 @@ behind a confirm-the-rebuild dialog), with the plain-English description shown a
 | `support.stale_request_minutes` | How long a pending support request waits before admins are re-alerted | 60 | LIVE | int minutes ≥ 1 |
 
 ## D. RBAC — (records, not config)
-RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tier-1 records (Phase 3/4).
+RBAC's tunable knob set is two values; roles/perms/clearances are Tier-1 records (Phase 3/4).
 
 | Key | What it does (plain English) | Default | Class | Validation | Gate · Surface |
 |---|---|---|---|---|---|
 | `clearance_review_cadence_days` | How often access clearances must be reviewed and re-confirmed | 90 | LIVE | int days ≥ 1 | `PERM-config.guardrails` · `#guardrails` |
+| `clearance_review_fail_closed` | Whether an overdue, un-actioned clearance review auto-revokes access instead of flagging it and waiting | false | LIVE | bool; per-deployment opt-in — default stays flag+escalate, never auto-revoke (OD-028; FR-1.CLR.005) | `PERM-config.guardrails` · `#guardrails` |
 
 ## E. Memory — `PERM-config.memory` · `UI-config-admin#memory`
 
@@ -132,8 +133,9 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `ranking_weights` | How much recency, confidence, entity-match and similarity each count when ranking memories | App. A | LIVE | object; sum = 1.0 |
 | `expected_slots` | Which key facts the system expects to know about each kind of entity | App. A | LIVE | object; 5–8 per entity type |
 | `entity_types` | The list of categories things can be filed under (e.g. Client, Person) — "Internal Org" always present | App. A | BOOT | array unique; "Internal Org" locked-present |
-| `haiku_audit_window_days` | How long the cheap "should this be remembered?" gate runs in shadow mode — tagging what it *would* drop without actually dropping it — before it's trusted to act on its own | 21 | LIVE | int days ≥ 0 (0 = go autonomous immediately) |
+| `haiku_audit_window_days` | How long the cheap "should this be remembered?" gate runs in shadow mode — tagging what it *would* drop without actually dropping it — before it's trusted to act on its own | 21 | LIVE | int days ≥ 7 (OD-036; a shadow-retain trust window is mandatory — immediate autonomy is rejected) |
 | `haiku_gate_disagree_threshold` | The most the shadow gate may disagree with what was actually written before it's allowed to go autonomous — higher means more tolerant | 0.05 | LIVE | float 0–1 |
+| `memory_write_serialization` | Controls whether writes to the same entity's memory are queued one-at-a-time, run freely, or fully unlocked (debug only) | per_entity | BOOT | enum {per_entity, global, off} (ADR-004 §Consequences; `global`/`off` for debugging only) |
 
 ## F. Tool layer / connectors — `PERM-config.tools` · `UI-config-admin#tools`
 
@@ -153,6 +155,14 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `watch_rearm_lead_minutes` | How early the system renews a live-update subscription before it lapses | per-connector | LIVE | int minutes; < shortest watch TTL |
 | `slack_token_rotation_enabled` | Turn on automatic Slack key rotation (can't be turned off once enabled) | false | BOOT | bool; irreversible once on (OD-040) |
 | `tool_selection_confidence_threshold` | How sure the AI must be before using a tool without asking | 0.7 | LIVE | float 0–1 |
+| `ghl_rate_burst_cap` | Most GoHighLevel API calls allowed in a 10-second burst window, per location | 100 / 10s | LIVE | int ≥ 1; per GHL dossier (per app per location/company) |
+| `ghl_rate_daily_cap` | Most GoHighLevel API calls allowed per location each day before the connector throttles | 200,000 / day | LIVE | int ≥ 1; per GHL dossier (per app per location/company) |
+| `ghl_access_token_ttl` | How long a GoHighLevel login token lasts before it needs refreshing | ~86399 s (24 h) | LIVE | duration; design to the vendor's returned `expires_in`, not a hardcoded constant |
+| `ghl_refresh_token_max_idle` | How long a GoHighLevel connection can go unused before it needs a fresh login | 1 yr | LIVE | duration; single-use/rotating — new token persisted atomically every refresh |
+| `ghl_api_version_header` | Which GoHighLevel API version the connector is pinned to | `2021-07-28` | BOOT | enum {v3, 2023-02-21, 2021-07-28, 2021-04-15, legacy}; pinned deliberately, no auto-adopt |
+| `ghl_oauth_scopes` | The exact set of GoHighLevel permissions the connector requests at install | App. A (9-scope least-privilege set) | BOOT | array; fixed least-privilege set (GHL dossier §8); scope change ⇒ re-consent |
+| `ghl_webhook_pubkey` | The public key used to verify that a GoHighLevel webhook is genuine | Ed25519 PEM (GHL dossier §5) | LIVE | string (PEM); config not hardcoded so vendor key rotation needs no redeploy |
+| `ghl_dossier_reverify_days` | How often the GHL vendor-facts dossier must be re-checked before it's trusted | 90 | LIVE | int days ≥ 1 (OD-043; standing changelog-poll task) |
 
 ## G. Prompt architecture — `PERM-config.prompts` · `UI-config-admin#prompts`
 
@@ -186,12 +196,13 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `injection_semantic_detection_enabled` | Turns on the smarter (meaning-based) scan for sneaky malicious instructions | false | LIVE | bool (off by default, ADR-007) |
 | `injection_semantic_threshold` | How suspicious content must look before it gets flagged | 0.85 | LIVE | float 0–1; ≤ quarantine |
 | `injection_quarantine_threshold` | How suspicious content must look before it is locked away | 0.95 | LIVE | float 0–1; ≥ semantic |
-| `rate_limit_tool_writes_per_task` | Most changes the agent can make to tools in a single task | 10 | LIVE | int ≥ 1 (never unlimited) |
-| `rate_limit_external_comms_per_hour` | Most outside messages the agent can send per hour | 5 | LIVE | int ≥ 1 (never unlimited) |
-| `rate_limit_memory_writes_per_minute` | Most updates the agent can make to its memory per minute | 30 | LIVE | int ≥ 1 (never unlimited) |
-| `rate_limit_concurrent_tasks` | Most tasks the agent can work on at the same time | 5 | LIVE | int ≥ 1 (never unlimited) |
+| `rate_limit_tool_writes_per_task` | Most changes the agent can make to tools in a single task | 10 | LIVE | int 1–200 (never unlimited; ceiling ~20× default, AC-6.RTL.001.1) |
+| `rate_limit_external_comms_per_hour` | Most outside messages the agent can send per hour | 5 | LIVE | int 1–100 (never unlimited; ceiling ~20× default, AC-6.RTL.001.1) |
+| `rate_limit_memory_writes_per_minute` | Most updates the agent can make to its memory per minute | 30 | LIVE | int 1–300 (never unlimited; ceiling ~10× default, AC-6.RTL.001.1) |
+| `rate_limit_concurrent_tasks` | Most tasks the agent can work on at the same time | 5 | LIVE | int 1–50 (never unlimited; ceiling ~10× default, AC-6.RTL.001.1) |
 | `approval_pattern_sample_size` | How many past approvals to study before suggesting a shortcut | 30 | LIVE | int ≥ 1 |
-| `cost_ladder_soft_threshold` | Spend level that triggers a heads-up alert but keeps working | $50/day, $200/wk | LIVE | currency ≥ 0; < throttle |
+| `cost_ladder_soft_threshold_daily_usd` | Daily spend level that triggers a heads-up alert but keeps working | $50/day | LIVE | currency ≥ 0; < throttle |
+| `cost_ladder_soft_threshold_weekly_usd` | Weekly spend level that triggers a heads-up alert but keeps working | $200/wk | LIVE | currency ≥ 0; independently editable — deliberately not 7× daily (ADR-003, OD-164) |
 | `cost_ladder_throttle_threshold` | Spend level where low-priority work gets slowed or queued | $75/day | LIVE | currency; between soft & hard |
 | `cost_ladder_hard_kill_threshold` | Spend level where the system stops taking on new costly work | $100/day | LIVE | currency; > throttle |
 | `anomaly_thresholds` | How sensitive the five "something looks off" safety checks are | App. A | LIVE | object (5 checks) |
@@ -250,7 +261,6 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `cold_start_basic_threshold` | How much the AI must learn before it unlocks basic help | 20% | LIVE | int 0–100; ≤ proactive |
 | `cold_start_proactive_threshold` | How much it must learn before it starts suggesting work unasked | 50% | LIVE | int 0–100; between basic & full |
 | `cold_start_full_threshold` | How much it must learn before all proactive features turn on | 80% | LIVE | int 0–100; ≥ proactive |
-| `external_act_trust_period` | How long staff must trust the AI before it may send things outside on its own | 14 d | BOOT | int days ≥ 0 |
 | `scanner_relationship_enabled` | Whether the AI watches for clients going quiet or at risk | true | LIVE | bool |
 | `scanner_meeting_prep_enabled` | Whether the AI prepares briefing notes before meetings | true | LIVE | bool |
 | `scanner_document_prep_enabled` | Whether the AI drafts proposals or briefs it thinks you'll need | true | LIVE | bool |
@@ -283,7 +293,7 @@ RBAC's tunable knob set is a single timing value; roles/perms/clearances are Tie
 | `deploy_max_version_skew` | How many versions behind a deployment can fall before it's flagged | 3 | LIVE | int ≥ 1 |
 | `canary_soak_minutes` | How long a new release is watched on a small slice before full rollout | 60 | LIVE | int minutes ≥ 1 |
 | `deployment_region` | Which part of the world this client's data is physically stored in | ap-southeast-2 | BOOT | enum (v1 Sydney locked) |
-| `recovery_tier` | Which backup/restore plan this client is on — how often data is copied off-platform and how far back it can be restored | hourly_off_platform | BOOT | enum: daily_in_project · hourly_off_platform · pitr (ADR-008 §1; PITR = paid upsell) |
+| `recovery_tier` | Which backup/restore plan this client is on — how often data is copied off-platform and how far back it can be restored | hourly_off_platform | BOOT | enum: daily_in_project · hourly_off_platform · pitr; moving to `daily_in_project` (below hourly) requires a logged downgrade exception per `change-control.md` — never a silent default (`backup-dr.md` NFR-DR.001; PITR = paid upsell) |
 
 ## N. Platform secrets — `PERM-config.secrets` (presence only) · `UI-config-admin#secrets`
 All env/Railway only; surface shows presence + last-rotated, never the value. Deployment cannot boot
@@ -316,7 +326,7 @@ Each is one structured config rendering as its own admin sub-table. Defaults + p
 6. **`anomaly_thresholds`** — *the limits that decide when something looks "off" enough to flag for review.* confidence {0.5, soft} · volume {20/run, soft} · contradiction {on, soft} · scope_expansion {50%, soft} · sentiment {0.3, soft}. Each: threshold (typed per check) + severity {soft_alert, hard_approval}. (Sentiment AND scope are both distinct checks.)
 7. **`risk_thresholds`** — *how strong each kind of risk signal must be before it's raised, and who's told.* per risk type {threshold, owner_role}: sentiment_drop {0.25, account_manager} · payment_overdue {7 d, finance} · campaign_underperform {15%, account_manager} · capacity_stretched {80%, ops} · renewal_approaching {30 d, account_manager}. owner_role ∈ C1 roles.
 8. **`opportunity_thresholds`** — *how strong each kind of opportunity signal must be, and how sure the AI must be, before it's flagged.* per opp type {threshold, confidence_floor}: client_growth {10%, 0.7} · new_service_fit {50%, 0.75} · referral {60%, 0.8} · market_signal {40%, 0.7}.
-9. **`action_autonomy_matrix`** — *how freely the AI may act on its own for each kind of action (sensitive ones are locked to needing sign-off).* **two sections.** *Configurable:* `low_risk_external_nonclient` {default_mode: Prepare (Suggest|Prepare|Act), act_requires_trust_period: true, act_trust_period_days: 14, act_rate_cap_per_hour: 5 (≤ rate_limit_external_comms_per_hour)}. *LOCKED floored* (mode = hard_approval, **edits rejected at write**, AC-9.MODE.004.2): existing_client_external · system_of_record_comms · financial_operation · confidential_restricted_action. Ambiguous sub-type ⇒ treated as floored.
+9. **`action_autonomy_matrix`** — *how freely the AI may act on its own for each kind of action (sensitive ones are locked to needing sign-off).* **two sections.** *Configurable:* `low_risk_external_nonclient` {default_mode: Prepare (Suggest|Prepare|Act), act_requires_trust_period: true, act_rate_cap_per_hour: 5 (≤ rate_limit_external_comms_per_hour)}. *LOCKED floored* (mode = hard_approval, **edits rejected at write**, AC-9.MODE.004.2): existing_client_external · system_of_record_comms · financial_operation · confidential_restricted_action. Ambiguous sub-type ⇒ treated as floored.
 10. **`price_table`** — *the estimated cost per use of each AI model, used for budgeting.* vendor×model→{input, output} $/1k tokens (+ embedding $/unit), estimate-grade, operator-editable; e.g. anthropic: opus 0.015/0.045 · sonnet 0.003/0.015 · haiku 0.0008/0.004; openai embedding text-embedding-3-small. Floats ≥ 0.
 11. **`rate_max_calls_per_connector_window`** — *how many times the system may call each connected service in a time window.* per connector from dossiers (GHL/Google/Slack each their own limit); int ≥ 1 per connector.
 
