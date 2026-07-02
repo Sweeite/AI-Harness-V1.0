@@ -1121,11 +1121,13 @@ checks is covered by the existing FRs above and in C1–C8.
   usage). Method: EVAL. Gates SUG.005.
 - **AF-129** — ranking + briefing surface the **genuinely important** items (relevance, low-noise). Method: EVAL.
 - **AF-130** — the cold-start **ETA** from ingestion rate is meaningful (not misleading). Method: SPIKE.
-- **AF-131 — the load-bearing one** — accuracy of the **non-client / content-sensitivity classification** the OD-088
-  autonomy floor rests on. A confident-but-wrong tag (a real client labelled non-client) is the one #2 path to an
-  autonomous client send; defended by AC-9.MODE.004.5 (send-time re-resolution) + .003 (ambiguity → floored), but the
-  classifier accuracy is unproven. Method: EVAL. Gates the **#2 containment claim** of the narrowed floor (surfaced by
-  gate finding H1).
+- **AF-131** — accuracy of the **non-client / content-sensitivity classification** the autonomy matrix's
+  Configurable-vs-LOCKED distinction rests on. **Stakes lowered by OD-161 (2026-07-02):** since the Act-tier
+  autonomous-send path no longer exists (every sub-type caps at Prepare, human sends), a confident-but-wrong tag (a
+  real client labelled non-client) can at worst produce a **wrong-context draft a human reviews before sending**,
+  not an autonomous send to a real client — defended by AC-9.MODE.004.3 (ambiguity → floored). No longer a #2
+  containment gate (the containment concern this AF originally tracked applied only while an Act path existed);
+  retained as an EVAL for draft-quality/UX accuracy, not a safety gate.
 
 Carry-ins relied on: **AF-034** (Maturity/Sufficiency, C2), **AF-068** (hard-limit containment, C6), **AF-033**
 (said-vs-did pill accuracy).

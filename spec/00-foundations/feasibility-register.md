@@ -493,15 +493,16 @@ unproven assumption: the ranking is well-calibrated and the briefing is relevant
 (human-rated relevance of top-N surfaced items + briefings). **Relied on by:** FR-9.SUG.002, FR-9.PRO.002/003/006.
 Gates the *anti-spam / orientation claim*. **Surfaced by:** C9 drafting.
 
-**AF-131 — Non-client / content-sensitivity classification accuracy (EVAL, build-time).** The OD-088 autonomy floor
-rests on correctly tagging an action's risk sub-type — **recipient = existing-client/SoR vs non-client**, **content
-= financial / Confidential / Restricted vs not**. A *confident-but-wrong* tag (a real client labelled non-client) is
-the one unguarded path to an autonomous client send (#2). The spec defends this with a **send-time re-resolution**
-against the system of record (AC-9.MODE.004.5) + ambiguity-defaults-to-floored (AC-9.MODE.004.3), but the *accuracy*
-of the underlying classifier is unproven. **Method:** EVAL (labelled recipient/content set; measure
-mis-as-non-client + mis-as-non-sensitive rates; the floor's safety depends on a near-zero false-non-client rate).
-**Relied on by:** FR-9.MODE.004 (the floor), C6 FR-6.APR.002. Gates the *#2 containment claim* of the narrowed
-floor. **Surfaced by:** the C9 verification gate (finding H1).
+**AF-131 — Non-client / content-sensitivity classification accuracy (EVAL, build-time).** The autonomy matrix's
+Configurable-vs-LOCKED distinction rests on correctly tagging an action's risk sub-type — **recipient =
+existing-client/SoR vs non-client**, **content = financial / Confidential / Restricted vs not**. **Stakes lowered
+by OD-161 (2026-07-02):** since the Act-tier autonomous-send path no longer exists (every sub-type caps at
+Prepare, human sends), a *confident-but-wrong* tag can at worst produce a wrong-context draft a human reviews
+before sending, not an autonomous client send — no longer a #2 containment gate. Defended by
+ambiguity-defaults-to-floored (AC-9.MODE.004.3). **Method:** EVAL (labelled recipient/content set; measure
+mis-as-non-client + mis-as-non-sensitive rates — still worth measuring for draft-quality/UX accuracy).
+**Relied on by:** FR-9.MODE.004. **Surfaced by:** the C9 verification gate (finding H1); stakes reassessed by the
+pre-Phase-6 audit (OD-161).
 
 **AF-130 — Cold-start ETA from ingestion rate is meaningful (SPIKE, build-time).** CST.007 surfaces an
 "estimated time to full coverage" from the current ingestion rate (L3720). The unproven assumption: the estimate is

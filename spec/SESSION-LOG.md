@@ -77,10 +77,38 @@ final reconciliation commit + this entry.
 **Next step: Phase 6 (Issue decomposition)** — gate is clear. Finalize the Phase-6 playbook (approach → full
 mechanical detail, per the finalize-before-entry rule used for every prior phase), then slice the spec into
 vertical, independently-buildable issues, each inheriting its FR `AC-*` + the `NFR-*` constraints + the six
-launch-gating spikes (OD-157) as its definition of done, with a build-order/dependency map. The `to-issues` skill is
-available for this. **Operator note carried forward: OD-161 reverses part of a previously operator-decided call
+launch-gating spikes (OD-157) as its definition of done, with a build-order/dependency map. *(No dedicated
+`to-issues` skill is currently installed in this environment, despite being named here and in the audit playbook —
+verified absent from both the available-skills list and the filesystem, 2026-07-02. Follow the finalized Phase-6
+playbook procedure directly instead; re-check whether a skill has since been installed before assuming it isn't.)*
+**Operator note carried forward: OD-161 reverses part of a previously operator-decided call
 (OD-088, low-risk-external autonomous send) — worth a explicit look before Phase 6 issues get cut from FR-9.MODE.004,
 in case there's context this session didn't have.**
+
+**ADDENDUM — full OD-register review + repo self-sufficiency test (same session, before handoff to a new chat):**
+Ran a full review of all 167 decisions in `open-decisions.md` (six parallel sharded reads + a dedicated skeptical
+self-review of OD-161–167). Zero decisions open; no contradictions in the pre-existing register. The self-review
+did catch real gaps in this session's own reconciliation — fixed: forward-pointers added to OD-088/OD-064/OD-143
+(each was silently superseded with no pointer to the OD that changed it); OD-166/167's catalog-count arithmetic
+corrected (52→53→55, matching `PERMISSION_NODES.md`'s own M27 baseline correction, not the stale 51→52→54); a real
+safety gap in OD-162 closed with new **AC-10.OFF.004.5** (the freeze-write can partially fail — mgmt-plane marks a
+deployment frozen but the local `deployment_settings.frozen_at` write fails — now requires a `freeze_pending`
+sub-state + escalation, never a silent false-frozen read); the stale `system-map/09-proactive.md` diagram (still
+depicting the reverted Act-tier exception) updated. Then ran the **required repo self-sufficiency test** (CLAUDE.md
+"Context-window management") before this handoff — a zero-context subagent reading only the repo. **Result: FAIL
+on first pass, patched, now clean.** Found and fixed: (1) `config-registry.md`'s Appendix A item 9 description
+still described the retired Act-tier fields as live (a duplicate description the earlier reconciliation missed —
+the main §L table row was already fixed, this Appendix A summary wasn't); (2) `traceability-matrix.csv`'s
+FR-9.MODE.004 row was stale (cited the retired `CFG-external_act_trust_period` key and a dangling `AC-9.MODE.004.6`
+— OD-161 retired the old `.5` and renumbered the former `.6` to `.5`, so `.6` no longer exists); (3) AF-131's
+description (both in `component-09-proactive.md` and `feasibility-register.md`) still framed itself as a live #2
+containment gate against "autonomous client send," a path OD-161 removed — reframed as a lower-stakes draft-quality
+EVAL; (4) the `to-issues` skill (referenced in README/SESSION-LOG/the audit playbook) and the `handoff` skill
+(referenced in CLAUDE.md) are both named as available but don't exist in this environment (verified against the
+actual available-skills list + filesystem) — reworded all four references so a future session doesn't stall trying
+to invoke something absent, with an explicit note to re-check in case one gets installed later. **Self-sufficiency
+test PASS after these fixes** — a fresh chat starting cold can now execute the next action (finalize the Phase-6
+playbook) without guessing.
 
 ---
 

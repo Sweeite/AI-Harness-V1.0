@@ -329,8 +329,8 @@ Every save appends to `config_audit_log` (old value → new value, actor, timest
 
 | Action (label) | What it does | PERM gate |
 |---|---|---|
-| Save Guardrails | Validates all rows; enforces cross-constraints (injection thresholds; cost ladder ordering; rate_cap ≤ rate_limit_external_comms_per_hour; floored autonomy rows reject downgrade); writes to `config_values`; appends audit log; LIVE immediate | `PERM-config.guardrails` |
-| Edit Autonomy Matrix (configurable row) | Allows editing the `low_risk_external_nonclient` row of `action_autonomy_matrix`; write rejected if act_rate_cap_per_hour > rate_limit_external_comms_per_hour | `PERM-guardrail.edit_autonomy` (additional gate on top of section entry) |
+| Save Guardrails | Validates all rows; enforces cross-constraints (injection thresholds; cost ladder ordering; floored autonomy rows reject any downgrade below hard-approval-or-Prepare); writes to `config_values`; appends audit log; LIVE immediate | `PERM-config.guardrails` |
+| ~~Edit Autonomy Matrix (configurable row)~~ | **Retired (OD-161, 2026-07-02)** — every `action_autonomy_matrix` sub-type is now LOCKED at hard-approval-or-Prepare (see the `action_autonomy_matrix` row above); there is no configurable row left to edit. `PERM-guardrail.edit_autonomy` has no action bound to it here (retained on the node catalog for any future non-floor use). | — |
 
 **Real-time / poll:** Static on page load. Explicit save.
 

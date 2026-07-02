@@ -122,7 +122,8 @@ over-scoped grant does something it shouldn't → #2; an unhandled rate limit fa
 2. Logging any new exclusions/deferrals in `out-of-scope.md`, and capturing the user's
    **sign-off** on any completed component (header + SESSION-LOG).
 3. Appending a `spec/SESSION-LOG.md` entry (decisions made, files changed, next step, new
-   open questions). The `handoff` skill can generate this if the session was long.
+   open questions). *(No dedicated `handoff` skill is currently installed in this environment —
+   write the entry directly, following the format of prior entries in the file.)*
 4. Committing (branch first unless it's an initial/baseline commit; never push unasked).
 5. **If the session is ending in a handoff** (new chat next, or context filling), run the
    **repo self-sufficiency test** (see Context-window management) *before* you hand off — a

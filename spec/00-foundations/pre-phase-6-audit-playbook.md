@@ -176,5 +176,6 @@ Everything it needs is in the repo; nothing lives only in a prior conversation.
 A clean audit → **Phase 6 (Issue decomposition)**: finalize the Phase-6 playbook (approach→full
 detail, per the finalize-before-entry rule), then slice the spec into vertical, independently-
 buildable issues, each inheriting its FR `AC-*` **+** the `NFR-*` constraints **+** the launch-gating
-spikes as its definition of done, with a build-order/dependency map. The `to-issues` skill is
-available for this.
+spikes as its definition of done, with a build-order/dependency map. *(No dedicated `to-issues` skill is currently
+installed in this environment — verified absent from the filesystem, 2026-07-02. Follow the finalized Phase-6
+playbook procedure directly instead; re-check whether a skill has since been installed before assuming it isn't.)*
