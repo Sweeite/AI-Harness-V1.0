@@ -1916,6 +1916,150 @@ written decision, not a conversation.
 
 ---
 
+## OD-161…OD-167 — Pre-Phase-6 whole-spec audit reconciliation 🟢 RESOLVED (2026-07-02, operator-delegated "I trust your recommendation")
+
+Surfaced by the pre-Phase-6 full-spec audit (`spec/00-foundations/audit/_audit-report.md`, 48 confirmed HIGH / 46
+confirmed MED findings). The mechanical/citation-drift findings (renamed IDs, missing matrix rows, stale counts) are
+fixed in place without a dedicated OD — this block covers only the findings that touch a locked ADR, reverse a prior
+decision, or require a genuine architectural call. Each is logged here per `standards/change-control.md` rule 2/3.
+
+- **OD-161 🔑 — FR-9.MODE.004's Act-tier autonomous external-send is rolled back to Prepare-only; the
+  low-risk-external category never reaches Act.** — **#2, supersedes the Act-tier portion of OD-088**
+  **Why it matters:** the audit (Dim5 H21/H22) found FR-9.MODE.004's `CFG-action_autonomy_matrix` lets a "low-risk
+  external" send **autonomously execute** after a trust period. This is the exact scenario **OD-047** (resolved one
+  day earlier, C6 session 23) explicitly considered and rejected: *"legitimate low-risk automation flows through the
+  approval-gate layer (a human-approved action is not autonomous), so the limit is never tripped"* — i.e. Prepare,
+  never a config-gated Act. It also collides head-on with **ADR-007**'s own locked text, verbatim, twice: *"hard
+  limits enforced in application code (L2053/L2066 — **never send external email autonomously**...)"* and *"No user
+  role, no agent instruction, **no config change can override a hard limit**"* (ADR-007 L51, restating design-doc
+  L2066). `CFG-action_autonomy_matrix` is precisely a config change gating an autonomous send. OD-088 was itself a
+  direct **operator** decision (not AI-delegated) at C9 finalization, so this is not a casual reversal — it is
+  logged, not silently taken, per Rule 0.
+  **Options:** (a) amend/supersede ADR-007 to carve out a bounded exception for the low-risk-external sub-type; (b)
+  cap FR-9.MODE.004 at **Prepare** for every sub-type (the AI drafts, a human sends with one tap) — the proactivity
+  value (relationship-management, opportunity nurture) is preserved via the draft-ready UX, only the *autonomous
+  send* capability is removed.
+  **✅ Resolution → (b) (recommended; applied).** Per CLAUDE.md's ranking rule — when a trade-off pits a
+  non-negotiable against convenience/speed/scope, the invariant wins — and because ADR-007's "no config change can
+  override" text is unambiguous and twice-stated, amending a locked ADR to route around it is the wrong instrument
+  for a proactivity nicety. **Applied via change-control:** `FR-9.MODE.004`'s low-risk-external sub-type ceiling
+  changes from "Prepare or Act-after-trust-period" to **Prepare only**; `CFG-action_autonomy_matrix`'s
+  `act_trust_period_days` field and the standalone `external_act_trust_period` key (the M43 duplicate) are **both
+  removed** (the capability they gated no longer exists); `C6 FR-6.APR.002/003`'s OD-088 narrowing (mandatory-hard
+  "external" → existing-client/SoR only) is **reverted to the original blanket floor** (all external comms — not
+  just existing-client/SoR — stay hard-approval-or-Prepare, never Act); `AC-6.APR.002.3` (the floored-sub-type
+  carve-out AC) is retired. `AF-068` no longer needs to gate a "floored-set containment" claim for this path, since
+  there is no Act-tier external-send path left to contain. **The operator should be aware this reverses a
+  previously operator-decided call (OD-088)** — flagged explicitly, not buried in a batch of mechanical fixes.
+
+- **OD-162 — Define the "local mirror" of `client_registry.status` the C5 dispatch gate and C10 erasure
+  precondition both depend on but no FR ever specifies.** — **#1/#2**
+  **Why it matters:** `client_registry` lives **exclusively** in the management-plane deployment (ADR-001 §3); ADR-001
+  §7 mandates the health-metadata flow is **push-only, client → management-plane**, and FR-10.MGT.002 defines only
+  that inbound direction. Yet **OD-091** (already resolved) requires "the C5 trigger/queue/loop dispatch layer
+  checks it [`client_registry.status`] before any dispatch," and FR-10.DEL.007/FR-10.OFF.004 cite reading it "via the
+  local mirror / FR-10.MGT.002" — a mechanism that is named but never defined anywhere (Dim5 H20/H41).
+  **Options:** (a) add a new bidirectional pull/query path from client deployments to the management plane (rejected
+  — reopens exactly the exfiltration surface ADR-001 §7's push-only rule exists to close, a #2 risk for a freeze flag
+  that doesn't need one); (b) use infrastructure **already established** by ADR-001 §7 itself: *"the operator's
+  Railway securely stores each client's Supabase service key"* — the operator already custodies a direct,
+  authenticated administrative channel into every client's own Supabase project (established for provisioning,
+  ADR-005 §5). A freeze command is a management-plane-initiated **write** using already-custodied credentials, not a
+  pull of client business data — orthogonal to the health-metadata reporting direction ADR-001 §7 restricts.
+  **✅ Resolution → (b).** **Applied via change-control:** a new `deployment_settings` table (single row per client
+  deployment; columns: `frozen_at timestamptz`, `frozen_reason text`) lives **inside each client's own Supabase
+  project** (added to `spec/04-data-model/schema.md`, Phase-4 owed-back to C10/C5). When C10's offboarding trigger
+  sets `client_registry.status = frozen` in the management plane (FR-10.OFF.004), it **also** writes
+  `deployment_settings.frozen_at` directly into that client's Supabase using the client's custodied service_role key
+  (the same credential path ADR-001 §7 already establishes) — this is the "local mirror." `FR-10.OFF.004`,
+  `FR-10.DEL.007`, and `FR-5.TRG.001.3` are amended to cite `deployment_settings.frozen_at` (a **local** read, no
+  cross-deployment query) instead of "the local mirror / FR-10.MGT.002." Unfreezing (AC-10.OFF.004.3) uses the same
+  write path in reverse.
+
+- **OD-163 — `UI-SUPPORT-REQUESTS` (surface-00) is not a Realtime surface; corrected to polling.** — **#3**
+  **Why it matters:** surface-04 and surface-07 together establish "**exactly two** Realtime surfaces in the whole
+  product" (FR-7.RTP.001/AC-7.RTP.001.3), load-bearing for the FR-7.RTP.003 connection-budget accounting. Surface-00
+  was signed off one day *before* that "exactly two" constraint was formalized on surface-04, and specs
+  `UI-SUPPORT-REQUESTS` as a live WebSocket subscription — a third, unaccounted-for Realtime consumer (Dim5 H23, with
+  a hedged companion in surface-02, M25).
+  **✅ Resolution:** `UI-SUPPORT-REQUESTS` is corrected to **poll** (same cadence family as the other non-Realtime
+  surfaces, FR-7.RTP.002), consistent with the two-surfaces-only rule; surface-02's hedged "may subscribe via the C7
+  RTP contract" wording is corrected to state it polls. No FR content changes — support-request status was never
+  itself an FR-level Realtime requirement, only a surface-authoring slip.
+
+- **OD-164 — ADR-003's cost-ladder config-key names reconciled against the shipped `config-registry.md`; the
+  daily/weekly soft-alert figures restored to independently-editable keys.** — (naming + a Phase-2 implementation gap)
+  **Why it matters:** ADR-003 names `cost_alert_daily_usd` / `cost_alert_weekly_usd` / `cost_throttle_daily_usd` /
+  `cost_hard_ceiling_daily_usd` / `cost.price_table` as the four-plus-one locked keys, and explicitly requires the
+  daily and weekly soft-alert figures be **independently editable** (deliberately not a multiple of each other).
+  `config-registry.md` instead ships `cost_ladder_soft_threshold` / `cost_ladder_throttle_threshold` /
+  `cost_ladder_hard_kill_threshold` / `price_table`, with the soft-alert row **collapsing daily+weekly into one
+  compound-default string**, removing independent editability (Dim5 H33, H36).
+  **✅ Resolution:** this is a naming-drift-plus-implementation-gap, not a contested decision — ADR-003's underlying
+  requirement (three ladder rungs + an independently-editable price table, with daily/weekly soft-alerts each
+  editable) is upheld; the artifacts are reconciled to it. **Applied via change-control:** ADR-003 gets a dated
+  reconciliation note (same in-place-correction pattern as OD-046 for FR-0.WHK.002) recording the shipped names;
+  `config-registry.md`'s `cost_ladder_soft_threshold` is **split into two independently-editable keys**
+  (`cost_ladder_soft_threshold_daily_usd`, default $50/day; `cost_ladder_soft_threshold_weekly_usd`, default
+  $200/wk, deliberately not 7×daily) matching ADR-003's four-key requirement; `cost.md` updated to match.
+
+- **OD-165 — Custom-command dispatch (FR-9.CMD.008) routes through the standard `task_queue`/C6 approval-hold
+  pipeline instead of bypassing it.** — **#2, amends AC-9.CMD.008.3**
+  **Why it matters:** AC-9.CMD.008.3 states no `task_queue` entry is created for a custom-command dispatch, while
+  AC-9.CMD.008.4 insists the wrapped action's C6 tier "governs execution regardless." But the only mechanism the spec
+  defines anywhere for enacting a soft/hard-approval hold is `task_queue`-based (FR-6.APR.006, FR-5.QUE.005) — so if
+  a custom command resolves to a floored/hard-approval tier at execution time, nothing in the spec describes what
+  actually stops the send (Dim6 H47, a #2 gap: "never do something it shouldn't" with no described enforcement path
+  on this route).
+  **✅ Resolution:** a custom-command dispatch **creates (or reuses) a `task_queue` row** exactly like any other agent
+  action, routing to surface-04 like any other agent action when it resolves above auto-approve/reversible-soft —
+  reusing the existing, already-audited approval-hold machinery rather than inventing a parallel one. **Applied via
+  change-control:** AC-9.CMD.008.3 amended (a task_queue row IS created; the "no task_queue entry" framing is
+  retired); AC-9.CMD.008.4 restated as "the created task_queue row carries the wrapped action's real C6 tier — a
+  custom command can never resolve to a lower tier than its wrapped action would outside the command path."
+
+- **OD-166 — `rls-policies.md`'s PERM-node citations reconciled against the actual `PERMISSION_NODES.md` catalog;
+  one new node minted.** — (Dim1 H4–H8)
+  **Why it matters:** five distinct PERM- citations in `rls-policies.md` (`PERM-audit.view`, `PERM-clearance.grant`,
+  `PERM-clearance.view`, `PERM-restricted.grant`, `PERM-user.manage`, `PERM-user.view`) resolve to nothing in the
+  51-node catalog — either a typo'd family (the catalog uses `PERM-user.grant_clearance` /
+  `PERM-user.grant_restricted`) or a genuinely uncovered read-gate (`access_audit` reads have no node at all).
+  **✅ Resolution:** (1) **mint `PERM-compliance.view_audit`** (Super Admin + Compliance-holding roles) under the
+  existing Compliance category, paralleling the already-catalogued `PERM-compliance.download_records`, gating
+  `access_audit` reads. (2) Correct `PERM-clearance.grant`/`PERM-restricted.grant` citations to the real nodes
+  `PERM-user.grant_clearance`/`PERM-user.grant_restricted`. (3) `sensitivity_clearances`/`restricted_grants` **reads**
+  need no new node — the RLS read policy is **self-row** (`auth.uid() = user_id`) **OR** caller holds the
+  corresponding grant-node (an admin who can grant clearance can also see who holds it); no bare `.view`/`.clearance`
+  node is minted. (4) `profiles`/`user_roles` writes gated by the non-existent `PERM-user.manage` are corrected to
+  the specific granular node for each actual write path (role assignment → `PERM-user.assign_role`; no coarse
+  `.manage` node is minted, consistent with the catalog's granular-nodes-only convention). (5) `profiles`/`user_roles`
+  **reads** gated by the non-existent `PERM-user.view` are corrected to **self-row OR any User-Management-category
+  node holder** (admin visibility derives from already holding a specific management node, not a new coarse
+  `.view`). PERMISSION_NODES.md catalog count 51 → 52.
+
+- **OD-167 — Mint two `PERM-ops.*` nodes for surface-05's DLQ and connector-reconnect actions (OD-121's
+  never-transcribed "System-Functions"/"Tool-Access" gates).** — (Dim5 H32)
+  **Why it matters:** surface-05 (OD-121) gates DLQ Requeue/Discard and Connector Reconnect behind a "System
+  Functions" node and a "Tool Access" node that were never actually minted into `PERMISSION_NODES.md` — an
+  unguarded-at-build-time action gate for two genuinely consequential operations (discarding a dead-lettered task;
+  forcing a connector re-auth).
+  **✅ Resolution:** mint **`PERM-ops.dlq_manage`** (DLQ requeue/discard, Admin + Super Admin default) and
+  **`PERM-ops.connector_reconnect`** (connector reconnect action, Admin + Super Admin default) under a new
+  **Operations Actions** category in `PERMISSION_NODES.md`; surface-05 re-cited to the real node names.
+  PERMISSION_NODES.md catalog count 52 → 54 (after OD-166's mint).
+
+**Dim5-H28 audit disposition (no OD, no fix needed — logged for the record so it is not re-litigated):** the audit
+flagged OD-066 (regex-only high-confidence match → autonomous quarantine) as contradicting ADR-007's "never an
+autonomous gate" text. On direct re-read of ADR-007 (`L163-164`: *"regex/semantic/quarantine as the **signal +
+human-routing layer**"*) and FR-6.INJ.006 (*"the task never proceeds with quarantined content without explicit human
+approval"*), quarantine is the **automated form of "route-to-review"** ADR-007 itself explicitly permits — the human
+still makes the only consequential decision (discard/include); nothing is autonomously approved, sent, or
+permanently discarded. This is not a violation of "never an autonomous gate" (which bars the regex layer from
+autonomously *permitting* an action), and OD-066 stands unchanged. Recorded here specifically so a future session
+doesn't re-open ADR-007 over a finding that was checked and found to be a misreading, not a defect.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -1943,5 +2087,6 @@ written decision, not a conversation.
 > `spec/03-surfaces/surface-01b-config-audit-log.md` (surface-local; all resolved in-file; **OD-153 mints `FR-7.LOG.008`
 > in C7 via change-control** — the config_audit_log governance owner, C7 34→35; **no PERM entry node minted** — view is
 > key-prefix-scoped `PERM-config.*`, export is catalogued `PERM-compliance.download_records`, OD-155).
-> OD-157–160 are the Phase-5 (NFR) risk-posture decisions (RP-1…RP-4, resolved above).
-> Next OD number: OD-161.
+> OD-157–160 are the Phase-5 (NFR) risk-posture decisions (RP-1…RP-4, resolved above). OD-161–167 are the
+> pre-Phase-6 whole-spec audit reconciliation decisions (resolved above) — do not reuse those numbers.
+> Next OD number: OD-168.
