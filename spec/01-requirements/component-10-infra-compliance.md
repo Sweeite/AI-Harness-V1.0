@@ -612,9 +612,16 @@
     path) is **still surfaced loudly**. `status` is added to the deployment card the staleness path reads. *(C10
     owns the `status` source-of-truth + this requirement; C7 owns the staleness-path consumption — a small C10↔C7
     seam to wire at the C7/Phase-3 surface pass.)*
+  - AC-10.OFF.004.5 — *(OD-162 self-review gap, 2026-07-02 — the freeze write is two systems, not one.)* Given
+    `client_registry.status` is set to `frozen` in the management plane, When the follow-on cross-project write of
+    `deployment_settings.frozen_at` into the client's own Supabase fails or cannot be confirmed (client project
+    unreachable, stale/rotated `service_role` key), Then the deployment holds in a **`freeze_pending`** sub-state
+    (never silently reported as `frozen`), the write retries with backoff, and an unresolved `freeze_pending` past a
+    bounded window escalates to the operator — mirroring OD-089's "never marked complete on a partial" discipline.
+    The management plane's own status must never outrun what the client deployment can actually enforce (#1/#3).
 - **Open decisions:** OD-091 (freeze enforcement + the C5 consumer) — **resolved** (this FR + the C5 change-control
   AC, mirroring the C8 OD-081 memory-scope wiring); OD-162 (the "local mirror" defined as
-  `deployment_settings.frozen_at`, written via the custodied `service_role` key) — **resolved** (this FR).
+  `deployment_settings.frozen_at`, written via the custodied `service_role` key) — **resolved** (this FR + AC.5).
 - **Feasibility assumptions:** AF-135 (freeze propagation completeness, build-time).
 - **Notes:** Without an enforcement consumer the freeze is a label; the C5 dispatch gate is what makes "no agents
   run" true.

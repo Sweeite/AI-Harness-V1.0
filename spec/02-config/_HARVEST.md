@@ -206,7 +206,7 @@ SECRET 11 · BOOT 18 · LIVE 90 · REBUILD 3.
 | `cold_start_basic_threshold` | Coverage % at which basic human-initiated tasks run normally. | 20% | LIVE | FR-9.CST.001 |
 | `cold_start_proactive_threshold` | Coverage % below which the system stays quiet (no proactive suggestions). | 50% | LIVE | FR-9.CST.002 |
 | `cold_start_full_threshold` | Coverage % at which all features unlock and cold-start mode ends. | 80% | LIVE | FR-9.CST.001 · *DUP w/ C2* |
-| `external_act_trust_period` | Trust grace period before low-risk external comms can be set to autonomous. | — | BOOT | FR-9.MODE.004 |
+| ~~`external_act_trust_period`~~ | **Removed 2026-07-02 (OD-161)** — the Act-tier autonomy this key gated no longer exists; not in `config-registry.md`. | — | — | superseded |
 | `scanner_relationship_enabled` | Turns the relationship-management generator on/off. | true | LIVE | FR-9.PRO.001 |
 | `scanner_meeting_prep_enabled` | Turns the meeting-prep generator on/off. | true | LIVE | FR-9.PRO.002 |
 | `scanner_document_prep_enabled` | Turns the document-prep generator on/off. | true | LIVE | FR-9.PRO.003 |

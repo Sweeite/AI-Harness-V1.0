@@ -30,26 +30,27 @@ injection) → **C6**; the **slow loop** + scheduled briefing trigger → **C5**
         │   a proactive Act that hits a hard limit is blocked + logged, never auto-runs           (MODE.003.2)
 ```
 
-## The action-autonomy matrix + the floor (OD-088, operator-decided #2 — amends C6 FR-6.APR.002/003)
+## The action-autonomy matrix (OD-088 introduced a low-risk-external Act-tier carve-out; OD-161 reverted it, 2026-07-02)
 
 ```
    CFG-action_autonomy_matrix  (edit = PERM-guardrail.edit_autonomy, SUPER ADMIN only)   (MODE.004.4)
         │
-        │   LOW-RISK EXTERNAL  (cold-lead / templated nurture → NON-client contacts)
-        │       → configurable down to PREPARE or up to ACT after a trust period
-        │       → ACT is rate-capped (C6 FR-6.RTL.001) + audited; the ONE bounded exception to
-        │         OD-056 no-irreversible-auto, confined to this sub-type                  (MODE.004.1)
-        │
-        │   FLOORED  (existing-client / system-of-record comms · ANY financial · Confidential/Restricted)
-        │       → FIXED at hard-approval; matrix CANNOT lower to Act/Prepare
-        │       → any below-hard config is REJECTED AT WRITE                              (MODE.004.2, #2)
-        │       → floored sub-type CAPS the mode regardless of matrix / Suggest-default   (MODE.004.6 / M4)
+        │   ALL EXTERNAL COMMS  (low-risk cold-lead/nurture · existing-client/SoR · financial · Confidential/Restricted)
+        │       → LOCKED at hard-approval-or-Prepare — NO sub-type may reach autonomous Act    (MODE.004.1, OD-161)
+        │       → any below-hard-or-Prepare config is REJECTED AT WRITE                        (MODE.004.2, #2)
+        │       → this is the original ADR-007 hard-limit floor, restored — no exception       (OD-047, OD-161)
         ▼
    DEFENCE IN DEPTH (gate critical-check = NO HOLE):
      write-reject (004.2) → mode-assign floor (002.2) → C6 tier floor (AC-6.APR.002.1/.3)
-     → ambiguity defaults to FLOORED (004.3) → SEND-TIME re-resolve vs system-of-record (004.5 / H1)
-     → non-overridable hard-limit backstop (C6 HRD). ⚠️ AF-131 (the client/content tag accuracy the floor rests on)
+     → non-overridable hard-limit backstop (C6 HRD).
 ```
+
+**History (kept for context, not current behaviour):** OD-088 (2026-06-27, operator-decided) briefly split external
+comms into a "low-risk external" sub-type configurable up to autonomous Act after a trust period, vs a "floored"
+set fixed at hard-approval. The pre-Phase-6 whole-spec audit (2026-07-02) found this collided with locked ADR-007's
+"no config change can override a hard limit" text and reproduced exactly the carve-out **OD-047** (one day before
+OD-088) had explicitly rejected. **OD-161** reverted the Act-tier grant — every external-comms sub-type is now
+capped at Prepare, with no exception. See `open-decisions.md` OD-161 for the full rationale.
 
 ## The seven generators (L3670-3684) — each independently enable/disable-able (default on), thresholds configurable
 

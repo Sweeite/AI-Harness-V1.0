@@ -783,6 +783,11 @@ containment red-team); the seven stay the safe default *because* enforceability 
 AF-068. Any change to the set/rigidity goes through change-control (ADR-007 + FR-3.ACT.002, both Approved). Homed
 in **FR-6.HRD.001/003/004**. *(Original flag retained below.)*
 
+**Cross-reference (2026-07-02, pre-Phase-6 audit):** this position was briefly narrowed by **OD-088** (2026-06-27,
+low-risk-external Act-tier carve-out) and then **restored** by **OD-161** (2026-07-02) — OD-161's reasoning is
+exactly this OD's original "coverage via approval-gates, not weakening a limit" stance. OD-047 was vindicated, not
+reversed; no correction needed here, noted for traceability only.
+
 **Surfaced by:** operator, 2026-06-25. **Touches locked decisions** (ADR-007 + FR-3.ACT.002, both Approved)
 → any change goes through change-control.
 **The seven (code-enforced, no role/config/prompt override — FR-3.ACT.002, design L2053–2066):** never
@@ -1086,6 +1091,12 @@ irreversible / external-communication / financial / Confidential / Restricted is
 (L2783–2784) and never auto-executes on inaction. Bounded by the OD-056 no-irreversible-outrun rule. Homed in
 FR-6.APR.003.
 
+**Cross-reference (2026-07-02, pre-Phase-6 audit):** **OD-088** (2026-06-27) briefly carved a low-risk-external
+sub-type out of this "external-communication = hard-tier, never auto-executes" rule, letting it reach an
+autonomous Act tier. **OD-161** (2026-07-02) reverted that carve-out — this OD's original rule (external comms stay
+hard-tier, never auto-executes on inaction) is back in force with no exceptions. Noted for traceability; no
+correction needed here.
+
 ## OD-065 — `guardrail_log` relationship to `access_audit` (C1) + `event_log` (C7) + completeness 🟢 RESOLVED (2026-06-26, C6 session 23)
 **Surfaced by:** Component 6 drafting, 2026-06-26. Blocks **FR-6.LOG.001/003**. Delegated.
 **Why it matters:** three append-only sinks now exist — `access_audit` (C1/OD-024), `event_log` (C7),
@@ -1324,6 +1335,16 @@ the single bounded, opt-in, trust-gated, rate-capped exception to OD-056's no-ir
 to the non-client low-risk sub-type — **surfaced, not hidden** (the C9 gate confirms no floored sub-type can reach
 Act). *(New node implied: `PERM-guardrail.edit_autonomy`, Super-Admin-only — to register at C1 reconciliation /
 Phase-2.)* Gated by **AF-068** (containment of the floored set under the new matrix).
+
+> **⚠️ SUPERSEDED IN PART (2026-07-02, OD-161 — pre-Phase-6 audit).** The Act-tier low-risk-external send capability
+> described above is **reverted to Prepare-only**: it collided with locked ADR-007's "no config change can override
+> a hard limit" text and reproduced exactly the carve-out **OD-047** (one day before this OD) had explicitly
+> rejected. `FR-9.MODE.004` no longer has an Act path; `C6 FR-6.APR.002/003`'s narrowing above is reverted to the
+> original blanket external-comms floor; `AC-6.APR.002.3` is retired; `act_trust_period_days`/
+> `external_act_trust_period` are removed from the config registry. **This annotation is the only edit to this
+> entry** — the original text above is left intact as the historical record of what was decided and why; see
+> **OD-161** for the full reversal rationale. This reverses an operator-decided call, flagged for the operator's
+> awareness.
 
 ## OD-089 — Offboarding hard-deletion partial-failure handling 🟢 RESOLVED (2026-06-27, C10 session 27 — delegated) — **#2/#3**
 **Surfaced by:** C10 drafting (FR-10.OFF.005). **Why it mattered:** Step 4 deprovisions four systems (Supabase, Railway,
@@ -1758,6 +1779,13 @@ that file's Open decisions table). All four resolved to the recommendation:
   action's tier governs execution regardless of the definition (mirrors AC-9.CMD.003.2 — the UI confirm is never the sole
   barrier). The author may **add** friction (a UI confirm) but never **remove** a guardrail. **Pushed into C9 via
   change-control as AC-9.CMD.008.4.**
+  **Amended (2026-07-02, OD-165 — pre-Phase-6 audit, Dim6-H47):** the mechanism this OD assumed (an existing hold
+  point the C6 tier could route into) didn't actually exist for custom-command dispatch — AC-9.CMD.008.3 said no
+  `task_queue` entry was ever created, so a floored/hard-approval result had nowhere to land. **OD-165** resolved
+  this: a custom-command dispatch now creates/reuses a `task_queue` row like any other agent action, and
+  AC-9.CMD.008.4 is restated to say the created row "carries the wrapped action's real C6 tier." This OD's
+  substance (tier governs, author can't clear it) is unchanged — OD-165 just supplies the enforcement mechanism
+  this OD's own AC-9.CMD.008.4 didn't specify.
 - **OD-144** 🟢 — **System-command reference presentation.** A **read-only reference list grouped by home component**,
   each system command with its default node + destructive flag + reserved-slug badge — visible so an admin sees the
   reserved namespace and can't collide blindly (proactive complement to the authoritative save-time check,
@@ -1899,7 +1927,10 @@ written decision, not a conversation.
   expand-contract, the #3 watchdogs) which are locked-ADR/FR requirements built regardless, their
   `AF-*` a build-time proof. **Applied in:** `test-strategy.md` §2–4; every domain file's Launch-gate
   field. *This is the #1/#2 trade-off the three-non-negotiables rule required be surfaced, not
-  silently taken.*
+  silently taken.* **Scope note (2026-07-02, OD-161 — pre-Phase-6 audit):** **AF-068**'s red-team scope narrowed
+  slightly — it no longer needs to prove containment of the low-risk-external Act-tier path (OD-088), since OD-161
+  removed that path entirely. AF-068 remains fully launch-blocking for the other six hard limits' enforceability;
+  this is a narrowing of what it must prove, not a removal of the gate.
 - **OD-158 (RP-2) — Backup restore-rehearsal cadence.** 🟢 Resolved: **monthly automated rehearsal +
   on every schema-migration release** (ADR-008 §4 said "periodic"; Phase 5 fixes the number).
   **Applied in:** `backup-dr.md` NFR-DR.003.
@@ -1962,8 +1993,8 @@ decision, or require a genuine architectural call. Each is logged here per `stan
   local mirror / FR-10.MGT.002" — a mechanism that is named but never defined anywhere (Dim5 H20/H41).
   **Options:** (a) add a new bidirectional pull/query path from client deployments to the management plane (rejected
   — reopens exactly the exfiltration surface ADR-001 §7's push-only rule exists to close, a #2 risk for a freeze flag
-  that doesn't need one); (b) use infrastructure **already established** by ADR-001 §7 itself: *"the operator's
-  Railway securely stores each client's Supabase service key"* — the operator already custodies a direct,
+  that doesn't need one); (b) use infrastructure **already established** by ADR-001's own Consequences section: *"the
+  operator's Railway securely stores each client's Supabase service key"* — the operator already custodies a direct,
   authenticated administrative channel into every client's own Supabase project (established for provisioning,
   ADR-005 §5). A freeze command is a management-plane-initiated **write** using already-custodied credentials, not a
   pull of client business data — orthogonal to the health-metadata reporting direction ADR-001 §7 restricts.
@@ -1976,6 +2007,15 @@ decision, or require a genuine architectural call. Each is logged here per `stan
   `FR-10.DEL.007`, and `FR-5.TRG.001.3` are amended to cite `deployment_settings.frozen_at` (a **local** read, no
   cross-deployment query) instead of "the local mirror / FR-10.MGT.002." Unfreezing (AC-10.OFF.004.3) uses the same
   write path in reverse.
+  **Gap closed (2026-07-02, self-review):** the original resolution above didn't specify what happens if the
+  management-plane write to `client_registry.status = frozen` succeeds but the follow-on cross-project write to
+  `deployment_settings.frozen_at` fails (client Supabase unreachable, stale/rotated service key) — since C5 and C10
+  read *only* the local flag, that failure would leave the management plane believing a deployment is frozen while
+  it keeps dispatching, a #1/#3 silent-failure window OD-089's careful partial-failure handling for the later
+  deprovision step doesn't cover for this earlier freeze step. **Fix:** `FR-10.OFF.004` gets a new AC — the freeze
+  step is not complete until the local write is confirmed; a failed/unconfirmed local write holds the deployment in
+  a `freeze_pending` sub-state (not `frozen`), retries with backoff, and escalates to the operator (never silently
+  reads as frozen) — mirroring OD-089's own "never marked complete on a partial" discipline.
 
 - **OD-163 — `UI-SUPPORT-REQUESTS` (surface-00) is not a Realtime surface; corrected to polling.** — **#3**
   **Why it matters:** surface-04 and surface-07 together establish "**exactly two** Realtime surfaces in the whole
@@ -2036,7 +2076,9 @@ decision, or require a genuine architectural call. Each is logged here per `stan
   `.manage` node is minted, consistent with the catalog's granular-nodes-only convention). (5) `profiles`/`user_roles`
   **reads** gated by the non-existent `PERM-user.view` are corrected to **self-row OR any User-Management-category
   node holder** (admin visibility derives from already holding a specific management node, not a new coarse
-  `.view`). PERMISSION_NODES.md catalog count 51 → 52.
+  `.view`). PERMISSION_NODES.md catalog count **52 → 53** (corrected 2026-07-02: the true pre-session baseline was
+  52, not 51 — see the catalog's own M27 recount-correction note, which found `PERM-guardrail.edit_autonomy` had
+  never been rolled into the running tally).
 
 - **OD-167 — Mint two `PERM-ops.*` nodes for surface-05's DLQ and connector-reconnect actions (OD-121's
   never-transcribed "System-Functions"/"Tool-Access" gates).** — (Dim5 H32)
@@ -2047,7 +2089,7 @@ decision, or require a genuine architectural call. Each is logged here per `stan
   **✅ Resolution:** mint **`PERM-ops.dlq_manage`** (DLQ requeue/discard, Admin + Super Admin default) and
   **`PERM-ops.connector_reconnect`** (connector reconnect action, Admin + Super Admin default) under a new
   **Operations Actions** category in `PERMISSION_NODES.md`; surface-05 re-cited to the real node names.
-  PERMISSION_NODES.md catalog count 52 → 54 (after OD-166's mint).
+  PERMISSION_NODES.md catalog count **53 → 55** (after OD-166's corrected 52→53 mint; see that entry's note).
 
 **Dim5-H28 audit disposition (no OD, no fix needed — logged for the record so it is not re-litigated):** the audit
 flagged OD-066 (regex-only high-confidence match → autonomous quarantine) as contradicting ADR-007's "never an
