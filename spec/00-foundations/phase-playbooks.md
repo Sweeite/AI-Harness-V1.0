@@ -480,16 +480,193 @@ into build issues where each issue inherits both its FR acceptance criteria **an
 constraints (+ the spikes that must pass) as its definition of done. Phase 5 is the last hardening
 pass before the backlog.
 
-## Phase 6 — Issue Decomposition  *(approach altitude — finalize before entry)*
+## Phase 6 — Issue Decomposition  *(full mechanical detail — finalized 2026-07-02, session 47)*
 
-**Goal:** A buildable, ordered backlog.
+**Goal:** Turn the finished spec (Phases 0–5) into a **buildable, dependency-ordered backlog** — a
+set of vertical, independently-buildable issues where every FR and NFR maps to ≥1 issue, every issue
+maps back to the requirements it satisfies, and the build sequence (what blocks what, the critical
+path) is explicit.
 
-**Approach:** Slice the finished spec into **vertical, independently-buildable** issues
-(tracer-bullet slices), each linking back to its FR IDs and inheriting their `AC-*` as its
-definition of done. Produce a **build-order / dependency map** (what blocks what; critical path).
+**Why this phase exists (plain English):** The spec proves the design is *coherent, complete, and
+traceable*. It does not tell a builder *what to pick up first, what one unit of work is, or when a
+unit is done*. A 300-FR spec is not a plan — it's a reference. Phase 6 converts the reference into a
+**work queue**: small, ordered, self-contained units a builder (a person, or a fresh Claude chat)
+can grab one at a time and complete without holding the whole spec in their head. This is the last
+spec-side phase; its output is what the build actually consumes.
 
-**Done when:** every FR maps to an issue; every issue maps back to FRs; build sequence defined.
-**Hand-off:** the build begins, with priority feasibility spikes already de-risking the scary parts.
+### The cardinal rule of this phase — the issue self-sufficiency contract
+
+**Every issue must be buildable by a worker with ZERO conversation history, reading only that issue
+plus the repo files the issue names — with no guessing.** This is the per-issue expression of the
+repo self-sufficiency test in `CLAUDE.md`: today that test is applied to the *spec*; Phase 6 makes
+it true of *each issue individually*, because in the build phase a different chat may pick up each
+issue cold.
+
+**What self-sufficiency does NOT mean: copying the spec into the issue.** An issue that restates
+`AC-*` text creates a *second source of truth* that rots the moment the FR changes — a direct Rule-0
+violation. So the contract is precise:
+
+> **issue + the exact repo files it names = enough to build correctly, with zero guessing.**
+
+The issue is a **complete, precise build order that points into the repo** — never a duplicate of
+it. Self-sufficiency comes from the issue *naming every input by stable ID* (leaving nothing to
+"figure out"), carrying a **context manifest** (the exact files to open, nothing more), and stating
+its **definition of done as `AC-*`/`AC-NFR-*` IDs** (whose text lives in the FR, read there). The
+verification gate then *proves* it by having a zero-context subagent try to build from the issue +
+repo alone and report every gap (see gate check (f)).
+
+The only things an issue states in its own words are the things that don't exist anywhere else: the
+**slice boundary** (what's in vs. out of this unit), the **build order within the slice**, and any
+**integration note** that spans the FRs it bundles.
+
+### Scope calls (locked at entry, session 47)
+
+- **Issues are canonical as repo markdown in `spec/06-issues/`, AND mirrored to GitHub Issues —
+  maintain both** (operator decision, session 47: GitHub is wanted for at-a-glance progress + quick
+  in-place notes). To keep two homes from splitting the source of truth (Rule 0), they are divided
+  by **what each OWNS**, not duplicated:
+  - **Repo markdown = canonical for the issue's DEFINITION** — scope, the FR/`AC-*`/`NFR-*` IDs it
+    implements, touchpoints, context manifest, dependencies. The build resumes across chats by
+    reading the repo, so definition must live in the repo.
+  - **GitHub = the issue's BUILD-STATE** — open/closed, task-list checkboxes, progress comments,
+    assignees. This is where day-to-day progress is seen and jotted.
+  - **The sync rule:** a change to a *definition* is made in the repo markdown and pushed to GitHub;
+    a note made in GitHub that would change a *definition* must be **reconciled back into the repo
+    markdown before it is authoritative** (a GitHub-only definition edit is not yet "decided", per
+    Rule 0). GitHub issues are created from the canonical markdown via `gh issue create` at cut time;
+    each GitHub `#<n>` is recorded in that issue file's frontmatter (`github:`) + the matrix `issue`
+    column. Keeping the two in agreement is an explicit maintenance duty, not an afterthought.
+- **Fine-grained vertical (tracer-bullet) slices, plus a grouping/ordering index.** Many small,
+  independently-buildable issues (each ≈ one coherent FR-cluster / thin end-to-end slice) — the most
+  chat-robust unit — with a `_backlog.md` index that supplies the epic-level grouping **and** the
+  build-order / dependency map + critical path on top. Buildable atoms + a navigable map.
+- **A "vertical slice" = a thin end-to-end cut of one coherent capability:** its data (schema/RLS/
+  migration) → its logic (the FR behavior) → its surface (the UI panel/state, if any) → its
+  guardrail/observability hooks (if any). Small enough to build in one focused session; big enough
+  to be independently testable against its `AC-*`. Pure-enabling work with no user-facing surface
+  (schema bootstrap, RLS scaffold, the observability skeleton) is a legitimate **foundational
+  issue** — it maps to the FRs/`DATA-`/ADRs it stands up, not to a surface.
+- **Coverage is total.** Every FR across C0–C10 **and** every `NFR-*` must be claimed by ≥1 issue —
+  the Phase-6 analog of Phase-1's "no orphan design line." An FR claimed by no issue is a build gap.
+  Conversely every issue names ≥1 FR/NFR/ADR/AF it exists to satisfy (no orphan issue).
+- **The six launch-gating spikes (OD-157) are first-class.** `AF-068` (injection red-team) ·
+  `AF-069` (restore) · `AF-001` (cost) · `AF-067` (RLS latency) · `AF-078` (webhook) · `AF-077`
+  (brute-force) each become a **gating spike-issue** scheduled *before* the feature issues that rest
+  on them, and each dependent feature issue names the spike in its "blocked-by" list. Build-time and
+  fast-follow AFs are attached to the issues they gate as DoD notes, per the RP-1 posture.
+- **ID-convention amendment (change-control, at entry):** `id-conventions.md`'s `ISSUE-` row
+  currently reads "GitHub issue · `#<n>`". Amend it to **`ISSUE-<nnn>` — a canonical repo-markdown
+  issue file (`spec/06-issues/ISSUE-<nnn>-<slug>.md`)**, with the optional exported GitHub `#<n>`
+  recorded in the issue's frontmatter + the matrix `issue` column *if and when* exported. Add a
+  dated change-control note, exactly as Phase-5 entry added the `DR` domain.
+
+### Output file structure (`spec/06-issues/`)
+
+| File | Contents |
+|---|---|
+| `_TEMPLATE.md` | The issue template — the self-sufficiency contract as a fill-in form. Every issue is a copy of this. Carries the DRY rule (point into the repo by ID; never restate `AC-*` text). |
+| `_backlog.md` | The **index + map**: every issue listed, grouped by epic/capability, with status, its blocked-by / blocks edges, the **build-order sequence**, and the **critical path**. The one file you read to see the whole plan. Also carries the **coverage ledger** (or links it): every FR/NFR → the issue(s) that claim it, proving zero orphans. |
+| `ISSUE-<nnn>-<slug>.md` | One file per issue. Sequential, zero-padded 3 digits, never renumbered (retired IDs leave gaps, per `id-conventions.md`). |
+
+Create `spec/06-issues/` and these files. `_backlog.md` is the spine (the Phase-6 analog of Phase-4's
+`schema.md`); each issue file shows how its slice satisfies its named requirements.
+
+### The issue template (every issue carries all of these)
+
+1. **Frontmatter** — `id: ISSUE-<nnn>`, `title`, `epic` (grouping), `status` (`ready`/`blocked`/
+   `in-progress`/`done`), `github: #<n>` (blank until exported).
+2. **One-line goal** — the slice in a sentence.
+3. **Scope: in / out** — the slice boundary in the issue's own words (this is genuinely new prose).
+   What this issue delivers, and explicitly what it does *not* (deferred to which other issue).
+4. **Implements (the traceability spine)** — the FR IDs (and their component), the `NFR-*` IDs, the
+   `ADR-*`/`AF-*` it rests on. By ID, not restated.
+5. **Definition of done** — the `AC-*` and `AC-NFR-*` IDs that must pass (their text is read in the
+   FR — do **not** copy it here). Plus the spikes (`AF-*`) that must be green if this issue is gated.
+6. **Touches** — `DATA-*` tables/fields, `PERM-*` nodes, `CFG-*` keys, `UI-*` surfaces, connectors.
+   The complete blast radius, by ID.
+7. **Context manifest** — the **exact** files a builder must read (the FR component file, the schema
+   group, the surface file, the relevant ADR/NFR), nothing more. Same discipline as every component
+   file's manifest — this is the heart of self-sufficiency.
+8. **Dependencies** — **blocked-by** (issues/spikes that must land first) and **blocks** (what this
+   unblocks). Drives the `_backlog.md` map.
+9. **Build order within the slice** — the sequence inside this unit (e.g. migration → RLS policy →
+   FR logic → surface wiring → guardrail hook → test), where order matters.
+10. **Verification** — how the DoD is proven (which test layer per `test-strategy.md`; which
+    `AC-NFR-*` posture must hold). The AC→`Verified` path for this slice.
+
+### Steps
+
+1. **Harvest / coverage extraction (subagent fan-out — context discipline).** Independent subagents
+   read the requirement files (C0–C10), the NFR domain files, the surfaces, and the data model, and
+   return a structured **coverage inventory**: every FR + every NFR, its component/domain, its
+   `AC-*`, its `DATA-`/`PERM-`/`CFG-`/`UI-` touchpoints, and its cross-component seams. This is the
+   raw material the slices are cut from — no FR may be missed, so this is an extraction, not a
+   sample. Merge into the coverage ledger.
+2. **Amend `id-conventions.md`** — the `ISSUE-<nnn>` change-control note (see Scope calls).
+3. **Cut the slices.** Group the coverage inventory into vertical tracer-bullet slices per the
+   slicing rule. Assign `ISSUE-<nnn>` IDs. Foundational/enabling issues first (schema bootstrap,
+   auth, RBAC/RLS scaffold, config bootstrap, observability skeleton), then feature slices, then
+   cross-cutting hardening. Write each `ISSUE-<nnn>-<slug>.md` from `_TEMPLATE.md`.
+4. **Build the dependency map + `_backlog.md`.** Resolve blocked-by/blocks edges into a DAG;
+   sequence the build; identify the critical path; slot the six gating spike-issues (OD-157) ahead
+   of their dependents. Write the coverage ledger (every FR/NFR → issue) into `_backlog.md`.
+5. **Gap-sweep → change-control.** If the coverage ledger shows any FR/NFR claimed by **no** issue,
+   that is a build gap → cut the missing issue (or extend one) and record it. If slicing surfaces a
+   genuine spec hole (a behavior no FR covers), that is a real defect → mint the FR back via
+   change-control, exactly as prior phases did. Log any conscious deferral in `out-of-scope.md`.
+6. **Log Open Decisions (`OD-*`)** for any genuine build-sequencing fork the operator must own (e.g.
+   "build connector X before Y", a scope-cut for v1, a spike that could be deferred). Options +
+   recommendation each. **Operator resolves.**
+7. **Run the verification gate** (independent zero-context subagents, checks a–f below). The
+   headline check is **(f) the per-issue self-sufficiency build test** — spawn a zero-context
+   subagent per issue (or a representative sample across every epic + all six spike-issues + the
+   most seam-heavy issues) that reads **only** the issue + the repo files it names and reports:
+   *"Could I build this without guessing? What's missing, dangling, or assumed?"* Reconcile every
+   finding — patch the issue until the answer is an unqualified yes.
+8. **Create the GitHub mirror.** After the issue set is verified clean, create one GitHub issue per
+   `ISSUE-<nnn>` via `gh issue create` (title + a body that links to the canonical repo file and
+   lists the DoD `AC-*` as a task-list for progress-ticking — *link, don't duplicate the definition*).
+   Record each returned `#<n>` back into the issue file's `github:` frontmatter + the matrix `issue`
+   column. Thereafter maintain both per the sync rule (Scope calls). Requires `gh` authenticated.
+9. **Wire `traceability-matrix.csv`** (the `issue` column, every FR → its `ISSUE-<nnn>` and, once
+   exported, its GitHub `#<n>`), update `README.md` (Phase-6 status) + `SESSION-LOG.md`. **Operator
+   sign-off** → commit.
+
+### Verification gate (independent subagent, checks a–f)
+
+- **(a) Total coverage** — every FR (C0–C10) and every `NFR-*` is claimed by ≥1 issue; the coverage
+  ledger has no empty cell. No orphan requirement (nothing that never gets built).
+- **(b) No orphan issue** — every issue names ≥1 FR/NFR/ADR/AF it satisfies; no issue exists that
+  builds something the spec never asked for.
+- **(c) Traceability integrity** — every ID an issue cites (FR/AC/NFR/DATA/PERM/CFG/UI/ADR/AF)
+  resolves to a real, current artifact; no dangling or renamed reference (the exact decay class the
+  pre-Phase-6 audit found — do not re-introduce it).
+- **(d) Dependency soundness** — the blocked-by/blocks graph is a DAG (no cycles); every dependency
+  points at a real issue/spike; the six gating spikes (OD-157) precede their dependents; the
+  critical path is identified.
+- **(e) Slice quality** — each issue is a genuine vertical slice (independently buildable + testable
+  against its `AC-*`), not a horizontal layer-dump; foundational issues are ordered ahead of the
+  features that need them; no issue is too large to complete in a focused session without further
+  decomposition.
+- **(f) Per-issue self-sufficiency (the headline)** — a zero-context subagent, reading only the
+  issue + the files its context manifest names, can state the next build action and act **without
+  guessing**; every gap it finds is patched. Run per-issue (sampled across all epics + all six
+  spike-issues + the seam-heavy issues at minimum). **No issue copies `AC-*`/spec text** (DRY /
+  single-source-of-truth check — a self-sufficiency *shortcut* that would rot is itself a failure).
+
+**Done when:** every FR + NFR maps to ≥1 issue and every issue back to its requirements; the
+dependency map + critical path + coverage ledger are complete in `_backlog.md`; the six gating
+spikes are sequenced ahead of their dependents; every issue passes the self-sufficiency build test;
+gap-sweep change-controls landed; ODs resolved; verification gate clean; matrix wired; operator
+signed off.
+
+**Who decides:** operator on **build sequencing / scope** — the order forks, any v1 scope-cut, any
+spike deferral. Claude harvests coverage, cuts the slices, builds the map, finds gaps, verifies.
+
+**Hand-off:** the build begins. A fresh chat picks up the top ready issue from `_backlog.md`, reads
+only that issue + its context manifest, and builds it to its `AC-*` — the self-sufficiency contract
+means it needs nothing from any prior conversation. The priority feasibility spikes have already
+de-risked the scary parts. This is the terminus of the spec effort: the repo is now a build queue.
 
 ---
 

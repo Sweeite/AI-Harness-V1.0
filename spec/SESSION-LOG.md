@@ -17,15 +17,55 @@ detection + full drafting preserved). Gut-checked the one scenario that would ju
 high-volume cold outreach, where "tap each one" defeats the purpose → would warrant a deliberate ADR-007 amendment
 instead). **Operator confirmed the rollback stands.**
 
-**Files changed:** `open-decisions.md` (OD-161 → +✅ OPERATOR CONFIRMED annotation; the Session-46 awareness note
-discharged; ADR-007 stays untouched), this log. No spec mechanics changed — OD-161 was already fully applied in
-Session 46; this session only records the operator's explicit sign-off on it.
+**Then — Phase-6 playbook FINALIZED (same session, finalize-before-entry pass).** `phase-playbooks.md` Phase 6
+went from a 9-line approach stub to **full mechanical detail** (parity with Phases 4/5): Goal · Why-it-exists ·
+the **issue self-sufficiency contract** (the cardinal rule) · Scope calls · Output file structure (`spec/06-issues/`
+= `_TEMPLATE.md` + `_backlog.md` + `ISSUE-<nnn>-<slug>.md`) · the 10-field issue template · 9 Steps · the a–f
+verification gate · Done-when/Who-decides/Hand-off. **Operator decisions this session:**
+- **Issue home** → canonical repo markdown **AND** a maintained GitHub Issues mirror ("maintain both" — operator
+  wants at-a-glance progress + quick in-place notes). Drift-controlled by an **ownership split**: repo markdown owns
+  the issue **DEFINITION** (scope, FR/`AC-*`/`NFR-*` IDs, touchpoints, manifest, deps); GitHub owns the **BUILD-STATE**
+  (open/closed, checkboxes, comments). Definition edits flow repo→GitHub; any GitHub note that changes a definition
+  must be reconciled back to the repo before it's authoritative (Rule 0 preserved).
+- **Granularity** → fine tracer-bullet slices + a `_backlog.md` index (epic grouping + dependency map + critical path).
+- **Self-sufficiency** (operator's stated priority for cross-chat build) is now the *cardinal rule + gate check (f)*:
+  every issue is a precise build-order that **points into the repo by ID, never copies `AC-*` text** (copying = a
+  second source of truth that rots = Rule-0 violation); the gate spawns a **zero-context subagent per issue** that
+  must build from issue + named files alone, no guessing.
+- **Coverage total** (every FR C0–C10 + every NFR → ≥1 issue; no orphan either way); the **six OD-157 launch-gating
+  spikes** are first-class spike-issues sequenced ahead of dependents; `ISSUE-<nnn>` convention amended at entry
+  (change-control) since `id-conventions.md` currently mis-defines it as GitHub `#<n>`.
 
-**Next step: Phase 6 (Issue decomposition)** — unchanged and unblocked. Finalize the Phase-6 playbook (approach →
-full mechanical detail, per the finalize-before-entry rule), then slice the spec into vertical, independently-buildable
-issues (each inheriting its FR `AC-*` + `NFR-*` constraints + the six launch-gating spikes OD-157 as DoD, with a
-build-order/dependency map). FR-9.MODE.004 may now be cut as Prepare-only. *(No `to-issues` skill installed as of
-2026-07-02 — follow the playbook procedure directly; re-check for the skill first.)*
+**gh confirmed available** (handoff de-risk): `gh` installed + authenticated as **Sweeite**, token scope includes
+`repo` (issue-create OK), remote `Sweeite/AI-Harness-V1.0`. The new chat can create the GitHub mirror with no setup.
+
+**Files changed:** `open-decisions.md` (OD-161 → +✅ OPERATOR CONFIRMED annotation; ADR-007 untouched),
+`phase-playbooks.md` (Phase 6 finalized), README (Phase-6 row), this log. No Phase-6 *execution* done — no issues cut,
+`id-conventions.md` not yet amended (that's entry Step 2), `spec/06-issues/` not yet created — per operator:
+**execution happens in a NEW chat.**
+
+**Next step (for the new chat): EXECUTE Phase 6** per the now-finalized `phase-playbooks.md` Phase-6 procedure —
+Step 1 harvest/coverage fan-out → Step 2 amend `id-conventions.md` (`ISSUE-<nnn>`) → Step 3 cut the vertical slices →
+Step 4 dependency map + `_backlog.md` → Step 5 gap-sweep → Step 6 ODs → Step 7 verification gate (incl. the per-issue
+self-sufficiency build test) → Step 8 GitHub mirror (`gh issue create`, record `#<n>`) → Step 9 wire matrix + README +
+sign-off. FR-9.MODE.004 is cut as **Prepare-only** (OD-161). *(Skill status refreshed this session: the `to-issues`
+skill — tracer-bullet vertical-slice issue decomposition, directly relevant to Phase 6 — and `handoff` are now
+**INSTALLED** (present on disk + in the skills list; the earlier "verified absent" notes reflected the environment at
+that moment). The new chat may use `to-issues` to assist, but the finalized playbook is authoritative.)* **A repo
+self-sufficiency test was run before this handoff — see the addendum at the end of this entry.**
+
+**ADDENDUM — repo self-sufficiency test (required handoff gate, run before this handoff): PASS.** A zero-context
+subagent read only the repo (following CLAUDE.md's start-of-session order) and tried to resume the next action.
+**Verdict: the repo is genuinely self-sufficient — a fresh cold chat can resume Phase 6 from the repo alone without
+guessing.** Next action correctly identified as Phase-6 Step 1 (harvest/coverage fan-out). All four load-bearing
+claims confirmed: (1) the Phase-6 playbook is at full mechanical detail — self-sufficiency contract, `spec/06-issues/`
+structure, 10-field template, Steps 1–9, a–f gate all present; (2) OD-161 carries the ✅ OPERATOR CONFIRMED
+annotation + rolls FR-9.MODE.004 to Prepare-only; (3) `id-conventions.md`'s `ISSUE-` row is still `#<n>` (correctly
+un-amended — that's entry Step 2); (4) OD-157 names six spikes, all six AFs resolve in the feasibility register.
+**Zero blocking gaps.** One informational finding (not a repo defect): the `to-issues`/`handoff` skills, logged
+"absent" in Sessions 46/47, are now **installed** — the handoff had already told the new chat to re-check; the stale
+"absent" wording in the two forward-facing resume pointers (README Phase-6 row + this entry's next-step) was corrected
+to "installed" this session so the new chat isn't misled. (Historical Session-46 references left intact as record.)
 
 ---
 
