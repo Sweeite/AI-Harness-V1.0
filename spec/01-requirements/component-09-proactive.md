@@ -52,7 +52,7 @@
 >   path → sharpened **AC-9.CST.002.3** + **+AC-9.PRO.004.4** (the OD-084 floor spans dismissal **and** cold-start
 >   suppression **and** scanner-disable). **M1** deferred floor item could silently expire → +AC-9.SUG.002.3. **M2**
 >   stuck-`generated` suggestion → +AC-9.SUG.001.4 (escalate-don't-abandon). **M3** node-gate-before-confirm +
->   `/forget`→C2 trace → +AC-9.CMD.003.3. **M4** floored-caps-mode precedence → +AC-9.MODE.004.6. **L1** scan-
+>   `/forget`→C2 trace → +AC-9.CMD.003.3. **M4** floored-caps-mode precedence → +AC-9.MODE.004.5 (was `.6`; renumbered by OD-161 when the prior `.5` was retired). **L1** scan-
 >   execution (not just process) liveness → AC-9.PRO.004.3. **L2** stale-phase fail-open → AC-9.CST.001.2 freshness.
 >   **L3** audit-critical command fail-closed on log failure → +AC-9.CMD.004.3.
 
