@@ -5,6 +5,28 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 51 — 2026-07-03 — CLAUDE.md wired to the build schedule + a build-status sync contract
+
+**What happened:** Operator asked that `CLAUDE.md` check the schedule before a build session starts and keep
+build status/progress in sync. Added three things to the operating protocol (no new IDs; process doc, not a
+locked decision):
+- **Start-of-session reading order — new item 8:** if the build has begun, read `BUILD-SCHEDULE.md` first
+  (active stage · next `ready` issue · safety contract R1–R9), then only that issue + its Context manifest.
+- **New "Build-phase protocol" section:** codifies (1) read-schedule-and-reconcile-before-building, (2) the
+  safety contract with R1 (no stage opens until the prior checkpoint is GREEN) and R2 (a red spike is a design
+  fork → OD), and (3) the **build-status source of truth** — ground truth = each `ISSUE-<nnn>.md` `status:`
+  frontmatter; derived = `BUILD-SCHEDULE.md` boxes + `_backlog.md` roll-up; GitHub = outward mirror; SESSION-LOG
+  = narrative. Plus the **sync ritual**: when an issue changes state, update every tracker in the same commit;
+  never leave one ahead of another (silent drift = #3 violation).
+- **End-of-session step 1** now also requires reconciling build status across all trackers in the build phase.
+
+**Files changed:** `CLAUDE.md` (3 edits). No scope/decision change.
+
+**Next action:** unchanged — Stage 0, `ISSUE-002` (RLS-latency spike) is the next `ready` gate on the memory
+critical path.
+
+---
+
 ## Session 50 — 2026-07-03 — Build-order made followable: `BUILD-SCHEDULE.md` (11 dependency waves + checkpoints + safety contract)
 
 **What happened:** Operator asked whether the build could be *batched* (build a group, then test) rather

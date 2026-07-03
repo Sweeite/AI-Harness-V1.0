@@ -45,12 +45,46 @@ The big-picture view lives in `spec/00-foundations/system-map.md` (end-to-end ro
 5. `spec/00-foundations/open-decisions.md` — what's unresolved.
 6. `spec/00-foundations/glossary.md` — agreed terms (do not redefine them).
 7. The specific ADR(s) and component file for today's task only.
+8. **If the build has begun** (README shows a `Build` row / SESSION-LOG says so): `spec/06-issues/BUILD-SCHEDULE.md`
+   — the **active stage**, the next **`ready`** issue, and the **safety contract (R1–R9)** that governs a build
+   session. Then open only that issue file + its Context manifest. (See *Build-phase protocol* below.)
 
 Do not load the whole spec. Load the minimum set for the task in front of you.
 
 **Self-sufficiency test:** the repo alone (these docs + registers) must be enough to act
 correctly with **zero** access to any prior conversation. If something needed to act is only in
 a chat, that's a bug — write it down before proceeding.
+
+## Build-phase protocol (the build has begun — Session 49+)
+
+**Before building anything, read the schedule and reconcile status.** `spec/06-issues/BUILD-SCHEDULE.md`
+is the followable build order — 11 dependency waves, each with a **gate** (spine issue), a **batch**, and a
+**checkpoint** — fronted by a safety contract. At session start:
+
+1. Find the **active stage** and the next **`ready`** issue (lowest unblocked; a stage's batch is parallel-safe,
+   so any `ready` issue in it is fair game).
+2. Honour the **safety contract (R1–R9)** — above all **R1: never open a stage until the prior checkpoint is
+   GREEN**, and **R2: a red launch-gating spike is a design fork (log an OD), not a bug to code around.**
+3. **Reconcile build status across the trackers *before* you build.** If they disagree, fix the drift first —
+   silent drift about what's built is itself a #3 violation.
+
+**Build-status source of truth (one ground truth; the rest derive — keep them in lockstep):**
+- **Ground truth, per issue:** the `status:` frontmatter in `spec/06-issues/ISSUE-<nnn>.md` — `ready | blocked
+  | in-progress | done`.
+- **At-a-glance board:** the checkboxes in `BUILD-SCHEDULE.md` (per issue **and** per checkpoint) + the roll-up
+  in `_backlog.md`.
+- **Outward mirror:** GitHub issue open/closed (#1–#86). Never ground-truth — the repo is (Rule 0).
+- **Narrative:** the `SESSION-LOG.md` entry (what was built/tested, evidence, next step).
+
+**Sync ritual — whenever an issue changes state, update every tracker in the *same* commit:**
+- Start an issue → `status: ready → in-progress`.
+- Issue built **and** its `AC-*` pass → `status: → done`; tick its box in `BUILD-SCHEDULE.md`; flip the
+  newly-unblocked dependents `blocked → ready` (re-check their §7); update the `_backlog.md` roll-up; close the
+  GitHub issue with the result; record evidence in the issue file (and flip any `AF` in `feasibility-register.md`).
+- A stage's issues all `done` **and** its checkpoint integration-test green → tick the **checkpoint** box; only
+  now may the next stage open (R1).
+- **Never leave one tracker ahead of another across a commit** — a `done` issue still `open` on GitHub, or a
+  ticked checkpoint whose issues aren't all `done`, is exactly the silent drift Rule 0 forbids.
 
 ## Anti-hallucination rules
 
@@ -118,7 +152,10 @@ over-scoped grant does something it shouldn't → #2; an unhandled rate limit fa
 
 ## End every session by
 
-1. Updating `README.md` status, `open-decisions.md`, and `traceability-matrix.csv`.
+1. Updating `README.md` status, `open-decisions.md`, and `traceability-matrix.csv`. **In the build phase:**
+   also reconcile build status everywhere it lives — issue `status:` frontmatter, `BUILD-SCHEDULE.md` boxes
+   (issues **and** checkpoints), the `_backlog.md` roll-up, and the GitHub mirror — so no tracker is left ahead
+   of another (Rule 0 / #3).
 2. Logging any new exclusions/deferrals in `out-of-scope.md`, and capturing the user's
    **sign-off** on any completed component (header + SESSION-LOG).
 3. Appending a `spec/SESSION-LOG.md` entry (decisions made, files changed, next step, new
