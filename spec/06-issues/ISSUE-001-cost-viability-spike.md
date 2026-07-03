@@ -2,9 +2,17 @@
 id: ISSUE-001
 title: "SPIKE: cost viability under target/day"
 epic: "S — spikes"
-status: ready
+status: done
 github: "#1"
 ---
+
+> **✅ DONE 2026-07-03 — AF-001 PASS.** Extrapolated **$2.09/day** vs the ~$20 target / $50 soft
+> alert (round-up, all vendors). Measured: one real task $0.0359 · one surviving write $0.0025
+> (1 Sonnet + 3 Haiku + 1 embed, ADR-003 §4 shape confirmed) · non-survivor 0 Sonnet. Declared
+> profile: 50 tasks/day · 500 write-events (100 survive) · 169 idle-gated loops. AF-001 flipped
+> 🔴→🟢; AC-NFR-COST.006.1/.2 Verified (cost.md). Runnable harness + evidence:
+> `spikes/issue-001-cost-viability/` (TypeScript/Node per ADR-009). Fed initial evidence to
+> AF-040/041/042/043 (their own EVALs remain fast-follow). Unblocks ISSUE-058 + ISSUE-074.
 
 # ISSUE-001 — SPIKE: cost viability under target/day
 

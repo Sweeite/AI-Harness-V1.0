@@ -1,0 +1,121 @@
+{
+  "af": "AF-001",
+  "verdict": "PASS",
+  "glyph": "🟢",
+  "date": "2026-07-03",
+  "method": "SPIKE+EVAL",
+  "dryRun": false,
+  "models": {
+    "SONNET_MODEL": "claude-sonnet-5",
+    "HAIKU_MODEL": "claude-haiku-4-5-20251001",
+    "EMBED_MODEL": "text-embedding-3-small"
+  },
+  "thresholds": {
+    "viabilityTargetDailyUsd": 20,
+    "softAlertDailyUsd": 50,
+    "softAlertWeeklyUsd": 200,
+    "throttleDailyUsd": 75,
+    "hardKillDailyUsd": 100
+  },
+  "profile": {
+    "realTasksPerDay": 50,
+    "writeEventsPerDay": 500,
+    "survivingWritesPerDay": 100,
+    "loops": {
+      "fast": 144,
+      "medium": 24,
+      "slow": 1
+    },
+    "rationale": "Anchored to a healthy ≤~20-user silo (test-strategy §1) + ADR-003 §5 cadence.\n• 50 real multi-agent tasks/day ≈ ~2–3 substantive tasks per active user/day plus a small\n  share of loop spin-ups. Loop runs themselves (144 fast + 24 medium + 1 slow = 169/day) are\n  idle-gated to ~0 model cost (ADR-003 §7 lever 3: DB/condition pre-check before spin-up);\n  the spin-ups that DO become tasks are counted inside the 50.\n• 500 write-path events/day, of which ~100 survive (≈20% survival). The other ~400 are\n  charged one Haiku gate call each (round-up: we assume they reach the Haiku gate rather than\n  dying free at the code filter). 100 survivors ≈ 1–2 durable memories per task.\nContestable by design — dispute routes to an AF-040/041 threshold-realism EVAL, not to this gate."
+  },
+  "corpus": {
+    "tasks": 1,
+    "taskType": "account-brief (research+summarize+recommend) — orchestrator→research→2 specialists→synthesis",
+    "memoryEventsFed": 3,
+    "designedSurvivors": 1,
+    "designedGateDrops": 1,
+    "designedCodeFilterDrops": 1,
+    "note": "Small by design; the declared profile (profile.ts) is the extrapolation basis, not corpus size. Shares dimensions (entities, mention mix) with the AF-002 retrieval corpus."
+  },
+  "perUnitUsd": {
+    "taskUsd": 0.0359268,
+    "survivingWriteUsd": 0.0025274399999999997,
+    "haikuGateUsd": 0.0000936
+  },
+  "daily": {
+    "perDayUsd": 2.09,
+    "breakdown": {
+      "tasksUsd": 1.8,
+      "survivingWritesUsd": 0.26,
+      "nonSurvivingWritesUsd": 0.04,
+      "loopIdleUsd": 0
+    },
+    "nonSurvivingEvents": 400
+  },
+  "measured": {
+    "task": [
+      {
+        "vendor": "anthropic",
+        "model": "sonnet",
+        "calls": 5,
+        "attempts": 5,
+        "inputTokens": 2025,
+        "outputTokens": 1985,
+        "usd": 0.03585,
+        "unknownCalls": 0
+      },
+      {
+        "vendor": "anthropic",
+        "model": "haiku",
+        "calls": 1,
+        "attempts": 1,
+        "inputTokens": 71,
+        "outputTokens": 5,
+        "usd": 0.0000768,
+        "unknownCalls": 0
+      }
+    ],
+    "memoryWrite": [
+      {
+        "vendor": "anthropic",
+        "model": "sonnet",
+        "calls": 1,
+        "attempts": 1,
+        "inputTokens": 123,
+        "outputTokens": 123,
+        "usd": 0.002214,
+        "unknownCalls": 0
+      },
+      {
+        "vendor": "anthropic",
+        "model": "haiku",
+        "calls": 3,
+        "attempts": 3,
+        "inputTokens": 260,
+        "outputTokens": 26,
+        "usd": 0.000312,
+        "unknownCalls": 0
+      },
+      {
+        "vendor": "openai",
+        "model": "text-embedding-3-small",
+        "calls": 1,
+        "attempts": 1,
+        "inputTokens": 72,
+        "outputTokens": 0,
+        "usd": 0.00000144,
+        "unknownCalls": 0
+      }
+    ],
+    "hasCostUnknown": false
+  },
+  "memoryWriteShape": {
+    "surviving": {
+      "sonnet": 1,
+      "haiku": 3,
+      "embedding": 1
+    },
+    "survivedAsExpected": true,
+    "nonSurvivorZeroSonnet": true
+  }
+}

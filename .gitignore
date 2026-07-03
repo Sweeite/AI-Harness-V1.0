@@ -1,3 +1,13 @@
 .DS_Store
 .claude/
 *.log
+
+# build-phase (TypeScript / Node — ADR-009)
+node_modules/
+.env
+.env.local
+dist/
+*.tsbuildinfo
+
+# spike dry-run artifacts (mock tokens — not evidence)
+spikes/*/results/*.dryrun.*

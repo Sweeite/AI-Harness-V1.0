@@ -5,6 +5,64 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 49 — 2026-07-03 — BUILD BEGINS: ISSUE-001 (cost-viability spike) built + run + PASS; AF-001 flipped 🟢; ADR-009 (stack) locked
+
+> **⚠️ HANDOFF NOTE — the build has started. Spec Phases 0–6 remain the terminus; this is the first
+> runnable code.** Tier-0 spike **ISSUE-001 is DONE** (AF-001 launch gate PASS). Five Tier-0 spikes
+> remain (002 RLS-latency · 003 injection · 004 restore · 005 brute-force · 006 webhook). The
+> product-repo home decision is deliberately deferred to **ISSUE-007** (top of the critical path) —
+> spikes live in `spikes/<issue>/` and are disposable evidence, not the product codebase.
+
+**What happened:** Started the build with **ISSUE-001 — SPIKE: cost viability ≤ ~$20/day** (one of the
+six OD-157 launch go/no-go gates). Two decisions + a full runnable harness + a real measured PASS.
+
+**Decisions written down (Rule 0):**
+- **ADR-009 (implementation stack = TypeScript/Node)** — NEW. Grepped the whole spec: the *language*
+  was never recorded, only the infra (Inngest + Supabase, which are TS-first). The operator's memory
+  said "TypeScript" but Rule 0 = it isn't decided until it's in a file with an ID. Locked it now,
+  Accepted, indexed in `adr/README.md`. Affects every build issue.
+- **Code location:** build code lives in **`spikes/<issue>/`** in this repo (spec untouched). The
+  product-repo-vs-monorepo call is explicitly deferred to ISSUE-007 (Tier-1 bootstrap "stands up a
+  client project") — a spike shouldn't force it.
+
+**ISSUE-001 built + run (DoD closed):**
+- **Harness:** `spikes/issue-001-cost-viability/` — 11 TS modules mapping 1:1 to the issue's build
+  order: `profile.ts` (declared typical-volume profile — the extrapolation basis, contestable by
+  design) · `corpus.ts` (assembles+records the corpus, since no canonical corpus file exists) ·
+  `pricing.ts`+`ledger.ts` (`price_table` + round-up estimator + the running meter, `cost_tokens ×
+  price_table`) · `vendors.ts` (real Anthropic Sonnet/Haiku + OpenAI embed, **attempts counted**,
+  dry-run mode) · `task.ts` (orchestrator→research→2 specialists→synthesis) · `memoryWrite.ts`
+  (ADR-003 §4 path: code filter → Haiku gate → 2 Haiku pre-checks → 1 Sonnet writer → embed) ·
+  `extrapolate.ts` + `thresholds.ts` + `report.ts` (evidence fields a–h) + `main.ts`.
+- **Real measured result (2026-07-03):** one task **$0.0359** (5 Sonnet + 1 Haiku); one surviving
+  write **$0.0025** (1 Sonnet + 3 Haiku + 1 embed — ADR-003 §4 shape **confirmed**); non-survivor
+  **0 Sonnet**. Extrapolated against the declared profile (50 tasks/day · 500 write-events, 100
+  survive · 169 idle-gated loops) = **$2.09/day** — ~10× under the ~$20 target, ~25× under the $50
+  soft alert, *with* the round-up posture (every retry charged, non-batch rates, no cache discount).
+  Verdict **PASS 🟢**. Evidence artifact: `results/af-001-evidence.2026-07-03.{json,md}`.
+- **Note on the run:** first live run failed **loud** (as designed, non-negotiable #3) on an OpenAI
+  `429 no-quota` — operator funded OpenAI, re-ran clean. Anthropic worked first try.
+
+**Repo writes (Rule 0 — result recorded, not left in chat):**
+- `feasibility-register.md` — **AF-001 flipped 🔴→🟢** with the evidence summary; AF-040/041/042/043
+  given dated `↳ AF-001` cross-reference notes (glyphs unchanged — their own EVALs still owed).
+- `cost.md` — **AC-NFR-COST.006.1/.2 → Verified** + a Verification-result line under NFR-COST.006.
+- `config-registry.md` App. A item 10 — **OpenAI `text-embedding-3-small` rate filled: 0.00002/1k**
+  ($0.02/1M standard, not batch), primary-source verified 2026-07-03 (was a `???`-style gap).
+- `ISSUE-001-...md` — `status: ready → done` + a result banner. `README.md` — new **Build** status row.
+- `adr/ADR-009-...md` + `adr/README.md` index row.
+
+**New open questions / follow-ups:** none blocking. Fast-follow EVALs still owed (unchanged, not this
+gate): AF-042 (estimate-vs-real-invoice reconciliation), AF-043 (gate accuracy / 3-week shadow-retain),
+AF-040/041 (threshold realism over more task types). The declared profile is contestable → any dispute
+routes to an AF-040/041 EVAL, not back to this gate.
+
+**Next action:** the operator's choice — continue Tier-0 spikes (recommend **ISSUE-002 RLS-latency**
+next, as it gates the memory critical path 009/023/025), or `git push`. Session-49 changes are committed
+on a branch (not pushed — never push unasked).
+
+---
+
 ## Session 48 — 2026-07-03 — PHASE 6 COMPLETE: 86 build issues cut · verified · coverage-complete · GitHub-mirrored · committed
 
 > **⚠️ HANDOFF NOTE — the GitHub mirror is DONE. Do NOT re-run Step 8.** All 86 issues already exist on

@@ -1,0 +1,22 @@
+{
+  "name": "issue-001-cost-viability",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "ISSUE-001 spike: measure real end-to-end cost of one multi-agent task + memory write and extrapolate to $/day (AF-001 gate). See ../../spec/06-issues/ISSUE-001-cost-viability-spike.md",
+  "scripts": {
+    "spike": "tsx src/main.ts",
+    "spike:dry": "DRY_RUN=1 tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "dotenv": "^16.4.7",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
