@@ -5,6 +5,33 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 50 — 2026-07-03 — Build-order made followable: `BUILD-SCHEDULE.md` (11 dependency waves + checkpoints + safety contract)
+
+**What happened:** Operator asked whether the build could be *batched* (build a group, then test) rather
+than strictly one-issue-at-a-time, and for a followable schedule that "won't mess up if I follow it."
+Confirmed the build order was already documented (`_backlog.md` tiers + 11-node critical path + DAG; each
+issue's §7 edges) — the batching concept too ("issues within a tier can be built in parallel"). Added a
+**derived** operational schedule; no new IDs, no decisions (Rule 0 — it re-expresses existing order).
+
+**Created `spec/06-issues/BUILD-SCHEDULE.md`:** recomputed the DAG into **11 strict dependency waves**
+(finer than the 7 tiers — the tiers hide internal chains, e.g. `018→019→022` all in Tier 3). Each stage =
+a batch (provably parallel-safe: same-wave issues have no path between them) + its **gate** (the spine
+issue) + a **checkpoint** (integration test). Fronted by a **safety contract** (R1–R9) whose core
+guarantee: building stages in order means every dependency was built *and passed its checkpoint* first, so
+you never build on unverified ground (#3). Spine = `007→008→009→018→019→022→023→025→045→053→072`;
+`053` flagged as the keystone (fan-in 7). High-care issues tied to the three non-negotiables marked 🔴.
+
+**Also:** pointer added at the top of `_backlog.md` "Build-order tiers" → the new schedule. A visual
+build-timeline artifact was produced this session (spine + fans + checkpoints, "highlight spine only" toggle).
+
+**Rule-0 note:** if `BUILD-SCHEDULE.md` and any per-issue §7 disagree, the issue file wins; regenerate the
+schedule if the DAG changes. Acceptance-criteria text is never copied into it (read in the FR).
+
+**Next action:** unchanged from Session 49 — continue Tier-0 spikes (recommend `ISSUE-002` RLS-latency,
+gates the memory critical path). The schedule doesn't alter scope or decisions; it's a build aid.
+
+---
+
 ## Session 49 — 2026-07-03 — BUILD BEGINS: ISSUE-001 (cost-viability spike) built + run + PASS; AF-001 flipped 🟢; ADR-009 (stack) locked
 
 > **⚠️ HANDOFF NOTE — the build has started. Spec Phases 0–6 remain the terminus; this is the first

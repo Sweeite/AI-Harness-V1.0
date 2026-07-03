@@ -196,6 +196,11 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 
 ## Build-order tiers & critical path
 
+> **Followable version:** `BUILD-SCHEDULE.md` re-expresses this order as 11 strict dependency waves
+> (finer than the 7 tiers below — the tiers contain a few internal chains, e.g. `018→019→022` all sit
+> in Tier 3) with per-stage test checkpoints and a safety contract. Use it to build; use this section
+> for the canonical tiers/critical-path/DAG it derives from.
+
 Issues within a tier can be built in parallel; a tier's issues assume the prior tiers landed.
 
 - **Tier 0 (spikes, run first / alongside):** ~~001~~ ✅ · 002 003 004 005 006 — gate their dependents; none blocks another. (001 done 2026-07-03 — AF-001 PASS.)
