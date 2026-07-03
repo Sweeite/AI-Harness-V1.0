@@ -5,6 +5,67 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 48 — 2026-07-03 — PHASE 6 EXECUTED: 86 build issues cut · verified · coverage-complete (awaiting sign-off + GitHub mirror)
+
+**What happened:** Executed Phase 6 (Issue Decomposition) per the finalized playbook. Built `spec/06-issues/`:
+`_TEMPLATE.md` (the 10-field self-sufficiency contract) · `_backlog.md` (the spine) · **86 `ISSUE-<nnn>-<slug>.md`
+files (001–086)** · `_harvest/frag-*.md` (Step-1 coverage fan-out, ~1,600 lines). Every issue points into the repo
+**by ID** and never copies `AC-*` text (Rule 0 / DRY).
+
+**Steps 1–9 (bar the outward mirror + sign-off):**
+- **Step 1 — Harvest** (subagent fan-out, 4 Explore agents over C0–C3 / C4–C6 / C7–C10 / NFR+data+surfaces) →
+  `_harvest/frag-c0-c3.md` · `frag-c4-c6.md` · `frag-c7-c10.md`. Full coverage inventory: ~438 FRs + ~93 NFRs.
+- **Step 2 — `id-conventions.md`** amended via change-control: `ISSUE-` redefined from GitHub `#<n>` to a canonical
+  repo-markdown `ISSUE-<nnn>` file (dated note, matching the Phase-5 `DR`-domain precedent).
+- **Steps 3–4 — Cut slices + map.** 86 issues across **13 epics** (S spikes · A foundations · B identity · C memory ·
+  D tools · E prompt · F harness · G guardrails · H agent-design · I proactive · J observability · K infra · L config).
+  `_backlog.md` carries 7 build tiers, the **verified-acyclic dependency DAG**, the **11-node critical path**
+  (`007→008→009→018→019→022→023→025→045→053→072`), and the full FR+NFR **coverage ledger**. The six OD-157
+  launch-gating spikes (AF-068/069/001/067/078/077) are first-class ISSUE-001–006, sequenced ahead of dependents.
+- **Drafting via Workflow** (operator delegated "I trust your recommendation" → full Workflow run, precedent = the
+  pre-Phase-6 audit). First run drafted 72/86 then hit a **session limit** (7.7M subagent tokens); a compact
+  finish-workflow drafted the remaining 14 + verified a 34-issue sample + coverage critic. (Script bug — fix-stage
+  didn't guard a null verdict from a killed agent — fixed in the finish run.)
+- **Step 7 — Verification gate CLEAN.** Coverage critic **PASS** (all 85 FR area-groups + all 9 NFR domains claimed,
+  **zero orphan** FR/NFR/issue — checks a/b); DAG **acyclic**, all edges resolve (check d); **per-issue zero-context
+  self-sufficiency build-test** (check f) on a 34-issue sample (all 6 spikes + all 14 late-drafted + every seam-heavy /
+  foundation issue): **20 passed first try · 11 fixed-then-passed · 3 surfaced genuine spec gaps** → Step-5 change-control.
+- **Step 5 — Gap-sweep change-controls (the gate's real payoff):**
+  - **OD-168** — `rls-policies.md`'s helper list omitted the **visibility-tier resolver**; a builder couldn't author
+    FR-1.RLS.003's visibility predicate. Added `user_visibility(uid)` (distinct from the PERM-node `user_perms`) to
+    `rls-policies.md` + `indexes.md`; ISSUE-020 cites it. *(Minted by the ISSUE-020 build-test fix-agent; verified real.)*
+  - **OD-169** — FR-2.RET.005 gave ranking **weights** but no **sub-signal→[0,1] normalization**; recency + entity-match
+    were unmapped. Fixed the contract (recency = `0.5^(age/half_life)`, Jaccard entity-match, cosine→`(c+1)/2`); minted
+    `CFG-rank_recency_half_life_days` (90, LIVE) into `config-registry.md`; +FR-2.RET.005 Notes. *(ISSUE-025 fix-agent;
+    config + FR edits verified applied.)*
+  - **OD-170** — the `event_type` enum (`schema.md` §8) admitted **no value** for the FR-1.RLS.007 mid-task
+    authorization-stop or the FR-1.RLS.008 divergence `event_log` writes → a build-time guess. Added
+    `authz_revoked_midtask` + `rls_harness_divergence` (additive/expand-contract-safe); ISSUE-020 build steps cite them.
+  - Issue-file fixes (no spec change): **ISSUE-077** manifest now names `PERMISSION_NODES.md` L110 (Super Admin) for
+    `PERM-compliance.download_records` (was mis-pointed at ISSUE-018); **ISSUE-008** reworded the false "creates RLS DDL
+    verbatim" claim (rls-policies.md fixes *contracts*, DDL is a build artifact → ISSUE-009 owns the logic), rescoped
+    `expected_slots` concrete content to onboarding/ISSUE-030 (registry defines shape only), and re-cited the dangling
+    FR-1.PERM.002 → FR-1.PERM.005 + OD-030 (both resolvable from `PERMISSION_NODES.md`).
+- **Step 6 — Open decision:** **OD-171** (🟡 OPERATOR) — the connector rollout order (ISSUE-039 GHL / 040 Google /
+  041 Slack). The DAG fully sequences everything else and **no v1 scope-cut was forced**; this is the one open
+  build-sequencing degree of freedom and it's client-driven (ADR-001). Recommendation: GHL first (CRM spine, carries
+  AF-090/098). Gates nothing on the critical path — the build can start on the whole foundational/identity/memory spine.
+- **Step 9 (partial) — `traceability-matrix.csv`** issue column wired: every FR → its `ISSUE-<nnn>` (split areas mapped
+  by FR number). README Phase-6 row + this log updated.
+
+**Fix-agent hygiene note:** the verification fix-agents autonomously minted + logged OD-168/OD-169 (well-analyzed,
+ADR-consistent) and applied their change-controls; one collided with the OD-168 I'd assigned to the enum fix → I
+renumbered the enum change to **OD-170** and reconciled the tail guard ("Next OD number: OD-172"). All three ODs verified
+against source (CFG keys real, FR-1.RLS.003 confirms the visibility model) before acceptance — no hallucinated IDs left in.
+
+**Next step:** **Step 8 — GitHub mirror.** `gh` ready (Sweeite/AI-Harness-V1.0, authenticated as Sweeite, 0 issues).
+Create one GitHub issue per `ISSUE-<nnn>` (title + body linking to the canonical repo file + DoD `AC-*` as a task-list),
+record each `#<n>` into the issue file's `github:` frontmatter + the matrix. Then **operator sign-off → commit** (Step 9).
+Per the ownership split (session 47): repo owns DEFINITION, GitHub owns BUILD-STATE. **OD-171 awaits an operator answer**
+(connector order) but does not block the mirror or the build spine.
+
+---
+
 ## Session 47 — 2026-07-02 — OD-161 OPERATOR CONFIRMATION (carried-forward note discharged)
 
 **What happened:** Operator pulled the Session-46 audit-reconciliation commits to local and asked to review the one

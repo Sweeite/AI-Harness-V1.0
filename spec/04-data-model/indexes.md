@@ -67,7 +67,7 @@ create index concurrently clearances_subject         on sensitivity_clearances (
 create index concurrently clearances_review          on sensitivity_clearances (last_reviewed_at);   -- overdue-review sweep
 create index concurrently restricted_grantee_active  on restricted_grants (grantee_user_id) where revoked_at is null;
 ```
-These back the `(select user_perms/…)` helper lookups so the initPlan is a single indexed read per statement.
+These back the `(select user_perms/user_visibility/user_clearances/user_restricted/…)` helper lookups (OD-168) so the initPlan is a single indexed read per statement.
 
 ## Connectors / tokens / rate limits
 

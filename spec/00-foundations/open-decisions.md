@@ -2108,6 +2108,80 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
+## OD-168 — RLS helper-function naming + visibility-tier resolution reconciled across manifest files 🟢 RESOLVED (2026-07-03, ISSUE-020 build-test reconciliation; canonical-name-wins)
+
+- **OD-168** 🔑 ⚠️ **#3 Rule-0 cross-file divergence (surfaced by the ISSUE-020 zero-context build test).** The named
+  manifest files disagree on the RLS helper that resolves a user's **visibility tier**, and no file states where the
+  `user → held-visibility-tier` mapping comes from — so a builder cannot author FR-1.RLS.003's visibility-tier predicate
+  (build step 3) without guessing. Two divergences:
+  1. **Naming.** `component-01-rbac.md` (FR-1.RLS.002 preconditions L581, the `(select …)` example L583, and the Phase-4
+     DATA stub L929) and `ADR-006` (L124) name the visibility helper **`user_visibility(uid)`**. `rls-policies.md`
+     (L29-38, L109), `indexes.md` (L70), and issues ISSUE-002/009 instead name a **`user_perms(uid)`** helper that
+     `returns text[]` of **PERM nodes** (`user_roles ⋈ role_permissions`) — *not* visibility tiers.
+  2. **Resolution.** `rls-policies.md`'s `user_perms` returns PERM nodes and `user_clearances` returns clearance
+     tiers/scopes; **neither returns the visibility tier** (`memories.visibility` ∈ `global|team|private`, schema.md
+     L83/L296). The schema has **no** `user_roles → visibility_tier` column or table, so "which tiers a user holds" is
+     unresolved from the named files.
+- **✅ Resolution (canonical-name-wins; no new mechanism invented):**
+  - There are **four distinct helpers**, not three-with-a-rename: **`user_perms(uid)`** (PERM nodes, `text[]` — the
+    `can()`/policy PERM lookup) and **`user_visibility(uid)`** (the caller's held visibility tiers) are **separate**
+    functions. `rls-policies.md`'s helper list omitted `user_visibility` and the ISSUE-002/009 lists used the
+    `user_perms` shorthand for the whole family; the **authoritative name for the visibility resolver is
+    `user_visibility`** (ADR-006 L124 + FR-1.RLS.002 L581 + DATA stub L929 — three canonical citations vs a summary-file
+    shorthand). Visibility resolution is a **distinct helper**, not folded into `user_perms`.
+  - **Held-visibility mapping:** a user holds a visibility tier **via their one active role** (`user_roles`, one-role-per-user
+    OD-029) — the same live-read shape as `user_perms`/`user_clearances`. The exact role→tier lookup (a `role_permissions`
+    convention vs a small role-attribute) is a **Phase-4 build artifact** of `user_visibility`'s body, on the same footing
+    as the `user_perms`/`user_clearances` SQL bodies already deferred as build artifacts in `rls-policies.md` L107-110; the
+    **contract** (returns the caller's held `visibility_tier` set, read live, `(select …)`-wrapped) is fixed here.
+  - **Housekeeping owed (do NOT block ISSUE-020):** `rls-policies.md`'s helper list (L26-38) and `indexes.md` L70 should
+    add `user_visibility` alongside `user_perms` so all four appear in the summary files; and the ISSUE-002/009 helper
+    lists carry the `user_perms` shorthand. These are documentation reconciliations (no policy-logic change) — logged here
+    so a future editor closes them; ISSUE-020 proceeds by citing this OD for the name + contract.
+
+---
+
+## OD-169 — Ranking sub-signal → 0–1 normalization defined for the FR-2.RET.005 weighted score 🟢 RESOLVED (2026-07-03, ISSUE-025 build-test reconciliation; contract-fixed, SQL body a Phase-4 build artifact, tuning gated by AF-002)
+
+- **OD-169** ⚠️ **#3 build-input gap (surfaced by the ISSUE-025 zero-context build test).** `FR-2.RET.005`
+  (`component-02-memory.md` L775-794) gives the ranking **weights** (recency 0.3 + confidence 0.3 + entity-match 0.2 +
+  vector-similarity 0.2, sum = 1.0 — canonical `ranking_weights`, `config-registry.md` L322) and the procedural ×1.2
+  boost, but **no named file defines how each raw signal becomes a 0–1 score before weighting.** Two of the four are
+  already 0–1 (`confidence` is `numeric(4,3)` 0–1, schema.md L295; `vector-similarity` is a cosine that maps
+  monotonically to 0–1). The other two — **recency** (a raw `created_at` timestamp) and **entity-match** (a set overlap)
+  — have no defined mapping, so a builder must guess three of the four sub-scores AC-2.RET.005.1 requires. This is a real
+  spec-level underspecification, not merely a missing manifest pointer: the design-doc source (design-doc-v4.md
+  L1727–1738) also treats "recency", "entity match relevance", and "vector similarity score" as already-normalized
+  inputs without defining the mapping.
+- **✅ Resolution (contract-fixed here; no new scoring engine — an ADR-002 anti-bloat guardrail):** each sub-signal
+  normalizes to `[0,1]` by the following **fixed defaults**, computed inline in the ranking step (no stored score, no
+  model call):
+  - **recency** — exponential decay over the candidate's age from `created_at` (schema.md L302):
+    `recency = 0.5 ^ (age_days / CFG-rank_recency_half_life_days)`; a memory at the half-life scores 0.5, a brand-new
+    one ~1.0. New LIVE config key **`rank_recency_half_life_days`** (default **90**, float days > 0) minted into
+    `config-registry.md` so the decay is operator-tunable and not a magic constant.
+  - **confidence** — used directly (already 0–1, schema.md L295; `system_pointer` is unscored → admitted by its own rule
+    per FR-2.RET.003/OD-035 and does not participate in the confidence term).
+  - **entity-match** — Jaccard overlap of the task's resolved entity set (FR-2.RET.001) against the candidate's
+    `entity_ids` (schema.md L292): `|Q ∩ E| / |Q ∪ E|` ∈ [0,1]; a vector-arm-only candidate sharing no task entity
+    scores 0 on this term (it still ranks via its other three terms).
+  - **vector-similarity** — cosine similarity mapped to `[0,1]` as `(cosine + 1) / 2` (pgvector cosine distance `d`
+    ⇒ `similarity = 1 − d`, then to `[0,1]`); the keyword-arm-only candidate with no vector score uses its arm's
+    similarity or 0 on this term, symmetric to entity-match.
+  - The four normalized sub-scores are combined by the LIVE `ranking_weights`, the procedural ×`procedural_boost` (1.2)
+    is applied, and the top `memories_injected_per_task` (7) are taken — unchanged from FR-2.RET.005.
+- **Status of the numbers:** the **normalization *shapes*** (exponential recency decay, Jaccard entity-match,
+  cosine→[0,1]) are fixed here as the build contract; the **half-life default (90 d)** and the **weights** themselves are
+  LIVE-tunable and are **validated/curve-fit by AF-002** (the relevance/ranking-weight EVAL already gating this issue) —
+  the exact SQL body of the scoring expression is a **Phase-4 build artifact**, on the same footing as the deferred RLS
+  helper bodies (OD-168). No new engine, consistent with ADR-002 anti-bloat guardrail 1 ("Retrieval Sufficiency /
+  ranking stays a thin threshold over existing retrieval signals — no bespoke model").
+- **Applied via change-control:** `config-registry.md` gains `rank_recency_half_life_days` (LIVE, default 90);
+  `FR-2.RET.005` gains a Notes line citing this OD for the sub-signal normalization contract; ISSUE-025 cites this OD in
+  its DoD and build step 5.
+
+---
+
 > **Reserved:** OD-098–103 are used by `spec/03-surfaces/surface-01-config-admin.md`; OD-105–108 by
 > `spec/03-surfaces/surface-00-auth.md`; OD-109–112 by `spec/03-surfaces/surface-02-user-mgmt.md`;
 > OD-113–116 by `spec/03-surfaces/surface-03-ingestion-queue.md` (surface-local; OD-115 mints two C1 Memory-Access
@@ -2137,4 +2211,59 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > key-prefix-scoped `PERM-config.*`, export is catalogued `PERM-compliance.download_records`, OD-155).
 > OD-157–160 are the Phase-5 (NFR) risk-posture decisions (RP-1…RP-4, resolved above). OD-161–167 are the
 > pre-Phase-6 whole-spec audit reconciliation decisions (resolved above) — do not reuse those numbers.
-> Next OD number: OD-168.
+> OD-168 (RLS helper naming + visibility-tier resolution, resolved above) was minted by the ISSUE-020 build-test
+> reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
+> by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
+> was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
+> OPERATOR, resolved below) — do not reuse. Next OD number: OD-172.
+
+---
+
+## OD-170 — `event_type` enum lacks values for the FR-1.RLS.007/008 event_log writes 🟢 RESOLVED (2026-07-03, ISSUE-020 build-test gap-sweep; additive enum change-control)
+
+- **OD-170** ⚠️ **#3 build-input gap (surfaced by the ISSUE-020 zero-context build test).** Both `FR-1.RLS.007`
+  (mid-task authorization stop → "security `event_log` + `access_audit`", `component-01-rbac.md` L702) and
+  `FR-1.RLS.008` (RLS-vs-harness divergence → "`event_log` + alert", C1 L722/726) **mandate an `event_log` write**,
+  but the `event_type` enum in `schema.md` §8 (L110-114) admitted **no value** for either event. A builder authoring
+  ISSUE-020 build steps 5-6 could not `INSERT` the row without inventing an enum value (reuse `guardrail_hit`? mint a
+  new one?) — an unspecified schema change forced at build time. The same gap blocks any consumer of these two events
+  (the observability skeleton ISSUE-011, the silent-failure/divergence signal).
+- **✅ Resolution (additive, expand-contract-safe; no behaviour change):** two enum values added to `event_type`
+  (`schema.md` §8) via change-control:
+  - **`authz_revoked_midtask`** — the FR-1.RLS.007 mid-task authorization-stop event (deactivation / relied-on
+    clearance or Restricted-grant revocation halts the `service_role` task before its next consequential side effect).
+  - **`rls_harness_divergence`** — the FR-1.RLS.008 signal that the harness `can()` decision and the RLS row result
+    disagreed (a harness-permitted read that RLS returned as zero rows), so the silent backstop becomes observable (#3).
+  Additive enum values are forward-safe under `migration-discipline.md` (no drop/rename). ISSUE-020 build steps 5-6 +
+  its DATA `event_log` line now cite these values by name; no FR text changes (the FRs already named the `event_log`
+  write — this only gives it a typeable value).
+
+---
+
+## OD-171 — Phase-6 build-sequencing fork: connector rollout order (the one open degree of freedom) 🟢 RESOLVED (2026-07-03, session 48, operator-decided: **GHL first**)
+
+- **✅ Resolution (operator, 2026-07-03):** **GHL first** (ISSUE-039), then Google (040), then Slack (041) — the
+  recommended option (a): the CRM spine most flows assume, and the connector carrying the most connector-specific
+  viability gates (AF-090 webhook Ed25519, AF-098 PHI/BAA), so building it first de-risks the connector pattern earliest.
+  No dependency changes (the three are independent Tier-6 leaves); this sets the build priority, not the graph shape.
+
+
+- **OD-171 — the only genuine build-sequencing choice the operator must own.** The Phase-6 dependency DAG
+  (`spec/06-issues/_backlog.md`) fully sequences the 86 issues into 7 tiers with a verified 11-node critical path, and
+  the six OD-157 launch-gating spikes are ordered ahead of their dependents — so **no forced v1 scope-cut was needed**
+  (every FR + NFR maps to an in-scope issue; the optimisation / self-improvement issues — 036/046/054/065/066 — and the
+  aggregation surfaces naturally sequence last via the DAG, not by a scope decision). The **one** remaining degree of
+  freedom is the order the three connector instances are built: **ISSUE-039 (GHL) · ISSUE-040 (Google) · ISSUE-041
+  (Slack)** — all three share Tier-6 and depend only on the connector runtime (032) + token lifecycle (033) + rate-limit
+  (034) + trigger infra (037); none blocks another.
+- **Why it's the operator's:** per **ADR-001** + the business model, the tool set is **open-ended and client-driven** —
+  which connector matters first is a *per-client / per-vertical* rollout choice, not a v1 architecture decision.
+- **Options:** (a) **GHL first** *(recommended reference build)* — GHL is the CRM spine most design-doc flows assume, and
+  carries the most connector-specific viability gates (AF-090 webhook Ed25519, AF-098 PHI/BAA), so building it first
+  de-risks the connector pattern earliest; (b) Google first (broadest surface: Gmail/Drive/Calendar); (c) Slack first
+  (lightest, but gated by AF-083/084 ingest). **Recommendation: (a) GHL first**, then Google, then Slack — but this is
+  genuinely client-driven and the operator sets it per the first onboarding. **No dependency changes either way** (the
+  three are independent leaves), so this can be decided at build time without reshaping the backlog.
+- **Status:** 🟢 RESOLVED (GHL first). It was surfaced for the operator because it is a rollout-priority call, not a spec
+  correctness call; the build can start on the entire foundational + identity + memory spine (Tiers 0–5) independently.
+  It gates nothing on the critical path.

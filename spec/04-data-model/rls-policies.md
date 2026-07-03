@@ -28,6 +28,8 @@
 ```sql
 -- Returns the set of PERM nodes the current user holds (via their one active role).
 create function user_perms(uid uuid) returns text[] ...        -- reads user_roles ⋈ role_permissions
+-- Returns the visibility tiers the user's active role holds (global | team | private) — OD-169.
+create function user_visibility(uid uuid) returns text[] ...   -- reads user_roles ⋈ role visibility grant; distinct from user_perms
 -- Returns the clearance tiers + entity-type scopes the user holds.
 create function user_clearances(uid uuid) returns setof ...    -- reads sensitivity_clearances
 -- Returns the Restricted grants (entity/type scoped) for the user.

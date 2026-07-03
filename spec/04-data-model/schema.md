@@ -111,7 +111,12 @@ create type event_type          as enum ('task_started','tool_called','memory_re
                                           'guardrail_hit','approval_requested','task_completed','task_failed',
                                           'task_failure_spike','queue_backup','memory_confidence_drop',
                                           'approval_queue_stale','cost_threshold_breach','loop_missed',
-                                          'reporter_push');   -- FR-7.ALR.004 alert types (6) + FR-7.MGM.001.3 reporter-attempt log
+                                          'reporter_push',
+                                          'authz_revoked_midtask','rls_harness_divergence');   -- FR-7.ALR.004 alert types (6) + FR-7.MGM.001.3 reporter-attempt log
+-- OD-170 (2026-07-03, Phase-6 gap-sweep change-control): +'authz_revoked_midtask' (FR-1.RLS.007 mid-task
+-- authorization-stop → event_log, C1 L702) and +'rls_harness_divergence' (FR-1.RLS.008 divergence signal →
+-- event_log, C1 L722/726). Both FRs mandate an event_log write but the enum admitted no matching value — a
+-- Phase-6 slicing gap (ISSUE-020). Additive/expand-contract-safe.
 create type notification_read   as enum ('unread','read','actioned');
 create type alert_type          as enum ('task_failure_spike','queue_backup','memory_confidence_drop',
                                           'approval_queue_stale','hard_limit_hit','cost_threshold_breach','loop_missed',

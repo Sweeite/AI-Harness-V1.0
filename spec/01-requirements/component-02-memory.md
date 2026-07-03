@@ -785,7 +785,7 @@
   - Edge / failure: too-low N starves context; too-high N adds noise + cost — AF-002 validates the defaults.
 - **Data touched:** `DATA-memories` (rank).
 - **Permissions:** —
-- **Config dependencies:** `CFG-rank_weight_recency/confidence/entity_match/vector_similarity`, `CFG-procedural_boost` (1.2), `CFG-memories_injected_per_task` (7) — all LIVE.
+- **Config dependencies:** the compound `CFG-ranking_weights` (recency 0.3 · confidence 0.3 · entity_match 0.2 · vector_similarity 0.2, sum = 1.0 — config-registry Appendix A), `CFG-rank_recency_half_life_days` (90, the recency-decay half-life — OD-169), `CFG-procedural_boost` (1.2), `CFG-memories_injected_per_task` (7) — all LIVE.
 - **Surfaces:** —
 - **Observability:** ranking inputs/outputs sampled for the retrieval-quality EVAL.
 - **Acceptance criteria:**
@@ -793,6 +793,7 @@
 - **Open decisions:** —
 - **Feasibility assumptions:** ⚠️ FEASIBILITY: AF-002 (the weights/threshold produce relevant, low-noise retrieval).
 - **Notes:** Re-ranking (a second model pass, L1956) and HyDE (L1954) are **off / not mandated** (ADR-003) → OOS-003.
+- **Notes (sub-signal normalization → OD-169):** the four raw signals normalize to `[0,1]` before the weighted sum: **recency** = `0.5 ^ (age_days / CFG-rank_recency_half_life_days)` over `created_at`; **confidence** used directly (already 0–1; `system_pointer` unscored, excluded from this term); **entity-match** = Jaccard overlap of the task's resolved entities (FR-2.RET.001) against the candidate's `entity_ids`; **vector-similarity** = cosine mapped to `[0,1]` via `(cosine + 1)/2`. Normalization *shapes* are fixed by OD-169; the half-life default and the weights are AF-002-tuned; the scoring SQL body is a Phase-4 build artifact.
 
 ### FR-2.RET.006 — Inject as Business Context with type tags; Restricted never auto-injected
 - **Statement:** The system shall prepend the selected memories to the prompt as a Business Context section, tagged by type ([Semantic]/[Episodic]/[Procedural]), and shall never auto-inject Restricted-tier content even for a cleared holder.

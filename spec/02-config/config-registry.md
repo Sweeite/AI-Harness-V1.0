@@ -116,6 +116,7 @@ RBAC's tunable knob set is two values; roles/perms/clearances are Tier-1 records
 | `retrieval_confidence_threshold` | How confident a memory must be before the AI is allowed to use it | 0.7 | LIVE | float 0–1; < amber_zone_threshold |
 | `retrieval_sufficiency_threshold` | How much memory must be found before an answer counts as well-supported rather than thin | 0.6 | LIVE | float 0–1 |
 | `memories_injected_per_task` | How many relevant memories the AI pulls in when working on a task | 7 | LIVE | int 1–50 (token-cost lever) |
+| `rank_recency_half_life_days` | How fast a memory's recency score fades when ranking — at this age it counts half as recent (OD-169) | 90 | LIVE | float days > 0 (recency-decay half-life for the FR-2.RET.005 `recency` sub-score; AF-002-tuned) |
 | `merge_similarity_threshold` | How alike two memories must be before they're combined into one | 0.92 | LIVE | float 0–1 |
 | `soft_decay_age_months` | How old an unconfirmed memory gets before it slowly starts losing confidence | 6 | LIVE | int months ≥ 1 |
 | `soft_decay_multiplier` | How fast an aging memory loses confidence each day (closer to 1 = slower fade) | 0.95 | LIVE | float 0–1 |

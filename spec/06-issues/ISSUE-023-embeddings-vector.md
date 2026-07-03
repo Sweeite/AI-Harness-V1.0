@@ -1,0 +1,68 @@
+---
+id: ISSUE-023
+title: Embeddings + HNSW vector search
+epic: C — memory
+status: blocked
+github: "#23"
+---
+
+# ISSUE-023 — Embeddings + HNSW vector search
+
+> **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
+> order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the
+> FR and is read there (copying it would create a second source of truth that rots = Rule-0
+> violation). A builder with **zero conversation history** must be able to open the files named in
+> the Context manifest and build this slice to its Definition of done **without guessing**.
+
+## 1. Goal (one line)
+Make every memory searchable by vector: embed content on write with the single configured model, index it with pgvector HNSW from day one, and provide the zero-downtime expand-contract path for changing the embedding model — the searchable-brain substrate that retrieval (ISSUE-025) ranks over.
+
+## 2. Scope — in / out
+**In:** The C2 **VEC** area group — the HNSW index DDL with its tuned parameters (`m=16`, `ef_construction=64`, query-time `ef_search`); the embed-on-write behaviour (single model, default `text-embedding-3-small` / 1536 dims, model name recorded per row); the embedding-model change as an expand-contract migration (`embedding_v2` column → background re-embed → 100%-reconcile gate → read-switch → contract/rebuild). This slice **owns** the `embedding`, `embedding_model`, `embedding_v2` columns' meaning and the `memories_embedding_hnsw` index, and the `ef_search` recall/latency dial as it applies to the index. The embedding-failure-halts-commit guard (FR-2.WRT.007) is **referenced** here as a hard boundary condition on the write but is **built and owned by ISSUE-024** (the write path); this slice provides the index and embed step it plugs into.
+**Out:** The write/sole-writer path, contradiction check, validate-and-commit, and the embedding-failure retry queue itself — ISSUE-024 (C2 WRT). Entity/memory row schema authoring and tagging — ISSUE-022 (C2 MEM/ENT/TAG). The retrieval pipeline, dual-search, clearance-before-ranking, ranking formula, and answer modes that *consume* this index — ISSUE-025 (C2 RET). The migration harness / expand-contract tooling this migration runs on — ISSUE-008. The RLS predicate that composes with the ANN scan — ISSUE-009/020 (C1 RLS).
+
+## 3. Implements (traceability spine — by ID, not restated)
+- **FRs:** FR-2.VEC.001, FR-2.VEC.002, FR-2.VEC.003 (component-02 Memory).
+- **NFRs:** NFR-PERF.001 (RLS hot-path budget the index must live within), NFR-PERF.002 (vector recall under the RLS predicate), NFR-PERF.009 (`ef_search` recall/latency dial).
+- **Rests on:** ADR-002 (Maturity/Retrieval substrate the searchable brain feeds); `standards/migration-discipline.md` (expand-contract); AF-019 (HNSW recall/latency under RLS — LOAD, 🔴/perf-open), AF-067 (live clearance predicate composes with pgvector on the hot path — the ISSUE-002 launch-gating spike), AF-002 (retrieval relevance corpus AF-019 shares).
+
+## 4. Definition of done (the `AC-*` IDs that must pass — text read in the FR)
+- AC-2.VEC.001.1
+- AC-2.VEC.002.1
+- AC-2.VEC.003.1
+- AC-2.VEC.003.2
+- AC-NFR-PERF.002.1, AC-NFR-PERF.002.2 (recall under the RLS predicate at the `ef_search` posture)
+- AC-NFR-PERF.009.1 (the dial is raised, not the predicate dropped, when recall is thin)
+- **Gating spikes:** AF-067 must be **GREEN** before this issue ships (ISSUE-002, the RLS-hot-path latency spike per OD-157/RP-1 — the index's clearance-filtered ANN scan is only viable if the initPlan predicate holds within budget). AF-019 (recall under the RLS predicate) is a fast-follow LOAD gate that sets the production `ef_search` value; ship behind the safe default dial (40) with the raise-not-drop posture.
+
+## 5. Touches (complete blast radius, by ID)
+- **DATA:** DATA-memories.embedding, DATA-memories.embedding_model, DATA-memories.embedding_v2; index `memories_embedding_hnsw` (and the `embedding_v2` HNSW built CONCURRENTLY during a model change).
+- **PERM:** none directly (writes flow through the `service_role` sole writer, ISSUE-024; a model change is operator + change-control, no per-tool PERM node).
+- **CFG:** CFG-embedding_model (change-controlled / REBUILD-class), ef_search (LIVE, int 10–500, default 40).
+- **UI:** none (re-embedding-job progress + reconciliation-% are observability, not a dedicated surface in this slice).
+- **Connectors:** none (embeddings are produced via the OpenAI embedding model through the AI SDK — an internal model call, not a C3 connector).
+
+## 6. Context manifest (the EXACT files to open — nothing more)
+- spec/01-requirements/component-02-memory.md §VEC (FR-2.VEC.001–003 + their ACs; also FR-2.MEM.002 for the row schema domains and FR-2.WRT.007 for the embed-failure boundary this index plugs into).
+- spec/04-data-model/schema.md §3 Memory (the `memories` table — `embedding`, `embedding_model`, `embedding_v2` columns, sole-writer/idempotency notes).
+- spec/04-data-model/indexes.md §Vector (the `memories_embedding_hnsw` DDL, CONCURRENTLY build, `ef_search` query-time set, AF-019 note) + §Notes (REBUILD-class expand-contract rebuild path).
+- spec/05-non-functional/performance.md — NFR-PERF.001, NFR-PERF.002, NFR-PERF.009 (hot-path budget, recall-under-predicate, `ef_search` dial).
+- spec/00-foundations/adr/ADR-002-coverage-metric.md (the metrics/searchable-substrate this index serves).
+- spec/00-foundations/standards/migration-discipline.md (expand-contract discipline for FR-2.VEC.003).
+
+## 7. Dependencies
+- **Blocked-by:** ISSUE-022 (memory + entity row model / `memories` table must exist before its embedding column can be indexed); ISSUE-002 (SPIKE — AF-067 must be GREEN: the RLS initPlan predicate composing with pgvector on the hot path is the precondition for a clearance-filtered ANN scan being viable).
+- **Blocks:** ISSUE-025 (retrieval + ranking consumes this HNSW index and the `ef_search` dial).
+
+## 8. Build order within the slice
+1. **Index migration (expand step, on ISSUE-008's harness):** add `memories_embedding_hnsw` on `memories.embedding` — `USING hnsw (embedding vector_cosine_ops) WITH (m=16, ef_construction=64)`, built `CONCURRENTLY` (never inside a txn block; migration-discipline). Confirms pgvector ≥0.8 on the client Supabase. → AC-2.VEC.001.1.
+2. **Embed-on-write hook (embed step only):** wire the writer's embed step to call the single configured model (`CFG-embedding_model`, default `text-embedding-3-small`) and stamp `embedding` (1536-dim) + `embedding_model` on the row. The commit/halt-on-failure logic that wraps this step is ISSUE-024's (FR-2.WRT.007); this slice supplies the embed call + dimension/model stamping only. → AC-2.VEC.002.1.
+3. **Query-time dial:** set `hnsw.ef_search` from the `ef_search` config (default 40) on the retrieval session; expose it as the LIVE recall/latency knob (NFR-PERF.009). Ship behind the safe default with the raise-not-drop posture. → AC-NFR-PERF.009.1.
+4. **Expand-contract migration path (FR-2.VEC.003):** implement the model-change sequence — add `embedding_v2` column → build its HNSW index CONCURRENTLY → background re-embed job → **reconcile gate (100% of live rows carry a valid `embedding_v2`)** → switch reads → contract (rename/drop old column + index/rebuild). The reconcile gate **blocks the contract/drop-old step** on any shortfall and halts with an alert (no orphaned/unsearchable rows). → AC-2.VEC.003.1, AC-2.VEC.003.2.
+5. **Observability hook:** re-embedding-job progress + reconciliation-completeness % to `event_log`; embedding spend counted (ADR-003 cost).
+6. **Tests to the ACs** (below).
+
+## 9. Verification (how DoD is proven)
+- **Build-time / migration tests:** the HNSW index exists with the documented parameters (AC-2.VEC.001.1); a written memory carries a 1536-dim embedding + model name (AC-2.VEC.002.1); the model change runs expand-contract with no downtime and the contract/drop-old step is **blocked** until 100% reconcile, halting with an alert on a partial backfill (AC-2.VEC.003.1, AC-2.VEC.003.2) — per `spec/05-non-functional/test-strategy.md`.
+- **LOAD (fast-follow):** AF-019 measures recall@10 under the RLS predicate at the default `ef_search` and sets the production dial value (AC-NFR-PERF.002.1/.002.2, AC-NFR-PERF.009.1); shares the AF-002 corpus. Fallback if recall is thin: raise `ef_search` within 10–500, never drop the clearance predicate.
+- **Blocking gate:** AF-067 (ISSUE-002) must read **GREEN** in `spec/00-foundations/feasibility-register.md` before ship — the AC→Verified path for the clearance-filtered ANN scan runs through NFR-PERF.001's initPlan-latency confirmation.

@@ -18,7 +18,7 @@ retired, not recycled.
 | `OD-` | Open decision | `OD-<nnn>` | `OD-003` |
 | `AF-` | Assumption / feasibility item (must be tested) | `AF-<nnn>` | `AF-001` |
 | `ADR-` | Architecture decision record | `ADR-<nnn>` | `ADR-001` |
-| `ISSUE-` | GitHub issue (assigned at Phase 6) | `#<n>` | `#142` |
+| `ISSUE-` | Canonical repo-markdown build issue (`spec/06-issues/ISSUE-<nnn>-<slug>.md`) | `ISSUE-<nnn>` | `ISSUE-014` |
 
 ## Component numbers (match the design doc)
 
@@ -61,3 +61,12 @@ DR    disaster recovery / backup
 - Numbers are zero-padded to 3 digits and assigned sequentially within their scope.
 - Gaps are fine (a retired ID leaves a gap). Never renumber.
 - Sub-IDs (AC under FR) reset per parent.
+
+> `ISSUE-` redefined 2026-07-02 (Phase-6 entry, change-control): an issue is now a **canonical
+> repo-markdown file** `spec/06-issues/ISSUE-<nnn>-<slug>.md` (sequential, zero-padded 3 digits,
+> never renumbered — retired IDs leave gaps). It was previously "GitHub issue · `#<n>`". The repo
+> markdown owns the issue **definition** (scope, the FR/`AC-*`/`NFR-*` IDs it implements,
+> touchpoints, context manifest, dependencies); the **exported GitHub `#<n>`** (build-state:
+> open/closed, checkboxes, comments) is recorded in that issue file's `github:` frontmatter + the
+> matrix `issue` column *if and when* exported. See `phase-playbooks.md` Phase 6 for the ownership
+> split + sync rule.
