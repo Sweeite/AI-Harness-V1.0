@@ -5,7 +5,14 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
-## Session 48 — 2026-07-03 — PHASE 6 EXECUTED: 86 build issues cut · verified · coverage-complete (awaiting sign-off + GitHub mirror)
+## Session 48 — 2026-07-03 — PHASE 6 COMPLETE: 86 build issues cut · verified · coverage-complete · GitHub-mirrored · committed
+
+> **⚠️ HANDOFF NOTE — the GitHub mirror is DONE. Do NOT re-run Step 8.** All 86 issues already exist on
+> `Sweeite/AI-Harness-V1.0` (#1–#86, 1:1 with ISSUE-0NN), each issue file's `github:` frontmatter carries its `#n`,
+> and the whole Phase-6 deliverable is committed (`24dfc72`) + the doc-sync follow-up. Re-running the mirror would
+> create 86 **duplicate** GitHub issues. Phase 6 (and the whole Phases 0–6 spec effort) is the terminus — **the next
+> action is `git push` (not yet pushed) → the build begins.** (Repo self-sufficiency test run at end of session — PASS;
+> it caught these forward-pointers still reading "awaiting mirror", now corrected.)
 
 **What happened:** Executed Phase 6 (Issue Decomposition) per the finalized playbook. Built `spec/06-issues/`:
 `_TEMPLATE.md` (the 10-field self-sufficiency contract) · `_backlog.md` (the spine) · **86 `ISSUE-<nnn>-<slug>.md`
@@ -58,11 +65,22 @@ ADR-consistent) and applied their change-controls; one collided with the OD-168 
 renumbered the enum change to **OD-170** and reconciled the tail guard ("Next OD number: OD-172"). All three ODs verified
 against source (CFG keys real, FR-1.RLS.003 confirms the visibility model) before acceptance — no hallucinated IDs left in.
 
-**Next step:** **Step 8 — GitHub mirror.** `gh` ready (Sweeite/AI-Harness-V1.0, authenticated as Sweeite, 0 issues).
-Create one GitHub issue per `ISSUE-<nnn>` (title + body linking to the canonical repo file + DoD `AC-*` as a task-list),
-record each `#<n>` into the issue file's `github:` frontmatter + the matrix. Then **operator sign-off → commit** (Step 9).
-Per the ownership split (session 47): repo owns DEFINITION, GitHub owns BUILD-STATE. **OD-171 awaits an operator answer**
-(connector order) but does not block the mirror or the build spine.
+**Steps 8 + 9 — DONE (operator: "sign off + mirror + commit").**
+- **Step 8 — GitHub mirror created:** 86 issues on `Sweeite/AI-Harness-V1.0` (was empty → now #1–#86, a clean 1:1
+  `ISSUE-0NN → #NN`). Each GitHub body links the canonical repo file + lists the DoD `AC-*` as a task-list (link, don't
+  duplicate — the ownership split). Each issue file's `github:` frontmatter carries its `#n`; the id→# map is in
+  `spec/06-issues/_github-map.tsv`. The matrix records the 1:1 mapping (no separate column — ISSUE-0NN = #NN).
+- **Step 6 — OD-171 resolved (operator): GHL first** (ISSUE-039 → 040 Google → 041 Slack).
+- **Step 9 — committed** `24dfc72` (102 files) + this doc-sync follow-up. **Not pushed** (never push unasked).
+- **Repo self-sufficiency test (handoff gate) — PASS.** A zero-context subagent resumed from the repo alone: all 86
+  issues present, coverage complete, every OD-168/169/170/171 + enum/helper/config change-control resolves, the 3
+  patched issues (008/020/077) clean, no dangling IDs. Its one finding was that these forward-pointers still read
+  "awaiting mirror" (the mirror was done post-write) — **corrected here** so a fresh chat does not re-mirror.
+
+**Next action:** `git push` to activate the GitHub issue links, then **the build begins** — Phase 6 is the terminus of
+the Phases 0–6 spec effort; the repo is now a build queue. A fresh chat picks up the top ready issue from
+`spec/06-issues/_backlog.md` (start on Tiers 0–2: the six launch-gating spikes ISSUE-001–006 + the foundational/identity/
+memory spine), reads only that issue + its context manifest, and builds it to its `AC-*`. No prior conversation needed.
 
 ---
 
