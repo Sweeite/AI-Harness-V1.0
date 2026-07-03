@@ -45,7 +45,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 
 | ID | Title | FR/NFR focus | Blocked-by | Gate proves |
 |---|---|---|---|---|
-| ISSUE-001 | SPIKE: cost viability ≤~$20/day typical | NFR-COST.006, AF-001 | none | AF-001 |
+| ISSUE-001 ✅ **done** | SPIKE: cost viability ≤~$20/day typical — **PASS $2.09/day** (AF-001 🟢, 2026-07-03; harness `spikes/issue-001-cost-viability/`) | NFR-COST.006, AF-001 | none | AF-001 |
 | ISSUE-002 | SPIKE: RLS hot-path latency (<~50ms/stmt, <~2s p95) | NFR-PERF.001/003, AF-067 | none | AF-067 |
 | ISSUE-003 | SPIKE: injection containment red-team | NFR-SEC.004/006, AF-068 | none | AF-068 |
 | ISSUE-004 | SPIKE: restore actually works (DB+pgvector+auth) | NFR-DR.003, AF-069 | none | AF-069 |
@@ -198,7 +198,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 
 Issues within a tier can be built in parallel; a tier's issues assume the prior tiers landed.
 
-- **Tier 0 (spikes, run first / alongside):** 001 002 003 004 005 006 — gate their dependents; none blocks another.
+- **Tier 0 (spikes, run first / alongside):** ~~001~~ ✅ · 002 003 004 005 006 — gate their dependents; none blocks another. (001 done 2026-07-03 — AF-001 PASS.)
 - **Tier 1 (bootstrap):** 007 → 008. (007 stands up a client project; 008 the migration harness.)
 - **Tier 2 (shared scaffold):** 009 010 011 012 042 048 032. (RLS scaffold, config store, observability skeleton, mgmt plane, prompt store, task_queue, connector runtime.)
 - **Tier 3 (core models & safety):** 013 018 019 022 033 034 043 044 047 055 057 059 060 074 075 076 080 084.
