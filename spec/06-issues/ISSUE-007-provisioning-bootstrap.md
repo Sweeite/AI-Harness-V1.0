@@ -14,6 +14,16 @@ github: "#7"
 > violation). A builder with **zero conversation history** must be able to open the files named in
 > the Context manifest and build this slice to its Definition of done **without guessing**.
 
+> **🏗️ Build-phase decision to make HERE (deferred to this issue on purpose).** ISSUE-007 is the
+> **first durable product code** (Tier-1 bootstrap, root of the 11-node critical path) — everything
+> before it (ISSUE-001–006) is disposable Tier-0 spike/evidence code that lives in `spikes/<issue>/`.
+> Before writing this slice, **decide the product codebase's home**: a dedicated build repo, a
+> monorepo, or continuing in this repo. This call was **deliberately not forced by a spike** (a
+> spike shouldn't dictate the product's structure); it is parked here because this is the first issue
+> that pours real foundation. Context: stack is **TypeScript/Node (ADR-009)**; infra is Supabase +
+> Inngest (ADR-001/005). Once decided, record it (an ADR or a note here) before building — Rule 0.
+> *(Origin: README "Build" status row + `spec/SESSION-LOG.md` Session 49.)*
+
 ## 1. Goal (one line)
 Stand up a new client deployment via the scripted, idempotent, two-party provisioning flow — Railway link → `DEPLOYMENT_CONFIG` + secrets → `internal_token` mint/dual-store → `client_registry` insert → first-deploy seed → `initialising` — plus per-client OAuth-app registration, the client-side runbook, and the synthetic canary fixture.
 

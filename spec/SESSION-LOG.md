@@ -58,8 +58,10 @@ AF-040/041 (threshold realism over more task types). The declared profile is con
 routes to an AF-040/041 EVAL, not back to this gate.
 
 **Next action:** the operator's choice — continue Tier-0 spikes (recommend **ISSUE-002 RLS-latency**
-next, as it gates the memory critical path 009/023/025), or `git push`. Session-49 changes are committed
-on a branch (not pushed — never push unasked).
+next, as it gates the memory critical path 009/023/025). Session-49 is **committed to `main` and pushed
+to `origin/main`** (operator directed the push; `7cca645` spike + `caf17cc` backlog cleanup). **GitHub
+issue #1 CLOSED** with the result; `_backlog.md` roster + Tier-0 line mark 001 ✅ done. Repo == GitHub,
+in sync. Product-repo home decision is parked in **ISSUE-007's own file** (build-phase callout added).
 
 ---
 
