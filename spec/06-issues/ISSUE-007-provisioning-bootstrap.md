@@ -2,7 +2,7 @@
 id: ISSUE-007
 title: Provisioning + per-client Supabase bootstrap
 epic: A — foundations
-status: ready
+status: in-progress
 github: "#7"
 ---
 
@@ -23,6 +23,16 @@ github: "#7"
 > that pours real foundation. Context: stack is **TypeScript/Node (ADR-009)**; infra is Supabase +
 > Inngest (ADR-001/005). Once decided, record it (an ADR or a note here) before building — Rule 0.
 > *(Origin: README "Build" status row + `spec/SESSION-LOG.md` Session 49.)*
+>
+> **✅ RESOLVED 2026-07-04 → [ADR-010](../../00-foundations/adr/ADR-010-codebase-home.md): a dedicated
+> build repo, separate from this spec repo.** The product codebase (this issue's durable code onward)
+> lives in a new build repo — the "one shared repo" ADR-005 references that Railway deploys per-client;
+> this spec repo stays the Rule-0 requirements source and is not a deploy source. **Build repo created
+> 2026-07-04: [`Sweeite/ai-harness-core`](https://github.com/Sweeite/ai-harness-core) (private; local
+> `~/Desktop/ai-harness-core`).** The operator-independent artifacts (FR-10.PRV.004 runbook, FR-10.PRV.001
+> provisioning scaffold — 4/4 tests green) now live THERE (`runbooks/`, `provisioning/`), not in this repo.
+> Cross-repo spine rule: every build-repo PR cites its ISSUE-/FR-/AC-IDs; this issue records the PR URL at
+> ship (sync ritual).
 
 ## 1. Goal (one line)
 Stand up a new client deployment via the scripted, idempotent, two-party provisioning flow — Railway link → `DEPLOYMENT_CONFIG` + secrets → `internal_token` mint/dual-store → `client_registry` insert → first-deploy seed → `initialising` — plus per-client OAuth-app registration, the client-side runbook, and the synthetic canary fixture.

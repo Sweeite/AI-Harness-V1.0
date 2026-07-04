@@ -17,6 +17,7 @@ Phase 0 because downstream requirements assume their answers. Each ADR follows
 | ADR-007 | Prompt-injection posture (containment-first; detection-as-signal; embedding scan off by default) | Draft → approve | 🟢 Accepted |
 | ADR-008 | Backup & disaster recovery (hourly client-owned off-platform snapshot default + PITR opt-in upsell + operator-verified restore + backup-health on the management-plane push; golden rule = reference source data, don't copy it) | Draft → approve | 🟢 Accepted |
 | ADR-009 | Implementation stack (TypeScript / Node — the language the locked Inngest + Supabase infra is driven from; recorded at build start, ISSUE-001) | Build-start (Rule-0 gap) | 🟢 Accepted |
+| ADR-010 | Product codebase home (a dedicated build repo, separate from this spec repo — the "one shared repo" Railway deploys per-client; spec repo stays the Rule-0 requirements source; recorded at ISSUE-007) | Build-start (deferred to ISSUE-007) | 🟢 Accepted |
 
 More ADRs will be added if component work surfaces further cross-cutting decisions.
 
