@@ -47,8 +47,9 @@ scope/decision change.
 **Next action:** Stage 0 continues — **three** launch-gating spikes remain on the go/no-go set: **ISSUE-004 (restore
 rehearsal, AF-069)**, **005 (brute-force, AF-077)**, **006 (webhook forgery, AF-078)**. All `ready`; none blocks another;
 each flips its AF. R2/R8 still apply (a red spike is a design fork; 004 needs a real backup+restore, 005/006 need real
-auth/webhook endpoints → operator credentials). After all six Tier-0 spikes are GREEN, **Checkpoint 0** closes and **Stage 1
-(`008` migration harness)** opens (R1).
+auth/webhook endpoints → operator credentials). **Checkpoint 0 closes only when all six Tier-0 spike AFs are GREEN *and*
+`007` (Stage-0 GATE — provisioning + per-client Supabase bootstrap, still `ready`) has stood up a real silo** — 007 is
+owed alongside the three remaining spikes. Only then does **Stage 1 (`008` migration harness)** open (R1).
 
 ---
 
