@@ -97,7 +97,7 @@ Gate everything. Not hands-off.
   silo before real client data · login-OAuth per-deployment (OD-175) · AF-069 Path A (PITR restore) before go-live.
 
 ### Stage 1 — Bootstrap  *(OPEN since 2026-07-04 — Checkpoint 0 CLOSED)*
-- 🟠 **GATE — `008` Migration harness (expand-contract) + 0001 baseline** — **`ready`** 🔴 — the whole schema rides on this; build + test it **first** (R3). ⚠️ reset the throwaway `0001_canary_target.sql` on the canary silo before applying the real baseline (ISSUE-008 §7).
+- [x] ✅ **GATE — `008` Migration harness (expand-contract) + 0001 baseline** — **`done`** (session 62, 2026-07-04) 🔴 — `app/silo/` built + applied LIVE to the canary silo (44 tables · 43 CONCURRENTLY indexes · RLS-enable/default-deny · idempotent seed); runner proven idempotent + fail-loud + resumable; **AC-2.VEC.002.1 live**, discipline CI gate (AC-NFR-INF.002.1), and **AF-065 🟢** (AC-NFR-INF.002.2 mixed-fleet spike, live). Evidence `app/silo/results/live-capstone-evidence.2026-07-04.md`. GitHub #8 closed.
 - 🟢 BATCH: `017` Webhook auth (per-vendor) — **`ready`** (blocker 006 done) · `080` Release model (canary/release-train) — **`ready`** (blocker 007 done). Neither is blocked-by `008`, so both are parallel-safe with the gate; gate still tested hardest/first (R3).
 - ◇ **CHECKPOINT 1:** `008` migrations apply *and roll back* cleanly on the provisioned silo; `017`
   rejects forged/replayed webhooks; `080` deploys through the canary gate.

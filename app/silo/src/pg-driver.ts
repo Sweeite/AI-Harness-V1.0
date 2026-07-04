@@ -12,12 +12,21 @@ create table if not exists _migrations (
   tag        text primary key,
   checksum   text not null,
   applied_at timestamptz not null default now()
-);`;
+);
+-- The runner's own tracking table lives in public — enable RLS + default-deny so it is neither
+-- PostgREST-exposed nor a hole in the 0001c fleet-wide RLS-coverage assertion (#2). The runner
+-- connects as the table owner, which bypasses RLS, so its own reads/writes are unaffected.
+alter table _migrations enable row level security;
+revoke all on _migrations from anon, authenticated;`;
 
 export class PgDriver implements MigrationDriver {
   private pool: pg.Pool;
   constructor(connectionString: string) {
-    this.pool = new pg.Pool({ connectionString });
+    // Supabase requires SSL. Enable it unless the URL explicitly disables it (e.g. a local DB with
+    // sslmode=disable). rejectUnauthorized:false is acceptable for this operator-run capstone against
+    // the managed pooler cert.
+    const ssl = /sslmode=disable/.test(connectionString) ? undefined : { rejectUnauthorized: false };
+    this.pool = new pg.Pool({ connectionString, ssl });
   }
 
   async ensureTracking(): Promise<void> {

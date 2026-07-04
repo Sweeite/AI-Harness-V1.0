@@ -2,7 +2,7 @@
 id: ISSUE-008
 title: Migration harness (expand-contract) + 0001 baseline
 epic: A — foundations
-status: in-progress
+status: done
 github: "#8"
 ---
 
@@ -178,10 +178,18 @@ Stand up the Drizzle migration harness on the expand-contract discipline and shi
 - Re-runnability: a halted-then-retried migration re-applies cleanly (migrations.md hard constraint);
   the seed is idempotent (running it twice writes nothing new).
 
-## 10. Build progress (session 62, 2026-07-04) — offline build COMPLETE; live capstone owed
+## 10. Build result (session 62, 2026-07-04) — ✅ DONE (offline build + live capstone both complete)
 
-**Status: `in-progress`.** The offline half is built + verified; the DoD is not met until the
-you-present live capstone (apply + AF-065). Box in `BUILD-SCHEDULE.md` stays unticked; Checkpoint 1 OPEN.
+**Status: `done`.** Offline build + the two-party live capstone against silo `nwufvzaamomajdyzemhx`
+(PG 17.6) both complete. **All DoD ACs met live:** AC-2.VEC.002.1 (memory carries a 1536-d embedding +
+model name), AC-NFR-INF.002.1 (discipline CI gate), **AC-NFR-INF.002.2 / AF-065 🔴→🟢** (live mixed-fleet
+spike: v1 code correct against the vN schema, 0 data loss). Runner proven live — applied 0001a–d, a
+**mid-run `0001c` failure was caught fail-loud + rolled back, then resumed** on re-run, and a further
+re-run was a clean idempotent no-op. Evidence: `app/silo/results/live-capstone-evidence.2026-07-04.md`
++ `af-065-mixed-fleet-spike.sql`. **BUILD-SCHEDULE `008` box ticked.** Live fix: `_migrations` now gets
+RLS+default-deny in `ensureTracking` (a real bug the coverage assertion caught live — #2). **Checkpoint 1
+stays OPEN** — it closes only when the Stage-1 batch (`017`, `080`) is also `done` + the stage integration
+test is green (R1/R4); Stage 2 (009 etc.) does not open until then, so 008's dependents stay `blocked`.
 
 **Built — `app/silo/` (32/32 tests · typecheck · discipline all green):**
 - **Harness (OD-176):** raw-SQL migrations authored to `schema.md`/`indexes.md`/`rls-policies.md`/
@@ -223,14 +231,12 @@ jsonb shape under-specified → seeded fail-closed, real scope owed to **ISSUE-0
 FR-8.REG.001 `client_slug` pattern (OD-096 conflict) reconciled to slug-only. [OD-178] `config_values`
 defaults seed deferred to **ISSUE-010** (config store). §6's config-seed scope reduced accordingly.
 
-**Remaining for `done` (you-present capstone, needs `source ~/.ai-harness-secrets.env`):**
-1. **Reset** the throwaway `app/canary/migrations/0001_canary_target.sql` schema on silo
-   `Transpera-AIOS-V1` (`nwufvzaamomajdyzemhx`) — drop `entities`/`messages`/`memories` (§7 heads-up).
-2. **Apply** 0001a-d live (`DATABASE_URL=<silo> npm run migrate`); confirm re-run is a clean no-op
-   (idempotent) and prove rollback-by-redeploy discipline (Checkpoint 1).
-3. **AF-065** (AC-NFR-INF.002.2) — run `vN` and `vN-1` concurrently against the migrated schema; confirm
-   no data loss / errored path → flip AF-065 🔴→🟢 in `feasibility-register.md`.
-4. On green: **AC-2.VEC.002.1** proven live (write a memory, confirm 1536-dim embedding + model name);
-   flip ISSUE-008 → `done`; tick the BUILD-SCHEDULE 008 box; flip the newly-unblocked dependents
-   (009/010/011/012/022/032/042/081/084) `blocked → ready`; update `_backlog.md`; close GitHub #8.
-   Then the Stage-1 batch (`017`, `080`, already `ready`) + Checkpoint 1 remain to close Stage 1.
+**Capstone completed (session 62) — all steps green:** reset the throwaway canary schema → applied
+0001a-d live via the runner (fail-loud caught a `_migrations`-RLS bug, fixed, resumed) → idempotent
+re-run no-op → verified 44 tables / 0 RLS-off / HNSW exact / seed (6 roles·73 grants·9 fail-closed
+agents·Internal-Org·deployment_settings) → **AC-2.VEC.002.1** live → **AF-065 🟢** live.
+
+**Dependents stay `blocked` (correct — R1):** 008's dependents (009/010/011/012/022/032/042/081/084) are
+all in Stage ≥2. Stage 2 opens only when **Checkpoint 1** is green, which needs the Stage-1 batch
+(`017`, `080`) `done` + the stage integration test — not just 008. So no dependent flips to `ready` yet.
+**Next: build `017` + `080` (both already `ready`), then close Checkpoint 1.**
