@@ -8,8 +8,11 @@
 //
 //   npm run enroll
 //
-// It needs only SUPABASE_URL, SUPABASE_ANON_KEY, TEST_ACCOUNT_EMAIL, TEST_ACCOUNT_PASSWORD — NOT
-// TEST_ACCOUNT_TOTP_SECRET (that is what this produces). Nothing is hard-coded.
+// If the account ALREADY has a factor (from a prior attempt), Supabase refuses to enroll a new one
+// ("AAL2 required to enroll a new factor") and never re-reveals the old secret. So this helper first
+// CLEARS any existing factors via the admin (service_role) API, then enrolls a fresh one with a
+// secret we know. That is why it needs SUPABASE_SERVICE_ROLE_KEY (you already provide it for the
+// spike). It does NOT need TEST_ACCOUNT_TOTP_SECRET — that is what this produces.
 
 import './ws-polyfill.js';
 import 'dotenv/config';
@@ -30,28 +33,53 @@ async function main(): Promise<void> {
 
   const url = need('SUPABASE_URL');
   const anonKey = need('SUPABASE_ANON_KEY');
+  const serviceRoleKey = need('SUPABASE_SERVICE_ROLE_KEY');
   const email = need('TEST_ACCOUNT_EMAIL');
   const password = need('TEST_ACCOUNT_PASSWORD');
 
   const supabase = createClient(url, anonKey, {
-    auth: { autoRefreshToken: false, detectSessionInUrl: false },
+    auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
+  });
+  const admin = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
   });
 
-  // 1. Sign in (enrollment requires an authenticated session).
-  console.log('  [1/4] signing in with email+password…');
+  // 1. Sign in (password grant → an aal1 session; enough to list factors, even if one exists).
+  console.log('  [1/5] signing in with email+password…');
   const signIn = await supabase.auth.signInWithPassword({ email, password });
-  if (signIn.error) {
+  if (signIn.error || !signIn.data.user) {
     console.error(
-      `\n  Sign-in failed: ${signIn.error.message}\n` +
+      `\n  Sign-in failed: ${signIn.error?.message ?? 'no user returned'}\n` +
         '  Create the user first (Supabase → Authentication → Users → Add user) with this\n' +
-        '  email+password, then re-run. If the account already has 2FA, sign-in may require a\n' +
-        '  code — enroll can only run on a fresh (aal1) account.\n',
+        '  email+password, then re-run.\n',
     );
     process.exit(1);
   }
+  const userId = signIn.data.user.id;
 
-  // 2. Enroll a TOTP factor → returns the base32 secret.
-  console.log('  [2/4] enrolling a TOTP factor…');
+  // 2. Clear any existing factors (their secrets are unknown to us / can never be re-read).
+  console.log('  [2/5] checking for existing MFA factors…');
+  const existing = await supabase.auth.mfa.listFactors();
+  const all = existing.data?.all ?? [];
+  if (all.length > 0) {
+    console.log(`        found ${all.length} existing factor(s) with unknown secret(s) — removing to enroll fresh…`);
+    for (const f of all) {
+      const del = await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId });
+      if (del.error) {
+        console.error(
+          `\n  Could not remove existing factor ${f.id}: ${del.error.message}\n` +
+            '  (Is SUPABASE_SERVICE_ROLE_KEY correct? It must be the service_role key, not anon.)\n',
+        );
+        process.exit(1);
+      }
+      console.log(`        removed factor ${f.id} (${f.factor_type ?? 'totp'})`);
+    }
+  } else {
+    console.log('        none — clean account.');
+  }
+
+  // 3. Enroll a fresh TOTP factor → returns the base32 secret.
+  console.log('  [3/5] enrolling a fresh TOTP factor…');
   const friendlyName = `spike-005-${Date.now()}`;
   const enroll = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName });
   if (enroll.error) {
@@ -65,8 +93,8 @@ async function main(): Promise<void> {
   const factorId = enroll.data.id;
   const secret = enroll.data.totp.secret; // base32 shared secret — what the harness needs.
 
-  // 3. Generate the current code from that secret and verify, to activate the factor.
-  console.log('  [3/4] verifying the factor with a generated code (activates it)…');
+  // 4. Generate the current code from that secret and verify, to activate the factor.
+  console.log('  [4/5] verifying the factor with a generated code (activates it)…');
   const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(secret) });
   const challenge = await supabase.auth.mfa.challenge({ factorId });
   if (challenge.error) {
@@ -83,12 +111,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // 4. Done — print the secret to paste into .env.
-  console.log('  [4/4] factor verified + active.\n');
+  // 5. Done — print the secret to paste into .env.
+  console.log('  [5/5] factor verified + active.\n');
   console.log('─'.repeat(72));
   console.log('  Paste this line into spikes/issue-005-brute-force-defense/.env :\n');
   console.log(`  TEST_ACCOUNT_TOTP_SECRET=${secret}`);
-  console.log('\n─'.repeat(72));
+  console.log('\n' + '─'.repeat(72));
   console.log(
     `\n  (factor id ${factorId}, friendly name "${friendlyName}"). The account now requires a\n` +
       '  TOTP code on the password path — exactly the state spike 005 attacks. Keep the secret;\n' +
