@@ -114,16 +114,31 @@ Google production verification is initiated and tracked as a lead-time dependenc
 
 ---
 
+## 4b. Operator-side one-time Railway prerequisite (OD-174 / AF-141)
+
+**This is an operator step, done ONCE for the whole fleet — not per client** (the shared `app/` repo
+is operator-owned, ADR-011). The Railway↔GitHub repo link that provisioning depends on **cannot be
+scripted** — the **Railway GitHub App install + repo authorization is a manual, dashboard/OAuth-only
+gate with no API/CLI path** (⚠️ FEASIBILITY: **AF-141**; `spec/00-foundations/tool-integrations/railway.md` §7).
+
+- [ ] Install the **Railway GitHub App** on the operator GitHub org that owns `Sweeite/AI-Harness-V1.0`,
+  and grant it access to that repo (Railway dashboard → connect GitHub → authorize the App on the org).
+- [ ] Confirm a Railway **Workspace** (or Account) API token exists in the operator secret store — a
+  **project token cannot create projects/services** (AF-142). Treat it as a god-mode credential.
+- [ ] **The provisioning script pre-flight-verifies repo access and FAILS LOUD if the App is absent**
+  (never a silent deploy-from-nothing — #3). Confirm this at the AF-141 SPIKE (part of the AF-004 run).
+
 ## 5. Hand-off to provisioning
 
-When Checkpoints 1–4 are green, the client-side preconditions for FR-10.PRV.001 (the operator-side
-provisioning script) are satisfied:
+When Checkpoints 1–4 (+ the §4b operator prerequisite) are green, the preconditions for FR-10.PRV.001
+(the operator-side provisioning script) are satisfied:
 
 - Client owns Supabase (`ap-southeast-2`) + Anthropic/OpenAI + in-scope connectors, card on each.
 - Operator holds verified delegated access (Supabase service-role + project; connector OAuth admin).
 - Per-client OAuth apps registered; redirect URIs → deployment domain; Google verification in flight.
+- **Operator: Railway GitHub App installed on the shared repo + a Workspace token in the secret store (§4b).**
 
-Proceed to `build/provisioning/` (FR-10.PRV.001). The provisioning script consumes the delegated
+Proceed to `app/provisioning/` (FR-10.PRV.001). The provisioning script consumes the delegated
 credentials from the secure channel; **no secret from this runbook is committed to any repo.**
 
 ---

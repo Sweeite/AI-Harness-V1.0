@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. Next OD number: OD-173.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. Next OD number: OD-175.
 
 ---
 
@@ -2294,3 +2294,44 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 - **Status:** 🟢 RESOLVED (Option A — defer live confirmation to onboarding). **Owed:** AF-090 empirical live-payload
   confirmation + AF-078 per-connector live verification, on ISSUE-017 / 039 / 040 / 041, before each connector ships.
   Checkpoint 0 no longer blocks on the GHL live check; it **still blocks on ISSUE-007** (silo).
+
+---
+
+## OD-173 — Railway "promote to fleet" mechanism: Git-merge, not a native promote primitive 🟡 RECOMMENDATION (2026-07-04, Railway dossier session 59)
+
+- **OD-173** — **Surfaced by the Railway research dossier** (`tool-integrations/railway.md` §7 / AF-064). ADR-005 §2
+  frames a canary→promote release train; the design language ("promotion by fast-forward") is close, but the dossier
+  confirms **Railway has NO native "promote" primitive** between environments (the only cross-env feature is *Sync
+  Environments*, which is config sync, not build promotion). So the *mechanism* must be pinned down before FR-10.DEP.002
+  is built.
+- **Options:** (a) **branch-per-environment + "Wait for CI" gate + Git-merge promotion** — model each stage as a Railway
+  environment whose service tracks a distinct branch (`canary`←`canary` branch, `production`←`main`); "promote to fleet"
+  = merge/fast-forward `canary`→`main`, which auto-deploys the fleet; Railway "Wait for CI" holds each deploy until GitHub
+  checks pass. (b) hope for a native promote (does not exist — rejected). (c) fully manual operator redeploys (loses the
+  canary gate).
+- **Recommendation: (a).** It preserves ADR-005 §2's *decision* (a canary gate before the fleet) exactly; only the
+  *mechanism* is Git rather than a Railway button — which ADR-005 §2 already anticipated ("if Railway's branch model
+  differs, the mechanism changes but the gate stands"). **Owed before FR-10.DEP.002 is Ready:** a live SPIKE of "Wait for
+  CI" scope — it waits on **ALL** GitHub check suites on the commit, not just ours, so a stale/unrelated check can silently
+  `SKIP` a deploy (#3 hazard). Does not change any locked ADR; ADR-005 §2 should cite this OD as the mechanism detail.
+- **Status:** 🟡 RECOMMENDATION — operator to confirm at the AF-064 SPIKE / when FR-10.DEP.002 (ISSUE-080) is built.
+
+## OD-174 — The manual Railway GitHub App install is a consent-gated onboarding step + provisioning pre-flight 🟡 RECOMMENDATION (2026-07-04, Railway dossier session 59)
+
+- **OD-174** ⚠️ **#3 provisioning-input gap — surfaced by the Railway dossier** (`tool-integrations/railway.md` §7 /
+  **AF-141**). ISSUE-007 / FR-10.PRV.001 describe a *scripted, idempotent* provisioning flow, but the Railway↔GitHub repo
+  link the script depends on requires the **Railway GitHub App installed + granted repo access**, and there is **NO API/CLI
+  path** to do that install (dashboard + GitHub OAuth only). Left implicit, an automated run would hit a confusing
+  deploy-from-nothing failure. Two sub-questions: (1) *where* does the install live in onboarding, and (2) *which* GitHub
+  account installs it — the operator org that owns the shared `app/` repo, or the client (the shared repo is operator-owned
+  per ADR-011, so almost certainly the operator, but confirm at the SPIKE).
+- **Options:** (a) **add an explicit consent-gated "install the Railway GitHub App on the repo" step to
+  `app/runbooks/client-onboarding.md`, and have `RailwayInfra` pre-flight-verify repo access and FAIL LOUD if absent**
+  (a missing install blocks provisioning with a clear, actionable error — never a silent half-deploy). (b) leave it implicit
+  (rejected — a silent-failure #3 violation). 
+- **Recommendation: (a).** Because the shared repo is operator-owned (ADR-011), the install is most likely a **one-time
+  operator-org step** (install the Railway GitHub App on the org, grant it the `app/` repo) done once for the whole fleet,
+  not per client — the AF-141 SPIKE confirms this. The per-client runbook still records it as a checked precondition.
+  **Owed:** the AF-141 SPIKE (confirm the installing account + that `serviceConnect` fails loud without it) before AF-004
+  goes green. Feeds the client-onboarding runbook + the `RailwayInfra` pre-flight.
+- **Status:** 🟡 RECOMMENDATION — operator to confirm at the AF-141 SPIKE (part of the AF-004 two-party session).

@@ -160,8 +160,8 @@ Phase-1/2 rate-limit, token-lifecycle, and Realtime requirements.
 
 | ID | Assumption | Method | Status |
 |---|---|---|---|
-| AF-064 | **Railway supports the branch-based canary/release-train + promotion model** (ADR-005 §2): a canary deployment tracking a `release` branch, the fleet tracking `main`, promotion by fast-forward, and **build-history rollback** (§4). If Railway's branch/environment model differs, the *mechanism* changes but the *decision* (a canary gate before the fleet) stands. | DOCS+SPIKE | 🔴 |
-| AF-065 | **Expand-contract migrations keep a mixed-version fleet safe** (ADR-005 §3/§4): a `vN` and a `vN-1` deployment both run correctly against their own schema through a rollout, **and prior code runs against the newer schema** (the rollback premise). Parts 3 + 4 of ADR-005 rest entirely on this. | SPIKE | 🔴 |
+| AF-064 | **Railway supports the branch-based canary/release-train + promotion model** (ADR-005 §2): a canary deployment tracking a `release` branch, the fleet tracking `main`, promotion by fast-forward, and **build-history rollback** (§4). If Railway's branch/environment model differs, the *mechanism* changes but the *decision* (a canary gate before the fleet) stands. **→ DOCS-RESOLVED 2026-07-04 (`tool-integrations/railway.md`): ACHIEVABLE — branch-per-environment (`canary`←canary branch, `production`←`main`) + "Wait for CI" gate + Git-merge promotion; NO native promote primitive (→ OD-173). Build-history rollback = `deploymentRollback` (instant image re-serve), bounded by plan retention (Hobby 72h / Pro 120h); CLI can't do historical rollback (use API). Live SPIKE owed: "Wait for CI" scope (waits on ALL check suites) + `canRollback`.** | DOCS+SPIKE | 🟡 |
+| AF-065 | **Expand-contract migrations keep a mixed-version fleet safe** (ADR-005 §3/§4): a `vN` and a `vN-1` deployment both run correctly against their own schema through a rollout, **and prior code runs against the newer schema** (the rollback premise). Parts 3 + 4 of ADR-005 rest entirely on this. **NOTE (2026-07-04): Railway's *build-history rollback mechanism* is DOCS-confirmed in `tool-integrations/railway.md` (under AF-064); AF-065's claim is expand-contract *migration* safety — a Postgres SPIKE unaffected by the Railway dossier. Unchanged.** | SPIKE | 🔴 |
 | AF-066 | **The synthetic canary corpus + smoke battery is representative enough** (ADR-005 §6/C2) to catch behavioral/data-dependent regressions (retrieval, memory contradiction, agent routing) before promotion — i.e. the canary is not a false sense of safety. Honest limit: it only catches what its fixtures + assertions cover. Shares the AF-001/AF-002 corpus. | EVAL | 🔴 |
 
 ## G. RLS / dynamic-roles feasibility (ADR-006 — verify by SPIKE / LOAD)
@@ -590,9 +590,37 @@ measure delivery latency + drop rate for backgrounded PWAs. **Relied on by:** su
 persisted in-app notification centre (FR-7.ALR.001/006) — **no FR rests on delivery**, so this is fast-follow,
 not launch-gating. **Surfaced by:** the Phase-3 surface-12 spec (flagged for Phase 5) + the Phase-5 harvest.
 
+**AF-141 — Railway GitHub App install + repo authorization is a MANUAL, dashboard/OAuth-only gate (SPIKE — load-bearing).**
+Source: `tool-integrations/railway.md` §7 (2026-07-04). ISSUE-007 / FR-10.PRV.001 / **AF-004** describe a *scripted,
+idempotent* provisioning flow, but the GitHub-repo-link step it depends on requires the **Railway GitHub App installed on
+the GitHub account/org that owns the shared repo and granted access to it** — and there is **NO API or CLI path** to install
+or authorize it (dashboard + GitHub OAuth only). The unproven assumption: that per-client provisioning can be fully unattended.
+**Reality:** the script automates everything *after* the install; the install itself is a one-time human step. **The
+provisioner MUST pre-flight-verify repo access and fail loud if the GitHub App is absent** (never a silent deploy-from-nothing
+— #3). **Method:** SPIKE (attempt `serviceConnect` on a repo without the App → expect a clear auth error; then with it →
+success; confirm *which* account installs it — operator org vs client). **Relied on by:** FR-10.PRV.001, AF-004, the AF-004
+two-party run, OD-174. **Fails safe:** the pre-flight check converts a silent failure into a loud, actionable onboarding blocker.
+
+**AF-142 — Automated provisioning needs a Workspace/Account token; project tokens can't create (SPIKE).**
+Source: `tool-integrations/railway.md` §2 (2026-07-04). A Railway **project token** is scoped to an *existing* environment and
+(per docs) cannot `projectCreate`/`serviceCreate`, so `RailwayInfra` structurally needs a **Workspace or Account token** —
+whose blast radius is **every client project in the workspace** (a god-mode credential if leaked). The unproven assumptions:
+(a) that a project token genuinely can't create resources (asserted by scope wording, not an explicit prohibition), and
+(b) least-privilege custody holds. **Method:** SPIKE (project-token `projectCreate` → expect scope error; Workspace-token →
+success). **Relied on by:** `RailwayInfra` token custody, NFR-SEC (secrets custody, Phase 5). **Fails safe:** token held only
+in the operator secret store, never in repo/build; every provisioning call audit-logged.
+
+**AF-143 — Railway GraphQL mutation names/inputs (incl. `templateDeployV2`) are doc-thin/undated; validate vs live schema (SPIKE/DOCS).**
+Source: `tool-integrations/railway.md` §4/§7 (2026-07-04). Railway docs pages carry **no last-updated dates**, and several
+load-bearing mutations (`serviceConnect`, `serviceInstanceUpdate.rootDirectory`, `deploymentRollback`, and especially
+`templateDeployV2` — confirmed only via Help Station, `V2` suffix implies churn) are not fully spec'd in primary prose. The
+unproven assumption: the exact mutation names + input shapes the adapter codes against are current. **Method:** introspect the
+live schema at `railway.com/graphiql` before marking any Railway-citing FR Ready. **Relied on by:** every `RailwayInfra`
+operation. **Fails safe:** the AF-004 two-party session runs each mutation against live infra, catching any drift immediately.
+
 ---
 
-> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-140
+> This register grows as each ADR and component surfaces new assumptions. Next AF number: AF-144
 > (priority spikes use AF-001–004; vendor block A uses AF-010–021; behavioral block B uses AF-030–035;
 > cost block C uses AF-040–043, 044–049 reserved for cost overflow; performance block D uses AF-050–052;
 > concurrency block E uses AF-061–063; deploy block F uses AF-064–066; RLS block G uses AF-067; injection
@@ -600,5 +628,6 @@ not launch-gating. **Surfaced by:** the Phase-3 surface-12 spec (flagged for Pha
 > **Component-0 block K uses AF-078**; **Component-1 block L uses AF-079–081**; **Component-2 block M uses
 > AF-082**; **Component-3 block N uses AF-083–110**; **Component-4 block O uses AF-111**; **Component-5
 > block P uses AF-112–115**; **Component-6 block Q uses AF-116–117**; **Component-7 block R uses AF-118–120,
-> AF-139**; **Component-8 block S uses AF-121–126**; **Component-9 block T uses AF-127–131**).
+> AF-139**; **Component-8 block S uses AF-121–126**; **Component-9 block T uses AF-127–131**; **Railway dossier block
+> uses AF-141–143** — `tool-integrations/railway.md`).
 > Items are not blockers to *writing* the spec — they are commitments to *test* before/while building.

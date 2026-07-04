@@ -1,0 +1,17 @@
+{
+  "name": "@harness/canary",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Synthetic-client canary corpus + idempotent seed (FR-10.PRV.003 / NFR-INF.008). C10 owns the corpus; smoke-battery assertions live in C2/C5/C8.",
+  "type": "module",
+  "scripts": {
+    "seed:dry": "tsx src/index.ts",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
