@@ -17,6 +17,15 @@ github: "#23"
 ## 1. Goal (one line)
 Make every memory searchable by vector: embed content on write with the single configured model, index it with pgvector HNSW from day one, and provide the zero-downtime expand-contract path for changing the embedding model — the searchable-brain substrate that retrieval (ISSUE-025) ranks over.
 
+> **⚠️ MEASURED BUILD BLOCKER (from ISSUE-002 / AF-067 spike, 2026-07-04 — no longer paper, AF-019):** with the
+> clearance RLS predicate present, the pgvector planner **defaults to a full Seq Scan (~19 s on 50k rows)** instead of
+> the HNSW index (**~63 ms forced**) — a **~300× cliff**. The index composes correctly with RLS; the planner just won't
+> pick it under the filter without help. **This slice MUST guarantee the HNSW index is used under the clearance
+> predicate** (e.g. `hnsw.iterative_scan='relaxed_order'` + `enable_seqscan` handling / partial indexes / cost tuning),
+> and the `ef_search` dial must be validated **with the RLS predicate applied**, not on bare ANN. Evidence:
+> `spikes/issue-002-rls-latency/results/af-067-evidence.2026-07-04.md` (finding f′). Without this, retrieval is
+> non-viable regardless of correct embeddings.
+
 ## 2. Scope — in / out
 **In:** The C2 **VEC** area group — the HNSW index DDL with its tuned parameters (`m=16`, `ef_construction=64`, query-time `ef_search`); the embed-on-write behaviour (single model, default `text-embedding-3-small` / 1536 dims, model name recorded per row); the embedding-model change as an expand-contract migration (`embedding_v2` column → background re-embed → 100%-reconcile gate → read-switch → contract/rebuild). This slice **owns** the `embedding`, `embedding_model`, `embedding_v2` columns' meaning and the `memories_embedding_hnsw` index, and the `ef_search` recall/latency dial as it applies to the index. The embedding-failure-halts-commit guard (FR-2.WRT.007) is **referenced** here as a hard boundary condition on the write but is **built and owned by ISSUE-024** (the write path); this slice provides the index and embed step it plugs into.
 **Out:** The write/sole-writer path, contradiction check, validate-and-commit, and the embedding-failure retry queue itself — ISSUE-024 (C2 WRT). Entity/memory row schema authoring and tagging — ISSUE-022 (C2 MEM/ENT/TAG). The retrieval pipeline, dual-search, clearance-before-ranking, ranking formula, and answer modes that *consume* this index — ISSUE-025 (C2 RET). The migration harness / expand-contract tooling this migration runs on — ISSUE-008. The RLS predicate that composes with the ANN scan — ISSUE-009/020 (C1 RLS).

@@ -1,0 +1,22 @@
+{
+  "name": "issue-002-rls-latency",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "ISSUE-002 spike: prove live data-driven RLS (the (select …) initPlan predicate) composes with pgvector ranking on the retrieval hot path within the paper latency budget (AF-067 gate). See ../../spec/06-issues/ISSUE-002-rls-latency-spike.md",
+  "scripts": {
+    "spike": "tsx src/main.ts",
+    "spike:teardown": "tsx src/main.ts --teardown-only",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

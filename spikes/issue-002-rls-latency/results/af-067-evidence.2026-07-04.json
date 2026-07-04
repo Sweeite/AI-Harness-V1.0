@@ -1,0 +1,58 @@
+{
+  "verdict": "PASS",
+  "date": "2026-07-04",
+  "env": {
+    "serverVersion": "17.6",
+    "pgvector": "0.8.2",
+    "efSearch": 40
+  },
+  "corpus": {
+    "memories": 50000,
+    "users": 20,
+    "roles": 6,
+    "entities": 200
+  },
+  "initPlan": {
+    "initPlanOverheadMs": 1.056,
+    "initPlanLoops": [
+      1,
+      1,
+      0,
+      1
+    ],
+    "executionMs": 9.418,
+    "oncePerStatement": true,
+    "passOverhead": true
+  },
+  "cliff": {
+    "wrappedFullScanMs": 758.828,
+    "bareFullScanMs": 1866.283,
+    "bareTimedOut": false,
+    "bareTimeoutMs": 60000,
+    "cliffFactor": 2.459
+  },
+  "lint": {
+    "pass": true,
+    "policy": "memories_clearance",
+    "qual": "((ARRAY[visibility] <@ ( SELECT user_visibility(auth.uid()) AS user_visibility)) AND (ARRAY[sensitivity] <@ ( SELECT user_clearances(auth.uid()) AS user_clearances)) AND ((sensitivity <> 'restricted'::text) OR (entity_ids && ( SELECT user_restricted(auth.uid()) AS user_restricted))) AND (( SELECT user_aal() AS user_aal) = 'aal2'::text))",
+    "violations": []
+  },
+  "p95": {
+    "n": 200,
+    "min": 0.655,
+    "p50": 0.765,
+    "p95": 0.899,
+    "p99": 58.802,
+    "max": 64.379,
+    "mean": 1.682,
+    "restrictedUserP95": 0.818,
+    "passP95": true
+  },
+  "planner": {
+    "defaultPlannerMs": 19415.492,
+    "defaultUsesSeqScan": true,
+    "indexPathMs": 62.998,
+    "indexPathUsesSeqScan": false,
+    "speedup": 308.192
+  }
+}

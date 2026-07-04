@@ -82,7 +82,7 @@ Gate everything. Not hands-off.
 - 🟠 **GATE — `007` Provisioning + per-client Supabase bootstrap** 🧑 — root of the critical path; two-party (your accounts + a runbook).
 - 🟢 BATCH (spikes — each ends in a PASS/FAIL AF flip):
   - [x] `001` SPIKE cost viability ✅ (AF-001 🟢, $2.09/day)
-  - [ ] `002` SPIKE RLS hot-path latency  🔴
+  - [x] `002` SPIKE RLS hot-path latency ✅ (AF-067 🟢 — initPlan 1.06 ms/stmt once-per-stmt, lint PASS, retrieval p95 0.9 ms; ⚠️ surfaced AF-019 planner-seqscan cliff → ISSUE-023)  🔴
   - [ ] `003` SPIKE injection containment red-team  🔴
   - [ ] `004` SPIKE restore actually works  🔴
   - [ ] `005` SPIKE brute-force / credential defense  🔴

@@ -30,8 +30,8 @@
 - **Type:** threshold.
 - **Upholds:** quality (if the clearance predicate blows the latency budget the product is unusable) + #2 (the predicate is not dropped for speed).
 - **Implemented by:** FR-1.RLS.* · FR-2.RET.004 (clearance/visibility filter at retrieval) · ADR-006 §D3/Axis-3 (the `(select …)` initPlan binding rule).
-- **Target / threshold:** RLS `(select …)` initPlan predicate overhead **< ~50 ms per statement** on the hot path — *to be CONFIRMED by AF-067 — NOT yet proven (paper target)*. The per-row cliff (a bare `STABLE` helper re-evaluated per row: Supabase-measured 178,000 ms → 12 ms once wrapped) is an avoided footgun, not an open risk — the `(select …)` wrapper + indexed policy columns + `TO authenticated` scoping + the `auth_rls_initplan` lint (0003) in CI are binding implementation rules (ADR-006, AF-067).
-- **Verification:** **LOAD — AF-067** (validate initPlan latency at scale under a realistic permission/memory batch). Fallback if it fails at scale: denormalise permissions into JWT claims (the rejected D2), accepting a staleness window → OOS-012.
+- **Target / threshold:** RLS `(select …)` initPlan predicate overhead **< ~50 ms per statement** on the hot path — **✅ CONFIRMED by AF-067 (ISSUE-002, 2026-07-04): measured 1.06 ms/statement, evaluated once per statement (loops = [1,1,0,1], not per row), lint 0003 PASS** on real Supabase (PG 17.6 / pgvector 0.8.2, 50k memories). The per-row cliff (a bare `STABLE` helper re-evaluated per row: Supabase-measured 178,000 ms → 12 ms once wrapped; ISSUE-002 reproduced the direction — bare 2.5× slower on a `count(*)` scan) is an avoided footgun, not an open risk — the `(select …)` wrapper + indexed policy columns + `TO authenticated` scoping + the `auth_rls_initplan` lint (0003) in CI are binding implementation rules (ADR-006, AF-067).
+- **Verification:** **LOAD — AF-067 ✅ PASS 2026-07-04** (`spikes/issue-002-rls-latency/` → `results/af-067-evidence.2026-07-04.md`). Fallback (if it had failed at scale): denormalise permissions into JWT claims (the rejected D2), accepting a staleness window → OOS-012 — **NOT triggered**.
 - **Launch gate:** **blocking** (RP-1) — AF-067 is one of the six blocking spikes: if RLS blows the latency budget the product is unusable.
 - **Acceptance criteria:**
   - AC-NFR-PERF.001.1 — Given a retrieval on a large memory batch under a realistic clearance predicate, When AF-067 measures it, Then the RLS initPlan overhead is within the stated budget and the predicate is evaluated once per statement (not per row).
@@ -58,12 +58,12 @@
 - **Type:** threshold.
 - **Upholds:** quality (this is the single load-bearing usefulness property of the system).
 - **Implemented by:** FR-2.RET.* (dual-search + ranking).
-- **Target / threshold:** retrieval **end-to-end p95 < 2 s** (clearance filter + vector/keyword + ranking) **and** relevance judged adequate against a realistic corpus — *both to be CONFIRMED by AF-002 (relevance/ranking) and AF-067 (latency) — NOT yet proven (paper target)*.
+- **Target / threshold:** retrieval **end-to-end p95 < 2 s** (clearance filter + vector/keyword + ranking) **and** relevance judged adequate against a realistic corpus. **Latency half ✅ CONFIRMED by AF-067 (ISSUE-002, 2026-07-04): clearance-filtered vector top-k p95 = 0.9 ms on the HNSW index** (50k memories, real Supabase). **Relevance half still AF-002 (EVAL, not yet proven).** ⚠️ Latency PASS is conditional on the pgvector planner using the HNSW index under the RLS filter — by default it picks a full Seq Scan (~19 s); **ISSUE-023 must force index usage (AF-019)**.
 - **Verification:** **SPIKE+EVAL — AF-002** (load ~100 real memories, run dual-search + ranking, judge relevance; validates ranking weights). Re-ranking + HyDE are **off by default** in the v1 cost model — justified only if AF-002 earns them.
 - **Launch gate:** **fast-follow** — the accuracy EVAL ships behind the human-in-loop / answer-mode-pill postures that already de-risk a thin result; it does not block go-live.
 - **Acceptance criteria:**
   - AC-NFR-PERF.003.1 — Given the AF-002 corpus, When dual-search + ranking runs, Then relevant memories rank above noise at the judged threshold and the ranking weights are validated.
-  - AC-NFR-PERF.003.2 — Given a retrieval on the hot path, When measured, Then end-to-end latency meets the stated p95 target (gated by AF-067).
+  - AC-NFR-PERF.003.2 — Given a retrieval on the hot path, When measured, Then end-to-end latency meets the stated p95 target (gated by AF-067). **✅ Verified 2026-07-04 (AF-067 PASS, p95 0.9 ms) — conditional on ISSUE-023 forcing HNSW index usage under RLS (AF-019).**
 - **Notes / OD:** AF-034 rides on AF-002 (whether slot-fill Maturity predicts usefulness); if retrieval is noisy the one-substrate coupling is revisited.
 
 ### NFR-PERF.004 — Entity-resolution accuracy at scale

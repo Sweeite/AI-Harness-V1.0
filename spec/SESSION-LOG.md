@@ -5,6 +5,43 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 52 — 2026-07-04 — ISSUE-002 built + run + PASS: AF-067 (RLS hot-path latency) flipped 🟢; AF-019 planner cliff surfaced
+
+**What happened:** Pulled main (synced `BUILD-SCHEDULE.md` etc.), then built the next `ready` Stage-0 gate —
+**ISSUE-002 (RLS hot-path latency spike)** — on the operator's **real Supabase** (PG 17.6 / pgvector 0.8.2). Full
+runnable harness `spikes/issue-002-rls-latency/` (mirrors the ISSUE-001 house style: `src/` modules 1:1 with the
+issue §8 build order, dated evidence in `results/`, README, AF-evidence block). **AF-067 PASS → 🟢.**
+
+**Measured (50k memories · 20 users · 6 roles, heaviest restricted predicate):**
+- **initPlan overhead 1.06 ms/statement** (< 50 ms target), initPlan **loops = [1,1,0,1] → once-per-statement confirmed**
+  (not per row) — AC-NFR-PERF.001.1 PASS.
+- **`auth_rls_initplan` lint (splinter 0003 replica) PASS** — every `auth.*`/helper call wrapped in `(select …)`,
+  all policy columns indexed — AC-NFR-PERF.001.2 PASS.
+- **Cliff proven** on a `count(*)` full scan (no vector math to mask it): bare per-row policy **2.5× slower** than
+  wrapped (modest ratio — helpers hit tiny indexed tables; direction + mechanism identical to Supabase's 178,000→12).
+- **Clearance-filtered vector top-k p95 = 0.9 ms** on the HNSW index (< 2 s) — AC-NFR-PERF.003.2 PASS (latency half).
+- **OOS-012 (D2 JWT-cache fallback) NOT triggered.**
+
+**⚠️ Surfaced a real AF-019 finding (NOT an AF-067 failure — logged, not hidden, per #3):** with the RLS clearance
+predicate present, the **pgvector planner defaults to a full Seq Scan (~19 s)** instead of the HNSW index (**~63 ms
+forced**) — a **~300× cliff**. The index composes correctly with RLS; the planner just won't pick it under the filter
+without help. This is now a **measured hard requirement for ISSUE-023** (force index usage: `hnsw.iterative_scan` /
+partial indexes / cost tuning) — recorded in AF-019 (register F10 + status), ISSUE-023 (new ⚠️ callout), performance.md,
+backlog, BUILD-SCHEDULE, README.
+
+**Files changed (sync ritual — all trackers in one commit):** new `spikes/issue-002-rls-latency/` (+ evidence);
+`feasibility-register.md` (AF-067 🔴→🟢, AF-019 F10/status strengthened); `ISSUE-002` frontmatter `ready→done`;
+`ISSUE-023` measured-blocker callout; `BUILD-SCHEDULE.md` Stage-0 002 ✅; `_backlog.md` (roster + Tier-0 roll-up);
+`README.md` build row; `performance.md` NFR-PERF.001/003 (paper→confirmed, latency half). No scope/decision change.
+
+**Next action:** Stage 0 continues — three launch-gating spikes remain on the go/no-go set: **ISSUE-003 (injection
+containment, AF-068)**, **004 (restore rehearsal, AF-069)**, **005 (brute-force, AF-077)**, **006 (webhook forgery,
+AF-078)**. None blocks another; each flips its AF. R2/R8 still apply (a red spike is a design fork; spikes need the
+operator's credentials/keys). After all six Tier-0 spikes are GREEN, Checkpoint 0 closes and Stage 1 (`008` migration
+harness) opens.
+
+---
+
 ## Session 51 — 2026-07-03 — CLAUDE.md wired to the build schedule + a build-status sync contract
 
 **What happened:** Operator asked that `CLAUDE.md` check the schedule before a build session starts and keep

@@ -2,7 +2,7 @@
 id: ISSUE-002
 title: "SPIKE: RLS hot-path latency (initPlan predicate + clearance-before-rank)"
 epic: "S — spikes"
-status: ready
+status: done
 github: "#2"
 ---
 
