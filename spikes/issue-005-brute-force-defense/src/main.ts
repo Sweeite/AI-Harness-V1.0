@@ -6,6 +6,7 @@
 // R8 "you-present": this drives a REAL scripted attack at a REAL Supabase project. It REFUSES TO
 // RUN and prints the required env vars if any are absent — never a silent pass with no target (#3).
 
+import './ws-polyfill.js';
 import 'dotenv/config';
 import { requireEnv } from './auth.js';
 import { EventLog } from './eventlog.js';

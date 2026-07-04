@@ -11,6 +11,7 @@
 // It needs only SUPABASE_URL, SUPABASE_ANON_KEY, TEST_ACCOUNT_EMAIL, TEST_ACCOUNT_PASSWORD — NOT
 // TEST_ACCOUNT_TOTP_SECRET (that is what this produces). Nothing is hard-coded.
 
+import './ws-polyfill.js';
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import * as OTPAuth from 'otpauth';
