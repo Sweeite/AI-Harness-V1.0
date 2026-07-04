@@ -5,6 +5,35 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 60 — 2026-07-04 — 🟢 **AF-004 PASS** (two-party live run): operator Railway → client-owned Supabase, end-to-end. ISSUE-007 stays `in-progress` (canary live seed + `RailwayInfra` codification owed). Checkpoint 0 still OPEN.
+
+**What happened:** With the operator present, stood up **real infra** and ran the load-bearing **AF-004** provisioning spike end-to-end — the one red gate blocking Checkpoint 0. **PASS.** Evidence: `app/provisioning/results/af-004-evidence.2026-07-04.md`; AF-004 flipped 🔴→🟢 in the feasibility register.
+
+**Infra stood up (real, this session):**
+- **Supabase CLI** authenticated (operator PAT, session-only). **Management-plane project `ai-harness-mgmt`** (ref `fsvbtasizctwnypksile`, Sydney) created; **`app/management/migrations/0001_client_registry.sql` applied** (table + `client_status` enum verified against schema §13). **Client silo** = the operator's existing **`Transpera-AIOS-V1`** (ref `nwufvzaamomajdyzemhx`, `ap-southeast-2`).
+- **Railway CLI** installed (5.23.3) + `libpq`/psql 18.4. Authenticated via **browser-pairing login** (no god-mode token pasted). Operator had already created project **`adaptable-miracle`** and **linked the `AI-Harness-V1.0` repo — confirming the AF-141 GitHub-App install is a manual, no-API dashboard step** (done, provisioning then proceeded).
+
+**AF-004 proven (each a sub-claim) — evidence file has the detail:**
+- **GitHub-native deploy from a subdirectory:** Root Directory set to **`/app/service`** via `serviceInstanceUpdate`; pushed `324ae79` to `main` (operator-approved) → Railway auto-built **only `app/service`** → deploy **`SUCCESS`**.
+- **Env/secret injection:** all 7 `REQUIRED_SECRETS` present (Anthropic/OpenAI set by the operator in the Railway UI — never transited the chat; the other 5 set via `variableCollectionUpsert skipDeploys:true`).
+- **`internal_token` dual-stored** (Railway env + mgmt `client_registry.internal_token`); **`client_registry` row** written (`client_slug=canary`, `status=initialising`, `railway_url` set).
+- **Boot + reachability gate:** `GET https://ai-harness-v10-production.up.railway.app/health → 200 {"ok":true,"missingSecrets":[],"supabaseReachable":true}` — the deployed Railway service **reached the client-owned Supabase silo**; Railway's healthcheck gated the deploy live only on that 200.
+- **Railway GraphQL mutations validated live (AF-143 partial):** `serviceInstanceUpdate`, `variableCollectionUpsert`/`variableUpsert`, `serviceDomainCreate`, `deployments` query — all as the dossier predicted.
+
+**Honest remainder — why ISSUE-007 is NOT `done` and Checkpoint 0 stays OPEN (R1):**
+1. **Canary live seed** — build `SupabaseSeed` (the `app/canary` live adapter) + seed the corpus into the silo (FR-10.PRV.003 live half). Corpus + idempotent seed already built/tested (6/6); only the live adapter + run remain.
+2. **`RailwayInfra` codification** — fold this session's direct GraphQL/CLI calls into `app/provisioning/src/infra.ts` (replace `TODO(AF-004)`) so provisioning is the scripted idempotent flow FR-10.PRV.001 requires, not hand-run steps.
+3. **Login-OAuth** — `LOGIN_OAUTH_*` are placeholders (real per-deployment registration is FR-10.PRV.002 / per-onboarding).
+4. The real **C0/C1 first-boot seed** (`initialising→active`) is a separate issue's code — AF-004 proved the plumbing that *triggers* it (ISSUE-007 §2 scope), not the seed.
+
+**Secrets hygiene:** all keys/tokens/passwords (Supabase PAT, service-role keys, mgmt DB password, Railway session token, `internal_token`) held **session-only** in the scratchpad (`chmod 600`), **never committed**; the evidence file redacts them. Operator can revoke the Supabase PAT + Railway CLI session anytime.
+
+**Files changed (sync ritual):** new `app/provisioning/results/af-004-evidence.2026-07-04.md`; `feasibility-register.md` **AF-004 🔴→🟢** (with the honest caveat); `ISSUE-007` new §10 live-result + remainder (status stays `in-progress`); `README.md` build row; this entry. **NOT touched (correct):** ISSUE-007 status stays `in-progress`; `BUILD-SCHEDULE.md` `007` box unticked; Checkpoint-0 box OPEN (R1); GitHub #7 open.
+
+**Next action (START HERE):** finish ISSUE-007 → close Checkpoint 0. (1) Build `SupabaseSeed` + run the canary live seed into the silo (`nwufvzaamomajdyzemhx`); (2) codify `RailwayInfra` from the proven calls; (3) then decide whether login-OAuth + the C0/C1 seed integration are in-scope for `007 done` or split to their issues; (4) on `done`: flip ISSUE-007 → `done`, tick its `BUILD-SCHEDULE.md` box, close GitHub #7 — **only then Checkpoint 0 closes and Stage 1 (`008`) opens (R1)**. Live infra + CLIs are ready; the operator's Supabase PAT + Railway session persist on this machine.
+
+---
+
 ## Session 59 — 2026-07-04 — ISSUE-007 (`in-progress`): built EVERY infra-independent piece — canary fixture (FR-10.PRV.003, 6/6) + management `client_registry` DDL + deployable boot stub (5/5) + the **Railway research dossier** (12 dims, 8-agent fan-out) with registers filed (AF-141–143, OD-173/174). Only the two-party **AF-004 live run** remains. Checkpoint 0 stays OPEN.
 
 **Context:** operator chose "do both" — build the no-infra remainder AND set up infra (operator **has Supabase Pro**; **Railway not yet set up**; has Anthropic + OpenAI keys). Since the live AF-004 run needs Railway, this session pushed every no-infra prerequisite to done so the eventual two-party session is a true "run it," not a build-from-scratch.

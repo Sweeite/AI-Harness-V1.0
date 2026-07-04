@@ -11,3 +11,6 @@ dist/
 
 # spike dry-run artifacts (mock tokens — not evidence)
 spikes/*/results/*.dryrun.*
+
+# Supabase CLI local cache (linked-project, temp)
+supabase/
