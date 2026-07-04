@@ -5,6 +5,62 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 56 — 2026-07-04 — ISSUE-004 run + PASS: AF-069 🟢 (restore rehearsal, Path B) — 5 of 6 Stage-0 spike AFs now GREEN
+
+**What happened:** With the operator present, ran the **ISSUE-004** restore-rehearsal harness against **real
+Supabase infra** and it **PASSED** on Path B — **AF-069 🔴→🟢**. Full sync ritual done. **5 of 6 Stage-0 spike AFs
+are now GREEN (001/002/003/004/005); only 006 (webhook, AF-078) + the 007 GATE remain.**
+
+**Setup the operator provided (R8):** the spike-5 project reused as the **source** (direct conn, PG 17.6, pgvector
+0.8.2) + a **throwaway target** project (direct conn). Installed the Postgres client tools on the operator's Mac
+(`brew install libpq` → pg_dump/pg_restore/psql 18.4, keg-only → prepended to PATH at run time).
+
+**The real work — a genuine finding + harness fix (not a rubber-stamp):** the subagent-built harness used a naive
+"whole-DB `pg_restore --clean` into an empty project" strategy that **DOES NOT WORK against a Supabase target** — its
+`auth` schema is **managed** (217 objects owned by `supabase_auth_admin`), and the restoring `postgres` role cannot
+drop/recreate it (`pg_restore: error: must be owner of table webauthn_credentials`). Diagnosed empirically (ran it,
+captured the failure, inspected the dump TOC): also learned `memories.embedding` is type **`extensions.vector(1536)`**
+(pgvector lives in Supabase's `extensions` schema, not dumped). **Reworked `dump.ts` + `restore.ts` to a Supabase-
+correct strategy:** (1) ensure `extensions.vector` exists on the target; (2) restore the **`public`** schema
+(memories + embeddings) cleanly (postgres owns public); (3) load only the **`auth.users` ROWS** data-only into the
+target's existing managed auth.users (cleared first for idempotent re-runs) — never restoring the managed auth schema
+structurally. Also moved the target env-read to AFTER the restore (so the evidence reports the target's pgvector
+version accurately, not the pre-restore "not installed").
+
+**Result (all 5 assertions green — evidence `spikes/issue-004-restore-rehearsal/results/af-069-evidence.2026-07-04.md`):**
+- **5000/5000 memories restored, embeddings intact** (0 null, 0 wrong-dimension), and a **cosine `<=>` similarity
+  query returns top-5** on the restored target — pgvector memory survives the backup→restore (AC-NFR-DR.003.1).
+- **25/25 `auth.users` rows restored + a sampled user resolves** on the target — identity survives.
+- **Measured RTO 19.4 s** (harness wall-clock; AC-NFR-DR.005.1 — a measured number, not the assumed "minutes-to-
+  hours"). First manual rehearsal logged (AC-NFR-DR.003.2; the automated cadence is ISSUE-085).
+
+**⚠️ Honesty — Path A NOT exercised (recorded, not hidden):** only **Path B** (the off-platform `pg_dump` → restore)
+ran — that's the load-bearing #1 guarantee (the client-owned copy that survives project deletion/billing-lapse).
+**Path A** (Supabase's in-project PITR/daily backup restored into a throwaway) was the optional operator-driven step
+and was **skipped**; also note Supabase in-project backups restore **in-place**, not into a throwaway, so the harness
+structurally can't drive it. The evidence + register record Path A as **not-proven**; **residual: confirm the in-
+project/PITR restore on the real production tier before go-live.** AF-069 is flipped GREEN on the proven off-platform
+path with this caveat explicit everywhere — not a silent full-green.
+
+**Files changed (sync ritual — all trackers in lockstep):** `feasibility-register.md` AF-069 🔴→🟢 (Path-B PASS
+summary + Path-A residual); `ISSUE-004` frontmatter `in-progress→done` + Result note; `BUILD-SCHEDULE.md` Stage-0
+`004` box ✅; `_backlog.md` Epic-S row (done) + Tier-0 roll-up; `README.md` build row; reworked harness
+`spikes/issue-004-restore-rehearsal/src/{dump,restore,main}.ts`; new evidence `results/af-069-evidence.2026-07-04.{md,json}`
+(+ stale `PENDING.md` removed; local `*.dump` artifacts gitignored + deleted at teardown — they hold real data).
+**GitHub #4 closed** with the result. **NOT touched:** Checkpoint-0 box (stays OPEN — 006 + 007 owed), AF-078 (stays 🔴).
+No OD (the spike passed; Path A is a recorded residual, not a design fork).
+
+**Next action:** one you-present spike remains — **ISSUE-006 (webhook, AF-078)**: harness built + MODE-M-validated
+(17/17 forgery/replay cases; parse-before-verify proof holds), needs **MODE R** = a **live captured GHL webhook
+payload** (raw body + `X-GHL-Signature` headers) + **GHL's published Ed25519 public key + source URL** to resolve
+**AF-090** and assert against real vendor signatures. Plus **ISSUE-007** (Stage-0 GATE, still `ready`) must stand up a
+real per-client silo — its harness/runbook is **not yet built** (next build task; it will need the operator's Supabase
+org access). **Checkpoint 0 closes only when all six spike AFs are GREEN (001/002/003/004/005 ✅; 006 owed) AND 007 has
+stood up a silo** — only then does Stage 1 (`008`) open (R1). Also a **residual**: Path A (in-project/PITR restore)
+verification for AF-069 before go-live. Do not tick the Checkpoint-0 box early.
+
+---
+
 ## Session 55 — 2026-07-04 — ISSUE-005 run + PASS: AF-077 🟢 (brute-force/credential-stuffing) — first you-present spike flipped GREEN on real infra
 
 **What happened:** With the operator present, ran the **ISSUE-005** harness against a **live throwaway Supabase

@@ -121,18 +121,20 @@ async function main() {
       console.log('  [2/6] PATH B — pg_dump of source (off-platform copy, ADR-008 §2)…');
       const dump = makeDump(process.env.SOURCE_DB_URL!, date);
       console.log(
-        `        ${dump.reused ? 'using pre-existing artifact' : 'dumped'}: ` +
-          `${dump.artifactPath} (${(dump.bytes / 1e6).toFixed(2)} MB)`,
+        `        ${dump.reused ? 'using pre-existing public artifact' : 'dumped'}: ` +
+          `public schema + auth.users rows (${(dump.bytes / 1e6).toFixed(2)} MB)`,
       );
 
       const target = poolFor(process.env.TARGET_DB_URL!, 'TARGET_DB_URL');
       pools.push(target);
-      targetBEnv = await readEnv(target);
 
       console.log('  [3/6] PATH B — pg_restore into throwaway target (timed)…');
       const { result: restore, seconds } = timeRestoreSync(() =>
-        restorePathB(dump.artifactPath, process.env.TARGET_DB_URL!),
+        restorePathB(dump.publicArtifact, dump.authArtifact, process.env.TARGET_DB_URL!),
       );
+      // Read the target environment AFTER the restore — the restore step installs the pgvector
+      // extension on the target, so reading before would (mis)report it as not installed.
+      targetBEnv = await readEnv(target);
       const rtoB: Rto = rtoForB(seconds);
       console.log(`        restored in ${seconds.toFixed(1)} s (measured RTO, harness wall-clock)`);
 

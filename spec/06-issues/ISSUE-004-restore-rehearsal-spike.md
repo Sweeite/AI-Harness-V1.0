@@ -2,18 +2,26 @@
 id: ISSUE-004
 title: "SPIKE — restore actually works (DB + pgvector + auth) end-to-end"
 epic: S — spikes
-status: in-progress
+status: done
 github: "#4"
 ---
 
 # ISSUE-004 — SPIKE: restore actually works (DB + pgvector + auth)
 
-> **Build status — in-progress (Session 54, 2026-07-04).** Runnable harness built at
-> `spikes/issue-004-restore-rehearsal/` (TS/Node, ADR-009); typechecks; **not yet run**. This is an
-> **R8 "you-present" spike** — it needs the operator's real Supabase source + throwaway target(s) +
-> backup-ops credentials to run (see the harness README "What I need from the operator"). **AF-069
-> stays 🔴** and Checkpoint 0 stays open until the operator-present run PASSes. No AF flip, no GitHub
-> close, no BUILD-SCHEDULE tick until then.
+> **Result — DONE ✅ (Session 56, 2026-07-04). AF-069 🟢 PASS (Path B, R8 you-present run).** The harness
+> (`spikes/issue-004-restore-rehearsal/`) ran a **real off-platform `pg_dump` → `pg_restore`** of a source
+> Supabase project into a **throwaway target**: **5000/5000 memories restored with embeddings intact**
+> (0 null, 0 wrong-dim; cosine `<=>` similarity query returns top-5), **25/25 `auth.users` rows restored +
+> resolvable**, **measured RTO 19.4 s** (AC-NFR-DR.003.1, .003.2 first manual log, .005.1 all met).
+> **Supabase-correct restore (learned in-run):** the target's `auth` schema is MANAGED (217 objects, owned
+> by `supabase_auth_admin`) so a naive whole-DB `pg_restore --clean` fails — the harness restores `public`
+> (memories+embeddings) cleanly and loads only the `auth.users` ROWS data-only into the managed auth schema
+> (dump.ts/restore.ts reworked; committed). Evidence: `results/af-069-evidence.2026-07-04.md`. **⚠️ Residual —
+> Path A (in-project PITR/daily-backup restore) NOT exercised** (operator-driven out-of-band step, skipped;
+> Supabase in-project backups restore in-place, not into a throwaway): recorded as not-proven; confirm on the
+> real production tier before go-live. The off-platform path proven here is the load-bearing #1 guarantee
+> against project loss. **Unblocks ISSUE-085** (AF-069 gate clear; retains its other §7 blockers). Checkpoint 0
+> stays open (006 + 007 owed).
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

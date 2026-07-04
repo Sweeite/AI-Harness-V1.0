@@ -1,0 +1,82 @@
+{
+  "verdict": "PASS",
+  "date": "2026-07-04",
+  "env": {
+    "source": {
+      "serverVersion": "17.6",
+      "pgvector": "0.8.2"
+    },
+    "targetB": {
+      "serverVersion": "17.6",
+      "pgvector": "0.8.2"
+    }
+  },
+  "corpus": {
+    "memories": 5000,
+    "authUsers": 25,
+    "embedDim": 1536,
+    "seeded": false
+  },
+  "pathA": {
+    "exercised": false,
+    "rto": {
+      "path": "A",
+      "measured": false,
+      "seconds": null,
+      "source": "not-recorded"
+    }
+  },
+  "pathB": {
+    "exercised": true,
+    "restore": {
+      "path": "B",
+      "performedByHarness": true,
+      "command": "psql \"create extension vector\" + pg_restore --clean public + pg_restore --data-only auth.users → --dbname postgresql://<redacted>@db.onrpnljlyphbxjhmjjwx.supabase.co:5432/postgres",
+      "note": "Supabase-correct restore: public schema (memories + embeddings) restored via pg_restore; auth.users ROWS loaded data-only into the target’s managed auth schema (the 217-object managed auth schema, owned by supabase_auth_admin, is never restored structurally)."
+    },
+    "assertions": {
+      "path": "B",
+      "pass": true,
+      "pgvectorPresent": true,
+      "assertions": [
+        {
+          "name": "memories_count_matches",
+          "pass": true,
+          "detail": "restored 5000 vs source 5000 memory rows"
+        },
+        {
+          "name": "embeddings_intact",
+          "pass": true,
+          "detail": "null embeddings: 0 · wrong-dimension (≠1536): 0"
+        },
+        {
+          "name": "vector_similarity_query_works",
+          "pass": true,
+          "detail": "cosine <=> similarity query returned 5 rows (top-5)"
+        },
+        {
+          "name": "auth_users_count_matches",
+          "pass": true,
+          "detail": "restored 25 vs source 25 auth.users rows"
+        },
+        {
+          "name": "auth_users_resolvable",
+          "pass": true,
+          "detail": "sampled source user 0538f4d7… resolves on target (email present: true)"
+        }
+      ],
+      "counts": {
+        "sourceMemories": 5000,
+        "targetMemories": 5000,
+        "sourceAuthUsers": 25,
+        "targetAuthUsers": 25
+      }
+    },
+    "rto": {
+      "path": "B",
+      "measured": true,
+      "seconds": 19.407963167,
+      "source": "harness-wall-clock"
+    }
+  }
+}
