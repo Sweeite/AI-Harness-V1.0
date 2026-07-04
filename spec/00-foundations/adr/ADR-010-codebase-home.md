@@ -1,7 +1,12 @@
 # ADR-010 — Product codebase home (a dedicated build repo, separate from this spec repo)
 
-- **Status:** Accepted
-- **Date decided:** 2026-07-04
+> **⛔ SUPERSEDED by [ADR-011](ADR-011-single-repo.md) (2026-07-04, same session).** The operator
+> flagged that a second repo splits the project's context and creates a standing drift risk. The
+> decision was reversed to **one repo** (product code in `app/` inside the spec repo). Do not act on
+> this ADR — kept for decision history only.
+
+- **Status:** Superseded by ADR-011
+- **Date decided:** 2026-07-04 · **Superseded:** 2026-07-04
 - **Resolves:** the build-phase decision deferred into ISSUE-007 on purpose — *where the durable
   product codebase lives* (a dedicated build repo, a monorepo, or continuing in this spec repo).
   ISSUE-007 is the **first durable product code** (Tier-1 bootstrap, root of the 11-node critical

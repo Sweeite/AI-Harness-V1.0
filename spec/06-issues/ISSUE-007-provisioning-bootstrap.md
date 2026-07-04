@@ -24,15 +24,14 @@ github: "#7"
 > Inngest (ADR-001/005). Once decided, record it (an ADR or a note here) before building — Rule 0.
 > *(Origin: README "Build" status row + `spec/SESSION-LOG.md` Session 49.)*
 >
-> **✅ RESOLVED 2026-07-04 → [ADR-010](../../00-foundations/adr/ADR-010-codebase-home.md): a dedicated
-> build repo, separate from this spec repo.** The product codebase (this issue's durable code onward)
-> lives in a new build repo — the "one shared repo" ADR-005 references that Railway deploys per-client;
-> this spec repo stays the Rule-0 requirements source and is not a deploy source. **Build repo created
-> 2026-07-04: [`Sweeite/ai-harness-core`](https://github.com/Sweeite/ai-harness-core) (private; local
-> `~/Desktop/ai-harness-core`).** The operator-independent artifacts (FR-10.PRV.004 runbook, FR-10.PRV.001
-> provisioning scaffold — 4/4 tests green) now live THERE (`runbooks/`, `provisioning/`), not in this repo.
-> Cross-repo spine rule: every build-repo PR cites its ISSUE-/FR-/AC-IDs; this issue records the PR URL at
-> ship (sync ritual).
+> **✅ RESOLVED 2026-07-04 → [ADR-011](../../00-foundations/adr/ADR-011-single-repo.md): ONE repo — product
+> code lives with the spec under `app/`.** (This supersedes the same-session [ADR-010](../../00-foundations/adr/ADR-010-codebase-home.md),
+> which briefly put the code in a separate repo — reversed because a second repo split context and risked
+> drift for a solo operator.) The operator-independent artifacts (FR-10.PRV.004 runbook, FR-10.PRV.001
+> provisioning scaffold — 4/4 tests green) live in **`app/runbooks/`** + **`app/provisioning/`** in this
+> repo. One source of truth: spec + issues + code together. Railway will later deploy from the `app/`
+> subdirectory (ADR-005 fan-out unchanged). Traceability: code change cites its ISSUE-/FR-/AC-IDs; the
+> issue records the commit at ship (sync ritual).
 
 ## 1. Goal (one line)
 Stand up a new client deployment via the scripted, idempotent, two-party provisioning flow — Railway link → `DEPLOYMENT_CONFIG` + secrets → `internal_token` mint/dual-store → `client_registry` insert → first-deploy seed → `initialising` — plus per-client OAuth-app registration, the client-side runbook, and the synthetic canary fixture.

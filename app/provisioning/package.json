@@ -1,0 +1,17 @@
+{
+  "name": "@harness/provisioning",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Operator-side per-client provisioning script (FR-10.PRV.001). Staged in the spec repo per ADR-010; moves to the build repo at creation.",
+  "type": "module",
+  "scripts": {
+    "provision": "tsx src/index.ts",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
