@@ -5,6 +5,55 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 57 — 2026-07-04 — ISSUE-006 mechanics DONE: AF-078 🟡 MECHANICS PASS + AF-090 DOCS-resolved; live GHL confirmation deferred (OD-172, operator has no GHL account) — all six Stage-0 spikes cleared for Checkpoint-0; only 007 remains
+
+**What happened:** Closed out **ISSUE-006 (webhook forgery/replay, AF-078)** to the extent possible without a GHL account.
+Ran the harness's self-contained **MODE M** battery (**17/17** pass); researched GHL's signing scheme from **primary docs**
+to resolve **AF-090**; and, with the operator, made a scope decision (**OD-172**) to **re-gate the live per-connector
+webhook confirmation from launch-blocking to per-connector onboarding**. With this, **all six Stage-0 spikes are cleared
+for Checkpoint-0 (001–005 GREEN + 006 mechanics/OD-172); the only remaining Stage-0 gate is ISSUE-007 (provision a real
+silo).**
+
+**Why the deferral (operator-decided, Option A):** the operator **has no GHL account**, and connectors are **client-
+driven** (none provisioned at launch), so a **real GHL-signed webhook cannot be produced** — the one thing MODE R needs.
+Rather than fake it (which the harness refuses — MODE M cannot claim GREEN), we recorded what IS proven and deferred what
+can't be proven yet.
+
+**What was proven / resolved:**
+- **MODE M mechanics — 17/17:** per-connector verifiers (Slack HMAC · GHL Ed25519 · Google Pub/Sub JWT) **reject forged /
+  tampered / replayed / stale** webhooks and **accept valid** ones. The load-bearing **raw-body-before-parse** trap is
+  proven (a deliberate parse-then-verify variant provably fails the same signature — AC-0.WHK.005.1); constant-time compare
+  (`crypto.timingSafeEqual`) and replay defense (Slack 5-min window · GHL/Google seen-ID cache) hold.
+- **AF-090 DOCS-resolved (primary source, dated 2026-07-04):** from GHL's developer docs — **GHL signs the RAW BODY ONLY**
+  with Ed25519 (`X-GHL-Signature`; legacy `X-WH-Signature` RSA deprecates 2026-07-01), and the **published Ed25519 public
+  key** (`MCowBQYDK2VwAyEAi2HR1srL4o18O8BRa7gVJY7G7bupbN3H9AwJrHCDiOg=`) was captured. Src:
+  `marketplace.gohighlevel.com/docs/webhook/WebhookIntegrationGuide`. This closes the AF-090 *design* unknown; only the
+  empirical live-payload confirmation remains.
+- **Slack** is fully proven (symmetric HMAC over a shared secret — the mechanics ARE the real proof, no asymmetric vendor
+  gap); **Google** OIDC mechanics (JWKS/audience/expiry) proven.
+
+**OD-172 (change-control — narrows a launch gate):** the per-connector **live webhook-verification confirmation** is
+re-gated from a launch-blocking Stage-0 requirement to a **per-connector onboarding requirement** — proven on
+**ISSUE-017 / 039 / 040 / 041** before each connector goes live for a real client (blocking THERE). For Checkpoint-0 /
+go-no-go, AF-078 is satisfied by the proven mechanics + AF-090 DOCS; the live checks are **tracked residuals** (#3), not
+silent. Does NOT relax the mechanics (raw-body-before-parse, constant-time, replay) or NFR-SEC.008 / ADR-007.
+
+**Files changed (sync ritual):** new **OD-172** in `open-decisions.md` (+ guard bumped to OD-173); `feasibility-register.md`
+AF-090 🔴→🟡 DOCS-confirmed (key + signing input + source) and AF-078 🔴→🟡 MECHANICS PASS (+ OD-172 residual);
+`test-strategy.md` §4 AF-078 gate annotated (OD-172); `ISSUE-006` frontmatter `in-progress→done` + Result note;
+`BUILD-SCHEDULE.md` Stage-0 `006` box ✅ (with the 🟡/OD-172 caveat); `_backlog.md` Epic-S row (done) + Tier-0 roll-up;
+`README.md` build row. **GitHub #6 closed** with the result + OD-172. **NOT touched:** Checkpoint-0 box (stays OPEN — 007
+owed). No change to any locked ADR/FR beyond the OD-172 gate-scope narrowing.
+
+**Next action:** **ISSUE-007 (Stage-0 GATE — provisioning + per-client Supabase bootstrap, still `ready`)** is the LAST
+thing between here and Checkpoint 0. Its harness/runbook is **not yet built** — that's the next build task; it needs the
+operator's Supabase org access to stand up a real per-client silo (two-party, R8). **Checkpoint 0 closes when 007 has
+stood up a real silo** (all six spike AFs are already cleared); only then does Stage 1 (`008` migration harness) open (R1).
+**Tracked residuals (not blocking Checkpoint 0, blocking their own later gates):** AF-069 Path A (in-project/PITR restore)
+before go-live; AF-078/AF-090 per-connector live webhook confirmation at connector onboarding (ISSUE-017/039/040/041).
+
+---
+
 ## Session 56 — 2026-07-04 — ISSUE-004 run + PASS: AF-069 🟢 (restore rehearsal, Path B) — 5 of 6 Stage-0 spike AFs now GREEN
 
 **What happened:** With the operator present, ran the **ISSUE-004** restore-rehearsal harness against **real

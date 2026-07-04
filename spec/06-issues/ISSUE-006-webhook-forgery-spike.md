@@ -2,21 +2,26 @@
 id: ISSUE-006
 title: "SPIKE — webhook forgery / replay rejected end-to-end (AF-078)"
 epic: S — spikes
-status: in-progress
+status: done
 github: "#6"
 ---
 
 # ISSUE-006 — SPIKE: webhook forgery / replay rejected end-to-end (AF-078)
 
-> **Build status — in-progress (Session 54, 2026-07-04).** Runnable harness built at
-> `spikes/issue-006-webhook-forgery/` (TS/Node, ADR-009, zero runtime deps — Node `crypto`);
-> typechecks; **not yet run**. Two modes: **MODE M** (self-contained mechanics — proves raw-body-
-> before-parse, constant-time compare, replay defense) runs with no infra but **cannot** flip the gate;
-> **MODE R** (real) needs the operator's **live captured GHL payload + GHL's published Ed25519 public
-> key** to resolve **AF-090** and assert against real vendor signatures (see the harness README "What I
-> need from the operator"). **AF-078 stays 🔴** (and AF-090 🔴) until a **MODE-R** run PASSes; the
-> harness refuses to claim GREEN in MODE M. Checkpoint 0 stays open. No AF flip, no GitHub close, no
-> BUILD-SCHEDULE tick until then.
+> **Result — DONE ✅ (Session 57, 2026-07-04). AF-078 🟡 MECHANICS PASS · AF-090 DOCS-resolved · live
+> confirmation deferred (OD-172).** The harness (`spikes/issue-006-webhook-forgery/`, zero-dep Node
+> `crypto`) ran its self-contained **MODE M** battery — **17/17**: the per-connector verifiers reject
+> forged / tampered / replayed / stale webhooks and accept valid ones; the load-bearing **raw-body-
+> before-parse** trap is proven (a deliberate parse-then-verify variant provably fails the same
+> signature — AC-0.WHK.005.1), and constant-time compare + replay defense hold. **AF-090 resolved from
+> GHL's primary developer docs (2026-07-04):** GHL signs the **raw body only** with Ed25519
+> (`X-GHL-Signature`); the published public key was captured (see the AF-090 register row). **Slack**
+> fully proven (symmetric HMAC = the real proof); **Google** OIDC mechanics proven. **Live per-connector
+> vendor confirmation deferred (OD-172):** the operator has no GHL account and connectors are
+> client-driven, so the empirical live-payload check is **re-gated from launch-blocking to per-connector
+> ONBOARDING** — owed on **ISSUE-017 / 039 / 040 / 041** before each connector ships (blocking THERE, not
+> here). For Checkpoint-0 the proven mechanics + AF-090 DOCS satisfy AF-078; the live checks are tracked
+> residuals (#3). **Checkpoint 0 now blocks only on ISSUE-007** (provision a real silo).
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

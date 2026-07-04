@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. Next OD number: OD-172.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. Next OD number: OD-173.
 
 ---
 
@@ -2267,3 +2267,30 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 - **Status:** 🟢 RESOLVED (GHL first). It was surfaced for the operator because it is a rollout-priority call, not a spec
   correctness call; the build can start on the entire foundational + identity + memory spine (Tiers 0–5) independently.
   It gates nothing on the critical path.
+
+## OD-172 — Webhook live-vendor verification re-gated from launch-blocking to per-connector onboarding (AF-078 / AF-090) 🟢 RESOLVED (2026-07-04, session 56, operator-decided: Option A — defer)
+
+- **OD-172 — the connector-driven gating call for the webhook forgery spike (ISSUE-006 / AF-078).** ISSUE-006 proved the
+  webhook-verification **mechanics** against a self-contained harness (MODE M, 17/17: valid accepted; forged / tampered /
+  replayed / stale rejected; the **raw-body-before-parse** trap and **constant-time** compare hold). The one genuine
+  unknown — **AF-090, exactly which bytes GHL signs** — was **resolved from GHL's primary developer docs (2026-07-04):
+  GHL signs the RAW BODY ONLY with Ed25519 (`X-GHL-Signature`); the published Ed25519 public key was captured** (see the
+  AF-090 row + `spikes/issue-006-webhook-forgery/`). What remains unproven is the **empirical live confirmation** that a
+  real vendor-signed webhook verifies against real vendor key material — which cannot be produced without the vendor
+  account. **The operator has no GHL account**, and connectors are **client-driven** (none is provisioned at launch).
+- **Decision (operator, Option A):** the per-connector **live webhook-verification confirmation** is **re-gated from a
+  launch-blocking Stage-0 requirement to a per-connector ONBOARDING requirement** — proven on **ISSUE-017** (webhook auth)
+  / the connector issues (**039** GHL · **040** Google · **041** Slack) **before that connector goes live for a real
+  client**, not before general launch. For Checkpoint-0 / go-no-go purposes, **AF-078 is satisfied by the proven mechanics
+  + the AF-090 DOCS resolution**; the live per-connector checks are **tracked residuals**, never silent omissions (#3).
+- **Rationale:** (1) the security property (#2 — a forged/replayed webhook cannot drive the system) rests on the
+  verification *mechanics*, which are proven and reusable; (2) **Slack's scheme is symmetric** (HMAC over a shared
+  secret), so the mechanics ARE the real proof — no asymmetric vendor gap to close; (3) **Google** is standard OIDC
+  (JWKS / audience / expiry) — mechanics proven; (4) **GHL's signing input is now DOCS-known**, leaving only a live-payload
+  confirmation that is meaningless without a GHL client.
+- **What this does NOT relax:** the mechanics ship exactly as proven (raw-body-before-parse, constant-time compare, replay
+  cache); **a connector may not go live until its live webhook verification passes at onboarding** (the residual is
+  blocking THERE). No change to NFR-SEC.008 or ADR-007.
+- **Status:** 🟢 RESOLVED (Option A — defer live confirmation to onboarding). **Owed:** AF-090 empirical live-payload
+  confirmation + AF-078 per-connector live verification, on ISSUE-017 / 039 / 040 / 041, before each connector ships.
+  Checkpoint 0 no longer blocks on the GHL live check; it **still blocks on ISSUE-007** (silo).

@@ -134,7 +134,12 @@ feasibility register:
    the paper target (< ~2 s p95 end-to-end, < ~50 ms/statement predicate overhead) under the
    ≤~20-user load. *(Usability. If false, every query is slow.)*
 5. **AF-078 — webhook forgery/replay.** An end-to-end test proves forged and replayed webhooks are
-   rejected. *(Upholds #2. A forged event must not drive the system.)*
+   rejected. *(Upholds #2. A forged event must not drive the system.)* **— MECHANICS PASS 2026-07-04
+   (ISSUE-006, MODE-M harness, 17/17: raw-body-before-parse + constant-time compare + replay proven;
+   Slack symmetric = real proof; GHL signing DOCS-resolved, AF-090). The live per-connector vendor
+   confirmation is re-gated from launch-blocking to per-connector ONBOARDING (OD-172) — proven on
+   ISSUE-017/039/040/041 before each connector ships. For go/no-go, mechanics + AF-090 DOCS satisfy
+   this gate; the live checks are tracked residuals.**
 6. **AF-077 — brute-force defense.** A scripted attack against the Super-Admin login is stopped by
    lockout/backoff. *(Upholds #2. The one password path must resist automated attack.)*
 
