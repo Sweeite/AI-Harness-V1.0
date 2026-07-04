@@ -2,19 +2,25 @@
 id: ISSUE-005
 title: "SPIKE: brute-force / credential-stuffing defense stops an automated attack"
 epic: S — spikes
-status: in-progress
+status: done
 github: "#5"
 ---
 
 # ISSUE-005 — SPIKE: brute-force / credential defense stops an automated attack
 
-> **Build status — in-progress (Session 54, 2026-07-04).** Runnable harness built at
-> `spikes/issue-005-brute-force-defense/` (TS/Node, ADR-009 + `@supabase/supabase-js` + `otpauth`);
-> typechecks; **not yet run**. This is an **R8 "you-present" spike** — it needs the operator's
-> throwaway Supabase Auth project + a seeded Super-Admin account + TOTP secret + plan tier (Pro+ for
-> leaked-password) to run (see the harness README "What I need from the operator"). **AF-077 stays 🔴**
-> and Checkpoint 0 stays open until the operator-present run PASSes. No AF flip, no GitHub close, no
-> BUILD-SCHEDULE tick until then.
+> **Result — DONE ✅ (Session 55, 2026-07-04). AF-077 🟢 PASS (R8 you-present run).** The harness
+> (`spikes/issue-005-brute-force-defense/`) ran against a **live throwaway Supabase Auth project**
+> (plan **pro**, **Cloudflare Turnstile** CAPTCHA + leaked-password protection ON). All 9 checks green:
+> scripted single-account **and** simulated multi-IP credential-stuffing both **halted before any
+> session minted** (per-account soft-lock trips at threshold **5**, IP-independent); 2FA challenge
+> soft-locks at wrong-code **6** (`mfa_softlock_threshold`=5) and refuses a valid code once locked
+> (AAL2 never reached); every attempt logged + **2 Super-Admin alerts**; **CAPTCHA observed live**
+> (Turnstile genuinely rejected the scripted logins); leaked-password enforceable on Pro. Confirmed
+> ISSUE-014 build values: `account_lockout_threshold`=5 · `account_lockout_minutes`=15 ·
+> `mfa_softlock_threshold`=5. Evidence (fields a–h): `results/af-077-evidence.2026-07-04.md`. **Caveat:**
+> multi-IP was *simulated* (no proxies); the per-account soft-lock proof is IP-independent, so a
+> real-proxy run would strengthen but not change the verdict. **Unblocks ISSUE-014** (AF-077 gate clear;
+> ISSUE-014 retains its other §7 blockers). Checkpoint 0 stays open (004/006 + 007 owed).
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

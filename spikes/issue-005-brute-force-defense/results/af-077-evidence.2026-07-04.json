@@ -1,0 +1,321 @@
+{
+  "verdict": "PASS",
+  "date": "2026-07-04",
+  "env": {
+    "supabaseUrlHost": "pzbnlltfneugcgapgevt.supabase.co",
+    "plan": "pro",
+    "captchaEnabled": true,
+    "leakedPasswordProtection": true,
+    "multiIpMode": "simulated"
+  },
+  "single": {
+    "name": "single-account credential-stuffing (1 IP)",
+    "attempts": [
+      {
+        "n": 1,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 2,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 3,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 4,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 5,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 6,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 7,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 8,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 9,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 10,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 11,
+        "sourceIp": "203.0.113.10",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      }
+    ],
+    "sessionEverMinted": false,
+    "haltedAtAttempt": 6,
+    "captchaObserved": true,
+    "leakedObserved": false
+  },
+  "multi": {
+    "name": "distributed multi-IP attack",
+    "mode": "simulated",
+    "attempts": [
+      {
+        "n": 1,
+        "sourceIp": "198.51.100.0",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 2,
+        "sourceIp": "198.51.100.1",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 3,
+        "sourceIp": "198.51.100.2",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 4,
+        "sourceIp": "198.51.100.3",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 5,
+        "sourceIp": "198.51.100.4",
+        "gatedByAppLayer": false,
+        "sessionMinted": false,
+        "invalidCredentials": true,
+        "platformRateLimited": false,
+        "captchaRequired": true,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 6,
+        "sourceIp": "198.51.100.5",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 7,
+        "sourceIp": "198.51.100.6",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 8,
+        "sourceIp": "198.51.100.7",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 9,
+        "sourceIp": "198.51.100.8",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 10,
+        "sourceIp": "198.51.100.9",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      },
+      {
+        "n": 11,
+        "sourceIp": "198.51.100.10",
+        "gatedByAppLayer": true,
+        "sessionMinted": false,
+        "invalidCredentials": false,
+        "platformRateLimited": false,
+        "captchaRequired": false,
+        "leakedPasswordRefused": false
+      }
+    ],
+    "sessionEverMinted": false,
+    "haltedAtAttempt": 6,
+    "captchaObserved": true,
+    "leakedObserved": false
+  },
+  "mfa": {
+    "wrongCodesSubmitted": 5,
+    "lockedAtAttempt": 6,
+    "validCodeRefusedAfterLock": true,
+    "aal2EverReached": false
+  },
+  "assertions": {
+    "checks": [
+      {
+        "name": "single_account_halted",
+        "ok": true,
+        "ac": "AC-NFR-SEC.009.1 / AC-0.AUTH.009.1",
+        "detail": "halted by app-layer soft-lock at attempt 6 (no session ever minted)"
+      },
+      {
+        "name": "multi_ip_halted",
+        "ok": true,
+        "ac": "AC-NFR-SEC.009.1",
+        "detail": "halted by per-account soft-lock at attempt 6 (mode=simulated; IP limits out of the picture, soft-lock still stopped it)"
+      },
+      {
+        "name": "account_softlock_tripped",
+        "ok": true,
+        "ac": "AC-0.AUTH.009.1",
+        "detail": "soft-lock tripped at threshold 5"
+      },
+      {
+        "name": "super_admin_alert_fired",
+        "ok": true,
+        "ac": "AC-0.AUTH.009.1 / AC-NFR-SEC.009.1",
+        "detail": "Super-Admin alert(s): 2"
+      },
+      {
+        "name": "all_attempts_logged",
+        "ok": true,
+        "ac": "AC-NFR-SEC.009.1",
+        "detail": "15 login_attempt rows recorded"
+      },
+      {
+        "name": "mfa_softlock_at_threshold",
+        "ok": true,
+        "ac": "AC-0.AUTH.007.3",
+        "detail": "2FA challenge soft-locked at wrong-code count 6 (mfa_softlock_threshold=5)"
+      },
+      {
+        "name": "valid_code_refused_after_lock",
+        "ok": true,
+        "ac": "AC-0.AUTH.007.3",
+        "detail": "a genuinely correct code was still refused once locked"
+      },
+      {
+        "name": "captcha_active",
+        "ok": true,
+        "ac": "AC-0.AUTH.009.2",
+        "detail": "CAPTCHA enabled AND observed live on the form"
+      },
+      {
+        "name": "leaked_password_active",
+        "ok": true,
+        "ac": "AC-0.AUTH.009.2",
+        "detail": "leaked-password protection enabled on a Pro+ plan (enforceable)"
+      }
+    ],
+    "verdict": "PASS"
+  },
+  "eventCounts": {
+    "attempts": 15,
+    "softlocks": 2,
+    "mfaSoftlocks": 1,
+    "superAdminAlerts": 2
+  }
+}

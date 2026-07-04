@@ -85,7 +85,7 @@ Gate everything. Not hands-off.
   - [x] `002` SPIKE RLS hot-path latency ✅ (AF-067 🟢 — initPlan 1.06 ms/stmt once-per-stmt, lint PASS, retrieval p95 0.9 ms; ⚠️ surfaced AF-019 planner-seqscan cliff → ISSUE-023)  🔴
   - [x] `003` SPIKE injection containment red-team ✅ (AF-068 🟢 — 12/12 attacks contained, 8 evasion payloads reached the model yet blocked by the code gate, 4/4 negative controls pass, mutation-tested; `enforce()` takes no prompt/content param)  🔴
   - [ ] `004` SPIKE restore actually works  🔴
-  - [ ] `005` SPIKE brute-force / credential defense  🔴
+  - [x] `005` SPIKE brute-force / credential defense ✅ (AF-077 🟢 2026-07-04 — you-present; app-layer per-account soft-lock halts scripted single + simulated multi-IP attack before any session mints, CAPTCHA/Turnstile observed live, 2FA soft-lock, leaked-pw enforceable on Pro)  🔴
   - [ ] `006` SPIKE webhook forgery / replay  🔴
 - ◇ **CHECKPOINT 0:** every spike AF is GREEN with dated evidence in `feasibility-register.md`; `007`
   stood up a real silo. **A red spike here halts its dependents (R2).**

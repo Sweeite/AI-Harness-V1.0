@@ -5,6 +5,60 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 55 — 2026-07-04 — ISSUE-005 run + PASS: AF-077 🟢 (brute-force/credential-stuffing) — first you-present spike flipped GREEN on real infra
+
+**What happened:** With the operator present, ran the **ISSUE-005** harness against a **live throwaway Supabase
+Auth project** and it **PASSED** — **AF-077 🔴→🟢**, the first of the three you-present Stage-0 spikes flipped on
+real infra. Full sync ritual done in one commit.
+
+**Setup the operator provided (R8):** a throwaway Supabase Auth project (plan **pro**), a seeded external-Super-
+Admin account (email+password), an enrolled TOTP factor, **Cloudflare Turnstile** CAPTCHA enabled in Attack
+Protection, and leaked-password protection on. Two build-time harness bugs were fixed to get there (all committed
+before the run, no status change): (1) **Node<22 WebSocket** — `@supabase/supabase-js` constructs a realtime
+client that throws without a global WebSocket on Node 20 → added `src/ws-polyfill.ts` (`ws`); (2) **enroll helper**
+— Supabase has no dashboard 2FA-enable-and-reveal-secret flow, so added `npm run enroll` (`src/enroll.ts`) which
+clears any stale factor via the admin API then enrolls a fresh one and prints `TEST_ACCOUNT_TOTP_SECRET`; (3)
+declared the `undici` dep (lazy-imported by the real-proxy path) so the whole harness typechecks. Chose **Turnstile
+over hCaptcha** (verified pricing: Turnstile is unconditionally free/unlimited — a better fit for the client-pays-
+opex model than hCaptcha's $139/mo Pro tier; both are Supabase-supported and harness-agnostic).
+
+**Result (all 9 checks green — evidence `spikes/issue-005-brute-force-defense/results/af-077-evidence.2026-07-04.md`):**
+- Scripted **single-account** and **simulated multi-IP** credential-stuffing **both halted before any session
+  minted** — the app-layer per-account soft-lock trips at threshold **5** and holds (attempt 6 blocked before
+  reaching Supabase). Proves the load-bearing AF-077 claim: the soft-lock is **IP-independent**, so it stops the
+  multi-IP case that defeats Supabase's per-IP caps (Supabase has **no** native per-account lockout, [SA16]).
+- **2FA challenge** soft-locks at wrong-code **6** (`mfa_softlock_threshold`=5) and **refuses even a genuinely-
+  correct code once locked**; **AAL2 never reached**.
+- **CAPTCHA observed LIVE** — Turnstile genuinely rejected the scripted logins (recorded as observed, not merely
+  config-flagged — the honest bar we set). Leaked-password enforceable on Pro.
+- Observability: **15** login attempts logged, **2** Super-Admin alerts fired (#3 — nothing silent).
+- **Confirmed build values for ISSUE-014:** `account_lockout_threshold`=5 · `account_lockout_minutes`=15 ·
+  `mfa_softlock_threshold`=5 · CAPTCHA+leaked on.
+
+**Honesty caveat (in the evidence):** multi-IP was **simulated** (no proxies supplied) — the harness disabled its
+per-IP counter to prove the per-account soft-lock is the real backstop when IP limits are defeated. The soft-lock
+proof is IP-independent, so a real-proxy run would strengthen but not change the verdict. Also: because Turnstile
+blocked every scripted attempt, the soft-lock counter tripped on CAPTCHA-rejected failures (the counter counts
+failed attempts regardless of *why* they failed — identical mechanism to wrong-password failures); both layers
+demonstrably engaged.
+
+**Files changed (sync ritual — all trackers in lockstep):** `feasibility-register.md` AF-077 🔴→🟢 (rich PASS
+summary + evidence pointer); `ISSUE-005` frontmatter `in-progress→done` + Result note; `BUILD-SCHEDULE.md` Stage-0
+`005` box ticked ✅; `_backlog.md` Epic-S row (done) + Tier-0 roll-up; `README.md` build row; new evidence
+`spikes/issue-005-brute-force-defense/results/af-077-evidence.2026-07-04.{md,json}` (+ stale `PENDING.md` removed);
+plus the three harness fixes above (`ws-polyfill.ts`, `enroll.ts`, `undici`). **GitHub #5 closed** with the result.
+**NOT touched:** the Checkpoint-0 box (stays OPEN — 004/006 + 007 still owed), AF-069/078 (stay 🔴). No
+scope/decision change; no OD (the spike passed — a red spike would have been the design fork).
+
+**Next action:** two you-present spikes remain — **ISSUE-004 (restore, AF-069)** and **ISSUE-006 (webhook, AF-078)**,
+both harnesses built + `in-progress`, awaiting operator infra (004: source + throwaway target Supabase projects +
+`pg_dump`/`pg_restore`; 006 MODE R: a live captured GHL payload + GHL's published Ed25519 public key → resolves
+AF-090). Plus **ISSUE-007** (Stage-0 GATE, still `ready`) must stand up a real silo. **Checkpoint 0 closes only when
+all six spike AFs are GREEN (001/002/003/005 ✅; 004/006 owed) AND 007 has stood up a silo** — only then does Stage 1
+(`008`) open (R1). Do not tick the Checkpoint-0 box early.
+
+---
+
 ## Session 54 — 2026-07-04 — ISSUE-004/005/006 harnesses BUILT (in-progress) — the three remaining Stage-0 you-present spikes; AFs stay 🔴 pending operator infra (nothing faked, nothing flipped)
 
 **What happened:** Built the **three remaining Stage-0 launch-gating spike harnesses** — the parallel BATCH
