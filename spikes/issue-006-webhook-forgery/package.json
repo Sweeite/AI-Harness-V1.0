@@ -1,0 +1,16 @@
+{
+  "name": "issue-006-webhook-forgery",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "ISSUE-006 spike: prove forged + replayed inbound webhooks are rejected end-to-end across GHL (Ed25519) · Google (Pub/Sub JWT) · Slack (HMAC), turning launch-gating spike AF-078 GREEN so ISSUE-017 may ship. See ../../spec/06-issues/ISSUE-006-webhook-forgery-spike.md",
+  "scripts": {
+    "spike": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

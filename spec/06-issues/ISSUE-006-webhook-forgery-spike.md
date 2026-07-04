@@ -2,11 +2,21 @@
 id: ISSUE-006
 title: "SPIKE — webhook forgery / replay rejected end-to-end (AF-078)"
 epic: S — spikes
-status: ready
+status: in-progress
 github: "#6"
 ---
 
 # ISSUE-006 — SPIKE: webhook forgery / replay rejected end-to-end (AF-078)
+
+> **Build status — in-progress (Session 54, 2026-07-04).** Runnable harness built at
+> `spikes/issue-006-webhook-forgery/` (TS/Node, ADR-009, zero runtime deps — Node `crypto`);
+> typechecks; **not yet run**. Two modes: **MODE M** (self-contained mechanics — proves raw-body-
+> before-parse, constant-time compare, replay defense) runs with no infra but **cannot** flip the gate;
+> **MODE R** (real) needs the operator's **live captured GHL payload + GHL's published Ed25519 public
+> key** to resolve **AF-090** and assert against real vendor signatures (see the harness README "What I
+> need from the operator"). **AF-078 stays 🔴** (and AF-090 🔴) until a **MODE-R** run PASSes; the
+> harness refuses to claim GREEN in MODE M. Checkpoint 0 stays open. No AF flip, no GitHub close, no
+> BUILD-SCHEDULE tick until then.
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

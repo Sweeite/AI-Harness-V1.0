@@ -1,0 +1,22 @@
+{
+  "name": "issue-004-restore-rehearsal",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "ISSUE-004 spike: prove a recent backup (in-project PITR/daily AND off-platform pg_dump) restores into a throwaway project complete + queryable — pgvector memory embeddings AND auth.users rows intact — within a MEASURED RTO (AF-069 launch go/no-go gate). See ../../spec/06-issues/ISSUE-004-restore-rehearsal-spike.md",
+  "scripts": {
+    "spike": "tsx src/main.ts",
+    "spike:teardown": "tsx src/main.ts --teardown",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

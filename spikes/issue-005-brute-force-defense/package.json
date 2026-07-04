@@ -1,0 +1,21 @@
+{
+  "name": "issue-005-brute-force-defense",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "ISSUE-005 spike: prove the external Super-Admin password+2FA login withstands a scripted credential-stuffing / brute-force attack. Supabase provides NO native per-account lockout — this red-teams the app-layer per-account soft-lock + 2FA soft-lock + CAPTCHA + leaked-password protection against a single-account AND a distributed multi-IP attack (AF-077 gate). See ../../spec/06-issues/ISSUE-005-brute-force-spike.md",
+  "scripts": {
+    "spike": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.7",
+    "otpauth": "^9.3.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

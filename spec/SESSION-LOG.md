@@ -5,6 +5,69 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 54 — 2026-07-04 — ISSUE-004/005/006 harnesses BUILT (in-progress) — the three remaining Stage-0 you-present spikes; AFs stay 🔴 pending operator infra (nothing faked, nothing flipped)
+
+**What happened:** Built the **three remaining Stage-0 launch-gating spike harnesses** — the parallel BATCH
+**ISSUE-004 (restore rehearsal, AF-069)**, **ISSUE-005 (brute-force / credential-stuffing, AF-077)**,
+**ISSUE-006 (webhook forgery/replay, AF-078)**. All three are runnable TS/Node harnesses (ADR-009) mirroring
+the 001–003 house style exactly: `src/` mapping 1:1 to each issue's §8 build order, fields a–h dated evidence
+emitters → `results/`, a README (§8 table + Run + proves/does-not + On-FAIL), `.env.example`, `.gitignore`,
+`package.json`/`tsconfig.json`. Each typechecks. **None was run and none flips its AF this session** — unlike
+001–003, these three are **R8 "you-present" spikes** that need the operator's REAL infra + credentials, which
+we do not have at build time. Per the operator's instruction and R8/#3, the harnesses **refuse to run without
+infra and fabricate no evidence** (`results/` holds only `PENDING.md`).
+
+**The three harnesses (all in `spikes/`):**
+- **`issue-004-restore-rehearsal/`** — drives a real restore of BOTH ADR-008 backup paths into a throwaway
+  project and asserts pgvector memory rows (embeddings intact, cosine query works) + `auth.users` survive,
+  with a MEASURED RTO (AC-NFR-DR.003.1/.005.1). Honesty caveat baked in: **path A (in-project/PITR backup)
+  cannot be driven by a connection string** — Supabase restores it itself; the harness asserts against the
+  operator's out-of-band-restored target. Path B (`pg_dump`→`pg_restore`) is fully harness-driven.
+- **`issue-005-brute-force-defense/`** — real scripted credential-stuffing (single-account + multi-IP) against
+  a live throwaway Supabase Auth project via `@supabase/supabase-js` + real TOTP (`otpauth`), asserting the
+  app-layer per-account soft-lock + 2FA soft-lock + CAPTCHA + leaked-password halt the attack before a session
+  mints, logged + alerted (AC-0.AUTH.009.1/.2, AC-0.AUTH.007.3, AC-NFR-SEC.009.1). Caveats: true multi-IP needs
+  operator proxies (else a labelled *simulated* mode); leaked-password enforces only on Pro+.
+- **`issue-006-webhook-forgery/`** — zero-dep (Node `crypto`) verifiers for Slack HMAC · GHL Ed25519 · Google
+  Pub/Sub JWT, with the load-bearing **raw-body-before-parse** shim (+ a deliberately-wrong parse-then-verify
+  variant proving AC-0.WHK.005.1), `timingSafeEqual`, replay cache, and the common 401 + `prompt_injection`
+  reject path. **Two modes:** MODE M (self-contained mechanics — proves the crux with self-generated keys but
+  **refuses to claim GREEN**) and MODE R (real — needs a **live captured GHL payload + GHL's published Ed25519
+  public key** to resolve **AF-090** and assert against real vendor signatures). AF-078 flips 🟢 only on a
+  MODE-R PASS.
+
+**Why nothing was flipped (honesty / the three non-negotiables):** a green AF here must be *earned* against real
+infra. Faking a backup, an auth endpoint, or a GHL signature to force a PASS would violate #1 (a false backup
+guarantee) and #3 (a silent false-healthy gate). So this session marks the three issues **`ready → in-progress`**
+only, and leaves every downstream tracker at the honest not-done state.
+
+**Files changed (all trackers in lockstep at the in-progress state — no tracker left ahead):** new
+`spikes/issue-004-restore-rehearsal/`, `spikes/issue-005-brute-force-defense/`, `spikes/issue-006-webhook-forgery/`
+(harness code + READMEs + `.env.example` + `results/PENDING.md`); the three `ISSUE-004/005/006` frontmatter
+`status: ready → in-progress` + a build-status note in each; `_backlog.md` Epic-S rows + Tier-0 roll-up (🔵
+in-progress, harnesses built, AFs 🔴); `README.md` build row. **NOT touched (correctly):** `feasibility-register.md`
+(AF-069/077/078 stay 🔴), `BUILD-SCHEDULE.md` boxes (unticked — not done), the Checkpoint-0 box (open), GitHub
+issues #4/#5/#6 (stay OPEN — matches in-progress). No scope/decision change; no OD (no spike has failed — a red
+spike would be the design fork, none has run yet).
+
+**Next action (operator-blocked — the exact ask is in each harness README "What I need from the operator"):**
+the operator provides the credentials/setup for each you-present spike, then we **run each spike present** and, on
+PASS, run the **full sync ritual per spike** (flip its AF 🔴→🟢 in `feasibility-register.md` with dated a–h
+evidence, tick its `BUILD-SCHEDULE.md` box, update the `_backlog` roll-up + README build row, close its GitHub
+issue #4/#5/#6, append a SESSION-LOG entry) — one commit each. Operator shopping list in brief: **004** — a SOURCE
+Supabase project (direct conn) + a throwaway restore target (direct conn) + `pg_dump`/`pg_restore` on PATH (+ opt.
+a second throwaway for the path-A in-project-backup restore + its wall-clock; plan tier that has PITR/daily
+backups); **005** — a throwaway Supabase Auth project (URL + anon + service-role) + a seeded external-Super-Admin
+account + its enrolled TOTP base32 secret + plan tier (Pro+ for leaked-password) + CAPTCHA turned on (+ opt.
+provider test keys, proxies); **006** — a **live captured GHL webhook payload** (raw body + headers incl.
+`X-GHL-Signature`) + **GHL's published Ed25519 public key + source URL** (for MODE R / AF-090); Slack/Google real
+secrets optional (self-signable in MODE M). **Checkpoint 0 closes only when all six spike AFs are GREEN *and*
+`007` (Stage-0 GATE — provision a real silo, still `ready`) has stood up a silo** — 007 remains owed alongside
+these three. Only then does **Stage 1 (`008` migration harness)** open (R1). Do **not** tick the Checkpoint-0 box
+early.
+
+---
+
 ## Session 53 — 2026-07-04 — ISSUE-003 built + run + PASS: AF-068 (injection containment red-team) flipped 🟢; GitHub mirror drift (#2) reconciled
 
 **What happened:** Built the next `ready` Stage-0 spike — **ISSUE-003 (injection-containment red-team, AF-068)** — the

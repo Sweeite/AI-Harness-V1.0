@@ -2,11 +2,18 @@
 id: ISSUE-004
 title: "SPIKE — restore actually works (DB + pgvector + auth) end-to-end"
 epic: S — spikes
-status: ready
+status: in-progress
 github: "#4"
 ---
 
 # ISSUE-004 — SPIKE: restore actually works (DB + pgvector + auth)
+
+> **Build status — in-progress (Session 54, 2026-07-04).** Runnable harness built at
+> `spikes/issue-004-restore-rehearsal/` (TS/Node, ADR-009); typechecks; **not yet run**. This is an
+> **R8 "you-present" spike** — it needs the operator's real Supabase source + throwaway target(s) +
+> backup-ops credentials to run (see the harness README "What I need from the operator"). **AF-069
+> stays 🔴** and Checkpoint 0 stays open until the operator-present run PASSes. No AF flip, no GitHub
+> close, no BUILD-SCHEDULE tick until then.
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

@@ -2,11 +2,19 @@
 id: ISSUE-005
 title: "SPIKE: brute-force / credential-stuffing defense stops an automated attack"
 epic: S — spikes
-status: ready
+status: in-progress
 github: "#5"
 ---
 
 # ISSUE-005 — SPIKE: brute-force / credential defense stops an automated attack
+
+> **Build status — in-progress (Session 54, 2026-07-04).** Runnable harness built at
+> `spikes/issue-005-brute-force-defense/` (TS/Node, ADR-009 + `@supabase/supabase-js` + `otpauth`);
+> typechecks; **not yet run**. This is an **R8 "you-present" spike** — it needs the operator's
+> throwaway Supabase Auth project + a seeded Super-Admin account + TOTP secret + plan tier (Pro+ for
+> leaked-password) to run (see the harness README "What I need from the operator"). **AF-077 stays 🔴**
+> and Checkpoint 0 stays open until the operator-present run PASSes. No AF flip, no GitHub close, no
+> BUILD-SCHEDULE tick until then.
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the
