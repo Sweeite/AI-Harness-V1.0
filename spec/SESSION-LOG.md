@@ -52,6 +52,12 @@ stood up a real silo** (all six spike AFs are already cleared); only then does S
 **Tracked residuals (not blocking Checkpoint 0, blocking their own later gates):** AF-069 Path A (in-project/PITR restore)
 before go-live; AF-078/AF-090 per-connector live webhook confirmation at connector onboarding (ISSUE-017/039/040/041).
 
+**Handoff (new chat next):** ran the **repo self-sufficiency test** (zero-context subagent, repo-only) → **CAN-ACT-WITHOUT-
+GUESSING: YES** (next action = build ISSUE-007). Patched the 3 non-blocking drifts it found: `_backlog` Tier-0 roll-up
+leading glyphs `🔵→✅` for 004/005/006; OD-172 header session 56→57; and **ISSUE-017/039 absorbed OD-172** (their stale
+"AF-078 🔴 launch-blocking" framing corrected to "🟡 MECHANICS PASS; live per-connector confirmation re-gated to onboarding
+here"). The next chat resumes cleanly on ISSUE-007.
+
 ---
 
 ## Session 56 — 2026-07-04 — ISSUE-004 run + PASS: AF-069 🟢 (restore rehearsal, Path B) — 5 of 6 Stage-0 spike AFs now GREEN

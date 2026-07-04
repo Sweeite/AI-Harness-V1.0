@@ -2268,7 +2268,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   correctness call; the build can start on the entire foundational + identity + memory spine (Tiers 0–5) independently.
   It gates nothing on the critical path.
 
-## OD-172 — Webhook live-vendor verification re-gated from launch-blocking to per-connector onboarding (AF-078 / AF-090) 🟢 RESOLVED (2026-07-04, session 56, operator-decided: Option A — defer)
+## OD-172 — Webhook live-vendor verification re-gated from launch-blocking to per-connector onboarding (AF-078 / AF-090) 🟢 RESOLVED (2026-07-04, session 57, operator-decided: Option A — defer)
 
 - **OD-172 — the connector-driven gating call for the webhook forgery spike (ISSUE-006 / AF-078).** ISSUE-006 proved the
   webhook-verification **mechanics** against a self-contained harness (MODE M, 17/17: valid accepted; forged / tampered /

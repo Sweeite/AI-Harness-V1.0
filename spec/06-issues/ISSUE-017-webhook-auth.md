@@ -37,7 +37,7 @@ Authenticate every inbound connector webhook at the trust boundary — verify th
 - AC-0.WHK.007.1
 - AC-0.WHK.008.1, AC-0.WHK.008.2
 - AC-NFR-SEC.008.1, AC-NFR-SEC.008.2 (spec/05-non-functional/security.md)
-- **Gating spikes:** AF-078 must be GREEN before this issue ships (proven by ISSUE-006 — SPIKE: webhook forgery/replay rejected; currently 🔴 in the feasibility register). AF-078 is a launch-gating spike per OD-157/RP-1 and blocks this slice. AF-090 (exact GHL Ed25519 signing input) is shared with C3 FR-3.TRIG.004 and informs the GHL verifier's base-string.
+- **Gating spikes:** AF-078 is **🟡 MECHANICS PASS** (ISSUE-006, MODE-M 17/17 — raw-body-before-parse + constant-time + replay proven; Slack symmetric = real proof; Google OIDC mechanics; GHL signing DOCS-resolved → AF-090). **Per OD-172 the proven mechanics satisfy the launch/Checkpoint-0 gate; the empirical live per-connector webhook confirmation (against real vendor key material) is re-gated to ONBOARDING and is owed HERE (and on ISSUE-039/040/041) before each connector goes live for a real client.** AF-090 (exact GHL Ed25519 signing input) is **DOCS-confirmed** (raw-body-only Ed25519 + published public key, GHL primary docs 2026-07-04) with the live-payload confirmation owed at GHL onboarding; it is shared with C3 FR-3.TRIG.004 and informs the GHL verifier's base-string.
 
 ## 5. Touches (complete blast radius, by ID)
 - **DATA:** DATA-webhook_secrets (`connector`, `secret_kind`, `secret_value`, `secret_version`, `active`, `rotated_at` — dual-accept rotation), DATA-webhook_replay_cache (`event_id`, `connector_type`, `source_id`, `window_expires_at`), guardrail_log (write on failure — `prompt_injection`), event_log (verified + replay-drop/throttle), audit (rotation)
@@ -54,7 +54,7 @@ Authenticate every inbound connector webhook at the trust boundary — verify th
 - spec/00-foundations/adr/ADR-001-*.md §5 — secrets custody (webhook secrets in client-owned project, never operator)
 
 ## 7. Dependencies
-- **Blocked-by:** ISSUE-006 (SPIKE: webhook forgery/replay rejected — proves AF-078 GREEN; launch-gating per OD-157/RP-1)
+- **Blocked-by:** ISSUE-006 (SPIKE: webhook forgery/replay — AF-078 🟡 MECHANICS PASS; per OD-172 the live per-connector verification is re-gated to onboarding and owed here, not launch-blocking)
 - **Blocks:** ISSUE-037 (C3 trigger infra — consumes the verified event), ISSUE-047 (C5 triggers — deployment-freeze gate)
 
 ## 8. Build order within the slice
@@ -72,4 +72,4 @@ Authenticate every inbound connector webhook at the trust boundary — verify th
 
 ## 9. Verification (how DoD is proven)
 - Per spec/05-non-functional/test-strategy.md: an end-to-end security test battery (valid, tampered, replayed payloads per connector) is the primary layer — this *is* the AF-078 spike (ISSUE-006) and must be GREEN before ship. Unit tests cover constant-time compare, base-string construction, and rotation dual-accept windows.
-- The `AC-NFR-SEC.008` posture must hold: unverified/replayed → `401` + log + (past threshold) alert, no downstream task created. The AC→`Verified` path for this slice is closed only when AF-078 flips 🔴→🟢 in spec/00-foundations/feasibility-register.md via ISSUE-006, since NFR-SEC.008 is a blocking launch gate (RP-1).
+- The `AC-NFR-SEC.008` posture must hold: unverified/replayed → `401` + log + (past threshold) alert, no downstream task created. AF-078 is **🟡 MECHANICS PASS** (ISSUE-006); per **OD-172** the proven mechanics clear the Checkpoint-0 gate, and the AC→`Verified` path for this slice closes when this issue's **live per-connector webhook verification passes at onboarding** against real vendor key material (the residual OD-172 re-gated here), recorded in spec/00-foundations/feasibility-register.md.

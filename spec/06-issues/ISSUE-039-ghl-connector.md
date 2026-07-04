@@ -34,7 +34,7 @@ Instantiate GoHighLevel as the first concrete connector — CRM read tools, CRM 
 - AC-3.TRIG.004.1 (GHL arm — the Ed25519 / legacy `X-WH-Signature`-not-used criterion)
 - **Gating spikes / feasibility (build-time — must be GREEN before the corresponding arm ships, per feasibility-register.md; all currently 🔴):**
   - **AF-098** (GHL PHI/BAA chain — LEGAL gate) must be GREEN before PHI ingest from any HIPAA-enabled GHL location; strict-block until then (AC-3.OBS.001.2).
-  - **AF-090** (GHL Ed25519 exact signing input, confirmed on a live payload) must be GREEN before the webhook arm (FR-3.TRIG.004 GHL arm) ships.
+  - **AF-090** (GHL Ed25519 exact signing input) is **🟡 DOCS-CONFIRMED** (raw-body-only Ed25519 + published public key, GHL primary docs 2026-07-04); the **empirical live-payload confirmation** must be GREEN before the webhook arm (FR-3.TRIG.004 GHL arm) ships — owed here at GHL onboarding per **OD-172**.
   - **AF-089** (rotating-refresh persist/race under the 30s same-token grace window) gates FR-3.TOK.008 / the FR-3.TOK.005 persist path.
   - **AF-095** (confirm no native `Idempotency-Key` on GHL writes; `/contacts/upsert` + app-side dedup is the substitute) gates FR-3.ACT.003.
   - **AF-093** (outbound-429 shape; backoff must not assume `Retry-After`) and **AF-097** (webhook retry-policy contradiction; durable-queue → 2xx mitigation per OD-042) inform, not block, the read/webhook arms.
