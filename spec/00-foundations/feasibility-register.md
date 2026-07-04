@@ -23,7 +23,7 @@ safety mechanism, not a problem.
 | AF-001 | **Cost spike** — run one real multi-agent task + memory write, measure actual tokens/$ | Validates the ADR-003 viability target (typical-volume deployment ≤ ~$20/day, under the $50 soft alert). Also measures memory-write cost (now corrected to ≤1 Sonnet + Haiku, AF-043) and feeds AF-042. Most likely thing to invalidate the design. | SPIKE+EVAL | 🟢 **PASS 2026-07-03** — extrapolated **$2.09/day** vs $20 target / $50 soft alert (round-up, all vendors: Sonnet+Haiku+OpenAI embed). Measured: task $0.0359, surviving write $0.0025 (**1 Sonnet + 3 Haiku + 1 embed** — ADR-003 §4 shape confirmed), non-survivor **0 Sonnet**. Declared profile: 50 tasks/day · 500 write-events (100 survive) · 169 idle-gated loops. Harness + evidence (fields a–h): `spikes/issue-001-cost-viability/` → `results/af-001-evidence.2026-07-03.md`. |
 | AF-002 | **Memory retrieval spike** — load ~100 real memories, run dual-search + ranking, judge relevance | If retrieval surfaces noise, the whole "business brain" premise is shaky. Validates ranking weights. | SPIKE+EVAL | 🔴 |
 | AF-003 | **Vendor-claims verification** — confirm every external limit/capability the doc asserts | Several are checkable and possibly stale; they shape rate-limit, token, and Realtime design. | DOCS | 🟡 **DOCS pass done 2026-06-23** — see Block A findings below. 3 claims stale/refuted (AF-010/011/014), 1 design-fork found (AF-012 Slack → OD-011). Residual: AF-019 stays SPIKE/LOAD-open; AF-012 needs EVAL on a live workspace. |
-| AF-004 | **Provisioning/deploy spike** — run the ADR-005 §5 path end-to-end: operator Railway app deploying from the shared repo against a **client-owned** Supabase, with env + secrets + `internal_token` minted/dual-stored + `client_registry` row + first-boot seed all green | Proves the ADR-001 hybrid + ADR-005 provisioning script actually wire up before we spec it in full. **→ 🟢 PASS 2026-07-04 (session 60, two-party live run — evidence `app/provisioning/results/af-004-evidence.2026-07-04.md`):** operator Railway service `AI-Harness-V1.0` auto-deployed commit `324ae79` from GitHub with **Root Directory `/app/service`**, all 7 env secrets injected, `internal_token` dual-stored (Railway env + mgmt `client_registry.internal_token`), `client_registry` row written (`status=initialising`), and `GET /health → 200 {supabaseReachable:true}` — the deployed service reached the **client-owned Supabase silo** (`Transpera-AIOS-V1`, `ap-southeast-2`). 4 Railway mutations validated live (AF-143 partial). **Caveat (honest):** the boot target is the minimal `/health` PROBE, not the C0/C1 first-boot seed (separate issues, out of ISSUE-007 §2) — so the `initialising→active` seed transition, the canary live seed, and `RailwayInfra` codification are tracked follow-ups; **Checkpoint 0 does not close until those land**. | SPIKE | 🟢 |
+| AF-004 | **Provisioning/deploy spike** — run the ADR-005 §5 path end-to-end: operator Railway app deploying from the shared repo against a **client-owned** Supabase, with env + secrets + `internal_token` minted/dual-stored + `client_registry` row + first-boot seed all green | Proves the ADR-001 hybrid + ADR-005 provisioning script actually wire up before we spec it in full. **→ 🟢 PASS 2026-07-04 (session 60, two-party live run — evidence `app/provisioning/results/af-004-evidence.2026-07-04.md`):** operator Railway service `AI-Harness-V1.0` auto-deployed commit `324ae79` from GitHub with **Root Directory `/app/service`**, all 7 env secrets injected, `internal_token` dual-stored (Railway env + mgmt `client_registry.internal_token`), `client_registry` row written (`status=initialising`), and `GET /health → 200 {supabaseReachable:true}` — the deployed service reached the **client-owned Supabase silo** (`Transpera-AIOS-V1`, `ap-southeast-2`). 4 Railway mutations validated live (AF-143 partial). **Session-61 follow-through:** the two ISSUE-007 §10 code follow-ups **landed** — the **canary live seed** (`SupabaseSeed`, real OpenAI embeddings + idempotent live upsert; evidence `app/canary/results/live-seed-evidence.2026-07-04.md`) and **`RailwayInfra` codification** (`app/provisioning/src/infra.ts`). ISSUE-007 is now `done` and **Checkpoint 0 is CLOSED**. **Remaining caveat (honest):** the boot target is still the minimal `/health` PROBE, not the C0/C1 first-boot seed (separate issues, out of ISSUE-007 §2), so the `initialising→active` seed transition is exercised by those issues, not here. | SPIKE | 🟢 |
 
 ---
 
@@ -600,6 +600,9 @@ provisioner MUST pre-flight-verify repo access and fail loud if the GitHub App i
 — #3). **Method:** SPIKE (attempt `serviceConnect` on a repo without the App → expect a clear auth error; then with it →
 success; confirm *which* account installs it — operator org vs client). **Relied on by:** FR-10.PRV.001, AF-004, the AF-004
 two-party run, OD-174. **Fails safe:** the pre-flight check converts a silent failure into a loud, actionable onboarding blocker.
+**→ 🟢 CONFIRMED 2026-07-04 (AF-004 session 60):** the operator installed the Railway GitHub App + linked the repo via the
+dashboard — confirming the manual, no-API gate; once installed, `serviceConnect`/auto-deploy proceeded. `RailwayInfra.linkRailway`
+now fails loud pointing at this step (OD-174). The install account is the **operator org** that owns the shared `app/` repo (ADR-011).
 
 **AF-142 — Automated provisioning needs a Workspace/Account token; project tokens can't create (SPIKE).**
 Source: `tool-integrations/railway.md` §2 (2026-07-04). A Railway **project token** is scoped to an *existing* environment and
@@ -609,6 +612,11 @@ whose blast radius is **every client project in the workspace** (a god-mode cred
 (b) least-privilege custody holds. **Method:** SPIKE (project-token `projectCreate` → expect scope error; Workspace-token →
 success). **Relied on by:** `RailwayInfra` token custody, NFR-SEC (secrets custody, Phase 5). **Fails safe:** token held only
 in the operator secret store, never in repo/build; every provisioning call audit-logged.
+**→ 🟡 RESIDUAL (session 61):** `RailwayInfra` is coded to require a Workspace/Account token (`RAILWAY_API_TOKEN`, fail-loud if
+absent) and the CLI `--execute` path is wired, but a full **scripted** provisioning re-run (project/service create + deploy via
+GraphQL) was **not** live-exercised — the AF-004 run used the operator's dashboard-linked service + GitHub-native deploy, and no
+Workspace token has been minted. Not blocking Checkpoint 0 (AF-004 proved the plumbing); flip 🟢 when a Workspace-token scripted
+run lands (before multi-client provisioning).
 
 **AF-143 — Railway GraphQL mutation names/inputs (incl. `templateDeployV2`) are doc-thin/undated; validate vs live schema (SPIKE/DOCS).**
 Source: `tool-integrations/railway.md` §4/§7 (2026-07-04). Railway docs pages carry **no last-updated dates**, and several
@@ -617,6 +625,11 @@ load-bearing mutations (`serviceConnect`, `serviceInstanceUpdate.rootDirectory`,
 unproven assumption: the exact mutation names + input shapes the adapter codes against are current. **Method:** introspect the
 live schema at `railway.com/graphiql` before marking any Railway-citing FR Ready. **Relied on by:** every `RailwayInfra`
 operation. **Fails safe:** the AF-004 two-party session runs each mutation against live infra, catching any drift immediately.
+**→ 🟡 PARTIAL (sessions 60–61):** **validated live** in AF-004 — `serviceInstanceUpdate` (rootDirectory), `variableUpsert`/
+`variableCollectionUpsert` (skipDeploys), `serviceDomainCreate`, the `deployments` query + status enum, and the Supabase
+Management API `/database/query`. `RailwayInfra` (`app/provisioning/src/infra.ts`) codes against exactly these. **Still to
+validate** (marked inline as ⚠️ AF-143 in the adapter): the `variables(...)` read query, `serviceInstanceDeploy`, and the
+service repo-link read — documented shapes, not yet live-run (need the AF-142 Workspace token). Non-blocking.
 
 ---
 

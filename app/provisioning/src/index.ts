@@ -2,9 +2,19 @@
 // `--dry-run` prints the plan against DryRunInfra (no live calls). The live `--execute` path is
 // guarded until RailwayInfra (the AF-004 two-party adapter) is implemented.
 
-import { DryRunInfra } from "./infra.ts";
+import { DryRunInfra, RailwayInfra } from "./infra.ts";
 import { provision } from "./provision.ts";
 import { type Connector, type DeploymentConfig, requiredSecretKeys } from "./types.ts";
+
+/** Read a required env var or exit loud (never provision with a silent gap — #3). */
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (v === undefined || v.trim() === "") {
+    console.error(`FATAL: missing required env ${name} (source ~/.ai-harness-secrets.env / operator secret store).`);
+    process.exit(1);
+  }
+  return v;
+}
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -49,12 +59,35 @@ async function main() {
     return;
   }
 
-  // TODO(AF-004): const infra = new RailwayInfra(...) — the live two-party adapter.
-  console.error(
-    "--execute is not available yet: the live RailwayInfra adapter is the AF-004 two-party step " +
-      "(needs Supabase/Railway access + ISSUE-012 client_registry DDL). Run with --dry-run.",
-  );
-  process.exit(1);
+  // Live provisioning (RailwayInfra). Requires a Railway Workspace/Account token (AF-142) + the
+  // management-plane Supabase PAT/ref + the Railway topology IDs — all from the operator secret store.
+  const infra = new RailwayInfra({
+    railwayApiToken: requireEnv("RAILWAY_API_TOKEN"), // Workspace/Account token — project tokens can't (AF-142)
+    projectId: requireEnv("RW_PROJECT"),
+    serviceId: requireEnv("RW_SERVICE"),
+    environmentId: requireEnv("RW_ENV"),
+    mgmtProjectRef: requireEnv("MGMT_REF"),
+    supabaseAccessToken: requireEnv("SUPABASE_ACCESS_TOKEN"),
+  });
+
+  // Secret VALUES come from the operator's environment (the secure channel), never the repo.
+  // INTERNAL_TOKEN is minted by provision(), not supplied here.
+  const supplied: Record<string, string> = {};
+  for (const k of requiredSecretKeys(cfg)) {
+    if (k === "INTERNAL_TOKEN") continue;
+    const v = process.env[k];
+    if (v !== undefined && v !== "") supplied[k] = v;
+  }
+
+  try {
+    const r = await provision(cfg, supplied, infra);
+    console.log(`\n✅ provisioned "${r.slug}" → status ${r.status}`);
+    console.log(`   applied: ${r.applied.join(" → ") || "(nothing — fully converged)"}`);
+    console.log(`   skipped: ${r.skipped.join(", ") || "(none)"}`);
+  } catch (e) {
+    console.error(`\n❌ provisioning failed: ${e instanceof Error ? e.message : e}`);
+    process.exit(1);
+  }
 }
 
 main().catch((e) => {

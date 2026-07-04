@@ -88,7 +88,6 @@ export class InMemorySeedStore implements CanarySeedStore {
   }
 }
 
-// TODO(AF-004 / two-party): SupabaseSeed implements CanarySeedStore against the canary's own
-// Supabase (service_role) — embed() calls OpenAI text-embedding-3-small, insert*() upsert with
-// ON CONFLICT DO NOTHING on the natural keys (id / idempotency_key) so a re-seed is a no-op.
-// Built alongside RailwayInfra in the live provisioning session; needs the C0/C1 seed schema.
+// The LIVE adapter — SupabaseSeed (embed via OpenAI text-embedding-3-small + PostgREST upserts with
+// ON CONFLICT DO NOTHING on the natural keys) — is implemented in ./supabase-seed.ts and run by
+// ./seed-live.ts. Proven live against the silo in the AF-004 session (evidence in ../results/).

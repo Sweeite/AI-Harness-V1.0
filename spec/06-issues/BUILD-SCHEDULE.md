@@ -79,7 +79,7 @@ each piece against its `AC-*`, integration-test at the checkpoint, then climb to
 ### Stage 0 — Roots & spikes  🧑 you present
 Gate everything. Not hands-off.
 
-- 🟠 **GATE — `007` Provisioning + per-client Supabase bootstrap** 🧑 — root of the critical path; two-party (your accounts + a runbook). **`in-progress` (Sessions 58–60). AF-004 🟢 PASS (session 60 — live provisioning on real Railway+Supabase; evidence `app/provisioning/results/af-004-evidence.2026-07-04.md`), BUT 007 is NOT `done`:** canary live seed (`SupabaseSeed`), `RailwayInfra` codification, login-OAuth, and the C0/C1 first-boot seed remain (ISSUE-007 §10). Box stays unticked until `done`.
+- [x] ✅ **GATE — `007` Provisioning + per-client Supabase bootstrap** 🧑 — root of the critical path; two-party. **`done` (Sessions 58–61).** AF-004 🟢 (session 60 — live provisioning on real Railway+Supabase, evidence `app/provisioning/results/af-004-evidence.2026-07-04.md`); session 61 landed the §10 remainder: **canary live seed** (`SupabaseSeed`, real OpenAI embeddings + idempotent live upsert — evidence `app/canary/results/live-seed-evidence.2026-07-04.md`) and **`RailwayInfra` codification** (`app/provisioning/src/infra.ts`). Login-OAuth re-gated to onboarding (OD-175); C0/C1 seed is §2-Out. GitHub #7 closed.
 - 🟢 BATCH (spikes — each ends in a PASS/FAIL AF flip):
   - [x] `001` SPIKE cost viability ✅ (AF-001 🟢, $2.09/day)
   - [x] `002` SPIKE RLS hot-path latency ✅ (AF-067 🟢 — initPlan 1.06 ms/stmt once-per-stmt, lint PASS, retrieval p95 0.9 ms; ⚠️ surfaced AF-019 planner-seqscan cliff → ISSUE-023)  🔴
@@ -87,13 +87,14 @@ Gate everything. Not hands-off.
   - [x] `004` SPIKE restore actually works ✅ (AF-069 🟢 Path B 2026-07-04 — you-present; real off-platform pg_dump→pg_restore into a throwaway Supabase project: 5000/5000 memories + embeddings intact + 25/25 auth.users restored, RTO 19.4s. ⚠️ Path A in-project/PITR restore not exercised — residual before go-live)  🔴
   - [x] `005` SPIKE brute-force / credential defense ✅ (AF-077 🟢 2026-07-04 — you-present; app-layer per-account soft-lock halts scripted single + simulated multi-IP attack before any session mints, CAPTCHA/Turnstile observed live, 2FA soft-lock, leaked-pw enforceable on Pro)  🔴
   - [x] `006` SPIKE webhook forgery / replay ✅ (AF-078 🟡 mechanics 2026-07-04 — MODE-M 17/17: raw-body-before-parse + constant-time + replay proven; Slack symmetric = real proof; Google OIDC mechanics; GHL signing DOCS-resolved AF-090. Live per-connector vendor confirmation deferred to onboarding — OD-172, operator has no GHL account; owed on ISSUE-017/039/040/041)  🔴
-- ◇ **CHECKPOINT 0:** every spike AF is GREEN with dated evidence in `feasibility-register.md`; `007`
-  stood up a real silo. **A red spike here halts its dependents (R2).**
-  **⚠️ GUARD (session 60): AF-004 being 🟢 in the register does NOT by itself close Checkpoint 0.** AF-004
-  proved the provisioning *plumbing* (deploy + env + `internal_token` dual-store + `client_registry` row +
-  boot/reachability), not the full ISSUE-007. Checkpoint 0 closes only when **ISSUE-007 `status: done`** —
-  i.e. after the canary live seed + `RailwayInfra` codification land (ISSUE-007 §10). Do not open Stage 1 on
-  the 🟢 alone (R1).
+- [x] ✅ **CHECKPOINT 0 — CLOSED 2026-07-04 (session 61).** Every Stage-0 spike AF is GREEN/mechanics-cleared with
+  dated evidence in `feasibility-register.md` (AF-001/067/068/069/077 🟢 · AF-078 🟡 mechanics+OD-172), and **`007` is
+  `status: done`** — it stood up a real silo, proved live provisioning (AF-004 🟢), seeded the canary corpus live, and
+  codified `RailwayInfra`. **Stage 1 (`008`) may now open (R1).** *(Historical guard, session 60: AF-004 🟢 alone did
+  NOT close this — closure waited on ISSUE-007 `done`, per the canary-seed + `RailwayInfra` remainder. That remainder
+  landed in session 61.)* **Residuals carried forward (non-blocking, tracked at their own gates):** AF-066 (canary
+  representativeness, fast-follow) · AF-142/AF-143 (Workspace-token scripted-provisioning re-run) · ISSUE-009 RLS on the
+  silo before real client data · login-OAuth per-deployment (OD-175) · AF-069 Path A (PITR restore) before go-live.
 
 ### Stage 1 — Bootstrap
 - 🟠 **GATE — `008` Migration harness (expand-contract) + 0001 baseline**  🔴 — the whole schema rides on this.

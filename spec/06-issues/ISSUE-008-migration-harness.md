@@ -2,7 +2,7 @@
 id: ISSUE-008
 title: Migration harness (expand-contract) + 0001 baseline
 epic: A — foundations
-status: blocked
+status: ready
 github: "#8"
 ---
 
@@ -120,7 +120,12 @@ Stand up the Drizzle migration harness on the expand-contract discipline and shi
 
 ## 7. Dependencies
 - **Blocked-by:** ISSUE-007 (provisioning + per-client Supabase bootstrap — a silo's Supabase must
-  exist before 0001 can migrate against it).
+  exist before 0001 can migrate against it). ✅ **007 is `done`** (2026-07-04) — this issue is now `ready`.
+  ⚠️ **Heads-up:** the ISSUE-007 canary run left a **minimal throwaway target schema** on the canary silo
+  `Transpera-AIOS-V1` (ref `nwufvzaamomajdyzemhx`) — `app/canary/migrations/0001_canary_target.sql`
+  (`entities`/`messages`/`memories` + `vector`, **no RLS**). It is NOT the real schema and this issue's 0001
+  baseline OWNS those tables: **drop/reset that canary schema before applying the real baseline** (don't build
+  on top of it). See the DDL header + `app/canary/results/live-seed-evidence.2026-07-04.md`.
 - **Blocks:** ISSUE-009, ISSUE-010, ISSUE-011, ISSUE-012, ISSUE-022, ISSUE-032, ISSUE-042,
   ISSUE-081, ISSUE-084 (every issue that assumes a migrated schema or extends the harness).
 

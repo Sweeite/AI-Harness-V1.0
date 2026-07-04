@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "seed:dry": "tsx src/index.ts",
+    "seed:live": "tsx src/seed-live.ts",
     "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

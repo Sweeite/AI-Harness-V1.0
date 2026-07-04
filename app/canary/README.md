@@ -14,8 +14,12 @@ retrieval-of-known-answers, contradiction detection, routing — are owned by th
   encode the retrieval target, the contradiction pair, and the routing cases. Shares dimensions
   (Northwind Traders / Dana Ruiz) with the AF-001/AF-002 spike corpus.
 - **`src/port.ts`** — the `CanarySeedStore` port + `InMemorySeedStore` fake (deterministic
-  embeddings, fault injection). The live `SupabaseSeed` adapter (OpenAI embeddings + the canary's
-  own Supabase) is the **two-party step** — `TODO(AF-004)`.
+  embeddings, fault injection).
+- **`src/supabase-seed.ts`** — the **live `SupabaseSeed` adapter** (real OpenAI
+  `text-embedding-3-small` embeddings + PostgREST upserts with ON CONFLICT DO NOTHING). Run by
+  **`src/seed-live.ts`** (`npm run seed:live` under `railway run`, so the OpenAI key is injected from
+  the deployment env, never the disk). Target schema: **`migrations/0001_canary_target.sql`** (a
+  minimal throwaway landing schema, superseded by ISSUE-008's real baseline).
 - **`src/seed.ts`** — `seedCanary()`: idempotent (re-seed converges, re-applies nothing) and
   fail-loud on partial insert (typed `CanarySeedError` — never a silent half-corpus, #3).
 
@@ -28,10 +32,12 @@ npm test             # build-time tests (determinism, schema invariants, idempot
 npm run typecheck
 ```
 
-## Status (ISSUE-007)
+## Status (ISSUE-007 — ✅ done, 2026-07-04)
 
-- ✅ Corpus + idempotent seed built and tested with **no live infra** (this package).
-- ⏳ **Live seed** (`SupabaseSeed`) + booting the corpus into a real canary Supabase is the
-  two-party session, alongside `RailwayInfra` / the AF-004 run.
+- ✅ Corpus + idempotent seed built and tested with **no live infra** (6/6, this package).
+- ✅ **Live seed done (session 61)** — `SupabaseSeed` seeded the corpus into the real client-owned
+  silo (`Transpera-AIOS-V1`, `ap-southeast-2`): 5 entities · 4 messages · 6 memories, real 1536-dim
+  OpenAI embeddings, idempotent + fail-loud proven live. Evidence:
+  `results/live-seed-evidence.2026-07-04.md`.
 - **AF-066** (corpus *representativeness* — does the battery catch real regressions?) is a
   build-time EVAL, **fast-follow**, not a launch gate (NFR-INF.008).

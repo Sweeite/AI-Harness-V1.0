@@ -2,7 +2,7 @@
 id: ISSUE-007
 title: Provisioning + per-client Supabase bootstrap
 epic: A — foundations
-status: in-progress
+status: done
 github: "#7"
 ---
 
@@ -52,7 +52,7 @@ Stand up a new client deployment via the scripted, idempotent, two-party provisi
 
 ## 4. Definition of done (the `AC-*` IDs that must pass — text read in the FR)
 - AC-10.PRV.001.1, AC-10.PRV.001.2, AC-10.PRV.001.3
-- AC-10.PRV.002.1, AC-10.PRV.002.2
+- AC-10.PRV.002.1, AC-10.PRV.002.2 — **re-gated to per-deployment onboarding by [OD-175](../00-foundations/open-decisions.md#od-175--per-client-login-oauth-registration-fr-10prv002-re-gated-from-the-issue-007-gate-to-per-deployment-onboarding-) (the canary ran on placeholder `LOGIN_OAUTH_*`; a real login-OAuth app needs a real deployment/account — verified at ISSUE-013 / the FR-10.PRV.004 runbook, not at this gate).**
 - AC-10.PRV.003.1, AC-10.PRV.003.2
 - AC-10.PRV.004.1, AC-10.PRV.004.2
 - AC-NFR-INF.006.1, AC-NFR-INF.006.2, AC-NFR-INF.006.3
@@ -93,11 +93,18 @@ Stand up a new client deployment via the scripted, idempotent, two-party provisi
 - **`AC-NFR-*` posture that must hold:** NFR-INF.006 (idempotent, atomic-or-loud on partial) is the launch-gating posture (RP-1, AF-004 blocking); NFR-INF.007 (per-client OAuth, no shared operator app — verified via DOCS + the registration walk-through), and NFR-INF.008 (the synthetic corpus exists and is boot-able as the canary fixture; coverage adequacy is AF-066, fast-follow).
 - **AC → `Verified` path:** the PRV ACs move to `Verified` once the AF-004 spike is GREEN and the idempotency/fail-loud build-time tests pass; AF-013 (Google verification) is closed as a scheduling dependency, AF-066 as fast-follow — neither blocks the correctness ACs above.
 
-## 10. Live result (session 60, 2026-07-04) — status stays `in-progress`
-**🟢 AF-004 PASS** — two-party live run against real infra (evidence: `app/provisioning/results/af-004-evidence.2026-07-04.md`; AF-004 flipped 🟢 in the feasibility register). Operator Railway service auto-deployed commit `324ae79` from GitHub with **Root Directory `/app/service`**; 7 env secrets injected; `internal_token` dual-stored (Railway env + mgmt `client_registry`); `client_registry` row written (`status=initialising`); `GET /health → 200 {supabaseReachable:true}` against the **client-owned Supabase silo** (`Transpera-AIOS-V1`, `ap-southeast-2`). Real infra stood up this session: mgmt Supabase `ai-harness-mgmt` (+ `0001_client_registry.sql` applied), silo `Transpera-AIOS-V1`, Railway project `adaptable-miracle`. The manual **Railway GitHub App install (AF-141) was done by the operator via the dashboard** — confirming it is a manual, no-API gate; once installed, provisioning proceeded.
+## 10. Live result — ✅ DONE (sessions 60–61, 2026-07-04)
 
-**Why still `in-progress` (honest remainder before `done` → before Checkpoint 0 can close):**
-1. **Canary live seed** — build `SupabaseSeed` (the `app/canary` live adapter) + seed the corpus into the silo (FR-10.PRV.003 live half). Corpus + idempotent seed already built/tested; only the live adapter + run remain.
-2. **`RailwayInfra` codification** — fold the direct GraphQL/CLI calls proven this session into `app/provisioning/src/infra.ts` (replace `TODO(AF-004)`), so provisioning is the scripted, idempotent flow FR-10.PRV.001 requires (not hand-run steps).
-3. **Login-OAuth** — `LOGIN_OAUTH_*` are placeholders; real per-deployment login-OAuth registration (FR-10.PRV.002) is a per-onboarding step, not yet done.
-4. The real **C0/C1 first-boot seed** (`initialising→active`) is a separate issue's code, not built — AF-004 proved the provisioning plumbing that *triggers* it, per §2 scope.
+**Session 60 — 🟢 AF-004 PASS** (provisioning plumbing): evidence `app/provisioning/results/af-004-evidence.2026-07-04.md`. Operator Railway service auto-deployed commit `324ae79` with **Root Directory `/app/service`**; 7 env secrets injected; `internal_token` dual-stored (Railway env + mgmt `client_registry`); `client_registry` row written (`status=initialising`); `GET /health → 200 {supabaseReachable:true}` against the **client-owned Supabase silo** (`Transpera-AIOS-V1`, `ap-southeast-2`). Real infra: mgmt Supabase `ai-harness-mgmt` (+ `0001_client_registry.sql`), silo `Transpera-AIOS-V1`, Railway project `adaptable-miracle`. The manual **Railway GitHub App install (AF-141)** was done via the dashboard — confirming the no-API gate.
+
+**Session 61 — the §10 remainder landed → ISSUE-007 `done`:**
+1. **Canary live seed — ✅ DONE (FR-10.PRV.003 live half).** Built `SupabaseSeed` (`app/canary/src/supabase-seed.ts`) — real OpenAI `text-embedding-3-small` embeddings + PostgREST upserts with ON CONFLICT DO NOTHING — and `seed-live.ts` (reads keys from the deployment env; run via `railway run`, so the OpenAI key never touches disk). Seeded the corpus into the silo against a **minimal canary-only target schema** (`app/canary/migrations/0001_canary_target.sql`, the `client_registry` precedent — throwaway, superseded by ISSUE-008's baseline; no RLS = tracked ISSUE-009 residual). **Live-proven:** 5 entities · 4 messages · 6 memories, 0 null embeddings, all 1536-dim; fresh seed failed LOUD on a bad key (no half-seed, #3), resumed, then a re-run fully converged (0 inserted / 15 skipped). Evidence: `app/canary/results/live-seed-evidence.2026-07-04.md`.
+2. **`RailwayInfra` codification — ✅ DONE (FR-10.PRV.001).** Replaced `TODO(AF-004)` in `app/provisioning/src/infra.ts` with `RailwayInfra` implementing `Infra` — Railway GraphQL (`/graphql/v2`; `variableUpsert`/`variables`/`serviceInstanceDeploy`/`deployments`, all `skipDeploys:true`, AF-141 link fails loud) + the `client_registry` reads/writes via the Supabase Management API. Wired the CLI `--execute` path (needs a Railway **Workspace** token — AF-142). Typecheck + 4/4 tests green; the mgmt-DB half validated live against the canary row. **Residual — AF-143:** the load-bearing mutations were validated in AF-004; the `variables` read, `serviceInstanceDeploy`, and the repo-link read are documented-but-not-yet-live-validated (need a Workspace token to re-run scripted provisioning end-to-end) — marked inline, non-blocking.
+3. **Login-OAuth (FR-10.PRV.002) — re-gated out by [OD-175](../00-foundations/open-decisions.md#od-175--per-client-login-oauth-registration-fr-10prv002-re-gated-from-the-issue-007-gate-to-per-deployment-onboarding-).** `LOGIN_OAUTH_*` stay placeholders; real per-deployment registration is verified at onboarding (ISSUE-013 / the FR-10.PRV.004 runbook), not at this gate — the [[OD-172]] pattern. AC-10.PRV.002.1/.2 relocate there.
+4. **C0/C1 first-boot seed** (`initialising→active`) — **already §2-Out** (owned by C0 `FR-0.SEED.*` / C1 `FR-1.ROLE.001`). AF-004 proved the plumbing that *triggers* it; the seed itself is those issues' code.
+
+**Embeddings — long-term design (recorded):** the seed reads `OPENAI_API_KEY` from the **deployment env**, never the operator's laptop (in production the key is client-owned and lives in that deployment's Railway env; the first-boot seed runs in-deployment). This session executed via `railway run` (transient injection); the same `seed-live.ts` entrypoint is the eventual in-deployment first-boot seed hook.
+
+**Tracked residuals (non-blocking for Checkpoint 0; blocking their own later gates):** AF-066 (canary corpus representativeness — fast-follow EVAL); AF-142/AF-143 (Workspace token + live-validate the remaining Railway read mutations at a scripted-provisioning re-run); ISSUE-009 RLS on the silo before any real client data; login-OAuth per-deployment (OD-175).
+
+**Sign-off:** operator-present two-party session (60–61). Definition of done met on the correctness ACs (AC-10.PRV.001.*, AC-10.PRV.003.*, AC-10.PRV.004.*, AC-NFR-INF.006/.007/.008); AC-10.PRV.002.* re-gated per OD-175.

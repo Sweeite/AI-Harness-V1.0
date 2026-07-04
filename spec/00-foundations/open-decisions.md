@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. Next OD number: OD-175.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. Next OD number: OD-176.
 
 ---
 
@@ -2335,3 +2335,37 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   **Owed:** the AF-141 SPIKE (confirm the installing account + that `serviceConnect` fails loud without it) before AF-004
   goes green. Feeds the client-onboarding runbook + the `RailwayInfra` pre-flight.
 - **Status:** 🟡 RECOMMENDATION — operator to confirm at the AF-141 SPIKE (part of the AF-004 two-party session).
+
+## OD-175 — Per-client login-OAuth registration (FR-10.PRV.002) re-gated from the ISSUE-007 gate to per-deployment onboarding 🟢 RESOLVED (2026-07-04, session 61, operator-delegated: "I trust your rec")
+
+- **OD-175 — the deployment-driven gating call for the provisioning login-OAuth requirement (ISSUE-007 / FR-10.PRV.002).**
+  ISSUE-007 §4 lists **AC-10.PRV.002.1/.2** (register the client's OWN login + connector OAuth apps in the client's
+  accounts, redirect URIs → that deployment's Railway domain; start Google production verification early) in its Definition
+  of Done. But FR-10.PRV.002 is **inherently per-deployment onboarding work**: it needs a *real* client (or a real login
+  provider) account, and its redirect URIs point at a *specific* deployment domain. The **AF-004 canary** ran with
+  **placeholder `LOGIN_OAUTH_*`** (the boot gate checks *presence*, not validity — af-004-evidence §caveats): there is no
+  real client account behind the synthetic canary to register a real login-OAuth app in. Proving AC-10.PRV.002.* now would
+  mean registering a throwaway OAuth app for a synthetic client — a fake proof, not a real one.
+- **Decision (operator-delegated):** **re-gate the per-deployment login-OAuth registration + Google verification lead-time
+  (AC-10.PRV.002.1/.2) from an ISSUE-007 / Checkpoint-0 requirement to a per-deployment ONBOARDING requirement** — proven
+  when a real deployment's OAuth apps are registered during onboarding (the client-onboarding runbook step FR-10.PRV.004 /
+  the login issue **ISSUE-013 OAuth login + session**, Stage 3), **not** before Checkpoint 0. This is the exact analogue of
+  **[[OD-172]]** (webhook live-vendor confirmation re-gated to per-connector onboarding). For Checkpoint-0 / go-no-go,
+  ISSUE-007 is satisfied by the proven provisioning plumbing (AF-004 🟢), the codified `RailwayInfra`, and the live canary
+  seed; the per-deployment OAuth registration is a **tracked residual**, never a silent omission (#3).
+- **Rationale:** (1) FR-10.PRV.002 stays **Approved and unchanged** — this relocates *where its ACs are verified*, it does
+  not relax them; (2) the canary is operator-owned synthetic infra with no client account, so a real per-client OAuth app
+  cannot exist for it; (3) redirect-URI correctness + Google prod-verification lead-time are only meaningful against a real
+  deployment domain + real client Google project, which exist at onboarding, not at the Stage-0 gate.
+- **What this does NOT relax:** per-client apps in the client's OWN accounts (never a shared operator app — ADR-001 §5 /
+  ADR-005 §6); redirect URIs → the deployment domain; Google production verification started early as a schedule
+  dependency (AF-013). A real deployment may not go live for a real client until its login-OAuth registration is done +
+  verified at onboarding (the residual is blocking THERE).
+- **Companion scope facts (recorded, not forks — see ISSUE-007 §10):** the **C0/C1 first-boot seed** (Internal Org + first
+  Super Admin + roles + agents) was already **§2-Out** (owned by C0 `FR-0.SEED.*` / C1 `FR-1.ROLE.001`); AF-004 proved only
+  the plumbing that *triggers* it. The **minimal canary target schema** (`app/canary/migrations/0001_canary_target.sql`) is
+  a throwaway precondition (the `client_registry` precedent), superseded by ISSUE-008's real 0001 baseline; it carries **no
+  RLS** (a #2 posture gap tracked as an ISSUE-009 residual — acceptable only because the silo holds solely synthetic data).
+- **Status:** 🟢 RESOLVED. **Owed:** per-deployment login-OAuth registration + Google verification at onboarding
+  (ISSUE-013 / FR-10.PRV.004 runbook), before a real client login goes live. Checkpoint 0 no longer blocks on login-OAuth;
+  it closes on **ISSUE-007 `status: done`** (canary live seed + `RailwayInfra` — the plumbing already 🟢 via AF-004).
