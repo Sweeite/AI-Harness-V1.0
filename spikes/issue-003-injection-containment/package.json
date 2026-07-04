@@ -1,0 +1,16 @@
+{
+  "name": "issue-003-injection-containment",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "ISSUE-003 spike: red-team the containment-first injection posture (ADR-007). Prove there is NO authorized-but-dangerous autonomous action path past the seven code-enforced hard limits / hard-approval floor / RBAC-RLS / isolation, irrespective of prompt content (AF-068 gate). See ../../spec/06-issues/ISSUE-003-injection-red-team-spike.md",
+  "scripts": {
+    "spike": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

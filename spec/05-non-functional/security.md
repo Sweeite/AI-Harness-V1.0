@@ -83,7 +83,7 @@
   - AC-NFR-SEC.004.1 — Given any agent run, When it attempts one of the seven hard-limited actions autonomously, Then the action is blocked at the code layer, logged, and alerted — and there is no UI path to approve it.
   - AC-NFR-SEC.004.2 — Given the agent-registry editor, When a definition would grant Comms send / Finance transact / a non-Memory-Agent memory write, Then the write is rejected at save (not merely audited).
   - AC-NFR-SEC.004.3 — Given the red-team battery (AF-068), When executed against the running system, Then no test achieves a hard-limited effect without an explicit, authorized, non-bypassable human step.
-- **Notes / OD:** AF-068 also gates the *enforceability claim* (AF-068 is the standing gate on the hard-limit set).
+- **Notes / OD:** AF-068 also gates the *enforceability claim* (AF-068 is the standing gate on the hard-limit set). **AF-068 gate 🟢 PASS (2026-07-04, ISSUE-003)** — the red-team battery drove a containment-first harness (a fully-compromised, maximally-obedient model) and confirmed no authorized-but-dangerous autonomous path past the seven limits / approval floor / RBAC-RLS / isolation; 12/12 attacks contained, mutation-tested. Per the `AC → Verified` rule (`test-strategy.md` §1), AC-NFR-SEC.004.1/.3 are proven **against the stub** and reach `Verified` when the same retained battery passes against the shipped enforcement code (ISSUE-055/059/020). Evidence: `spikes/issue-003-injection-containment/results/af-068-evidence.2026-07-04.md`.
 
 ### NFR-SEC.005 — Coverage-gap posture (gate, don't promote)
 
@@ -106,7 +106,7 @@
 - **Implemented by:** FR-6.INJ.001–006 · ADR-007 §2–5 · `injection_semantic_detection_enabled=false`.
 - **Target / threshold:** quarantine threshold >0.95 combined / high-confidence literal (FR-6.INJ.006); deterministic regex layer always-on.
 - **Verification:** SPIKE red-team (AF-068, shared with SEC.004) + EVAL of the pattern/embedding library coverage (AF-117, fast-follow).
-- **Launch gate:** **blocking** (the containment posture, via AF-068); the library-coverage EVAL (AF-117) is fast-follow.
+- **Launch gate:** **blocking** (the containment posture, via AF-068); the library-coverage EVAL (AF-117) is fast-follow. **AF-068 gate 🟢 PASS (2026-07-04, ISSUE-003)** — quarantine retained + human-routed (`human_decision=null`, `guardrail_log` type `prompt_injection`); `injection_semantic_detection_enabled=false` at boot; **8 evasion payloads that evaded quarantine still reached the model and were contained by the code gate** ("contained, not caught" — ADR-007 part 1), i.e. containment does not depend on detection. AC-NFR-SEC.006.1/.2/.3 proven against the stub; Verify against shipped code (ISSUE-059/055/020). AF-117 (detection-signal quality) remains a separate fast-follow EVAL and does not gate containment.
 - **Acceptance criteria:**
   - AC-NFR-SEC.006.1 — Given tool-returned content containing an injection attempt, When an agent processes it, Then the agent's actions remain bounded by its RBAC + hard limits + approval gates regardless of the injected instruction.
   - AC-NFR-SEC.006.2 — Given a high-confidence injection match, When it fires, Then the content is quarantined (retained), routed to a human, and logged to `guardrail_log` as `prompt_injection` — never auto-discarded.

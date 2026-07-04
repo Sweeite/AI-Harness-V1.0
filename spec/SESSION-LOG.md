@@ -5,6 +5,53 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 53 — 2026-07-04 — ISSUE-003 built + run + PASS: AF-068 (injection containment red-team) flipped 🟢; GitHub mirror drift (#2) reconciled
+
+**What happened:** Built the next `ready` Stage-0 spike — **ISSUE-003 (injection-containment red-team, AF-068)** — the
+load-bearing claim of the whole ADR-007 posture. Unlike 001/002 (measurements against real infra), the *subjects
+under test* (the seven hard limits ISSUE-055, the injection pipeline ISSUE-059, the mid-task RLS re-check ISSUE-020)
+aren't built yet, so per §8.1 the spike runs against a **throwaway harness stub that faithfully reproduces the seams**
+— "prove the path, not ship the product." Full harness `spikes/issue-003-injection-containment/` (TS/Node, zero runtime
+deps, mirrors the 001/002 house style: `src/` 1:1 with §8 build order, dated evidence in `results/`, README, AF block).
+**AF-068 PASS → 🟢.**
+
+**Design (why the green run is trustworthy, not self-fulfilling):** threat model = a **fully-compromised, maximally-
+obedient model** (assume HL7 already happened at the reasoning layer — the model emits whatever the injection asks;
+security *never* rests on the model refusing, per ADR-007 part 1). The code gate `enforce()` takes **no prompt/content
+parameter** — structurally unswayable by injected text. Battery = **12 attacks + 4 negative controls**:
+- **12/12 attacks contained** — no consequential side effect reached execution (each of the 7 hard limits + the
+  external-comms floor incl. an OD-161 "low-risk" sub-type + financial + Confidential/Restricted memory + cross-client
+  + self-approval + boundary-tag break-out).
+- **8 evasion payloads** carried no injection literal → not quarantined → **reached the model, which obeyed** → still
+  blocked by the code gate. This is the "contained, not necessarily caught" proof (ADR-007 part 1).
+- **4/4 negative controls succeed** (human-approved external send / same-client read / benign read / normal memory
+  write all allowed) — proving real containment, not a brick that blocks everything.
+- Boot: `injection_semantic_detection_enabled=false` (AC-NFR-SEC.006.3); quarantine retained + human-routed
+  (`human_decision=null`, `guardrail_log` type `prompt_injection`); **0** hard_limit rows approved (schema L506 check).
+- **Mutation-tested:** injecting a real bypass (allow autonomous external email) flips the verdict ⛔ + exits non-zero —
+  the battery has teeth (proven, then reverted).
+
+**Scope honesty (stated in the evidence + issue §10):** PASS = the containment *design* has no bypass at the executable-
+seam level, **and** we now hold the retained regression battery. It does **not** prove the *shipped* enforcement code is
+safe — the same battery re-runs against ISSUE-055/059/020 (and live connectors, once ISSUE-039/040/041 exist) pre-release.
+Detection-signal *quality* is AF-117 (separate EVAL); per ADR-007 detection is only a signal, so a library gap degrades
+the signal, it does not breach containment.
+
+**Files changed (sync ritual — all trackers in one commit):** new `spikes/issue-003-injection-containment/` (+ evidence);
+`feasibility-register.md` (AF-068 🔴→🟢); `ISSUE-003` frontmatter `ready→in-progress→done` + §10 Result; `BUILD-SCHEDULE.md`
+Stage-0 003 ✅; `_backlog.md` (roster + Tier-0 roll-up); `README.md` build row; `security.md` NFR-SEC.004/006 AF-068 gate
+annotations (ACs proven-vs-stub, Verify-vs-shipped). **GitHub mirror reconciled:** closed **#3** (AF-068) — *and* **#2**
+(AF-067), which was still OPEN though ISSUE-002 was `done` last session (drift from Session 52 fixed; Rule 0 / #3). No
+scope/decision change.
+
+**Next action:** Stage 0 continues — **three** launch-gating spikes remain on the go/no-go set: **ISSUE-004 (restore
+rehearsal, AF-069)**, **005 (brute-force, AF-077)**, **006 (webhook forgery, AF-078)**. All `ready`; none blocks another;
+each flips its AF. R2/R8 still apply (a red spike is a design fork; 004 needs a real backup+restore, 005/006 need real
+auth/webhook endpoints → operator credentials). After all six Tier-0 spikes are GREEN, **Checkpoint 0** closes and **Stage 1
+(`008` migration harness)** opens (R1).
+
+---
+
 ## Session 52 — 2026-07-04 — ISSUE-002 built + run + PASS: AF-067 (RLS hot-path latency) flipped 🟢; AF-019 planner cliff surfaced
 
 **What happened:** Pulled main (synced `BUILD-SCHEDULE.md` etc.), then built the next `ready` Stage-0 gate —

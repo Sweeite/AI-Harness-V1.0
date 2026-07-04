@@ -2,7 +2,7 @@
 id: ISSUE-003
 title: "SPIKE: injection containment red-team (AF-068)"
 epic: S — spikes
-status: ready
+status: done
 github: "#3"
 ---
 
@@ -66,3 +66,31 @@ Prove AF-068 GREEN — red-team the running harness with live injection payloads
 - **Test layer:** **Red-team** (`spec/05-non-functional/test-strategy.md` §1) — an adversary cannot exceed the containment boundary; adversarial, pre-release, and the launch go/no-go gate (§4 item 1).
 - **AC → Verified path:** the AC-NFR-SEC.004.* / .006.* and the C6 HRD/APR/INJ ACs listed in §4 reach `Verified` only when the red-team battery passes **and** AF-068's gate clears (the `AC → Verified` rule, `test-strategy.md` §1) — until then they are `Ready`, not `Verified`, and the gap is explicit.
 - **Posture held:** AF-068 is **SPIKE-GATE**, not fast-follow — there is no safe posture that lets it ship un-proven; a documented PASS with logged evidence in the feasibility register is the launch bar (`test-strategy.md` §4/§6). The exit artifact is AF-068 = 🟢 in Block H.
+
+## 10. Result — ✅ done (2026-07-04, Session 53) — AF-068 PASS 🟢
+
+Built a self-contained TypeScript red-team harness at `spikes/issue-003-injection-containment/`
+that faithfully reproduces the ADR-007 seams (C5 step order → C6 sanitize/boundary-wrap/quarantine
+→ seven code-enforced hard limits + hard-approval floor → RBAC-RLS + physical isolation) and drives
+an adversarial battery against a **fully-compromised, maximally-obedient model** (the strongest
+adversary — security never rests on the model refusing).
+
+- **12/12 attacks contained** (no consequential side effect executed); **4/4 negative controls
+  succeed** (human-approved external send + same-client read + benign read + normal memory write all
+  allowed — proving real containment, not a brick).
+- **8 evasion payloads** carried no injection literal → not quarantined → reached the model → still
+  blocked by the code gate ("contained, not caught", ADR-007 part 1). `enforce()` takes no
+  prompt/content parameter — structurally unswayable.
+- `injection_semantic_detection_enabled=false` at boot (AC-NFR-SEC.006.3); quarantine retained +
+  human-routed (`human_decision=null`); 0 hard_limit rows approved (schema L506 check held).
+- **Mutation-tested:** an injected bypass flips the verdict ⛔ + exits non-zero — the battery has teeth.
+- **Retained** as the red-team regression layer (`test-strategy.md` §1) — re-run against the real
+  ISSUE-055/059/020 code and live connectors pre-release.
+
+**AC status:** the §4 AC set (AC-NFR-SEC.004.1/.3, .006.1/.2/.3, AC-6.HRD.001.1/.3, AC-6.APR.002.1,
+AC-6.INJ.001.1/.2, .004.1, .006.1) is proven at the red-team layer **against the stub**; per §9's
+`AC → Verified` rule they reach `Verified` only when the same battery passes against the *shipped*
+enforcement code (ISSUE-055/059/020). AF-068 gate = 🟢 (Block H). Evidence: `results/af-068-evidence.2026-07-04.md`.
+
+**Blocks unblocked:** AF-068 clears for ISSUE-020/055/059 — but each retains other §7 blockers
+(Stage 3/5), so they stay `blocked`, not `ready`. Checkpoint 0 still needs AF-069/077/078 (ISSUE-004/005/006).

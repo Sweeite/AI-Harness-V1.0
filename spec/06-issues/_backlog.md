@@ -47,7 +47,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 |---|---|---|---|---|
 | ISSUE-001 ✅ **done** | SPIKE: cost viability ≤~$20/day typical — **PASS $2.09/day** (AF-001 🟢, 2026-07-03; harness `spikes/issue-001-cost-viability/`) | NFR-COST.006, AF-001 | none | AF-001 |
 | ISSUE-002 ✅ **done** | SPIKE: RLS hot-path latency — **PASS** (AF-067 🟢, 2026-07-04; initPlan 1.06 ms/stmt once-per-stmt, lint PASS, p95 0.9 ms; harness `spikes/issue-002-rls-latency/`). ⚠️ surfaced AF-019 planner-seqscan-under-RLS cliff (~300×) → hard ISSUE-023 requirement | NFR-PERF.001/003, AF-067 | none | AF-067 |
-| ISSUE-003 | SPIKE: injection containment red-team | NFR-SEC.004/006, AF-068 | none | AF-068 |
+| ISSUE-003 ✅ **done** | SPIKE: injection containment red-team — **PASS** (AF-068 🟢, 2026-07-04; 12/12 attacks contained, 8 evasion payloads reached the model yet blocked by the code gate, 4/4 negative controls pass, mutation-tested; harness `spikes/issue-003-injection-containment/`). Clears AF-068 for ISSUE-020/055/059 (they retain other blockers) | NFR-SEC.004/006, AF-068 | none | AF-068 |
 | ISSUE-004 | SPIKE: restore actually works (DB+pgvector+auth) | NFR-DR.003, AF-069 | none | AF-069 |
 | ISSUE-005 | SPIKE: brute-force / credential defense | NFR-SEC.009, AF-077 | none | AF-077 |
 | ISSUE-006 | SPIKE: webhook forgery / replay rejected | NFR-SEC.008, AF-078 | none | AF-078 |
@@ -203,7 +203,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 
 Issues within a tier can be built in parallel; a tier's issues assume the prior tiers landed.
 
-- **Tier 0 (spikes, run first / alongside):** ~~001~~ ✅ · ~~002~~ ✅ · 003 004 005 006 — gate their dependents; none blocks another. (001 done 2026-07-03 — AF-001 PASS. 002 done 2026-07-04 — AF-067 PASS; surfaced AF-019 planner cliff → ISSUE-023.)
+- **Tier 0 (spikes, run first / alongside):** ~~001~~ ✅ · ~~002~~ ✅ · ~~003~~ ✅ · 004 005 006 — gate their dependents; none blocks another. (001 done 2026-07-03 — AF-001 PASS. 002 done 2026-07-04 — AF-067 PASS; surfaced AF-019 planner cliff → ISSUE-023. 003 done 2026-07-04 — AF-068 PASS; containment red-team, 12/12 attacks contained + mutation-tested.)
 - **Tier 1 (bootstrap):** 007 → 008. (007 stands up a client project; 008 the migration harness.)
 - **Tier 2 (shared scaffold):** 009 010 011 012 042 048 032. (RLS scaffold, config store, observability skeleton, mgmt plane, prompt store, task_queue, connector runtime.)
 - **Tier 3 (core models & safety):** 013 018 019 022 033 034 043 044 047 055 057 059 060 074 075 076 080 084.
