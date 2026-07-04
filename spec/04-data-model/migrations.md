@@ -6,8 +6,12 @@ FR-10.MIG.* (per-deployment propagation + failure isolation).
 
 ## The shape of migrations in this fleet
 
-- **One codebase, N deployments migrating independently** (ADR-001 §6). Drizzle migrations are generated
-  once (`drizzle-kit generate`) and applied **per-deployment** (`drizzle-kit migrate`) on release.
+- **One codebase, N deployments migrating independently** (ADR-001 §6). Migrations are authored once and
+  applied **per-deployment** on release. **Build note (OD-176, ISSUE-008):** the build implements this as
+  **raw-SQL migrations authored to this doc + `schema.md`/`indexes.md`/`rls-policies.md`** (kept as the sole
+  source of truth — no Drizzle `schema.ts`) applied by a small **custom migrate runner** (`app/silo/`) that
+  plays the `drizzle-kit migrate` role. `drizzle-kit generate` is not adopted (it can't emit RLS/helpers/
+  `CONCURRENTLY`/seed, and a `schema.ts` would fork Rule 0). The SQL remains reusable under drizzle if desired.
 - **Version skew is normal** (ADR-005 §3): during a rollout a `vN` and a `vN-1` deployment run against
   their own schemas. **Every schema change must be backwards-compatible with the immediately prior code.**
 - **Rollback is code-redeploy, not down-migration** (ADR-005 §4). The prior build must keep working

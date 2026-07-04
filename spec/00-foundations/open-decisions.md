@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. Next OD number: OD-176.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟡 recommendation, ISSUE-008 session 62, at file end) — do not reuse. OD-177 (9-agent roster seed under-specified: memory_scope jsonb shape + name literal, seeded fail-closed pending ISSUE-063; 🟡 OPEN, session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved session 62, at file end) — do not reuse. Next OD number: OD-179.
 
 ---
 
@@ -2369,3 +2369,69 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 - **Status:** 🟢 RESOLVED. **Owed:** per-deployment login-OAuth registration + Google verification at onboarding
   (ISSUE-013 / FR-10.PRV.004 runbook), before a real client login goes live. Checkpoint 0 no longer blocks on login-OAuth;
   it closes on **ISSUE-007 `status: done`** (canary live seed + `RailwayInfra` — the plumbing already 🟢 via AF-004).
+
+---
+
+## OD-176 — Migration harness = raw-SQL migrations + a custom runner, NOT `drizzle-kit generate`/`schema.ts` 🟡 RECOMMENDATION (2026-07-04, session 62, ISSUE-008; operator to confirm)
+
+- **OD-176 — the toolchain fork the ISSUE-008 gate had to settle.** `migrations.md` L9-10 names the toolchain as
+  "generated once (`drizzle-kit generate`) and applied per-deployment (`drizzle-kit migrate`)". `drizzle-kit generate`,
+  however, produces table DDL **from a Drizzle `schema.ts`** — which would create a **second source of truth** competing
+  with `schema.md` (a Rule-0 drift risk), and it **cannot generate** the RLS policies, SECURITY DEFINER helpers,
+  `CREATE INDEX CONCURRENTLY`, the append-only trigger, or the seed — all of which are hand-authored SQL regardless. The
+  existing `app/management` + `app/canary` migrations are already **raw hand-authored SQL** (applied via psql / the
+  Supabase Management API — the path proven live in sessions 60-61).
+- **Decision (recommendation):** author migrations as **raw SQL to the `schema.md`/`indexes.md`/`rls-policies.md`
+  contracts** (schema.md stays the *sole* Rule-0 source of truth — no `schema.ts`), and implement the `drizzle-kit migrate`
+  role directly as a small **custom TypeScript runner** (`app/silo/src/migrate.ts`, `pg`-based, journal-tracked in a
+  `_migrations` table) — idempotent, fail-loud, honouring the transactional / `--no-transaction` split. `drizzle-kit
+  generate` is **not** adopted.
+- **Options considered:** (A) *this* — raw SQL + custom runner [chosen: zero source-of-truth fork, matches the proven live
+  path, full control of the CONCURRENTLY split]; (B) full Drizzle ORM — author a `schema.ts`, `generate` table DDL, hand-add
+  the rest [rejected: `schema.ts` forks Rule 0; generate covers only ~⅓ of 0001]; (C) drizzle-kit `migrate` over
+  hand-authored custom SQL [rejected: finicky journal/transaction semantics for the non-txn 0001b, no upside over (A)].
+- **What this does NOT change:** the migration *content* is still authored strictly to `schema.md` et al.; per-deployment
+  apply-on-release + failure isolation stay as specified (ISSUE-081); `migrations.md`'s expand-contract discipline is
+  enforced by `app/silo/src/discipline.ts` (AC-NFR-INF.002.1). If the operator prefers literal `drizzle-kit`, the migration
+  SQL is reusable as-is under drizzle's custom-migration mode.
+- **Status:** 🟡 RECOMMENDATION — implemented in session 62; **flag for operator confirmation**. Deviation from
+  `migrations.md` L9-10 wording is recorded here (Rule 0), not silent. A one-line note added to `migrations.md`.
+
+---
+
+## OD-177 — The 9-agent roster seed is under-specified: `memory_scope` jsonb shape + `name` literal 🟡 OPEN (2026-07-04, session 62, ISSUE-008)
+
+- **OD-177 — a genuine spec gap the 0001 seed hit (not a guess to paper over).** `agents` has `memory_scope jsonb not null`
+  — the per-agent least-privilege retrieval filter, a **#2 containment control**. FR-8.REG.006 says provisioning seeds it
+  "(SCO matrix)", but the spec fixes only a **conceptual** access matrix (component-08 L3467-3476), **not the concrete jsonb
+  shape** (keys/structure). That shape is fixed by its **consumer, ISSUE-063** (per-agent memory scoping, Stage 8). Two
+  companion gaps: (a) `name` has no fixed literal — FR-8.REG.001's pattern `{client_slug}_<role>_agent` **embeds
+  client_slug, which OD-096 forbids on any silo table** (a spec conflict); (b) `max_tokens` is unspecified.
+- **Decision taken in 0001d (safe, invariant-upholding, documented):** seed the roster **fail-closed** — `memory_scope =
+  '{}'::jsonb` (empty = retrieves nothing, exactly the fail-closed rule **AC-8.SCO.001.3**), so no *invented* containment
+  value is shipped in the gate migration; `name` = the bare role slug (no client_slug — honours OD-096); `max_tokens = null`;
+  `description` = verbatim design-doc prose (L3423-3439); `tools_allowed = '{}'` (no tool rows exist at first boot).
+- **Owed / to resolve:** **ISSUE-063** fixes the concrete `memory_scope` jsonb shape and wires each agent's real scope (a
+  data update, not a schema change — expand-contract-safe). At that point: (1) define the jsonb structure; (2) reconcile the
+  FR-8.REG.001 name pattern vs OD-096 (drop the client_slug segment from the FR, or confirm slug-only); (3) decide
+  per-agent `max_tokens` (or leave null = model default). Until then the silo boots with a fail-closed roster — safe (#2),
+  and nothing runs on the human path until Stage 3+ anyway.
+- **Status:** 🟡 OPEN — non-blocking for ISSUE-008 (its DoD ACs do not touch agent scope) and for Checkpoint 1. Resolve at
+  ISSUE-063; carry as a tracked residual.
+
+---
+
+## OD-178 — `config_values` defaults seed deferred from 0001 to ISSUE-010 (Config store) 🟢 RESOLVED (2026-07-04, session 62, ISSUE-008)
+
+- **OD-178 — where the ~117 config defaults + structured objects get seeded.** ISSUE-008 §6 lists "default
+  entity_types/expected_slots/config defaults" among 0001's seed. But **ISSUE-010's title is "Config store +
+  audit-immutability"** — it owns `config_values` and the change-controlled edit path. The defaults are numerous, several
+  are OD-gated, and transcribing ~117 values into the gate migration risks Rule-0 drift against `config-registry.md`.
+- **Decision:** **defer the `config_values` defaults seed to ISSUE-010** (which owns the store + its audit trail). 0001d
+  seeds only the fully-specified, security-/structurally-load-bearing data (6 roles, the role×node matrix, the 9-agent
+  roster, the Internal-Org singleton, `deployment_settings`). The Internal-Org entity seeds fine without the config
+  (entities.type is a plain `text` column; the entity_types validation is app-level). This mirrors the RLS split (policies →
+  ISSUE-009) — the gate migration lands the schema + the invariant-critical seed; the specialised issues own their data.
+- **Owed:** ISSUE-010 seeds `entity_types`, `expected_slots` (shape only — concrete per-type content is onboarding-authored,
+  ISSUE-030), `ef_search` (default 40), and the rest of the Tier-2 defaults into `config_values`, idempotently, on first boot.
+- **Status:** 🟢 RESOLVED (deferral logged). ISSUE-008 §6 seed scope reduced accordingly — recorded here, not silent (#3).

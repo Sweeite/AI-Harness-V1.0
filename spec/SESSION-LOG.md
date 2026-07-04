@@ -5,6 +5,30 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 62 — 2026-07-04 — 🔵 **ISSUE-008 (Stage-1 GATE) — offline build COMPLETE, live capstone owed.** Built `app/silo/`: migration **0001** (44 tables · 29 enums · 43 CONCURRENTLY indexes · RLS-enable+default-deny · idempotent seed) + the `pg` migrate runner + the expand-contract discipline CI gate. **32/32 tests green; independent verification found no BLOCKER defects.** ISSUE-008 stays `in-progress` — apply + AF-065 are the you-present capstone.
+
+**What happened:** Opened the Stage-1 gate (Checkpoint 0 closed session 61). The operator chose "author now, live at end" — so this session built + verified the entire offline half of ISSUE-008 (the migration harness + the whole `schema.md` baseline), teeing up a true "run it" for the two-party capstone. Offloaded the bulk DDL transcription to parallel subagents (tables/indexes/seed-values) and authored the security-critical RLS substrate + seed myself.
+
+**Built — `app/silo/` (per-client silo schema + migrate runner):**
+- **Migration 0001, raw SQL to the spec contracts** (OD-176 — schema.md stays sole source of truth, no Drizzle `schema.ts`; a custom `pg` runner plays the `drizzle-kit migrate` role): `0001_baseline` (extensions + **29 enums** + **44 tables** in FK-dependency order + the append-only trigger; **FR-2.VEC.002** lands — `embedding vector(1536)` + `embedding_model` + `embedding_v2` slot), `0001b_indexes` (**43 indexes, all CONCURRENTLY**, HNSW `m=16, ef_construction=64`; mgmt-plane excluded), `0001c_rls` (**enable RLS + default-deny on all 44 tables** + a coverage assertion that fails loud on any RLS-off table + belt-and-braces `revoke delete` on the 4 sinks per schema.md L68), `0001d_seed` (idempotent first-boot: 6 roles + the **role×node matrix from PERMISSION_NODES.md** + the 9-agent roster **fail-closed** + Internal-Org singleton + deployment_settings).
+- **Harness:** journal-tracked `pg` runner (`src/migrate.ts`+`pg-driver.ts` — idempotent, fail-loud, txn/non-txn split, DB behind a port so it's unit-tested with no DB) + the **expand-contract discipline CI gate** (`src/discipline.ts` — AC-NFR-INF.002.1). **32/32 tests · typecheck · discipline all green.**
+
+**Scope split (Rule 0 — the gate lands the schema; specialised issues own their logic):** RLS helpers/policies/100%-coverage gate → **ISSUE-009** (its title); `config_values` defaults seed → **ISSUE-010** ([OD-178]); agent `memory_scope` real shape → **ISSUE-063** (seeded fail-closed `'{}'` now — [OD-177]). None of ISSUE-008's DoD ACs touch these, so the deferrals don't weaken the gate.
+
+**Verification (standing gate):** independent zero-context agent diffed all four migrations vs the five spec sources — **no BLOCKER defects** (tables/enums/index-bodies byte-identical; role→node matrix zero over-grants / zero under-grants — security-critical clean). One MINOR (belt-and-braces `revoke delete`) was **applied**.
+
+**Source fix (Rule 0):** caught + reconciled a `schema.md` inconsistency — §Immutability L69 mandated a `redacted_at` column on `event_log`/`access_audit`/`config_audit_log` (the trigger keys off it) but the three DDLs omitted it. Added to the migration **and** patched in `schema.md`.
+
+**Files changed (sync ritual — trackers moved for an *in-progress* issue, NOT a `done` one):** new `app/silo/**` (package + migrations/0001a-d + src runner/discipline/tests + README); `open-decisions.md` (**OD-176/177/178** + guard → OD-179); `migrations.md` (OD-176 toolchain note); `schema.md` (redacted_at ×3 consistency fix); **ISSUE-008 `status: ready → in-progress`** + new §10 build-progress; `README.md` build row. **NOT touched (correct — R1/R4):** BUILD-SCHEDULE `008` box stays unticked; Checkpoint-1 OPEN; GitHub #8 open; dependents stay `blocked`. Committed (not pushed).
+
+**Next action (START HERE — the you-present live capstone; everything else is DONE):** ISSUE-008's remainder is the two-party live run. `source ~/.ai-harness-secrets.env` first. Steps:
+1. **Reset** the throwaway `app/canary/migrations/0001_canary_target.sql` schema on silo `Transpera-AIOS-V1` (`nwufvzaamomajdyzemhx`) — drop `entities`/`messages`/`memories` (ISSUE-008 §7 heads-up; the real 0001 baseline OWNS those tables).
+2. **Apply** 0001a-d live: `cd app/silo && DATABASE_URL=<silo-postgres-url> npm run migrate` — confirm it applies, then a **re-run is a clean no-op** (idempotent), and prove **rollback-by-redeploy** discipline (Checkpoint 1). *(psql = `/opt/homebrew/opt/libpq/bin/psql`; Management API `POST /v1/projects/{ref}/database/query` + PAT also runs DDL.)*
+3. **AF-065** (AC-NFR-INF.002.2, the blocking RP-1 SPIKE, currently 🔴): run `vN` and `vN-1` concurrently against the migrated schema — confirm no data loss / errored path → flip AF-065 🔴→🟢 in `feasibility-register.md`.
+4. On green: **AC-2.VEC.002.1** proven live (write a memory → 1536-dim embedding + model name); flip **ISSUE-008 → `done`**; tick the BUILD-SCHEDULE `008` box; flip the newly-unblocked dependents (009/010/011/012/022/032/042/081/084) `blocked → ready` (re-check each §7); update `_backlog.md`; close GitHub #8. Stage 1's batch (`017`, `080` — already `ready`) + **Checkpoint 1** then remain to close Stage 1. **Carried residuals:** AF-142/143 · ISSUE-009 RLS on the silo · AF-069 Path A PITR · login-OAuth per-deployment (OD-175).
+
+---
+
 ## Session 61 — 2026-07-04 — ✅ **ISSUE-007 `done` → CHECKPOINT 0 CLOSED.** Built + ran the **canary live seed** (`SupabaseSeed`, real OpenAI embeddings) and codified **`RailwayInfra`** — the two ISSUE-007 §10 follow-ups. Login-OAuth re-gated (OD-175). Stage 1 (`008`) now open (R1).
 
 **What happened:** Finished the ISSUE-007 §10 remainder against the live infra stood up in session 60, closing the last Stage-0 gate. Two-party (operator-present). **ISSUE-007 → `done`; Checkpoint 0 → CLOSED.**

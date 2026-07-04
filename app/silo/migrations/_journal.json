@@ -1,0 +1,11 @@
+{
+  "version": "1",
+  "dialect": "postgresql",
+  "note": "Ordered manifest for the migrate runner (src/migrate.ts). 0001a-d together ARE 'migration 0001' per spec/04-data-model/migrations.md — split only to honour the CONCURRENTLY non-transactional rule (0001b) and the extensions->types->tables->indexes->RLS->seed ordering (migrations.md L17-48). `transactional:false` => the runner applies with autocommit (no BEGIN/COMMIT wrapper), required for CREATE INDEX CONCURRENTLY.",
+  "entries": [
+    { "tag": "0001_baseline", "file": "0001_baseline.sql", "transactional": true },
+    { "tag": "0001b_indexes", "file": "0001b_indexes.sql", "transactional": false },
+    { "tag": "0001c_rls", "file": "0001c_rls.sql", "transactional": true },
+    { "tag": "0001d_seed", "file": "0001d_seed.sql", "transactional": true }
+  ]
+}

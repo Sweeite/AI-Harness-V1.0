@@ -1,0 +1,23 @@
+{
+  "name": "@harness/silo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Per-client silo schema + migration harness (ISSUE-008, C10 FR-2.VEC.002 / NFR-INF.002). Raw-SQL migrations authored to schema.md/indexes.md/rls-policies.md (Rule 0: schema.md is the sole source of truth — no Drizzle schema.ts) + a custom migrate runner playing the drizzle-kit migrate role. See OD-176.",
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx src/index.ts migrate",
+    "migrate:status": "tsx src/index.ts status",
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

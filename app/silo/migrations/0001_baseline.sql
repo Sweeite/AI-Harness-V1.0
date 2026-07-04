@@ -1,79 +1,29 @@
-# Phase 4 — Consolidated Schema
+-- Client-silo baseline migration 0001 — transactional part (ISSUE-008)
+--
+-- SCOPE NOTE (Rule 0): this migration creates EXTENSIONS + TYPES + TABLES + TRIGGERS ONLY.
+-- The rest of migration 0001 is split across siblings to honor the CONCURRENTLY
+-- non-transactional rule (migrations.md L39, L46-48):
+--   * 0001b — indexes (vector/heavy builds run CONCURRENTLY, outside any txn block).
+--   * 0001c — RLS (enable row level security + policies + SECURITY DEFINER helpers).
+--   * 0001d — seed (idempotent, first-boot-only).
+-- Every column/type/default/constraint below is transcribed VERBATIM from the schema
+-- source of truth: spec/04-data-model/schema.md. Do NOT diverge here.
+--
+-- This lives in a CLIENT SILO (the client's own Supabase). The management-plane tables
+-- client_registry, deployment_health, offboarding_records are a SEPARATE migration
+-- lineage (schema.md §13; migrations.md L50-54) owned by ISSUE-012 — they are EXCLUDED
+-- here and never created in a client silo. `client_slug` never appears in a silo.
+--
+-- The runner wraps this file in a transaction — do NOT add BEGIN/COMMIT.
 
-**Status:** Draft (Phase 4). Built from `_data-inventory.md` + `_harvest-c7-c8.md`. This is the
-**spec-level** schema (typed tables, constraints, relationships). Drizzle/SQL migration files are a
-build artifact (`migrations.md` defines the migration story). RLS predicates → `rls-policies.md`;
-indexes → `indexes.md`.
+-- ── Extensions ─────────────────────────────────────────────────────────────
+-- migrations.md L22: vector (pgvector); pgcrypto (for gen_random_uuid()).
+create extension if not exists vector;
+create extension if not exists pgcrypto;
 
-**Context manifest:** ADR-001 (physical isolation, mgmt plane §7), ADR-002 (Maturity/Retrieval),
-ADR-003 (cost), ADR-004 (sole-writer memory), ADR-006 (static data-driven RLS), ADR-008 (backup/DR
-→ Phase 5). Standards: `migration-discipline.md`, `rbac.md`. All 11 components' `DATA-` footers + the
-14 surfaces' Phase-4 binding notes.
+-- ── Types (enums & domains) ────────────────────────────────────────────────
+-- Verbatim from schema.md §Types (L74-140), in listed order. Tables reference them.
 
-## Global rules (enforced across every table)
-
-- **No `client_slug` (or any client-identity column) on any application table.** OD-096 / C10
-  FR-10.ISO.001. `client_slug` is confined to the **management-plane deployment** (§13) — never a
-  client silo — where it appears on `client_registry` plus the two mgmt-only rollup tables that key
-  off it (`deployment_health`, `offboarding_records`). Isolation is physical (one Supabase per
-  client); RLS is intra-client only.
-- **Primary keys:** `uuid` default `gen_random_uuid()` unless a natural key is noted.
-- **Timestamps:** `timestamptz`; server-authoritative (`now()`), never client-asserted (AC-7.ALR.005.3).
-- **Versioned tables** (`prompt_layers`, `tools`, `agents`, `task_graph_versions`, `execution_plans`)
-  are **append-only-by-version**: an edit inserts a new row with `previous_version_id` + a non-empty
-  `change_reason`; prior versions are never overwritten.
-- **Audit sinks** (`event_log`, `guardrail_log`, `access_audit`, `config_audit_log`) are **append-only**;
-  the only mutation is a controlled forward status transition or a redaction-tombstone on erasure.
-  **This is enforced by a DB trigger, NOT by RLS** — the writing path is `service_role`, which bypasses
-  RLS, so RLS alone would leave history rewritable. See "Immutability enforcement" below.
-
-### Immutability enforcement (audit sinks — fires regardless of role, incl. `service_role`)
-
-RLS does not protect the audit sinks because their writer is `service_role` (RLS-exempt by design). Their
-append-only / tamper-evident guarantee (#1 never lose knowledge · #3 never fail silently; AC-7.LOG.008.3)
-is therefore bound to the table with a `BEFORE UPDATE OR DELETE` trigger that raises unless the change is
-one of the two whitelisted mutations — a forward status transition (`guardrail_log`) or a redaction-tombstone
-(PII columns → `[REDACTED]`, row + audit metadata retained). DELETE is always forbidden.
-
-```sql
-create or replace function enforce_audit_append_only() returns trigger
-  language plpgsql as $$
-begin
-  if tg_op = 'DELETE' then
-    raise exception 'audit sink %: DELETE forbidden (append-only)', tg_table_name;
-  end if;                                             -- UPDATE: allow only whitelisted mutations
-  if tg_table_name = 'guardrail_log'
-     and old.status = 'pending' and new.status in ('approved','rejected','modified')
-     and new.description = old.description and new.task_id = old.task_id then
-    return new;                                       -- forward status transition (still append-only in spirit)
-  end if;
-  if tg_table_name <> 'guardrail_log' then             -- guardrail_log has no redacted_at column (H43 fix)
-    if new.redacted_at is not null and old.redacted_at is null then
-      return new;                                     -- one-way redaction-tombstone (FR-7.LOG.006 / OD-074)
-    end if;
-  end if;
-  raise exception 'audit sink %: in-place UPDATE forbidden (append-only / tamper-evident)', tg_table_name;
-end $$;
-
-create trigger t_append_only before update or delete on event_log
-  for each row execute function enforce_audit_append_only();
-create trigger t_append_only before update or delete on guardrail_log
-  for each row execute function enforce_audit_append_only();
-create trigger t_append_only before update or delete on access_audit
-  for each row execute function enforce_audit_append_only();
-create trigger t_append_only before update or delete on config_audit_log
-  for each row execute function enforce_audit_append_only();
-```
-
-Belt-and-braces: also `revoke delete on {these four} from <app+service roles>` so a DELETE can never even
-reach the trigger. (`event_log`/`access_audit`/`config_audit_log` add a `redacted_at timestamptz` column;
-retention pruning is a separate privileged job, not an app/service DELETE.)
-
----
-
-## Types (enums & domains — defined once, referenced everywhere)
-
-```sql
 -- Identity / support
 create type support_status      as enum ('pending','in_progress','resolved');
 
@@ -137,27 +87,13 @@ create type connector_deletion_flag_state as enum ('raised','acknowledged','reso
 
 -- Config
 create type config_edit_class   as enum ('live','boot','rebuild','secret');
-```
+-- NOTE (schema.md L142-146): config_edit_class and step_failure_mode are DOCUMENTATION enums —
+-- not stored as a top-level column (config_edit_class = registry metadata on a key; step_failure_mode
+-- types each step inside plan_body/steps jsonb). Defined here so the value sets are canonical.
 
-> **Documentation enums (not stored as a column):** `config_edit_class` classifies each config key in
-> the Phase-2 registry (it is metadata on the key definition, not a `config_values` column);
-> `step_failure_mode` types each step's failure mode *inside* the `execution_plans.plan_body` /
-> `task_graph_versions.steps` jsonb (default `halt_and_escalate`), not a top-level column. Both are
-> defined here so the value sets are canonical and a build reader doesn't assume a missing column.
+-- ── Tables (dependency order per migrations.md L24-33) ──────────────────────
 
-> `cost_tokens` uses a nullable `bigint` + a companion `cost_unknown boolean` sentinel (AC-7.LOG.004.1)
-> — a genuinely-costless event records `0`; an uncomputable cost records `cost_unknown=true`, never a
-> silent `0`. See `event_log`.
-
----
-
-## 1. Identity & Auth  (C0 · Supabase-managed + app mirror)
-
-Supabase-managed (referenced, not defined here): `auth.users`, `auth.identities`, `auth.mfa_factors`,
-`auth.sessions`. OAuth-only for tenant users; email+password+TOTP for external Super Admins only (OD-018).
-
-```sql
--- App-side user mirror (OD-P4-01: thin profile keyed to auth.uid)
+-- schema.md L161 (§1 Identity & Auth, C0)
 create table profiles (
   id             uuid primary key references auth.users(id) on delete cascade,
   email          text not null,
@@ -167,6 +103,7 @@ create table profiles (
   last_active_at timestamptz
 );
 
+-- schema.md L170
 create table support_requests (
   id                uuid primary key default gen_random_uuid(),
   email             text not null,
@@ -179,7 +116,7 @@ create table support_requests (
 );
 -- RLS: read/resolve via PERM-support.view/.resolve; public INSERT-only pre-auth intake (§rls-policies).
 
--- OD-P4-02: split from connector credentials — webhook-verification secrets only
+-- schema.md L183 (OD-P4-02: webhook-verification secrets only)
 create table webhook_secrets (
   id                    uuid primary key default gen_random_uuid(),
   connector             text not null,                  -- ghl | slack | google
@@ -191,6 +128,7 @@ create table webhook_secrets (
   created_at            timestamptz not null default now()
 );
 
+-- schema.md L194
 create table webhook_replay_cache (
   event_id          text not null,
   connector_type    text not null,
@@ -199,11 +137,8 @@ create table webhook_replay_cache (
   window_expires_at timestamptz not null,
   primary key (connector_type, event_id)
 );  -- ephemeral; auto-purged after window; no backup.
-```
 
-## 2. RBAC & Access  (C1)
-
-```sql
+-- schema.md L207 (§2 RBAC & Access, C1)
 create table roles (
   id           uuid primary key default gen_random_uuid(),
   name         text not null unique,
@@ -213,6 +148,7 @@ create table roles (
   updated_at   timestamptz not null default now()
 );
 
+-- schema.md L216
 create table role_permissions (
   id              uuid primary key default gen_random_uuid(),
   role_id         uuid not null references roles(id) on delete cascade,
@@ -222,6 +158,7 @@ create table role_permissions (
   unique (role_id, permission_node)                     -- presence = granted; absence = default-deny
 );
 
+-- schema.md L225
 create table user_roles (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references profiles(id) on delete cascade,
@@ -232,6 +169,7 @@ create table user_roles (
   unique (user_id)                                      -- one role per user, v1 (OD-029)
 );
 
+-- schema.md L235
 create table sensitivity_clearances (
   id                uuid primary key default gen_random_uuid(),
   user_id           uuid references profiles(id) on delete cascade,   -- OD-027: user- or role-scoped
@@ -244,6 +182,19 @@ create table sensitivity_clearances (
   check (num_nonnulls(user_id, role_id) = 1)            -- exactly one subject
 );
 
+-- schema.md L279 (§3 Memory, C2) — entities precedes restricted_grants/access_audit/memories per migrations.md L26-27
+create table entities (
+  id            uuid primary key default gen_random_uuid(),
+  type          text not null,                          -- validated vs config_values['entity_types']
+  name          text not null,
+  external_refs jsonb not null default '{}',            -- GHL/Slack/Drive ids — resolution join key
+  is_internal_org boolean not null default false,       -- singleton per deployment (FR-2.ENT.003)
+  maturity      numeric(4,3),                           -- filled slots / expected slots (ADR-002); stored, recomputed daily + on memory-write (FR-2.MAT.002)
+  maturity_updated_at timestamptz,                       -- last recompute (slow-loop daily job or write-triggered)
+  created_at    timestamptz not null default now()
+);
+
+-- schema.md L247
 create table restricted_grants (
   id               uuid primary key default gen_random_uuid(),
   grantee_user_id  uuid not null references profiles(id) on delete cascade,  -- named individual only
@@ -256,6 +207,7 @@ create table restricted_grants (
   revoked_by       uuid references profiles(id)
 );
 
+-- schema.md L259 (append-only, immutable)
 create table access_audit (                             -- append-only, immutable
   id                  uuid primary key default gen_random_uuid(),
   audit_type          text not null,
@@ -269,25 +221,16 @@ create table access_audit (                             -- append-only, immutabl
   reason              text,                              -- mandatory only for Restricted (enforced in app)
   path_context        text,
   originating_user_id uuid references profiles(id),      -- service_role task attribution (FR-1.RLS.007)
-  redacted_at         timestamptz,                        -- one-way redaction-tombstone target (§Immutability L69; FR-7.LOG.006 / OD-074) — ISSUE-008 consistency fix
+  redacted_at         timestamptz,                        -- one-way redaction-tombstone target (schema.md §Immutability L69; FR-7.LOG.006 / OD-074)
   created_at          timestamptz not null default now()
 );
-```
+-- RESOLVED (ISSUE-008): schema.md §Immutability L69 decided event_log/access_audit/config_audit_log carry a
+-- `redacted_at timestamptz` column (the append-only trigger's redaction branch keys off new.redacted_at), but
+-- the three table DDL blocks omitted it — a source inconsistency. Reconciled to the L69 decision here (column
+-- added) and in schema.md (source patched). Not an invention: L69 already fixed the column. guardrail_log
+-- intentionally has none (trigger special-cases it).
 
-## 3. Memory  (C2)
-
-```sql
-create table entities (
-  id            uuid primary key default gen_random_uuid(),
-  type          text not null,                          -- validated vs config_values['entity_types']
-  name          text not null,
-  external_refs jsonb not null default '{}',            -- GHL/Slack/Drive ids — resolution join key
-  is_internal_org boolean not null default false,       -- singleton per deployment (FR-2.ENT.003)
-  maturity      numeric(4,3),                           -- filled slots / expected slots (ADR-002); stored, recomputed daily + on memory-write (FR-2.MAT.002)
-  maturity_updated_at timestamptz,                       -- last recompute (slow-loop daily job or write-triggered)
-  created_at    timestamptz not null default now()
-);
-
+-- schema.md L290
 create table memories (
   id             uuid primary key default gen_random_uuid(),
   type           memory_type not null,
@@ -315,6 +258,7 @@ create table memories (
 -- HNSW on embedding (indexes.md). RLS = C1 visibility/sensitivity/Restricted, clearance-before-ranking.
 -- Per-entity watermark: (entity_ids, updated_at) index (indexes.md, ADR-004 §6) makes the top-k check cheap.
 
+-- schema.md L317
 create table ingestion_queue (
   id               uuid primary key default gen_random_uuid(),
   content          text not null,
@@ -330,7 +274,7 @@ create table ingestion_queue (
   created_at       timestamptz not null default now()
 );  -- OD-P4-03: trust-window shadow-drops modelled as state='shadow_dropped' here (no separate store).
 
--- Net-new (surface-03): hard-conflict quarantine
+-- schema.md L333 (net-new surface-03: hard-conflict quarantine)
 create table memory_conflicts (
   id                    uuid primary key default gen_random_uuid(),
   new_memory            jsonb not null,                 -- pending candidate (not in live set)
@@ -343,7 +287,7 @@ create table memory_conflicts (
   created_at            timestamptz not null default now()
 );
 
--- Net-new (surface-03): Personal-tier consolidation approval
+-- schema.md L346 (net-new surface-03: Personal-tier consolidation approval)
 create table consolidation_approvals (
   id                   uuid primary key default gen_random_uuid(),
   candidate_memory_ids uuid[] not null,
@@ -355,17 +299,8 @@ create table consolidation_approvals (
   resolved_at          timestamptz,
   created_at           timestamptz not null default now()
 );
-```
-`entity_types`, `expected_slots`, `ranking_weights` are config structured objects in `config_values`
-(§12), not tables. Per-entity Maturity is **stored** (`entities.maturity`), recomputed on the daily
-slow loop and on memory-write for the touched entity (ADR-002 / FR-2.MAT.002); Aggregate Maturity
-has no separate table — it is a rollup (`avg(entities.maturity)`) over that same stored column, cheap
-because the per-entity values are already persisted. Retrieval Sufficiency is the other half of
-ADR-002 and, unlike Maturity, genuinely **is** derived inline per query, not stored (FR-2.MAT.003).
 
-## 4. Tools & Connectors  (C3)
-
-```sql
+-- schema.md L368 (§4 Tools & Connectors, C3)
 create table tools (
   id                  uuid primary key default gen_random_uuid(),
   name                text not null,
@@ -384,6 +319,7 @@ create table tools (
   updated_at          timestamptz not null default now()
 );
 
+-- schema.md L386
 create table connector_credentials (                    -- OD-P4-02: OAuth tokens (distinct from webhook_secrets)
   id            uuid primary key default gen_random_uuid(),
   connector     text not null,
@@ -396,6 +332,7 @@ create table connector_credentials (                    -- OD-P4-02: OAuth token
   updated_at    timestamptz not null default now()
 );
 
+-- schema.md L398
 create table rate_limit_tracker (
   id              uuid primary key default gen_random_uuid(),
   connector       text not null,
@@ -409,17 +346,32 @@ create table rate_limit_tracker (
   unique (connector, window_label)
 );
 
+-- schema.md L411 (net-new FR-3.CONN.004)
 create table idempotency_ledger (                        -- net-new (FR-3.CONN.004)
   idempotency_key text primary key,                      -- deterministic per external write
   connector       text not null,
   result          jsonb,
   created_at      timestamptz not null default now()
 );
-```
 
-## 5. Prompt Content  (C4)
+-- schema.md L582 (§9 Agent Design, C8) — agents precedes prompt_layers/commands per migrations.md L27
+create table agents (
+  id                  uuid primary key default gen_random_uuid(),
+  name                text not null,                       -- '{slug}_<role>_agent' — slug only in the string
+  description         text not null,                       -- non-empty (routing signal)
+  memory_scope        jsonb not null,                      -- least-privilege retrieval filter
+  tools_allowed       uuid[] not null default '{}',        -- → tools.id; hard-limit invariants reject-at-write
+  max_tokens          int,
+  enabled             boolean not null default true,       -- gates routing discovery
+  version             int not null default 1,
+  previous_version_id uuid references agents(id),
+  change_reason       text not null,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now(),
+  created_by          uuid references profiles(id)
+);  -- NO system_prompt (→ prompt_layers), NO model (complexity-routed), NO client_slug.
 
-```sql
+-- schema.md L422 (§5 Prompt Content, C4)
 create table prompt_layers (
   id                  uuid primary key default gen_random_uuid(),
   layer               prompt_layer_kind not null,
@@ -435,16 +387,14 @@ create table prompt_layers (
   check (layer <> 'core' or agent_id is not null)
 );  -- single authoritative Layer-1 store (no agents.system_prompt). Assembly halts if core missing (FR-4.LYR.004).
 
+-- schema.md L437
 create table dynamic_field_values (
   field_name   text primary key,
   field_value  text,
   last_updated timestamptz not null default now()        -- staleness surfaced past freshness threshold
 );
-```
 
-## 6. Execution / Harness  (C5)
-
-```sql
+-- schema.md L447 (§6 Execution / Harness, C5)
 create table task_queue (
   id                  uuid primary key default gen_random_uuid(),
   type                task_type not null,
@@ -465,6 +415,7 @@ create table task_queue (
 );  -- permanent audit record (never deleted). status is a fixed state machine.
 -- CHECK: status='flagged' set only by C6; 'awaiting_approval' distinct (see guardrail_log join).
 
+-- schema.md L467
 create table task_graph_versions (
   id                  uuid primary key default gen_random_uuid(),
   task_type_name      text not null,
@@ -477,7 +428,7 @@ create table task_graph_versions (
   unique (task_type_name, version)
 );
 
--- OD-P4-04: durable originals store (never lose knowledge — #1); compression is envelope economy only.
+-- schema.md L480 (OD-P4-04: durable originals store)
 create table task_history (
   id          uuid primary key default gen_random_uuid(),
   task_id     uuid not null references task_queue(id) on delete cascade,
@@ -486,13 +437,20 @@ create table task_history (
   created_at  timestamptz not null default now(),
   unique (task_id, step_index)
 );
-```
-The live context envelope (`DATA-context_envelope`, incl. `execution_plan`) lives in Inngest step-state
-at runtime; `task_history` is the durable retention beyond Inngest's window (AF-115).
 
-## 7. Guardrails  (C6)
+-- schema.md L621 (§9 Agent Design, C8: net-new versioned routing-plan store)
+create table execution_plans (                             -- net-new versioned routing-plan store
+  id                  uuid primary key default gen_random_uuid(),
+  task_type_name      text not null,
+  version             int not null default 1,
+  plan_body           jsonb not null,                       -- steps + per-step failure_mode + deps + parallel flag
+  previous_version_id uuid references execution_plans(id),
+  created_at          timestamptz not null default now(),
+  created_by          uuid references profiles(id),
+  unique (task_type_name, version)
+);  -- human-only rollback (OOS-030). Live plan is copied into the C5 envelope's execution_plan at run.
 
-```sql
+-- schema.md L495 (§7 Guardrails, C6: append-only)
 create table guardrail_log (                              -- append-only
   id            uuid primary key default gen_random_uuid(),
   task_id       uuid references task_queue(id),
@@ -507,6 +465,7 @@ create table guardrail_log (                              -- append-only
   check (not (guardrail_type = 'hard_limit' and status = 'approved'))  -- AC-6.LOG.001.2: no override
 );
 
+-- schema.md L509 (net-new; shadow-retain ADR-007 pt4)
 create table injection_quarantine (                       -- net-new; shadow-retain (ADR-007 pt4)
   id               uuid primary key default gen_random_uuid(),
   guardrail_log_id uuid not null references guardrail_log(id),
@@ -519,11 +478,8 @@ create table injection_quarantine (                       -- net-new; shadow-ret
   escalated_at     timestamptz,
   created_at       timestamptz not null default now()
 );
-```
 
-## 8. Observability  (C7)  *(intra-client)*
-
-```sql
+-- schema.md L526 (§8 Observability, C7: append-only)
 create table event_log (                                  -- append-only
   id           uuid primary key default gen_random_uuid(),
   task_id      uuid references task_queue(id),
@@ -535,10 +491,12 @@ create table event_log (                                  -- append-only
   cost_tokens  bigint,                                    -- nullable; see cost_unknown
   cost_unknown boolean not null default false,            -- sentinel ≠ 0 (AC-7.LOG.004.1)
   answer_mode  answer_mode,                               -- OD-P4-05: stored on AI-output rows (pill)
-  redacted_at  timestamptz,                               -- one-way redaction-tombstone target (§Immutability L69) — ISSUE-008 consistency fix
+  redacted_at  timestamptz,                                -- one-way redaction-tombstone target (schema.md §Immutability L69)
   created_at   timestamptz not null default now()
 );  -- exactly one terminal event per task (task_completed XOR task_failed); silent-failure detector joins task_queue.
+-- RESOLVED (ISSUE-008): redacted_at added to reconcile the schema.md L69 decision with this DDL (see access_audit note).
 
+-- schema.md L540 (net-new store owed to C7)
 create table notifications (                              -- net-new store owed to C7
   id              uuid primary key default gen_random_uuid(),
   type            alert_type not null,
@@ -555,16 +513,19 @@ create table notifications (                              -- net-new store owed 
   created_at      timestamptz not null default now()
 );  -- persisted before Slack fan-out; a Slack failure never loses the row (FR-7.ALR.006).
 
+-- schema.md L556 (append-only + tamper-evident, FR-7.LOG.008)
 create table config_audit_log (                            -- append-only + tamper-evident (FR-7.LOG.008)
   id         uuid primary key default gen_random_uuid(),
   key        text not null,                                -- key-prefix-scoped reads (PERM-config.*)
   old_value  jsonb,                                        -- null on first-ever write
   new_value  jsonb not null,
   actor_id   uuid references profiles(id),                 -- redaction-tombstone target on erasure
-  redacted_at timestamptz,                                 -- one-way redaction-tombstone target (§Immutability L69) — ISSUE-008 consistency fix
+  redacted_at timestamptz,                                 -- one-way redaction-tombstone target (schema.md §Immutability L69)
   changed_at timestamptz not null default now()
 );  -- SECRET-class changes never produce a row.
+-- RESOLVED (ISSUE-008): redacted_at added to reconcile the schema.md L69 decision with this DDL (see access_audit note).
 
+-- schema.md L565 (net-new surface-12, FR-7.VIEW.003)
 create table push_subscriptions (                          -- net-new (surface-12, FR-7.VIEW.003)
   id        uuid primary key default gen_random_uuid(),
   user_id   uuid not null references profiles(id) on delete cascade,
@@ -574,30 +535,8 @@ create table push_subscriptions (                          -- net-new (surface-1
   last_seen timestamptz not null default now(),
   unique (user_id, endpoint)
 );  -- a failed registration reads "push not enabled", never a false "on".
-```
-**Cost (OD-P4-05):** no separate cost table — the running meter and per-task-type aggregation derive
-from `event_log.cost_tokens` × `config_values['price_table']`. `alert_routing_rules`/`escalation_contacts`/
-`quiet_hours` are config structured objects (§12), not tables.
 
-## 9. Agent Design  (C8)
-
-```sql
-create table agents (
-  id                  uuid primary key default gen_random_uuid(),
-  name                text not null,                       -- '{slug}_<role>_agent' — slug only in the string
-  description         text not null,                       -- non-empty (routing signal)
-  memory_scope        jsonb not null,                      -- least-privilege retrieval filter
-  tools_allowed       uuid[] not null default '{}',        -- → tools.id; hard-limit invariants reject-at-write
-  max_tokens          int,
-  enabled             boolean not null default true,       -- gates routing discovery
-  version             int not null default 1,
-  previous_version_id uuid references agents(id),
-  change_reason       text not null,
-  created_at          timestamptz not null default now(),
-  updated_at          timestamptz not null default now(),
-  created_by          uuid references profiles(id)
-);  -- NO system_prompt (→ prompt_layers), NO model (complexity-routed), NO client_slug.
-
+-- schema.md L598 (§9 Agent Design, C8: net-new metric store)
 create table agent_health_metrics (                        -- net-new metric store
   agent_id       uuid not null references agents(id) on delete cascade,
   success_rate   numeric,
@@ -611,6 +550,7 @@ create table agent_health_metrics (                        -- net-new metric sto
   primary key (agent_id)
 );  -- flag-never-auto-correct (OD-078).
 
+-- schema.md L611 (OD-P4-07: dedicated, auditable)
 create table agent_result_cache (                          -- OD-P4-07: dedicated, auditable
   id            uuid primary key default gen_random_uuid(),
   agent_id      uuid not null references agents(id) on delete cascade,
@@ -621,23 +561,7 @@ create table agent_result_cache (                          -- OD-P4-07: dedicate
   created_at    timestamptz not null default now()
 );  -- write-triggered scope-aware invalidation (OD-076); miss-on-uncertainty (AC-8.LRN.003.3).
 
-create table execution_plans (                             -- net-new versioned routing-plan store
-  id                  uuid primary key default gen_random_uuid(),
-  task_type_name      text not null,
-  version             int not null default 1,
-  plan_body           jsonb not null,                       -- steps + per-step failure_mode + deps + parallel flag
-  previous_version_id uuid references execution_plans(id),
-  created_at          timestamptz not null default now(),
-  created_by          uuid references profiles(id),
-  unique (task_type_name, version)
-);  -- human-only rollback (OOS-030). Live plan is copied into the C5 envelope's execution_plan at run.
-```
-Routing weights + orchestrator confidence threshold are config keys (§12). Per-step `failure_mode`
-uses the `step_failure_mode` enum; unassigned defaults to `halt_and_escalate`.
-
-## 10. Proactive  (C9)
-
-```sql
+-- schema.md L638 (§10 Proactive, C9)
 create table proactive_suggestions (
   id            uuid primary key default gen_random_uuid(),
   mode          proactive_mode not null,
@@ -654,6 +578,7 @@ create table proactive_suggestions (
   surfaced_at   timestamptz
 );  -- never silently dropped; reaches a terminal state. Floor items never dropped below risk floor.
 
+-- schema.md L654 (net-new; user-defined only)
 create table commands (                                    -- net-new; user-defined only
   id                uuid primary key default gen_random_uuid(),
   slug              text not null unique,                  -- collision-checked vs system slugs at write
@@ -668,6 +593,7 @@ create table commands (                                    -- net-new; user-defi
   updated_at        timestamptz not null default now()
 );  -- system commands are code-registered, never rows here.
 
+-- schema.md L668 (net-new dismissal-learning state)
 create table signal_weights (                              -- net-new dismissal-learning state
   id          uuid primary key default gen_random_uuid(),
   signal_key  text not null unique,
@@ -675,11 +601,8 @@ create table signal_weights (                              -- net-new dismissal-
   floor       numeric,                                     -- never suppresses derisking floor
   updated_at  timestamptz not null default now()
 );
-```
 
-## 11. Chat  (net-new — OD-135)
-
-```sql
+-- schema.md L680 (§11 Chat, net-new OD-135)
 create table conversations (
   id            uuid primary key default gen_random_uuid(),
   owner_user_id uuid not null references profiles(id) on delete cascade,
@@ -688,6 +611,7 @@ create table conversations (
   updated_at    timestamptz not null default now()
 );  -- losing history on reload = #1 violation → persisted.
 
+-- schema.md L688
 create table messages (
   id              uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references conversations(id) on delete cascade,
@@ -697,11 +621,8 @@ create table messages (
   task_queue_id   uuid references task_queue(id),          -- nullable; sync command results have no task row
   created_at      timestamptz not null default now()
 );  -- async results return via poll + notification nudge, no third Realtime socket (AC-7.RTP.001.3).
-```
 
-## 12. Config cluster  (Phase-2 registry → storage)
-
-```sql
+-- schema.md L702 (§12 Config cluster)
 create table config_values (
   key        text primary key,                              -- dotted key; ~117 knobs + ~11 structured objects
   value      jsonb not null,
@@ -709,73 +630,14 @@ create table config_values (
   updated_by uuid references profiles(id)
 );  -- key-prefix RLS by PERM-config.* group. SECRET class never stored here.
 
+-- schema.md L709
 create table secret_manifest (
   key          text primary key,                            -- env var name (the 11 platform secrets)
   present      boolean not null,                            -- required-missing blocks boot
   last_rotated timestamptz                                  -- deploy-hook populated (OD-102); else "Unknown"
 );  -- presence + last_rotated only — values live in env/Railway, never here.
-```
-Structured objects stored as `config_values.value` JSON: `ranking_weights`, `routing_weights`,
-`anomaly_thresholds`, `risk_thresholds`, `opportunity_thresholds`, `action_autonomy_matrix`,
-`cache_time_window`, `price_table`, `entity_types`, `expected_slots`,
-`rate_max_calls_per_connector_window`, `alert_routing_rules`, `escalation_contacts`, `quiet_hours`.
-`config_audit_log` (§8) is the write-audit sink for every LIVE/BOOT/REBUILD change.
 
-## 13. Management plane  (separate deployment — ADR-001 §7)
-
-> These tables live **only** on the management deployment, never in a client silo. This is the **one**
-> place `client_slug` is valid.
-
-```sql
-create table client_registry (
-  id                      uuid primary key default gen_random_uuid(),
-  client_slug             text not null unique,              -- ✅ the ONLY valid client_slug in the product
-  client_name             text not null,
-  railway_url             text,
-  internal_token          text not null,                     -- encrypted; never returned to a surface
-  core_version            text,                              -- push-updated (FR-7.MGM.001)
-  region                  text not null default 'ap-southeast-2',
-  status                  client_status not null default 'initialising',  -- server-authoritative
-  created_at              timestamptz not null default now(),
-  offboarding_initiated_at timestamptz,
-  offboarding_at          timestamptz
-);
-
-create table deployment_health (                             -- push-fed operational metadata only (no business data)
-  client_slug        text primary key references client_registry(client_slug),
-  health_score       numeric,
-  queue_depth        int,
-  approval_queue_depth int,
-  alert_counts       jsonb,
-  core_version       text,
-  last_migrated_at   timestamptz,
-  connector_rollup   jsonb,
-  cost_to_date       numeric,
-  plugin_version     text,
-  backup_health      jsonb,                                  -- Supabase Management API (FR-7.MGM.005)
-  log_write_failing  boolean not null default false,        -- health bit (AC-7.LOG.003.2)
-  last_push_at       timestamptz not null,                  -- staleness sweep vs server-authoritative time
-  updated_at         timestamptz not null default now()
-);
-
-create table offboarding_records (                           -- mgmt DB; no client business data
-  id                     uuid primary key default gen_random_uuid(),
-  client_slug            text not null references client_registry(client_slug),
-  offboarding_initiated_at timestamptz,
-  export_delivered_at    timestamptz,
-  export_acknowledged_at timestamptz,
-  retention_window_end   timestamptz,
-  deletion_executed_at   timestamptz,
-  deletion_executed_by   uuid,
-  systems_deprovisioned  text[],                             -- Supabase/Railway/credentials/...
-  tokens_revoked         text[],
-  created_at             timestamptz not null default now()
-);
-```
-
-## 14. Compliance workflow  (C10 · client-side)
-
-```sql
+-- schema.md L776 (§14 Compliance workflow, C10 client-side)
 create table deletion_requests (
   id                   uuid primary key default gen_random_uuid(),
   requester_id         uuid not null references profiles(id),
@@ -798,7 +660,7 @@ create table deletion_requests (
 );  -- Restricted/Personal require two-person auth (AC-10.DEL.006.2). Erasure walks the C2 sole-writer path;
 -- audit written to access_audit (retained individual_deletion_audit_years even after data is gone).
 
--- net-new (FR-10.DEL.006(a)): per-system connector-notify flag, tracked-until-acknowledged, never silently closed
+-- schema.md L799 (net-new FR-10.DEL.006(a))
 create table connector_deletion_flags (
   id                   uuid primary key default gen_random_uuid(),
   deletion_request_id  uuid not null references deletion_requests(id) on delete cascade,
@@ -811,23 +673,42 @@ create table connector_deletion_flags (
   created_at           timestamptz not null default now()
 );  -- the harness never deletes from a SoR itself; this flag is the tracked reminder (AC-10.DEL.006.1/.3).
 
--- OD-162: the "local mirror" of client_registry.status (management plane) — lives INSIDE each client's own
--- Supabase project, not the management plane. Single row per deployment; written by a management-plane
--- action using the client's custodied service_role key (ADR-001 §7) when C10 sets
--- client_registry.status = 'frozen' (FR-10.OFF.004). Read locally (no cross-deployment query) by the C5
--- dispatch gate (FR-5.TRG.001.3) and the C10 erasure precondition (FR-10.DEL.007).
+-- schema.md L816 (OD-162: local mirror of client_registry.status, lives inside each client silo)
 create table deployment_settings (
   frozen_at    timestamptz,                                     -- null = not frozen
   frozen_reason text
 );  -- single row per deployment (seeded at first boot alongside the Internal-Org singleton; app never inserts a second row).
-```
 
----
+-- ── Immutability enforcement (audit sinks) ─────────────────────────────────
+-- Verbatim from schema.md §Immutability enforcement (L38-66). Fires regardless of role
+-- (incl. service_role, which is RLS-exempt by design). Protects the four append-only sinks:
+-- event_log, guardrail_log, access_audit, config_audit_log. DELETE always forbidden; UPDATE
+-- allowed only for a whitelisted forward status transition (guardrail_log) or a one-way
+-- redaction-tombstone. Referenced by rls-policies.md L94-98.
+create or replace function enforce_audit_append_only() returns trigger
+  language plpgsql as $$
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'audit sink %: DELETE forbidden (append-only)', tg_table_name;
+  end if;                                             -- UPDATE: allow only whitelisted mutations
+  if tg_table_name = 'guardrail_log'
+     and old.status = 'pending' and new.status in ('approved','rejected','modified')
+     and new.description = old.description and new.task_id = old.task_id then
+    return new;                                       -- forward status transition (still append-only in spirit)
+  end if;
+  if tg_table_name <> 'guardrail_log' then             -- guardrail_log has no redacted_at column (H43 fix)
+    if new.redacted_at is not null and old.redacted_at is null then
+      return new;                                     -- one-way redaction-tombstone (FR-7.LOG.006 / OD-074)
+    end if;
+  end if;
+  raise exception 'audit sink %: in-place UPDATE forbidden (append-only / tamper-evident)', tg_table_name;
+end $$;
 
-## Coverage note
-
-Every one of the 21 matrix `DATA-*` ids + the config cluster + the 16 net-new Phase-3 stores/fields is
-represented above. `DATA-context_envelope` is runtime (Inngest) with `task_history` as its durable tail.
-The 7 schema ODs (OD-P4-01…07) are resolved here per the recommended options (user-delegated); listed in
-`_data-inventory.md` for sign-off review. Owed-back change-control cites (net-new stores → component FRs)
-are tracked in `_data-inventory.md` "Net-new stores owed back" and applied in Phase-4 step 8.
+create trigger t_append_only before update or delete on event_log
+  for each row execute function enforce_audit_append_only();
+create trigger t_append_only before update or delete on guardrail_log
+  for each row execute function enforce_audit_append_only();
+create trigger t_append_only before update or delete on access_audit
+  for each row execute function enforce_audit_append_only();
+create trigger t_append_only before update or delete on config_audit_log
+  for each row execute function enforce_audit_append_only();

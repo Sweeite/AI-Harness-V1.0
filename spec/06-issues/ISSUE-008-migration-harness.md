@@ -2,7 +2,7 @@
 id: ISSUE-008
 title: Migration harness (expand-contract) + 0001 baseline
 epic: A — foundations
-status: ready
+status: in-progress
 github: "#8"
 ---
 
@@ -177,3 +177,60 @@ Stand up the Drizzle migration harness on the expand-contract discipline and shi
   it must be GREEN in `feasibility-register.md` before the discipline is trusted fleet-wide.
 - Re-runnability: a halted-then-retried migration re-applies cleanly (migrations.md hard constraint);
   the seed is idempotent (running it twice writes nothing new).
+
+## 10. Build progress (session 62, 2026-07-04) — offline build COMPLETE; live capstone owed
+
+**Status: `in-progress`.** The offline half is built + verified; the DoD is not met until the
+you-present live capstone (apply + AF-065). Box in `BUILD-SCHEDULE.md` stays unticked; Checkpoint 1 OPEN.
+
+**Built — `app/silo/` (32/32 tests · typecheck · discipline all green):**
+- **Harness (OD-176):** raw-SQL migrations authored to `schema.md`/`indexes.md`/`rls-policies.md`/
+  `PERMISSION_NODES.md` (schema.md stays the sole Rule-0 source — no Drizzle `schema.ts`), applied by a
+  custom `pg` migrate runner (`src/migrate.ts` + `src/pg-driver.ts`) that plays the `drizzle-kit migrate`
+  role: journal-tracked in `_migrations`, idempotent, fail-loud, honours the txn/non-txn split, halts on
+  diverged history (#3). DB behind a `MigrationDriver` port → the runner is unit-tested with no DB.
+- **`migrations/0001_baseline.sql`** (txn): `vector`+`pgcrypto`; **29 enums**; **44 tables** in the
+  migrations.md dependency order (mgmt-plane `client_registry`/`deployment_health`/`offboarding_records`
+  excluded); the `enforce_audit_append_only` trigger on the 4 sinks. **FR-2.VEC.002 lands here**
+  (`embedding vector(1536) not null` + `embedding_model` default + `embedding_v2` expand slot).
+- **`migrations/0001b_indexes.sql`** (`--no-transaction`): **43 indexes, all CONCURRENTLY** — the HNSW
+  index `using hnsw (embedding vector_cosine_ops) with (m = 16, ef_construction = 64)` + every other
+  heavy index in `indexes.md`; the 3 mgmt-plane indexes excluded.
+- **`migrations/0001c_rls.sql`** (txn): `enable row level security` + `revoke all` (default-deny) on all
+  44 tables, a **coverage assertion** that fails the migration loud if any `public` table is RLS-off
+  (#2), and the belt-and-braces `revoke delete` on the 4 audit sinks (schema.md L68). **RLS helpers +
+  policies + 100%-coverage CI gate are ISSUE-009** (its title) — this file only lays the RLS-enabled
+  default-deny substrate the policies attach to (§8 step-5 split).
+- **`migrations/0001d_seed.sql`** (txn, idempotent first-boot): 6 canonical roles; the role×node matrix
+  from `PERMISSION_NODES.md` (client-silo nodes only — `PERM-fleet.*` + the 5 ⚠️ unseeded nodes excluded;
+  **independent verification: zero over-grants / zero under-grants**); the orchestrator + 8 specialists
+  (descriptions verbatim from design-doc L3423-3439, **fail-closed `memory_scope='{}'`**, `tools_allowed`
+  empty); the Internal-Org singleton + `deployment_settings` row.
+- **`src/discipline.ts`** — the expand-contract discipline CI gate (**AC-NFR-INF.002.1**): no destructive
+  change outside a `*_contract` migration, nullable/defaulted new columns, CONCURRENTLY heavy indexes,
+  idempotent seed inserts. `npm run check` is the CI hook; `migrate` runs it first (fail-closed).
+
+**Verification (standing gate):** an independent zero-context agent diffed all four migrations against the
+five spec sources — **no BLOCKER defects** across tables/enums/indexes/matrix/seed/trigger/ordering; tables
++ enums + index bodies byte-identical to spec. One MINOR (belt-and-braces `revoke delete`) was **applied**.
+
+**Source fix (Rule 0):** `schema.md §Immutability L69` mandated a `redacted_at` column on
+`event_log`/`access_audit`/`config_audit_log` (the trigger keys off it) but the three table DDLs omitted
+it — a source inconsistency. Reconciled in the migration **and** patched in `schema.md` (both sides agree).
+
+**Decisions logged:** [OD-176] harness toolchain (raw-SQL + custom runner). [OD-177] agent `memory_scope`
+jsonb shape under-specified → seeded fail-closed, real scope owed to **ISSUE-063**; agent `name` vs the
+FR-8.REG.001 `client_slug` pattern (OD-096 conflict) reconciled to slug-only. [OD-178] `config_values`
+defaults seed deferred to **ISSUE-010** (config store). §6's config-seed scope reduced accordingly.
+
+**Remaining for `done` (you-present capstone, needs `source ~/.ai-harness-secrets.env`):**
+1. **Reset** the throwaway `app/canary/migrations/0001_canary_target.sql` schema on silo
+   `Transpera-AIOS-V1` (`nwufvzaamomajdyzemhx`) — drop `entities`/`messages`/`memories` (§7 heads-up).
+2. **Apply** 0001a-d live (`DATABASE_URL=<silo> npm run migrate`); confirm re-run is a clean no-op
+   (idempotent) and prove rollback-by-redeploy discipline (Checkpoint 1).
+3. **AF-065** (AC-NFR-INF.002.2) — run `vN` and `vN-1` concurrently against the migrated schema; confirm
+   no data loss / errored path → flip AF-065 🔴→🟢 in `feasibility-register.md`.
+4. On green: **AC-2.VEC.002.1** proven live (write a memory, confirm 1536-dim embedding + model name);
+   flip ISSUE-008 → `done`; tick the BUILD-SCHEDULE 008 box; flip the newly-unblocked dependents
+   (009/010/011/012/022/032/042/081/084) `blocked → ready`; update `_backlog.md`; close GitHub #8.
+   Then the Stage-1 batch (`017`, `080`, already `ready`) + Checkpoint 1 remain to close Stage 1.
