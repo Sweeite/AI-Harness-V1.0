@@ -2,7 +2,7 @@
 id: ISSUE-017
 title: Webhook authentication, per-vendor (Ed25519/JWT/HMAC + replay)
 epic: B — identity & access
-status: blocked
+status: ready
 github: "#17"
 ---
 

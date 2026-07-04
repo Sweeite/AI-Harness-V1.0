@@ -2,7 +2,7 @@
 id: ISSUE-080
 title: Release model — canary/train + rollback + skew
 epic: K — infra & compliance
-status: blocked
+status: ready
 github: "#80"
 ---
 
