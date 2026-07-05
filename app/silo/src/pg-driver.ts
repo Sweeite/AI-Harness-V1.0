@@ -14,10 +14,21 @@ create table if not exists _migrations (
   applied_at timestamptz not null default now()
 );
 -- The runner's own tracking table lives in public — enable RLS + default-deny so it is neither
--- PostgREST-exposed nor a hole in the 0001c fleet-wide RLS-coverage assertion (#2). The runner
--- connects as the table owner, which bypasses RLS, so its own reads/writes are unaffected.
+-- PostgREST-exposed nor a hole in the fleet-wide RLS-coverage assertions (#2). The runner connects as
+-- the table owner, which bypasses RLS, so its own reads/writes are unaffected.
+--   • 0001c asserts every public table has RLS ENABLED.
+--   • ISSUE-009's 0002 asserts every public table also carries >=1 POLICY. _migrations is a public
+--     table, so it must satisfy that gate too — give it the same explicit default_deny policy every
+--     application table gets (no coverage carve-out; a carve-out is a future hole). REVOKE ALL already
+--     denies anon/authenticated; the policy is the belt-and-braces that keeps the gate absolute.
 alter table _migrations enable row level security;
-revoke all on _migrations from anon, authenticated;`;
+revoke all on _migrations from anon, authenticated;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = '_migrations' and policyname = 'default_deny') then
+    execute 'create policy default_deny on public._migrations as permissive for all to authenticated using (false) with check (false)';
+  end if;
+end $$;`;
 
 export class PgDriver implements MigrationDriver {
   private pool: pg.Pool;

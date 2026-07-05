@@ -2,7 +2,7 @@
 id: ISSUE-009
 title: RLS scaffold — helpers, default-deny baseline, 100% coverage CI gate
 epic: A — foundations
-status: in-progress
+status: done
 github: "#9"
 ---
 
@@ -138,3 +138,37 @@ contracts those slices then specialise; it does **not** author any per-table sen
 - **AC-NFR-PERF.001.1** posture: the initPlan overhead budget is confirmed by the **AF-067** LOAD
   spike (ISSUE-002) — it must be GREEN before ship; the D2 JWT-cache fallback (OOS-012) is the
   documented escape if it fails at scale. This is the blocking `AC → Verified` path for the slice.
+
+## 10. Build result (session 65, 2026-07-05) — ✅ DONE (offline build + live capstone both complete)
+
+**Built — `app/silo/` (extends the ISSUE-008 harness):**
+- **`migrations/0002_rls_scaffold.sql`** — the four `SECURITY DEFINER STABLE` helper bodies
+  (`user_perms`/`user_clearances`/`user_restricted`/`user_aal`, pinned `search_path=''`, all fail-closed:
+  empty-array / `revoked_at is null` / `coalesce(...,'aal1')`) + a generic **`default_deny` baseline
+  policy** (`permissive … using(false) with check(false)`, `TO authenticated`) on **every** one of the 44
+  tables via an idempotent do-loop + a **tail live coverage assertion** (every public table: RLS on +
+  ≥1 policy, fail-loud). `user_visibility` deferred to ISSUE-020 (its visibility predicate is 020's;
+  §5 Touches names only the four).
+- **`src/rls-lint.ts`** — the two CI lints: `checkInitPlanWrapping` (`auth_rls_initplan` — flags any
+  helper/auth call in a policy not `(select …)`-wrapped) + `checkCoverage` (a table created without a
+  policy fails the build) — both wired into `npm run check`; plus `assertRlsCoverageLive` + the new
+  `lint:rls` command (live catalog gate). `src/pg-driver.ts` grew a read-only `query()` for the live gate
+  **and** now gives the runner's own `_migrations` table the same `default_deny` policy (the coverage
+  gate is absolute — no carve-out).
+- **`src/rls-lint.test.ts`** — 23 unit tests (initplan wrap, coverage, parse helpers, helper-body
+  regression guards, live-shape). `schema.test.ts` journal assertion extended for 0002.
+
+**Verification (DoD — every AC green):** offline `npm test` **55/55** + `check` (both lints) + typecheck.
+Independent zero-context agent: **SAFE, no BLOCKER/MAJOR** (both MINORs closed: helper-body guards +
+committed capstone). **LIVE capstone on the silo** (`results/issue-009-rls-capstone.sql`, rolled back):
+AC-1.RLS.004.1/.004.2/.006.1/.002.1 + AC-NFR-PERF.001.2 (InitPlan) all PASS; `lint:rls` green
+(AC-1.RLS.001.1 / AC-NFR-SEC.010.1); AC-NFR-PERF.001.1 pre-proven by AF-067. **AF-079 🔴→🟢.** Evidence:
+`app/silo/results/issue-009-rls-capstone-evidence.2026-07-05.md`.
+
+**Live find (gate working):** first `migrate` failed loud — the coverage assertion caught `_migrations`
+(runner bookkeeping) as RLS-on-no-policy; fixed at source, re-ran clean. Same class as session 62's find.
+
+**Scope honesty (Rule 0):** ships only helpers + the deny floor + the lints. The per-table sensitivity /
+visibility / `aal2` predicates that compose on top (FR-1.RLS.002 full / .003 / .005 / .007 / .008) remain
+**ISSUE-020**; FR-1.RLS.002's ACs (.002.1 helper re-eval, .002.2 initplan lint) are proven here because
+the primitive + lint are 009's, but 020 authors the real read predicates with no helper re-author.

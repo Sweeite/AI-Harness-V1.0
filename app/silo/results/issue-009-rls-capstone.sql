@@ -29,8 +29,8 @@ declare
   n_uid uuid := '00000000-0000-0000-0000-0000000009de';  -- test user with NO role/perm
   r_id  uuid := '00000000-0000-0000-0000-00000000c9c9';  -- test role
 begin
-  insert into public.profiles (id) values (u_uid) on conflict do nothing;
-  insert into public.profiles (id) values (n_uid) on conflict do nothing;
+  insert into public.profiles (id, email) values (u_uid, 'capstone-with-perm@example.invalid') on conflict do nothing;
+  insert into public.profiles (id, email) values (n_uid, 'capstone-no-perm@example.invalid') on conflict do nothing;
   insert into public.roles (id, name) values (r_id, '__capstone_role__') on conflict do nothing;
   insert into public.role_permissions (role_id, permission_node) values (r_id, 'PERM-capstone.read') on conflict do nothing;
   insert into public.user_roles (user_id, role_id, active) values (u_uid, r_id, true) on conflict (user_id) do nothing;
@@ -55,7 +55,7 @@ declare
 begin
   -- AC-1.RLS.004.1 — service_role bypasses RLS (sees all 3 with no perm predicate applied)
   set local role service_role;
-  set local request.jwt.claims = '';
+  perform set_config('request.jwt.claims', '', true);
   select count(*) into cnt from public._rls_capstone_demo;
   if cnt <> 3 then raise exception 'AC-1.RLS.004.1 FAIL: service_role saw % rows, expected 3 (bypass broken)', cnt; end if;
   reset role;
@@ -63,7 +63,7 @@ begin
 
   -- AC-1.RLS.004.2 (positive) — authenticated user WITH the perm sees the rows
   set local role authenticated;
-  set local request.jwt.claims = format('{"sub":"%s","aal":"aal2"}', u_uid);
+  perform set_config('request.jwt.claims', format('{"sub":"%s","aal":"aal2"}', u_uid), true);
   select count(*) into cnt from public._rls_capstone_demo;
   if cnt <> 3 then raise exception 'AC-1.RLS.004.2 FAIL: user WITH perm saw % rows, expected 3', cnt; end if;
   reset role;
@@ -71,7 +71,7 @@ begin
 
   -- AC-1.RLS.004.2 (negative / default-deny) — authenticated user with NO perm sees nothing
   set local role authenticated;
-  set local request.jwt.claims = format('{"sub":"%s","aal":"aal2"}', n_uid);
+  perform set_config('request.jwt.claims', format('{"sub":"%s","aal":"aal2"}', n_uid), true);
   select count(*) into cnt from public._rls_capstone_demo;
   if cnt <> 0 then raise exception 'AC-1.RLS.004.2 FAIL: user with NO perm saw % rows, expected 0 (default-deny broken, #2)', cnt; end if;
   reset role;
@@ -79,7 +79,7 @@ begin
 
   -- AC-NFR-PERF.001.2 — the helper is an InitPlan (evaluated once per statement, not per row)
   set local role authenticated;
-  set local request.jwt.claims = format('{"sub":"%s","aal":"aal2"}', u_uid);
+  perform set_config('request.jwt.claims', format('{"sub":"%s","aal":"aal2"}', u_uid), true);
   declare r record; acc text := '';
   begin
     for r in execute 'explain (format json) select * from public._rls_capstone_demo' loop
@@ -97,7 +97,7 @@ begin
   delete from public.role_permissions where permission_node = 'PERM-capstone.read'
     and role_id = '00000000-0000-0000-0000-00000000c9c9';
   set local role authenticated;
-  set local request.jwt.claims = format('{"sub":"%s","aal":"aal2"}', u_uid);
+  perform set_config('request.jwt.claims', format('{"sub":"%s","aal":"aal2"}', u_uid), true);
   select count(*) into cnt from public._rls_capstone_demo;
   if cnt <> 0 then raise exception 'AC-1.RLS.006.1 FAIL: after revoke the user still saw % rows (not instant)', cnt; end if;
   reset role;
@@ -107,7 +107,7 @@ begin
   insert into public.role_permissions (role_id, permission_node)
     values ('00000000-0000-0000-0000-00000000c9c9', 'PERM-capstone.read');
   set local role authenticated;
-  set local request.jwt.claims = format('{"sub":"%s","aal":"aal2"}', u_uid);
+  perform set_config('request.jwt.claims', format('{"sub":"%s","aal":"aal2"}', u_uid), true);
   select count(*) into cnt from public._rls_capstone_demo;
   if cnt <> 3 then raise exception 'AC-1.RLS.002.1 FAIL: after re-grant the user saw % rows, expected 3', cnt; end if;
   reset role;

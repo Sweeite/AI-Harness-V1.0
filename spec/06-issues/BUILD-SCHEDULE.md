@@ -182,7 +182,7 @@ Gate everything. Not hands-off.
   rejects forged/replayed webhooks (✅ 18/18 offline battery; live per-vendor = OD-172 onboarding); `080` deploys through the canary gate (✅ LIVE — green→deploys, red→blocked, promote→fleet). **Stage 2 (`009` gate + `010`/`011`/`042`/`081`) may now open (R1).**
 
 ### Stage 2 — Shared scaffold  *(OPEN since 2026-07-05 — Checkpoint 1 CLOSED; all 5 issues `ready`)*
-- 🟠 **GATE — `009` RLS scaffold (helpers, default-deny, 100% coverage CI gate)**  🔴 — one uncovered table = a silent bypass (#2). **`ready`** (blocker 008 done).
+- ✅ **GATE — `009` RLS scaffold (helpers, default-deny, 100% coverage CI gate)**  🟢 **DONE (session 65, 2026-07-05)** — 4 helpers + `default_deny` on all 44 tables + the `auth_rls_initplan`/coverage lints (`app/silo`); offline 55/55 + LIVE capstone on the silo (service_role bypass · grant/revoke instant · InitPlan · `lint:rls` coverage green). **AF-079 🔴→🟢.** The gate is real — it caught `_migrations` as RLS-on-no-policy on first live run (fixed, no carve-out). Evidence `app/silo/results/issue-009-rls-capstone-evidence.2026-07-05.md`.
 - 🟢 BATCH: `010` Config store + audit-immutability · `011` Observability skeleton (event_log + silent-failure detector) 🔴 · `042` Prompt store (version-never-overwrite) · `081` Migration propagation + per-deployment isolation
 - ◇ **CHECKPOINT 2:** `009` default-deny holds and the coverage gate is GREEN; `011` event_log is
   append-only and the silent-failure detector actually fires; `010` audit rows are immutable.

@@ -68,12 +68,12 @@ FR-1.CLR.006,Clearance enforced before ranking/injection,1,Approved,Must,L464;L1
 FR-1.RST.001,Restricted per named individual,1,Approved,Must,L452;L524;L620;L577,PERM-user.grant_restricted,n/a,UI-RESTRICTED-GRANT,restricted_grants,AC-1.RST.001.1;AC-1.RST.001.2,,ISSUE-019,,
 FR-1.RST.002,Restricted grant logged who/when/why,1,Approved,Must,L452;ADR-006,PERM-user.grant_restricted,n/a,UI-RESTRICTED-GRANT,restricted_grants;access_audit,AC-1.RST.002.1;AC-1.RST.002.2;AC-1.RST.002.3,,ISSUE-019,,
 FR-1.RST.003,Restricted never auto-injected,1,Approved,Must,L433,restricted-grant,n/a,n/a,memories;access_audit,AC-1.RST.003.1,,ISSUE-019,,
-FR-1.RLS.001,Every table has RLS policy (default-deny),1,Approved,Must,L717-719;L733-735;ADR-006,n/a,n/a,n/a,all-tables,AC-1.RLS.001.1,,ISSUE-009,,
+FR-1.RLS.001,Every table has RLS policy (default-deny),1,Approved,Must,L717-719;L733-735;ADR-006,n/a,n/a,n/a,all-tables,AC-1.RLS.001.1,,ISSUE-009,,app/silo/src/rls-lint.test.ts;app/silo/results/issue-009-rls-capstone.sql
 FR-1.RLS.002,Static data-driven policies (initPlan),1,Approved,Must,ADR-006;L722-732,n/a,n/a,n/a,roles;role_permissions;user_roles;sensitivity_clearances;restricted_grants,AC-1.RLS.002.1;AC-1.RLS.002.2,,ISSUE-020,,
 FR-1.RLS.003,RLS row-access subset intra-client,1,Approved,Must,L722-732;ADR-006;ADR-001,n/a,n/a,n/a,memories,AC-1.RLS.003.1;AC-1.RLS.003.2,,ISSUE-020,,
-FR-1.RLS.004,RLS human path / service_role bypass,1,Approved,Must,ADR-006;ADR-004;L1055,harness-rbac,service_role-key,n/a,all-tables,AC-1.RLS.004.1;AC-1.RLS.004.2,,ISSUE-009,,
+FR-1.RLS.004,RLS human path / service_role bypass,1,Approved,Must,ADR-006;ADR-004;L1055,harness-rbac,service_role-key,n/a,all-tables,AC-1.RLS.004.1;AC-1.RLS.004.2,,ISSUE-009,,app/silo/src/rls-lint.test.ts;app/silo/results/issue-009-rls-capstone.sql
 FR-1.RLS.005,aal2 predicate on every protected policy,1,Approved,Must,FR-0.AUTH.008;L377,n/a,CFG-auth.two_factor_required,n/a,all-protected-tables,AC-1.RLS.005.1,,ISSUE-020,,
-FR-1.RLS.006,Every permission change instant,1,Approved,Must,ADR-006;L639,n/a,n/a,n/a,permission-tables,AC-1.RLS.006.1,,ISSUE-009,,
+FR-1.RLS.006,Every permission change instant,1,Approved,Must,ADR-006;L639,n/a,n/a,n/a,permission-tables,AC-1.RLS.006.1,,ISSUE-009,,app/silo/src/rls-lint.test.ts;app/silo/results/issue-009-rls-capstone.sql
 FR-1.RLS.007,Service-role task lifecycle authorization,1,Approved,Must,OD-031;ADR-006;ADR-004;ADR-007;FR-0.SESS.006,n/a,n/a,quarantine-review(C6/C8),user_roles;sensitivity_clearances;restricted_grants;access_audit,AC-1.RLS.007.1;AC-1.RLS.007.2;AC-1.RLS.007.3,,ISSUE-020,,
 FR-1.RLS.008,RLS/harness divergence observable,1,Approved,Should,gate-finding,n/a,n/a,observability(C7),event_log,AC-1.RLS.008.1,,ISSUE-020,,
 FR-1.USR.001,Assign/change user role,1,Approved,Must,L575,PERM-user.assign_role,n/a,UI-USER-MGMT,user_roles;access_audit,AC-1.USR.001.1,,ISSUE-021,,
