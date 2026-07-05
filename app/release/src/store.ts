@@ -46,11 +46,14 @@ export class InMemoryDeploymentHealthStore implements DeploymentHealthStore {
 
 export interface SkewAlert {
   client_slug: string;
-  kind: "version_skew" | "stale_skew";
+  // version_skew / stale_skew are the ISSUE-080 fleet-drift alerts; migration_failure is the ISSUE-081
+  // fail-loud signal a per-deployment migrate raises when it halts (fed into the SAME C7 seam so a stuck
+  // silo surfaces both as a direct alert AND, because its version never advances, as a skew laggard).
+  kind: "version_skew" | "stale_skew" | "migration_failure";
   detail: string;
-  /** The observed value that breached bound (versions behind, or days stale). */
+  /** The observed value that breached bound (versions behind, or days stale). 0 for migration_failure. */
   observed: number;
-  /** The configured bound it breached. */
+  /** The configured bound it breached. 0 for migration_failure. */
   bound: number;
 }
 

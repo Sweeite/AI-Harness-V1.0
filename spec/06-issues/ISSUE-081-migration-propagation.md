@@ -2,7 +2,7 @@
 id: ISSUE-081
 title: Schema-migration propagation + per-deployment failure isolation
 epic: K — infra & compliance
-status: ready
+status: done
 github: "#81"
 ---
 
@@ -73,3 +73,34 @@ Wire migration *propagation* across the fleet on top of the ISSUE-008 harness: e
 - **DOCS / topology (per spec/05-non-functional/test-strategy.md):** the "one codebase → N independent per-deployment migrates against own Supabase, no fork" topology + the migration-discipline CI constraints prove AC-10.MIG.001.1/.2 and AC-NFR-INF.002.1; the per-deployment migration boundary (separate projects, ADR-001) proves the structural no-cascade claim of AC-NFR-INF.005.1.
 - **Build-time gate tests:** a migration authored with a destructive change a prior build relies on → CI rejects it (AC-NFR-INF.002.1); a forced migration failure in one silo → that silo halts (prior version live) + logs + a migration-failure alert fires + no other silo is affected, and the stuck silo surfaces in the skew view (AC-10.MIG.002.1/.2, AC-NFR-INF.005.1); a halted-then-retried deploy re-applies cleanly (re-runnability, AC-10.MIG.002.1).
 - **Spike gate:** **AF-065 GREEN** (proven on the ISSUE-008 migration track) is a precondition to shipping — a `vN` and `vN-1` deployment run concurrently against the migrated schema and both operate with no data loss or errored path, and the prior build runs correctly against the newer schema — proving AC-NFR-INF.002.2. The AC→`Verified` path for the MIG/INF.002 ACs runs once AF-065 is GREEN.
+
+## 10. Build result — ✅ DONE (session 67, 2026-07-05)
+Built `app/release/src/propagation.ts` (`@harness/release`) — the **fleet migration-propagation orchestrator** that
+sits on ISSUE-008's proven single-silo `runMigrations` (per-deployment migrate) and feeds ISSUE-080's version-skew
+view. `propagateRelease` fans **one** shared corpus to each deployment's **own** injected `DeploymentMigrator` port (N
+independent runs, no per-client parameter → no fork), catches failure **per-deployment inside the loop** (halt only that
+silo, prior version left live, `applied: []`, loop never aborts → no cascade, NFR-INF.005), asserts each deployment's
+`appliedFingerprint === corpus.fingerprint` (a divergent print is surfaced as `forked`, never accepted — #2), and emits
+a fail-loud **`migration_failure`** alert into the C7 `AlertSink` on every halt/fork (never silent — #3). Added
+`app/release/src/corpus.ts` (`loadFleetCorpus` — the real content-hash fingerprint over the one `app/silo/migrations`
+journal, proving "identical files ⇒ identical fingerprint" concretely) and additively widened `store.ts`'s
+`SkewAlert.kind` with `"migration_failure"` (the exact §2/§5/§8.5-scoped seam — surfaced, not a silent edit to
+ISSUE-080).
+
+**Verification:** `app/release` **27/27** (9 new propagation tests, one per §4 AC) + typecheck + `check`; `app/silo`
+unchanged **55/55** + `check` (the AC-NFR-INF.002.1 discipline gate — "8 migrations clean" — cited, not re-tested).
+**Independent zero-context verification: SAFE TO PROCEED, no BLOCKER** — the three highest-risk claims (failure
+isolation, no-fork guard, fail-loud signal) each backed by a test that fails on regression; AF-065 reliance judged
+honest (🟢, live-proven session 62); the `store.ts` widening judged legitimate (documented seam, correct home).
+
+**Scope honesty (Rule 0 / §2 / §9) — what is proven vs. onboarding-owed.** The DoD (§9) is met: DOCS/topology +
+build-time gate tests + the **AF-065 🟢** (mixed-fleet, *live*-proven session 62) spike gate. The per-deployment migrate
+**mechanism** is itself live-proven (ISSUE-008 applied 0001–0005 to the real silo, session 62), and **AF-020 🟢** (F11,
+DOCS) confirms Railway's **Pre-Deploy Command runs between build and cutover and blocks the deploy on failure** = the
+halt path. **NOT yet done (onboarding-owed residual, tracked):** the actual `preDeployCommand` is **not** wired on
+`app/service/railway.json` today, and the `/app/service` (build Root-Directory) → `/app/silo` (migrate runner)
+build-context must be resolved so a deployment can run its migrate on release. This is deliberately **not** wired blind
+now — a broken Pre-Deploy silently blocks every deploy (#3), and there is a live loop + Railway credit (~$0) needed to
+prove it, which belongs at first client-silo provisioning (ISSUE-012 era). Until then the **live** path of
+AC-NFR-INF.002.2 (a real failing migration blocks a real cutover) stays owed with this caveat — the *logic* and the
+*fleet orchestration* are proven; the *operational Pre-Deploy wiring on our service* is the residual. GitHub #81 closed.
