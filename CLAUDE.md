@@ -57,7 +57,18 @@ a chat, that's a bug — write it down before proceeding.
 
 ## Build-phase protocol (the build has begun — Session 49+)
 
-**Before building anything, read the schedule and reconcile status.** `spec/06-issues/BUILD-SCHEDULE.md`
+**Step 0 — Build environment gate (run FIRST, before anything else).** Run `bash scripts/build-preflight.sh`
+and obey its verdict (a SessionStart hook also auto-runs it). It reports whether this session is **`cloud`**
+(a fresh Anthropic VM — claude.ai/code or phone: **offline-safe work ONLY**, no secrets / no authed CLIs / no
+client silo), **`full`** (your Mac or Remote Control — **live-infra steps OK**), or **`limited`** (local but
+secrets/CLIs missing → offline-safe only). **Never attempt a live-infra / 🧑 you-present step — applying
+migrations to a silo, provisioning, a live seed, a connector live-auth, any `AF-*` live spike — in a
+`cloud`/`limited` env:** it cannot succeed there and a half-attempt against real infra is a #1/#2/#3 risk.
+Offline-safe work (authoring migrations/spec, `npm test`/`check`/`typecheck`, commit, PR) is fine anywhere.
+Full model + the "can my phone use the CLIs?" answer (short version: cloud = no, Remote Control = yes):
+`spec/00-foundations/build-environments.md`.
+
+**Then, before building anything, read the schedule and reconcile status.** `spec/06-issues/BUILD-SCHEDULE.md`
 is the followable build order — 11 dependency waves, each with a **gate** (spine issue), a **batch**, and a
 **checkpoint** — fronted by a safety contract. At session start:
 

@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟡 recommendation, ISSUE-008 session 62, at file end) — do not reuse. OD-177 (9-agent roster seed under-specified: memory_scope jsonb shape + name literal, seeded fail-closed pending ISSUE-063; 🟡 OPEN, session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved session 62, at file end) — do not reuse. Next OD number: OD-179.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. Next OD number: OD-179.
 
 ---
 
@@ -2372,7 +2372,13 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-## OD-176 — Migration harness = raw-SQL migrations + a custom runner, NOT `drizzle-kit generate`/`schema.ts` 🟡 RECOMMENDATION (2026-07-04, session 62, ISSUE-008; operator to confirm)
+## OD-176 — Migration harness = raw-SQL migrations + a custom runner, NOT `drizzle-kit generate`/`schema.ts` 🟢 RESOLVED (2026-07-04, session 62, operator-ratified: "long-term, least headache")
+
+- **Resolution (operator-ratified):** **keep the raw-SQL migrations + custom `pg` runner** as the standing toolchain
+  (Option A). Rationale the operator asked for — long-term, least headache: schema.md stays the single source of truth
+  (no `schema.ts` to drift), the harness is already built + proven live (idempotent/fail-loud/resumable, ISSUE-008
+  capstone), and `drizzle-kit generate` could never emit the RLS/helpers/CONCURRENTLY/seed anyway. The migration SQL
+  stays reusable under drizzle if that ever changes. `migrations.md` L9-10 note already records the deviation.
 
 - **OD-176 — the toolchain fork the ISSUE-008 gate had to settle.** `migrations.md` L9-10 names the toolchain as
   "generated once (`drizzle-kit generate`) and applied per-deployment (`drizzle-kit migrate`)". `drizzle-kit generate`,
@@ -2399,7 +2405,16 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-## OD-177 — The 9-agent roster seed is under-specified: `memory_scope` jsonb shape + `name` literal 🟡 OPEN (2026-07-04, session 62, ISSUE-008)
+## OD-177 — The 9-agent roster seed is under-specified: `memory_scope` jsonb shape + `name` literal 🟢 RESOLVED (2026-07-04, session 62; name amended, memory_scope owed to ISSUE-063)
+
+- **Resolution (operator-delegated, "long-term"):** (1) **`name` conflict CLOSED** — **FR-8.REG.001 amended** (change-control)
+  to drop the design-doc `{client_slug}_<role>_agent` pattern in favour of the **bare role slug** (`orchestrator`/`research`/…),
+  since OD-096 forbids `client_slug` on a silo table and there is one client per silo (no value to interpolate). This matches
+  what ISSUE-008 `0001d` already seeded + the live silo. (2) **`memory_scope` jsonb shape** stays **owned by its consumer
+  ISSUE-063** (per-agent memory scoping) — not an open fork but tracked downstream work; seeded **fail-closed `'{}'`** now
+  (retrieves nothing — AC-8.SCO.001.3), so the live silo is safe until ISSUE-063 wires the real scope (a data update,
+  expand-contract-safe). (3) `max_tokens` stays null (model default) until ISSUE-062/063 tune it. **No residual fork; the
+  only owed item is ISSUE-063's scope wiring, tracked in that issue.**
 
 - **OD-177 — a genuine spec gap the 0001 seed hit (not a guess to paper over).** `agents` has `memory_scope jsonb not null`
   — the per-agent least-privilege retrieval filter, a **#2 containment control**. FR-8.REG.006 says provisioning seeds it
@@ -2434,4 +2449,5 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   ISSUE-009) — the gate migration lands the schema + the invariant-critical seed; the specialised issues own their data.
 - **Owed:** ISSUE-010 seeds `entity_types`, `expected_slots` (shape only — concrete per-type content is onboarding-authored,
   ISSUE-030), `ef_search` (default 40), and the rest of the Tier-2 defaults into `config_values`, idempotently, on first boot.
-- **Status:** 🟢 RESOLVED (deferral logged). ISSUE-008 §6 seed scope reduced accordingly — recorded here, not silent (#3).
+- **Status:** 🟢 RESOLVED (deferral logged; **operator-ratified session 62** — "keep deferred to ISSUE-010"). ISSUE-008 §6
+  seed scope reduced accordingly — recorded here, not silent (#3). ISSUE-010 owns seeding the `config_values` defaults.

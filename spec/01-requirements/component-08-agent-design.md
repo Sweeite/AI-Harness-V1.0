@@ -393,8 +393,10 @@ OD-010 no-auto-rollback. AFs block S = AF-121…AF-126. All six original ODs + t
 - **Actor / trigger:** Provisioning + registry edits.
 - **Preconditions:** Schema migrated.
 - **Behaviour:**
-  - Happy path: columns = `id`, `name` ('{client_slug}_<role>_agent' — the slug is part of the human-readable name
-    string only), `description`, `memory_scope` (json), `tools_allowed` (uuid[]), `max_tokens`, `enabled`,
+  - Happy path: columns = `id`, `name` (the **bare role slug**, e.g. `orchestrator` / `research` / `finance` — **no
+    `client_slug`**: there is one client per silo so no client_slug value exists intra-silo to interpolate;
+    amended from the design doc's `{client_slug}_<role>_agent` per **OD-177 / OD-096**, and seeded this way in
+    ISSUE-008 `0001d`), `description`, `memory_scope` (json), `tools_allowed` (uuid[]), `max_tokens`, `enabled`,
     `version`, `created_at`/`updated_at`, `created_by`, `previous_version_id`, `change_reason`. **`system_prompt` is
     removed / derived** (OD-075). **The design doc's `client_slug` column is dropped intra-silo** (ADR-001 §3 — there
     is exactly one client per silo; mirrors C7 OD-067 which dropped it from `event_log`).
