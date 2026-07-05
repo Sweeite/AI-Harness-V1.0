@@ -66,7 +66,11 @@ migrations to a silo, provisioning, a live seed, a connector live-auth, any `AF-
 `cloud`/`limited` env:** it cannot succeed there and a half-attempt against real infra is a #1/#2/#3 risk.
 Offline-safe work (authoring migrations/spec, `npm test`/`check`/`typecheck`, commit, PR) is fine anywhere.
 Full model + the "can my phone use the CLIs?" answer (short version: cloud = no, Remote Control = yes):
-`spec/00-foundations/build-environments.md`.
+`spec/00-foundations/build-environments.md`. **Tell the operator the detected environment at the top of
+your first reply** (e.g. "💻 FULL session — live steps OK" or "🌩️ CLOUD/phone — I can author + open a PR
+but can't run live infra here"). **If the operator asks for a 💻 step in a 🌩️ `cloud`/`limited` session,
+say so plainly and offer the offline-safe path (author it + open a PR to run from the Mac) — never half-do
+a live step.**
 
 **Then, before building anything, read the schedule and reconcile status.** `spec/06-issues/BUILD-SCHEDULE.md`
 is the followable build order — 11 dependency waves, each with a **gate** (spine issue), a **batch**, and a
