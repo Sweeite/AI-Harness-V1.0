@@ -1,0 +1,21 @@
+{
+  "name": "@harness/rbac",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-018 — the C1 authorization core (RBAC). The six seeded roles + runtime role CRUD, the data-driven permission matrix (role × PERM-node grant rows), and the single can(user, node, context) harness gate (default-deny, two-level, no back-door) that every gated action routes through. can() resolves effective nodes from the SAME live tables the ISSUE-009 RLS helpers read (AF-080 non-drift). PERMISSION_NODES.md is homed here as the build-time catalog; the design-doc L509-615 thirteen-category matrix is the seed. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the DDL; migration 0006_rbac_seed.sql is the idempotent role/matrix seed generated + verified from this catalog.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

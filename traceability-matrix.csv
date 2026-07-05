@@ -47,18 +47,18 @@ FR-0.WHK.005,Shared verification principles,0,Approved,Must,L795-809;ADR-007;OD-
 FR-0.WHK.006,Endpoint obscurity token,0,Approved,Could,L811-815,n/a,n/a,n/a,deployment-config,AC-0.WHK.006.1,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
 FR-0.WHK.007,Webhook secret rotation dual-accept,0,Approved,Should,OD-022,operator-runbook,CFG-webhook.secret_rotation_window,n/a,credentials,AC-0.WHK.007.1,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
 FR-0.WHK.008,Replay cache + accept-rate limit,0,Approved,Should,OD-022,n/a,CFG-webhook.replay_cache_window;CFG-webhook.accept_rate_limit,n/a,webhook_replay_cache;guardrail_log,AC-0.WHK.008.1;AC-0.WHK.008.2,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
-FR-1.ROLE.001,Six default roles seed,1,Approved,Must,L471-498;L435-443,n/a,n/a,UI-ROLE-MGMT,roles;role_permissions;sensitivity_clearances,AC-1.ROLE.001.1,,ISSUE-018,,
-FR-1.ROLE.002,Roles fully editable at runtime,1,Approved,Must,L409;L471;L639;ADR-006,PERM-system.role_manage,n/a,UI-ROLE-MGMT;UI-PERMISSION-MATRIX,roles;role_permissions,AC-1.ROLE.002.1;AC-1.ROLE.002.2,,ISSUE-018,,
-FR-1.ROLE.003,Role management Super-Admin-only,1,Approved,Must,L409;L477-479;L561,PERM-system.role_manage,n/a,UI-ROLE-MGMT,n/a,AC-1.ROLE.003.1,,ISSUE-018,,
-FR-1.ROLE.004,Role deletion only when unused,1,Approved,Should,L471,PERM-system.role_manage,n/a,UI-ROLE-MGMT,roles;user_roles,AC-1.ROLE.004.1;AC-1.ROLE.004.2,,ISSUE-018,,
-FR-1.ROLE.005,At least one Super Admin always,1,Approved,Must,L474,PERM-system.role_manage;PERM-user.deactivate,n/a,UI-USER-MGMT;UI-ROLE-MGMT,user_roles,AC-1.ROLE.005.1;AC-1.ROLE.005.2,,ISSUE-018,,
-FR-1.PERM.001,Two-level enforcement,1,Approved,Must,L397-403;L218,n/a,n/a,n/a,role_permissions;user_roles,AC-1.PERM.001.1,,ISSUE-018,,
-FR-1.PERM.002,Default-deny,1,Approved,Must,L420;L218,n/a,n/a,n/a,role_permissions,AC-1.PERM.002.1;AC-1.PERM.002.2,,ISSUE-018,,
-FR-1.PERM.003,Single can() gate,1,Approved,Must,ADR-006;L399,n/a,n/a,n/a,user_roles;role_permissions;sensitivity_clearances;restricted_grants,AC-1.PERM.003.1,,ISSUE-018,,
-FR-1.PERM.004,Permission matrix is data,1,Approved,Must,L502-504;L639,PERM-system.role_manage,n/a,UI-PERMISSION-MATRIX,role_permissions,AC-1.PERM.004.1,,ISSUE-018,,
-FR-1.PERM.005,PERMISSION_NODES.md source of truth,1,Approved,Must,L625-639,n/a,n/a,UI-PERMISSION-MATRIX,PERMISSION_NODES.md;role_permissions,AC-1.PERM.005.1;AC-1.PERM.005.2,,ISSUE-018,,
-FR-1.PERM.006,Denied-access behavior,1,Approved,Must,L462;L420,n/a,n/a,all-gated-surfaces,n/a,AC-1.PERM.006.1;AC-1.PERM.006.2,,ISSUE-018,,
-FR-1.PERM.007,Node catalog homed (12 categories),1,Approved,Must,L509-615,n/a,n/a,UI-PERMISSION-MATRIX,PERMISSION_NODES.md;role_permissions,AC-1.PERM.007.1,,ISSUE-018,,
+FR-1.ROLE.001,Six default roles seed,1,Approved,Must,L471-498;L435-443,n/a,n/a,UI-ROLE-MGMT,roles;role_permissions;sensitivity_clearances,AC-1.ROLE.001.1,,ISSUE-018,app/rbac/src/rbac.test.ts;app/rbac/results/issue-018-capstone.sql
+FR-1.ROLE.002,Roles fully editable at runtime,1,Approved,Must,L409;L471;L639;ADR-006,PERM-system.role_manage,n/a,UI-ROLE-MGMT;UI-PERMISSION-MATRIX,roles;role_permissions,AC-1.ROLE.002.1;AC-1.ROLE.002.2,,ISSUE-018,app/rbac/src/rbac.test.ts
+FR-1.ROLE.003,Role management Super-Admin-only,1,Approved,Must,L409;L477-479;L561,PERM-system.role_manage,n/a,UI-ROLE-MGMT,n/a,AC-1.ROLE.003.1,,ISSUE-018,app/rbac/src/rbac.test.ts
+FR-1.ROLE.004,Role deletion only when unused,1,Approved,Should,L471,PERM-system.role_manage,n/a,UI-ROLE-MGMT,roles;user_roles,AC-1.ROLE.004.1;AC-1.ROLE.004.2,,ISSUE-018,app/rbac/src/rbac.test.ts
+FR-1.ROLE.005,At least one Super Admin always,1,Approved,Must,L474,PERM-system.role_manage;PERM-user.deactivate,n/a,UI-USER-MGMT;UI-ROLE-MGMT,user_roles,AC-1.ROLE.005.1;AC-1.ROLE.005.2,,ISSUE-018,app/rbac/src/rbac.test.ts;app/rbac/results/issue-018-concurrency-spike.sh
+FR-1.PERM.001,Two-level enforcement,1,Approved,Must,L397-403;L218,n/a,n/a,n/a,role_permissions;user_roles,AC-1.PERM.001.1,,ISSUE-018,app/rbac/src/rbac.test.ts
+FR-1.PERM.002,Default-deny,1,Approved,Must,L420;L218,n/a,n/a,n/a,role_permissions,AC-1.PERM.002.1;AC-1.PERM.002.2,,ISSUE-018,app/rbac/src/rbac.test.ts;app/rbac/results/issue-018-capstone.sql
+FR-1.PERM.003,Single can() gate,1,Approved,Must,ADR-006;L399,n/a,n/a,n/a,user_roles;role_permissions;sensitivity_clearances;restricted_grants,AC-1.PERM.003.1,,ISSUE-018,app/rbac/src/rbac.test.ts;app/rbac/results/issue-018-capstone.sql
+FR-1.PERM.004,Permission matrix is data,1,Approved,Must,L502-504;L639,PERM-system.role_manage,n/a,UI-PERMISSION-MATRIX,role_permissions,AC-1.PERM.004.1,,ISSUE-018,app/rbac/src/rbac.test.ts
+FR-1.PERM.005,PERMISSION_NODES.md source of truth,1,Approved,Must,L625-639,n/a,n/a,UI-PERMISSION-MATRIX,PERMISSION_NODES.md;role_permissions,AC-1.PERM.005.1;AC-1.PERM.005.2,,ISSUE-018,app/rbac/src/rbac.test.ts
+FR-1.PERM.006,Denied-access behavior,1,Approved,Must,L462;L420,n/a,n/a,all-gated-surfaces,n/a,AC-1.PERM.006.1;AC-1.PERM.006.2,,ISSUE-018,app/rbac/src/rbac.test.ts
+FR-1.PERM.007,Node catalog homed (12 categories),1,Approved,Must,L509-615,n/a,n/a,UI-PERMISSION-MATRIX,PERMISSION_NODES.md;role_permissions,AC-1.PERM.007.1,,ISSUE-018,app/rbac/src/rbac.test.ts
 FR-1.CLR.001,Four sensitivity tiers,1,Approved,Must,L426-433,n/a,n/a,n/a,memories.sensitivity,AC-1.CLR.001.1,,ISSUE-019,,
 FR-1.CLR.002,Default clearances per role,1,Approved,Must,L435-443,n/a,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances,AC-1.CLR.002.1,,ISSUE-019,,
 FR-1.CLR.003,Clearance explicitly granted never inherited,1,Approved,Must,L448,PERM-user.grant_clearance,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances,AC-1.CLR.003.1,,ISSUE-019,,

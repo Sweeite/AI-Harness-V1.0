@@ -2,7 +2,7 @@
 id: ISSUE-018
 title: Role model + permission matrix + can() gate
 epic: B — identity & access
-status: ready
+status: done
 github: "#18"
 ---
 
@@ -197,3 +197,41 @@ not author any per-table sensitivity cell.
 - **AF-080** differential test (build-time): for a matrix of (user, node, entity, tier) cases, `can()`
   and the RLS helper results agree on the visibility/sensitivity/Restricted subset — the blocking
   proof that the two readers cannot drift (the runtime divergence signal, FR-1.RLS.008, is ISSUE-020).
+
+## 10. Build result — ✅ `done` (session 68, 2026-07-05, 💻 FULL, operator-present)
+
+Built `app/rbac/` (`@harness/rbac`) to the house **port + in-memory-fake reference model + live pg adapter**
+pattern. No new migration (§5 "authoring no new DDL"): the six-role + matrix seed is **app-provisioning
+code** with the matrix defined in TS only, so there is a single source of truth (avoiding the TS/SQL split
+that produced the ISSUE-010 blocker). Migration head stays `0005`.
+
+**Files:** `src/catalog.ts` (the 55-node concrete `PERM-*` catalog transcribed from `PERMISSION_NODES.md` +
+the design-doc L509–615 thirteen-category seed matrix + the six roles) · `src/can.ts` (the single
+`can(user,node,context)` gate — default-deny, context scope, prompt-can't-override per ADR-007, no back-door;
+`rlsHelperPerms` the independent AF-080 reader) · `src/store.ts` (`RbacStore` port + fake; the ADR-004 atomic
+last-Super-Admin guard) · `src/roles.ts` (seed fail-loud-on-partial + runtime CRUD + delete/protected/last-SA
+guards) · `src/index.ts` (`check` CLI — 5 build-time gates incl. CATALOG ≡ `PERMISSION_NODES.md` parity) ·
+`src/supabase-store.ts` (live adapter; guards = `pg_advisory_xact_lock` + conditional UPDATE) ·
+`src/rbac.test.ts` (24 tests) · `results/issue-018-capstone.sql` + `results/issue-018-concurrency-spike.sh` +
+`results/issue-018-capstone-evidence.2026-07-05.md`.
+
+**Verification:** offline **24/24** (one per DoD AC + AF-080 differential + a deactivated-assignment teeth
+case) + typecheck + `check` gate green. **Independent zero-context verification caught 2 MAJORs, both fixed +
+re-proven:** (MAJOR-1) the first-cut live guard omitted the ADR-004 advisory lock → write-skew could leave
+zero Super Admins; fixed with a txn-scoped `pg_advisory_xact_lock`, **proven LIVE by a two-session concurrency
+spike** (one demotion won, ≥1 held — AC-1.ROLE.005.2). (MAJOR-2) the AF-080 differential compared two
+delegates of the same methods (tautology); `rlsHelperPerms` now re-joins the raw tables independently.
+**LIVE capstone (rolled-back txn):** AC-1.ROLE.001.1 seed target state · AC-1.PERM.002.1 / **AF-080 part-a**
+`user_perms(uid)` returns exactly the seeded grant set the harness reads (non-drift) · guard logic. Every §4
+AC is covered by a non-tautological test reading live store rows.
+
+**AF-flip:** **AF-080 🔴→🟡** — part (a) the build-time differential is proven (independent readers + live
+`user_perms` parity); part (b) the *runtime* divergence signal (FR-1.RLS.008) is **ISSUE-020**, so not yet
+fully 🟢.
+
+**Scope honesty (Rule 0 / §2-Out):** ships ROLE + PERM areas + `can()` + the full catalog homing. The
+surface-02 Roles/Permissions **tabs** (UI-ROLE-MGMT/UI-PERMISSION-MATRIX) are a render-model seam
+(`renderAdminMatrix`) only — the live UI is deferred with the dashboard surfaces (build-order step 8). The
+CLR/RST clearance grant/revoke flows + entity-scoped default clearances are **ISSUE-019**; the RLS
+enforcement predicates + the runtime divergence signal are **ISSUE-020**; the deactivate/role-change
+*actions* the ROLE.005 guard protects are **ISSUE-021** (this slice owns the shared guard). No new OD/AF fork.
