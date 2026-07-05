@@ -22,7 +22,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [silo, release, webhook-auth, service, provisioning, canary, management]
+        # Only real node packages (a dir with its own package.json). app/management is a bare
+        # migrations dir (no package.json), app/runbooks is docs — neither is a buildable package.
+        package: [silo, release, webhook-auth, service, provisioning, canary]
     defaults:
       run:
         working-directory: app/${{ matrix.package }}
