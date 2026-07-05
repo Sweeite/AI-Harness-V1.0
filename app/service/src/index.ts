@@ -8,6 +8,7 @@
 
 import { createServer } from "node:http";
 import { checkHealth, missingSecrets } from "./health.ts";
+import { buildServiceVersionReport } from "./version.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -26,6 +27,12 @@ const server = createServer(async (req, res) => {
     res.writeHead(health.ok ? 200 : 503, { "content-type": "application/json" });
     res.end(JSON.stringify(health));
     if (!health.ok) console.error(`[health] 503 — ${health.detail}`);
+    return;
+  }
+  if (req.url === "/version") {
+    // The version signal for the health push (FR-10.DEP.004): core_version + last-migrated + plugin.
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(buildServiceVersionReport(process.env)));
     return;
   }
   if (req.url === "/") {
