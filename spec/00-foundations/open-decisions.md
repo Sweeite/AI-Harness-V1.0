@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. Next OD number: OD-179.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. Next OD number: OD-180.
 
 ---
 
@@ -2451,3 +2451,33 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   ISSUE-030), `ef_search` (default 40), and the rest of the Tier-2 defaults into `config_values`, idempotently, on first boot.
 - **Status:** 🟢 RESOLVED (deferral logged; **operator-ratified session 62** — "keep deferred to ISSUE-010"). ISSUE-008 §6
   seed scope reduced accordingly — recorded here, not silent (#3). ISSUE-010 owns seeding the `config_values` defaults.
+
+---
+
+## OD-179 — `event_type` enum lacks values for the FR-0.WHK.* webhook event_log writes 🟢 RESOLVED (2026-07-05, ISSUE-017 build gap-sweep; additive enum change-control)
+
+- **OD-179** ⚠️ **#3 build-input gap (surfaced by the ISSUE-017 zero-context verification pass).** The Component-0 WHK
+  FRs mandate `event_log` writes on the verified-webhook path — `FR-0.WHK.001` ("verified → `event_log`"),
+  `FR-0.WHK.008` (replay-drop + rate-throttle → `event_log`), and `FR-0.WHK.005` (the >threshold failure alert) — but the
+  `event_type` enum in `schema.md` §8 (L110-115) admitted **no value** for any of them. The live `WebhookStore` adapter
+  (`app/webhook-auth/src/supabase-store.ts`) therefore could not `INSERT` a verified-accept / replay-drop / rate-throttle /
+  failure-alert row without an unspecified schema change — and the in-memory fake typed `event_type` as a bare `string`, so
+  the offline suite passed while the real DDL would reject every one of those writes (`invalid input value for enum
+  event_type`). Exactly the OD-170 pattern (an FR names an `event_log` write the enum can't type), surfaced one issue later.
+- **✅ Resolution (additive, expand-contract-safe; no behaviour change):** four enum values added to `event_type`
+  (`schema.md` §8) via change-control, matching OD-170's precedent:
+  - **`webhook_verified`** — FR-0.WHK.001 verified-webhook accept row (the seam hand-off to C2/C3 is logged).
+  - **`webhook_replay_dropped`** — FR-0.WHK.008 a verified event whose ID was already seen in the replay window (dropped, no re-trigger).
+  - **`webhook_rate_throttled`** — FR-0.WHK.008 a verified source over `CFG-webhook.accept_rate_limit` (throttled, excess not handed off).
+  - **`webhook_failure_alert`** — FR-0.WHK.005 the >`failure_alert_threshold`/source/hour Super-Admin alert row.
+  The `app/webhook-auth` code + tests cite these values by name; no FR text changes (the FRs already named the `event_log`
+  write — this only gives it a typeable value). The TS `EventLogRow.event_type` stays `string` in the fake for assertion
+  convenience; the live adapter now emits the enum-valid strings.
+- **Owed (tracked, not silent — #3):** applying this additive enum change to the **live** client silo is a `0002` enum-add
+  migration, owed at the **ISSUE-017 onboarding live run** (the same OD-172 deferral that re-gates the live per-connector
+  webhook confirmation). Until that migration runs, the live adapter's `event_log` writes would fail against the *current*
+  silo — which is fine, because per OD-172 the live path is not exercised until onboarding. ISSUE-081 (migration propagation)
+  is the mechanism that carries the enum-add to each deployment.
+- **Status:** 🟢 RESOLVED (schema source-of-truth updated; live migration owed at onboarding per OD-172). Does **not** block
+  ISSUE-017 `done` — the DoD ACs are all proven offline against the reference model; the enum gap only affected the
+  not-yet-run live adapter, and the source of truth now admits the writes.

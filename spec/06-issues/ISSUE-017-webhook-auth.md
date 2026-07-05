@@ -2,9 +2,22 @@
 id: ISSUE-017
 title: Webhook authentication, per-vendor (Ed25519/JWT/HMAC + replay)
 epic: B — identity & access
-status: ready
+status: done
 github: "#17"
 ---
+
+> **Result — DONE ✅ (Session 63, 2026-07-05).** Built `app/webhook-auth/` (`@harness/webhook-auth`):
+> the shared verification pipeline (raw-body-before-parse → route → constant-time verify → 401 +
+> `guardrail_log(prompt_injection)`) + the three per-vendor verifiers (GHL Ed25519 +legacy cutoff ·
+> Google Pub/Sub JWT aud/exp/JWKS · Slack HMAC v0 + 5-min window), productionised from the AF-078
+> spike, PLUS the four pieces the spike deferred: **dual-accept rotation** (FR-0.WHK.007), the real
+> **Super-Admin alert + auto-throttle** (FR-0.WHK.005), the **per-source accept-rate limit**
+> (FR-0.WHK.008), and the **endpoint obscurity token** (FR-0.WHK.006). **18/18 AC battery + typecheck
+> green**; independent zero-context verification found no BLOCKER in the offline slice (one
+> event_type-enum gap → **OD-179**, resolved additively; one MINOR type-label fixed). **Live
+> per-connector confirmation against real vendor key material remains owed at ONBOARDING (OD-172)** —
+> the `SupabaseWebhookStore` pg adapter is authored to the DDL but NOT yet run live. Checkpoint-1
+> condition "017 rejects forged/replayed" is proven offline. GitHub #17 closed.
 
 # ISSUE-017 — Webhook authentication, per-vendor (Ed25519/JWT/HMAC + replay)
 
@@ -73,3 +86,21 @@ Authenticate every inbound connector webhook at the trust boundary — verify th
 ## 9. Verification (how DoD is proven)
 - Per spec/05-non-functional/test-strategy.md: an end-to-end security test battery (valid, tampered, replayed payloads per connector) is the primary layer — this *is* the AF-078 spike (ISSUE-006) and must be GREEN before ship. Unit tests cover constant-time compare, base-string construction, and rotation dual-accept windows.
 - The `AC-NFR-SEC.008` posture must hold: unverified/replayed → `401` + log + (past threshold) alert, no downstream task created. AF-078 is **🟡 MECHANICS PASS** (ISSUE-006); per **OD-172** the proven mechanics clear the Checkpoint-0 gate, and the AC→`Verified` path for this slice closes when this issue's **live per-connector webhook verification passes at onboarding** against real vendor key material (the residual OD-172 re-gated here), recorded in spec/00-foundations/feasibility-register.md.
+
+## 10. Build result (Session 63, 2026-07-05)
+
+**Built:** `app/webhook-auth/` (`@harness/webhook-auth`, ESM/tsx, house port+fake pattern) —
+- `verify.ts` — the shared entrypoint (throttle-gate → raw body → route → verify → replay-dedup → accept). FR-0.WHK.001+005.
+- `verifiers/{ghl,slack,google}.ts` — ported from the AF-078 spike; **dual-accept** (verify against every active secret version). FR-0.WHK.002/003/004.
+- `store.ts` — `WebhookStore` port + `InMemoryWebhookStore` reference model (webhook_secrets versioned · webhook_replay_cache · guardrail_log · event_log · access_audit · per-source failure/accept counters · alert + throttle).
+- `supabase-store.ts` — the LIVE `pg` adapter (⚠️ authored to the DDL, **NOT yet run live** — OD-172 onboarding).
+- `outcome.ts` — reject (401 + `prompt_injection` + threshold alert/throttle) / accept (rate-limited hand-off) / replayDrop / throttled.
+- `rotation.ts` — dual-accept rotation ops + `access_audit` rows (FR-0.WHK.007).
+- `obscurity.ts` — endpoint obscurity token (FR-0.WHK.006, explicitly not a security control).
+- `config.ts` — CFG-webhook.* defaults + registry validation ranges. `source.ts`, `rawBody.ts`, `fixtures.ts`, `verify.test.ts`.
+
+**Verification (DoD):** `npm test` **18/18** — one test per AC: AC-0.WHK.001.1/.002.1/.002.2/.003.1/.004.1/.004.2/.005.1/.005.2/.006.1/.007.1/.008.1/.008.2 + AC-NFR-SEC.008.1/.2 + config-range guards. `npm run typecheck` clean. **Independent zero-context verification:** every AC has a genuine test AND a real production path; CFG verbatim; DDL faithful; no behavioural correctness defect. Two findings handled: **(BLOCKER, live-only) event_type enum admitted no webhook value → OD-179** (additive change-control, live enum-add migration owed at onboarding); **(MINOR) `GuardrailType` union `'approval'`→`'approval_gate'`** fixed. Also caught + fixed in build: rotation audit re-homed to `access_audit` (not the non-existent generic `audit`; `config_audit_log` excludes SECRET-class), and `guardrail_log.escalated_at` is a timestamptz (was a string label).
+
+**Owed (tracked, non-blocking):** OD-172 — live per-connector webhook verification against real vendor key material at onboarding (owed here + ISSUE-039/040/041); OD-179 — apply the additive `event_type` enum extension to the live silo (a `0002` migration, carried by ISSUE-081) before the live adapter runs; a multi-instance rollout owes a shared (Redis/table) counter+throttle store (single-Railway-service model makes in-process correct now).
+
+**Seam:** on a `200` outcome the caller takes `outcome.verifiedPayload` → ingesting component (C2/C3, ISSUE-037/026). This slice stops at "verified payload handed off."

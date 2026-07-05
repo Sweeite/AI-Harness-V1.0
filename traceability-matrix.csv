@@ -39,14 +39,14 @@ FR-0.REC.004,RETIRED - phone verification,0,Retired,n/a,L387;OD-019,n/a,n/a,n/a,
 FR-0.REC.005,Request status tracking,0,Approved,Must,L387;OD-019,PERM-support.resolve,n/a,UI-SUPPORT-REQUESTS,support_requests.status,AC-0.REC.005.1,,ISSUE-016,,
 FR-0.REC.006,Support-request notification,0,Approved,Should,L385-387;OD-019,PERM-support.view;PERM-support.resolve,n/a,UI-SUPPORT-REQUESTS,event_log,AC-0.REC.006.1,,ISSUE-016,,
 FR-0.REC.007,Stale-request re-escalation,0,Approved,Should,quality-gate;Dim10,n/a,CFG-support.stale_request_minutes,UI-SUPPORT-REQUESTS,support_requests,AC-0.REC.007.1,,ISSUE-016,,
-FR-0.WHK.001,Authenticate webhook before processing,0,Approved,Must,L742;ADR-007,n/a,n/a,n/a,credentials;guardrail_log,AC-0.WHK.001.1,,ISSUE-017,,
-FR-0.WHK.002,GHL HMAC verification,0,Approved,Must,L747-763,n/a,n/a,n/a,credentials.ghl_webhook_secret;guardrail_log,AC-0.WHK.002.1,,ISSUE-017,,
-FR-0.WHK.003,Google Pub/Sub JWT verification,0,Approved,Must,L765-777,n/a,CFG-webhook.google_expected_audience,n/a,google-jwks;guardrail_log,AC-0.WHK.003.1,,ISSUE-017,,
-FR-0.WHK.004,Slack signing-secret+timestamp,0,Approved,Must,L779-792,n/a,CFG-webhook.replay_window_seconds,n/a,credentials.slack_signing_secret;guardrail_log,AC-0.WHK.004.1;AC-0.WHK.004.2,,ISSUE-017,,
-FR-0.WHK.005,Shared verification principles,0,Approved,Must,L795-809;ADR-007;OD-023,n/a,CFG-webhook.failure_alert_threshold,alert-surface,guardrail_log,AC-0.WHK.005.1;AC-0.WHK.005.2,,ISSUE-017,,
-FR-0.WHK.006,Endpoint obscurity token,0,Approved,Could,L811-815,n/a,n/a,n/a,deployment-config,AC-0.WHK.006.1,,ISSUE-017,,
-FR-0.WHK.007,Webhook secret rotation dual-accept,0,Approved,Should,OD-022,operator-runbook,CFG-webhook.secret_rotation_window,n/a,credentials,AC-0.WHK.007.1,,ISSUE-017,,
-FR-0.WHK.008,Replay cache + accept-rate limit,0,Approved,Should,OD-022,n/a,CFG-webhook.replay_cache_window;CFG-webhook.accept_rate_limit,n/a,webhook_replay_cache;guardrail_log,AC-0.WHK.008.1;AC-0.WHK.008.2,,ISSUE-017,,
+FR-0.WHK.001,Authenticate webhook before processing,0,Approved,Must,L742;ADR-007,n/a,n/a,n/a,credentials;guardrail_log,AC-0.WHK.001.1,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
+FR-0.WHK.002,GHL HMAC verification,0,Approved,Must,L747-763,n/a,n/a,n/a,credentials.ghl_webhook_secret;guardrail_log,AC-0.WHK.002.1,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
+FR-0.WHK.003,Google Pub/Sub JWT verification,0,Approved,Must,L765-777,n/a,CFG-webhook.google_expected_audience,n/a,google-jwks;guardrail_log,AC-0.WHK.003.1,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
+FR-0.WHK.004,Slack signing-secret+timestamp,0,Approved,Must,L779-792,n/a,CFG-webhook.replay_window_seconds,n/a,credentials.slack_signing_secret;guardrail_log,AC-0.WHK.004.1;AC-0.WHK.004.2,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
+FR-0.WHK.005,Shared verification principles,0,Approved,Must,L795-809;ADR-007;OD-023,n/a,CFG-webhook.failure_alert_threshold,alert-surface,guardrail_log,AC-0.WHK.005.1;AC-0.WHK.005.2,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
+FR-0.WHK.006,Endpoint obscurity token,0,Approved,Could,L811-815,n/a,n/a,n/a,deployment-config,AC-0.WHK.006.1,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
+FR-0.WHK.007,Webhook secret rotation dual-accept,0,Approved,Should,OD-022,operator-runbook,CFG-webhook.secret_rotation_window,n/a,credentials,AC-0.WHK.007.1,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
+FR-0.WHK.008,Replay cache + accept-rate limit,0,Approved,Should,OD-022,n/a,CFG-webhook.replay_cache_window;CFG-webhook.accept_rate_limit,n/a,webhook_replay_cache;guardrail_log,AC-0.WHK.008.1;AC-0.WHK.008.2,,ISSUE-017,,app/webhook-auth/src/verify.test.ts
 FR-1.ROLE.001,Six default roles seed,1,Approved,Must,L471-498;L435-443,n/a,n/a,UI-ROLE-MGMT,roles;role_permissions;sensitivity_clearances,AC-1.ROLE.001.1,,ISSUE-018,,
 FR-1.ROLE.002,Roles fully editable at runtime,1,Approved,Must,L409;L471;L639;ADR-006,PERM-system.role_manage,n/a,UI-ROLE-MGMT;UI-PERMISSION-MATRIX,roles;role_permissions,AC-1.ROLE.002.1;AC-1.ROLE.002.2,,ISSUE-018,,
 FR-1.ROLE.003,Role management Super-Admin-only,1,Approved,Must,L409;L477-479;L561,PERM-system.role_manage,n/a,UI-ROLE-MGMT,n/a,AC-1.ROLE.003.1,,ISSUE-018,,

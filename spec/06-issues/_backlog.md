@@ -71,7 +71,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-014 | Super-Admin password + TOTP 2FA + brute-force defense (+ surface-00 2FA) | C0 AUTH(pw/2FA/009) | 009, 005(spike) |
 | ISSUE-015 | Invite + seed bootstrap (+ surface-00 invite-setup) | C0 INV, SEED | 009, 013 |
 | ISSUE-016 | Support-request recovery intake (+ surface-00 support-requests) | C0 REC | 013 |
-| ISSUE-017 | Webhook authentication, per-vendor (Ed25519/JWT/HMAC + replay) | C0 WHK | 006(spike) |
+| ISSUE-017 ✅ **done** | Webhook authentication, per-vendor (Ed25519/JWT/HMAC + replay) — `app/webhook-auth/`, 18/18 AC battery + independent verification (session 63, 2026-07-05); live per-connector confirmation owed at onboarding (OD-172), event_type enum extended (OD-179) | C0 WHK | 006(spike) |
 | ISSUE-018 | Role model + permission matrix + `can()` gate | C1 ROLE, PERM | 009 |
 | ISSUE-019 | Clearance + Restricted model | C1 CLR, RST | 018 |
 | ISSUE-020 | RLS enforcement — visibility/sensitivity/Restricted/aal2 + service_role path + mid-task revocation | C1 RLS.002/003/005/007/008 | 009, 019; RLS.007 → 003(spike) |

@@ -112,11 +112,17 @@ create type event_type          as enum ('task_started','tool_called','memory_re
                                           'task_failure_spike','queue_backup','memory_confidence_drop',
                                           'approval_queue_stale','cost_threshold_breach','loop_missed',
                                           'reporter_push',
-                                          'authz_revoked_midtask','rls_harness_divergence');   -- FR-7.ALR.004 alert types (6) + FR-7.MGM.001.3 reporter-attempt log
+                                          'authz_revoked_midtask','rls_harness_divergence',
+                                          'webhook_verified','webhook_replay_dropped','webhook_rate_throttled','webhook_failure_alert');   -- FR-7.ALR.004 alert types (6) + FR-7.MGM.001.3 reporter-attempt log + FR-0.WHK observability
 -- OD-170 (2026-07-03, Phase-6 gap-sweep change-control): +'authz_revoked_midtask' (FR-1.RLS.007 mid-task
 -- authorization-stop → event_log, C1 L702) and +'rls_harness_divergence' (FR-1.RLS.008 divergence signal →
 -- event_log, C1 L722/726). Both FRs mandate an event_log write but the enum admitted no matching value — a
 -- Phase-6 slicing gap (ISSUE-020). Additive/expand-contract-safe.
+-- OD-179 (2026-07-05, ISSUE-017 build gap-sweep change-control): +'webhook_verified' (FR-0.WHK.001 verified→event_log),
+-- +'webhook_replay_dropped' (FR-0.WHK.008 replay-drop→event_log), +'webhook_rate_throttled' (FR-0.WHK.008 accept-rate
+-- throttle→event_log), +'webhook_failure_alert' (FR-0.WHK.005 threshold alert). Same class as OD-170: the WHK FRs
+-- mandate event_log writes but the enum admitted no matching value. Additive/expand-contract-safe; applying it as a
+-- live silo migration (a 0002 enum-add) is owed at the ISSUE-017 onboarding live run (OD-172).
 create type notification_read   as enum ('unread','read','actioned');
 create type alert_type          as enum ('task_failure_spike','queue_backup','memory_confidence_drop',
                                           'approval_queue_stale','hard_limit_hit','cost_threshold_breach','loop_missed',
