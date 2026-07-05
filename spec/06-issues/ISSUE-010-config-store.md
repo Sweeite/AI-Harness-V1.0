@@ -2,7 +2,7 @@
 id: ISSUE-010
 title: Config store + secret manifest + config-audit-log immutability
 epic: A — foundations
-status: blocked
+status: ready
 github: "#10"
 ---
 

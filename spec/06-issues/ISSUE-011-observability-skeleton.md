@@ -2,7 +2,7 @@
 id: ISSUE-011
 title: Observability skeleton — event_log + silent-failure detector + alert-engine watchdog
 epic: A — foundations
-status: blocked
+status: ready
 github: "#11"
 ---
 

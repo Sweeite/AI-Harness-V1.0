@@ -2,7 +2,7 @@
 id: ISSUE-042
 title: Prompt layer model + store + version-never-overwrite
 epic: E — prompt
-status: blocked
+status: ready
 github: "#42"
 ---
 

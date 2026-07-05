@@ -2,7 +2,7 @@
 id: ISSUE-009
 title: RLS scaffold — helpers, default-deny baseline, 100% coverage CI gate
 epic: A — foundations
-status: blocked
+status: ready
 github: "#9"
 ---
 

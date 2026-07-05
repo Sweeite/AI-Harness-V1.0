@@ -2,7 +2,7 @@
 id: ISSUE-081
 title: Schema-migration propagation + per-deployment failure isolation
 epic: K — infra & compliance
-status: blocked
+status: ready
 github: "#81"
 ---
 

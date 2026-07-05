@@ -2,7 +2,7 @@
 id: ISSUE-080
 title: Release model — canary/train + rollback + skew
 epic: K — infra & compliance
-status: in-progress
+status: done
 github: "#80"
 ---
 
@@ -83,3 +83,40 @@ Stand up the core release train — Railway-native per-project auto-deploy (cana
 - **Build-time gate tests:** a canary with any red gate (test / migration / smoke) or incomplete soak → promotion refused + failing gate surfaced (AC-10.DEP.002.1, AC-NFR-INF.001.2, AC-NFR-INF.008.2); a synthetic over-skew silo → drift alert raised (AC-10.DEP.004.2, AC-NFR-INF.004.2); a core promotion leaves `/plugins` untouched (AC-10.DEP.005.1, AC-NFR-INF.009.1).
 - **Integration (deploy path):** a push to `main` → each fleet Railway project auto-deploys + migrates independently against its own Supabase (AC-10.DEP.001.1); the health push carries `core_version` + last-migrated + plugin version (AC-10.DEP.004.1, AC-NFR-INF.004.1, AC-10.DEP.005.2, AC-NFR-INF.009.2).
 - **Feasibility posture:** AF-020 + AF-064 hold 🟢 for the deploy + train mechanism; AF-065 (mixed-version/rollback premise, via ISSUE-081) and AF-066 (battery coverage adequacy, EVAL fast-follow) are the paper-vs-proven caveats — the smoke battery only catches what its fixtures assert (ADR-005 §6 honest limit). The AC→`Verified` path for each DEP AC runs once its build-time gate test is green.
+
+## 10. Build result (session 64, 2026-07-05 — ✅ `done`)
+Built `app/release/` (`@harness/release`, house port+fake pattern) + repo-root `.github/workflows/ci.yml`
+(the merge gate) + `plugins/` (out-of-train convention). **20/20 §4 ACs met** — 18 proven offline by the
+AC battery (`release.test.ts` 18/18 + typecheck + `npm run check`), the deploy-path ACs proven **LIVE**
+at the two-party capstone. Independent zero-context verification: **no BLOCKER defects**.
+
+**Modules:** `promotion-gate.ts` (4-gate operator-promoted canary; refuse+surface; auto trigger refused,
+OD-094), `smoke-battery.ts` (required-check-shape gate, NFR-INF.008), `rollback.ts` (redeploy prior build
++ `assertNoDownMigration`, forward-only), `skew.ts` (fleet version/staleness alert >3 / >14, `frozen ≠
+stale`), `version.ts` (health-push version-report contract), `plugins.ts` (`assertPluginsUntouched`),
+`deployment-config.ts` + `ci-scan.ts` (branch→env map + Actions-gates-never-deploys), `config.ts` (CFG
+verbatim), `store.ts`/`supabase-store.ts` (mgmt-plane `deployment_health` port + fake + live pg adapter).
+Also added `app/service/src/version.ts` + `/version` route (the live `core_version` signal).
+
+**LIVE capstone (operator-present, Railway `adaptable-miracle`, canary env `023f250b` tracking `release`,
+Wait-for-CI ON):**
+- **AC-10.DEP.001.2** — CI ran the suite as a merge gate on push; Railway independently did NOT deploy
+  (SKIPPED via watchPatterns). Actions gates, Railway deploys. ✅ LIVE.
+- **OD-173 Wait-for-CI spike (the #3 hazard) → AF-064 🟡→🟢:** GREEN push (`84878f5`) → canary
+  auto-deployed it; RED push (`078b30c`, own suite failing) → Wait-for-CI **BLOCKED** the canary deploy
+  (held the good build 2+ min, never rolled forward). A broken build cannot silently roll forward. ✅ LIVE.
+  Evidence `app/release/results/od-173-wait-for-ci-spike.2026-07-05.md`.
+- **AC-10.DEP.001.1 / AC-NFR-INF.001.1** — operator fast-forward `release`→`main` (`5c50450`) → the
+  production/fleet env **auto-deployed** it (`/version` reports the promoted SHA, `/health` 200); a build
+  reaches the fleet only via the operator-gated promotion. ✅ LIVE.
+- **AC-10.DEP.004.1 / .005.2** — the deployment's live `/version` reports `core_version` (deployed SHA) +
+  `plugin_version` slot — the health-push signal, live.
+
+**Scope honesty (Rule 0 / §2-Out):** the **migrate-on-release mechanics + per-deployment failure
+isolation** (FR-10.MIG.001/002) are **ISSUE-081** — the `app/silo` runner's independent per-silo migration
+is already proven LIVE (ISSUE-008 session 62); 080 wires the deploy *trigger* and 081 hardens the
+Pre-Deploy migrate wiring (the service Root Directory `/app/service` build-context resolution is 081's).
+The rollback ACs are proven by DOCS + **AF-065 🟢** (live, session 62) + the offline `assertNoDownMigration`
+gate, per §9 — a live `deploymentRollback` is not DoD-required. AF-066 (battery coverage) stays EVAL
+fast-follow. **Checkpoint 1 → GREEN** (008 apply+rollback ✅ · 017 forged/replayed ✅ · 080 deploys through
+the canary gate ✅); **Stage 2 opens (R1).** GitHub #80 closed.

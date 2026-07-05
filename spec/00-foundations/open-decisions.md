@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟡 recommendation, minted by the Railway dossier session 59, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. Next OD number: OD-180.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟢 RESOLVED session 64 — confirmed LIVE at the ISSUE-080 capstone, AF-064 🟢, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. Next OD number: OD-180.
 
 ---
 
@@ -2297,7 +2297,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-## OD-173 — Railway "promote to fleet" mechanism: Git-merge, not a native promote primitive 🟡 RECOMMENDATION (2026-07-04, Railway dossier session 59)
+## OD-173 — Railway "promote to fleet" mechanism: Git-merge, not a native promote primitive 🟢 RESOLVED (2026-07-05, ISSUE-080 live capstone)
 
 - **OD-173** — **Surfaced by the Railway research dossier** (`tool-integrations/railway.md` §7 / AF-064). ADR-005 §2
   frames a canary→promote release train; the design language ("promotion by fast-forward") is close, but the dossier
@@ -2314,7 +2314,13 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   differs, the mechanism changes but the gate stands"). **Owed before FR-10.DEP.002 is Ready:** a live SPIKE of "Wait for
   CI" scope — it waits on **ALL** GitHub check suites on the commit, not just ours, so a stale/unrelated check can silently
   `SKIP` a deploy (#3 hazard). Does not change any locked ADR; ADR-005 §2 should cite this OD as the mechanism detail.
-- **Status:** 🟡 RECOMMENDATION — operator to confirm at the AF-064 SPIKE / when FR-10.DEP.002 (ISSUE-080) is built.
+- **Status:** 🟢 **RESOLVED — Option (a), confirmed LIVE 2026-07-05 (session 64, ISSUE-080 capstone, operator-present).**
+  Branch-per-environment (canary env tracks `release`, production tracks `main`) + Wait-for-CI gate + Git fast-forward
+  `release`→`main` promotion works end-to-end: a green push auto-deploys the canary; a **red own-suite check BLOCKS** the
+  canary deploy (the #3 hazard guarded — a broken build never rolls forward, held for 2+ min); the operator fast-forward
+  promoted `release`→`main` and the production/fleet auto-deployed. **AF-064 🟡→🟢.** Residual (honest, non-gating): only one
+  check-suite producer exists in-repo, so the "Wait for CI waits on ALL suites" scope stays DOCS-backed — re-confirm if a
+  third-party check suite is later added. Evidence `app/release/results/od-173-wait-for-ci-spike.2026-07-05.md`.
 
 ## OD-174 — The manual Railway GitHub App install is a consent-gated onboarding step + provisioning pre-flight 🟡 RECOMMENDATION (2026-07-04, Railway dossier session 59)
 
