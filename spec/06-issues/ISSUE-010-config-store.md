@@ -92,15 +92,26 @@ config-owning issue writes against:
 - **Blocks:** ISSUE-032 (connector runtime reads config), ISSUE-084 (retention configs + isolation), ISSUE-086 (config admin + config-audit-log surfaces — the write path + render)
 
 ## 8. Build order within the slice
-1. **Migration (config cluster):** in Migration 0001 dependency order, create `config_values`
-   (key PK, JSON `value`, `updated_at`, `updated_by`→profiles) and `secret_manifest`
-   (key PK env-var name, `present` bool, `last_rotated`); `config_audit_log` already ordered in the
-   `event_log`/`notifications`/`config_audit_log` block of §8. Add `redacted_at timestamptz` to
-   `config_audit_log` (parallels `event_log`/`access_audit`).
-2. **Immutability enforcement:** add the fourth `t_append_only` `BEFORE UPDATE OR DELETE` trigger on
-   `config_audit_log` bound to the shared `enforce_audit_append_only()` function, plus
-   `revoke delete on config_audit_log from <app+service roles>` (belt-and-braces so a DELETE never
-   reaches the trigger). Confirm the function pins `search_path`. — AC-NFR-CMP.006.1/.2/.3, AC-7.LOG.008.3
+
+> **⚠️ Reconcile with built reality first (Rule 0 — this issue was authored pre-build).** ISSUE-008's
+> `0001_baseline` **already created** `config_values`, `secret_manifest`, and `config_audit_log`
+> (all 44 tables), **already added `redacted_at` to `config_audit_log`** (`0001_baseline.sql` L224),
+> and **already bound the `t_append_only` `BEFORE UPDATE OR DELETE` trigger to `config_audit_log`**
+> (`0001_baseline.sql` L713-714) plus the `revoke delete` belt-and-braces (`0001c_rls.sql` L70).
+> So steps 1-2 below are **verify-present, not re-create** — an absence is an ISSUE-008 gap, not a
+> re-create here (mirror ISSUE-011 §8 step 1). This slice's actual *new* migration work is the
+> **`config_values` key-prefix RLS policies** (step 3 — additive policies that compose on the ISSUE-009
+> `default_deny` baseline, the ISSUE-020 pattern) as **the next free migration tag `0003`** (head is
+> `0002_rls_scaffold`); the rest (secret_manifest presence gate, export, retention) is app-code.
+1. **Migration (config cluster) — VERIFY PRESENT (created by 008):** confirm `0001_baseline` created
+   `config_values` (key PK, JSON `value`, `updated_at`, `updated_by`→profiles), `secret_manifest`
+   (key PK env-var name, `present` bool, `last_rotated`), and `config_audit_log` **with** its
+   `redacted_at timestamptz`. Do not re-create.
+2. **Immutability enforcement — VERIFY PRESENT (bound by 008):** confirm the `t_append_only`
+   `BEFORE UPDATE OR DELETE` trigger is bound to `config_audit_log` via the shared
+   `enforce_audit_append_only()` (which pins `search_path`) and that `revoke delete` is in place. This
+   slice **proves** the immutability behaviour (a DELETE/UPDATE is rejected) — AC-NFR-CMP.006.1/.2/.3,
+   AC-7.LOG.008.3 — it does not author the trigger.
 3. **RLS on `config_values`:** key-prefix policies mapping each `PERM-config.*` group to its key set;
    default-deny for unmatched prefixes. SECRET-class keys are never stored here (enforce by write-path
    contract + presence in `secret_manifest` only). — supports AC-7.LOG.008.5

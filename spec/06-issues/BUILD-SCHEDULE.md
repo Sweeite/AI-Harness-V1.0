@@ -133,6 +133,20 @@ members still edit the shared **`schema.md`**, **`config-registry.md`**, or the 
 — parallel worktree agents WILL conflict there. Serialize those edits (a single "shared-spec" pass up front,
 or assign each shared file to exactly one agent).
 
+**Migration-chain lane (durable — Rule 0, don't leave this in chat).** `app/silo/migrations/` + its
+**`_journal.json`** are a single shared chain; **two worktree agents must never each pick the next tag** —
+they'd both grab `0003` and collide on `_journal.json`. **Current head: `0002_rls_scaffold` → next free tag
+is `0003`.** For the **Stage-2 fan-out specifically:** ISSUE-008's `0001_baseline` already created **all 44
+tables + all 29 enums + the `t_append_only` trigger on all four audit sinks** (config_audit_log incl.), so
+`010`/`011`/`042` do **NOT** author `create table`/`create type` migrations — they *verify present* (an
+absence is an 008 gap) and add only **additive logic**: `010` = `config_values` key-prefix RLS policies (a
+migration, composes on the `009` default_deny baseline); `042` = a version-discipline trigger + `prompt_layers`
+RLS policy (a migration); `011` = mostly **app-code** (the silent-failure detector query), likely no migration.
+**Rule for the fan-out:** parallel agents author their slice *logic + tests* in worktrees, but the **migration
+files + `_journal.json` entries are authored in ONE serialized pass** (assign `0003`, `0004`, … at merge time,
+or have the orchestrator write the migrations serially after the parallel logic lands). Each issue's §8 now
+carries a "verify-present, not re-create" boundary note pointing here.
+
 **Cost — say it out loud:** fan-out trades **tokens for wall-clock** (N agents ≈ N× the compute of one-by-one).
 Worth it on the big batches; wasteful on a 1–2-issue stage.
 

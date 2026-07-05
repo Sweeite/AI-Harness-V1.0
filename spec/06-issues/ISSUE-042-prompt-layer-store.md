@@ -70,8 +70,19 @@ Stand up the four-layer prompt data model — the `prompt_layers` store with its
 - **Blocks:** ISSUE-043, ISSUE-044, ISSUE-045, ISSUE-046 (all C4 content slices build on this store), ISSUE-061 (orchestrator + agents registry — the orchestrator's own Layer 1 lives in this store)
 
 ## 8. Build order within the slice
-1. **Enum** — add `prompt_layer_kind` (`core|business|memory|task_template`) to the Types block (schema §5 / Types).
-2. **Migration (schema §5)** — create `prompt_layers` exactly per schema §5: `id`, `layer`, `name`, `content`, `agent_id` (FK → agents, required when `layer='core'` via the check constraint), `enabled`, `version`, `previous_version_id` (self-FK), `change_reason` (NOT NULL, non-empty), `created_at`, `created_by` (FK → profiles). **No `client_slug` column** (OD-096 / FR-10.ISO.001). Ship it through the ISSUE-008 expand-contract harness. Also create `dynamic_field_values` (`field_name` PK, `field_value`, `last_updated`).
+
+> **⚠️ Reconcile with built reality first (Rule 0 — this issue was authored pre-build).** ISSUE-008's
+> `0001_baseline` **already created** the `prompt_layer_kind` enum (`0001_baseline.sql` L48) and the
+> `prompt_layers` + `dynamic_field_values` tables (all 44 tables). So steps 1-2 below are
+> **verify-present, not re-create** — an absence is an ISSUE-008 gap, not a re-create here (mirror
+> ISSUE-011 §8 step 1). This slice's *new* migration work (if any beyond app-code) is the
+> **version-discipline trigger + the `prompt_layers` RLS policy** (additive, composes on the ISSUE-009
+> `default_deny` baseline) as **the next free migration tag** after the shared head (`0002_rls_scaffold`;
+> coordinate the exact number with the other Stage-2 fan-out slices — see BUILD-SCHEDULE "Fan-out /
+> workflow guidance"). The bulk of this slice (insert-new-version-on-edit, rollback, PERM gating,
+> editor UI) is app-code, not schema.
+1. **Enum — VERIFY PRESENT (created by 008):** confirm `prompt_layer_kind` (`core|business|memory|task_template`) exists (`0001_baseline.sql` L48). Do not re-create.
+2. **Migration (schema §5) — VERIFY PRESENT (created by 008):** confirm `prompt_layers` exists exactly per schema §5 (`id`, `layer`, `name`, `content`, `agent_id` FK→agents required when `layer='core'` via the check constraint, `enabled`, `version`, `previous_version_id` self-FK, `change_reason` NOT NULL non-empty, `created_at`, `created_by` FK→profiles; **no `client_slug`** — OD-096 / FR-10.ISO.001) and that `dynamic_field_values` (`field_name` PK, `field_value`, `last_updated`) exists. Do not re-create. Any *new* additive schema (e.g. a version-discipline trigger) ships through the ISSUE-008 expand-contract harness.
 3. **Version-discipline enforcement** — implement insert-new-version-on-edit (never UPDATE content in place): each edit inserts a new row incrementing `version`, links `previous_version_id`, and requires a non-empty `change_reason` (reject empty) — FR-4.STO.003. Honour the global "versioned tables are append-only-by-version" rule; do not overwrite prior rows.
 4. **Single-source-of-truth guard** — reads/writes of Layer 1 go only to `prompt_layers` (`layer='core'`); nothing touches `agents.system_prompt` — FR-4.STO.002 / OD-048.
 5. **Structure/ordering + per-agent-L1 + immutability contract** — enforce the four fixed layer types + order and the `layer='core' ⇒ agent_id not null` keying (FR-4.LYR.001/002); expose the version-pin point so an in-flight task stays on its pinned version and only post-edit assemblies pick up N+1 (FR-4.LYR.003 / FR-4.STO.006 / OD-050).
