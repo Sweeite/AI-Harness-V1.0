@@ -61,15 +61,17 @@ begin
   -- breaks the redaction-tombstone on those sinks. (Bugfix folded into migration 0005, session 66.)
   if tg_table_name = 'guardrail_log' then
     if old.status = 'pending' and new.status in ('approved','rejected','modified')
-       and new.description = old.description and new.task_id = old.task_id then
+       and new.description = old.description and new.task_id is not distinct from old.task_id then
       return new;                                     -- forward status transition (still append-only in spirit)
     end if;
-    -- OD-182 (migration 0009): monotonic escalation stamp — a stale/un-actioned pending guardrail row may be
-    -- escalated (escalated_at null→ts) WITHOUT a status change; everything else immutable, action_blocked only
-    -- false→true (escalation never un-blocks). ISSUE-057 markEscalated / ISSUE-059 escalateStale (#1/#3).
+    -- OD-182 (migrations 0009 + 0010 NULL-safe fix): monotonic escalation stamp — a stale/un-actioned pending
+    -- guardrail row may be escalated (escalated_at null→ts) WITHOUT a status change; everything else immutable,
+    -- action_blocked only false→true (escalation never un-blocks). ISSUE-057 markEscalated / ISSUE-059 escalateStale
+    -- (#1/#3). task_id is nullable → `is not distinct from` (a plain `=` is NULL for a null-task row and wrongly
+    -- rejects the escalation — caught + fixed live in 0010, session 69).
     if old.escalated_at is null and new.escalated_at is not null
        and new.status = old.status
-       and new.description = old.description and new.task_id = old.task_id
+       and new.description = old.description and new.task_id is not distinct from old.task_id
        and new.guardrail_type = old.guardrail_type
        and new.reviewed_by is not distinct from old.reviewed_by
        and new.reviewed_at is not distinct from old.reviewed_at

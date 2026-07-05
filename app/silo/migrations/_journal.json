@@ -14,6 +14,7 @@
     { "tag": "0006_profiles_owner_rls", "file": "0006_profiles_owner_rls.sql", "transactional": true },
     { "tag": "0007_stage3_event_types", "file": "0007_stage3_event_types.sql", "transactional": false },
     { "tag": "0008_connector_runtime_triggers", "file": "0008_connector_runtime_triggers.sql", "transactional": true },
-    { "tag": "0009_guardrails_append_only", "file": "0009_guardrails_append_only.sql", "transactional": true }
+    { "tag": "0009_guardrails_append_only", "file": "0009_guardrails_append_only.sql", "transactional": true },
+    { "tag": "0010_guardrail_escalation_nullfix", "file": "0010_guardrail_escalation_nullfix.sql", "transactional": true }
   ]
 }

@@ -6,13 +6,15 @@
 --     `invalid input value for enum event_type` on the live silo → every login fails on an audit write, and
 --     the identity_rejected / reuse-detection security events could never be recorded (#1 lost audit / #3).
 --   ISSUE-047 (triggers/freeze) — the freeze-block + ingest-failure dispatch events (FR-5.TRG.001 /
---     AC-5.TRG.001.3 / NFR-INF.012 ; FR-5.TRG.005 / AC-5.TRG.005.1). Same change-control class as OD-170/OD-179.
+--     AC-5.TRG.001.3 / NFR-INF.012 · FR-5.TRG.005 / AC-5.TRG.005.1). Same change-control class as OD-170/OD-179.
+-- NOTE: transactional:false migrations are split on the semicolon char without comment-stripping, so comments
+-- here must contain no semicolon (it would fragment a comment into a bogus statement). Keep comments clean.
 --
 -- transactional:false — the runner applies with autocommit (no BEGIN/COMMIT). `ALTER TYPE … ADD VALUE`
 -- carries no in-transaction restriction under autocommit, each value commits independently, and IF NOT
 -- EXISTS makes every statement idempotent + the migration resumable.
 
--- ISSUE-013 — auth / session security events (event_log sink; consistent with the existing security events
+-- ISSUE-013 — auth / session security events (event_log sink · consistent with the existing security events
 -- authz_revoked_midtask / rls_harness_divergence already in the enum).
 alter type event_type add value if not exists 'sign_in_success';
 alter type event_type add value if not exists 'sign_in_failure';
