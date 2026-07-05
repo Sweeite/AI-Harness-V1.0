@@ -2,7 +2,7 @@
 id: ISSUE-080
 title: Release model — canary/train + rollback + skew
 epic: K — infra & compliance
-status: ready
+status: in-progress
 github: "#80"
 ---
 
@@ -48,7 +48,7 @@ Stand up the core release train — Railway-native per-project auto-deploy (cana
 - AC-NFR-INF.004.1, AC-NFR-INF.004.2 (push carries `core_version` + last-migrated; over-skew/stale drift alert)
 - AC-NFR-INF.008.1, AC-NFR-INF.008.2 (battery exercises boot/migration/wiring/behavioral checks; red battery blocks promotion)
 - AC-NFR-INF.009.1, AC-NFR-INF.009.2 (no plugin updated on core promotion; plugin versions reported)
-- **Gating spikes (if any):** none is *launch-gating* for this issue (the six OD-157/RP-1 launch spikes are ISSUE-001–006 and none is `AF-064/065/066/020`). Build-time feasibility that must be GREEN before ship: **AF-064** (Railway branch-based canary/release-train + promotion + build-history rollback) and **AF-020** (Railway native per-project auto-deploy + on-release `drizzle-kit migrate`) — both already 🟢 **VERIFIED** in the feasibility register; **AF-065** (expand-contract mixed-version safety — the rollback premise of FR-10.DEP.003, proven by ISSUE-081's migration track); **AF-066** (canary corpus representativeness — the smoke-battery gate of FR-10.DEP.002 / NFR-INF.008, EVAL fast-follow, coverage-limited by its own fixtures).
+- **Gating spikes (if any):** none is *launch-gating* for this issue (the six OD-157/RP-1 launch spikes are ISSUE-001–006 and none is `AF-064/065/066/020`). Build-time feasibility that must be GREEN before ship: **AF-020** (Railway native per-project auto-deploy + on-release `drizzle-kit migrate`) is 🟢 **VERIFIED** (F11 Pre-Deploy caveat) in the feasibility register; **AF-064** (Railway branch-based canary/release-train + promotion + build-history rollback) is 🟡 **DOCS-RESOLVED / ACHIEVABLE** — the live **"Wait for CI" scope spike (OD-173)** owed in §8 step 2 is what flips it 🟡→🟢 (it is *not* launch-gating, but must be GREEN before FR-10.DEP.002 is treated as a proven live mechanism); **AF-065** (expand-contract mixed-version safety — the rollback premise of FR-10.DEP.003, proven by ISSUE-081's migration track); **AF-066** (canary corpus representativeness — the smoke-battery gate of FR-10.DEP.002 / NFR-INF.008, EVAL fast-follow, coverage-limited by its own fixtures).
 
 ## 5. Touches (complete blast radius, by ID)
 - **DATA:** DATA-client_registry (`.core_version`; read for fleet spread) and DATA-deployment_health (`.core_version`, `.last_migrated_at`, `.plugin_version` — push-fed operational metadata; the skew evaluation reads these) — both **management-plane only** (schema §13); no client-silo table is written by this slice.

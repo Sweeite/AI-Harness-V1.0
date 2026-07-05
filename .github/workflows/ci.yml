@@ -1,0 +1,54 @@
+# ISSUE-080 / FR-10.DEP.001 — the MERGE GATE. GitHub Actions runs the test suite as a gate into the
+# release flow; it NEVER deploys. Railway (native per-project branch tracking) is the only deployer
+# (ADR-001 §6 / ADR-005 §1). A red suite here is a blocking status check that stops the `release`→`main`
+# fast-forward that promotes to the fleet (the promotion gate — FR-10.DEP.002). AC-10.DEP.001.2.
+#
+# ⚠️ Do NOT add a deploy/release/publish job to this workflow — it would violate the deploy primitive
+# (assertActionsGatesNeverDeploys / AC-10.DEP.001.2). Deployment is Railway's job, gated on THESE checks
+# via Railway "Wait for CI" (OD-173 — the Wait-for-CI scope is confirmed by the two-party live spike).
+
+name: CI (merge gate — never deploys)
+
+on:
+  pull_request:
+    branches: [main, release]
+  push:
+    branches: [main, release]
+
+jobs:
+  test:
+    name: test + typecheck (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [silo, release, webhook-auth, service, provisioning, canary, management]
+    defaults:
+      run:
+        working-directory: app/${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci || npm install
+      - name: Typecheck
+        run: npm run typecheck --if-present
+      - name: Test
+        run: npm test --if-present
+
+  discipline:
+    name: expand-contract migration discipline (NFR-INF.002)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/silo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci || npm install
+      - name: Discipline gate
+        run: npm run check

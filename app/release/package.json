@@ -1,0 +1,22 @@
+{
+  "name": "@harness/release",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-080 — the release/canary model: branch-per-environment auto-deploy contract, the four-gate operator-promoted canary train, rollback-by-redeploy (schema forward-only), the fleet version-skew alert, and the plugins-out-of-train guard. Build-time logic + gates; the live push→Railway auto-deploy+migrate proof + the OD-173 Wait-for-CI spike are the two-party capstone.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "skew": "tsx src/index.ts skew",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.6.0"
+  }
+}
