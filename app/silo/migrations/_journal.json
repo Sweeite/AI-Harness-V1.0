@@ -6,6 +6,7 @@
     { "tag": "0001_baseline", "file": "0001_baseline.sql", "transactional": true },
     { "tag": "0001b_indexes", "file": "0001b_indexes.sql", "transactional": false },
     { "tag": "0001c_rls", "file": "0001c_rls.sql", "transactional": true },
-    { "tag": "0001d_seed", "file": "0001d_seed.sql", "transactional": true }
+    { "tag": "0001d_seed", "file": "0001d_seed.sql", "transactional": true },
+    { "tag": "0002_rls_scaffold", "file": "0002_rls_scaffold.sql", "transactional": true }
   ]
 }

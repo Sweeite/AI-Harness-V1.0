@@ -88,6 +88,13 @@ export class PgDriver implements MigrationDriver {
     }
   }
 
+  // Read-only passthrough for live assertions (the RLS coverage lint — ISSUE-009). Kept minimal; the
+  // migration path above is the only writer.
+  async query(sql: string): Promise<{ rows: Array<Record<string, unknown>> }> {
+    const res = await this.pool.query(sql);
+    return { rows: res.rows };
+  }
+
   async end(): Promise<void> {
     await this.pool.end();
   }

@@ -1,7 +1,9 @@
 // CLI for the silo migration harness. Commands:
-//   check    — run the expand-contract discipline guardrails over migrations/ (no DB). AC-NFR-INF.002.1.
+//   check    — run the expand-contract discipline guardrails AND the RLS lints over migrations/ (no DB).
+//              AC-NFR-INF.002.1 (discipline) + AC-1.RLS.001.1/.002.2 + AC-NFR-SEC.010.1 (RLS scaffold).
 //   migrate  — apply pending migrations against $DATABASE_URL (runs `check` first — fail-closed).
 //   status   — show applied vs pending against $DATABASE_URL.
+//   lint:rls — live RLS coverage assertion against $DATABASE_URL (every public table: RLS on + >=1 policy).
 //
 // The live target at the capstone is the client silo's own Supabase (a direct Postgres connection
 // string). `check` needs no DB and runs in CI on every change.
@@ -10,20 +12,25 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { loadJournal, loadMigrationFiles } from "./journal.ts";
 import { checkAll, type Finding } from "./discipline.ts";
+import { checkAllRls, assertRlsCoverageLive, type RlsFinding } from "./rls-lint.ts";
 import { runMigrations } from "./migrate.ts";
 import { PgDriver } from "./pg-driver.ts";
 import { planPending } from "./plan.ts";
 
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
-function runCheck(): Finding[] {
+function runCheck(): (Finding | RlsFinding)[] {
   const journal = loadJournal(MIGRATIONS_DIR);
   const files = loadMigrationFiles(MIGRATIONS_DIR, journal);
-  const findings = checkAll([...files.values()].map((f) => ({ tag: f.tag, sql: f.sql })));
+  const corpus = [...files.values()].map((f) => ({ tag: f.tag, sql: f.sql }));
+  const discipline = checkAll(corpus);
+  const rls = checkAllRls(corpus);
+  const findings: (Finding | RlsFinding)[] = [...discipline, ...rls];
   if (findings.length === 0) {
     console.log(`✓ discipline: ${files.size} migration(s) clean (no destructive change, indexes concurrent, seed idempotent).`);
+    console.log(`✓ rls: every table covered by a policy; every policy helper call (select …)-wrapped.`);
   } else {
-    console.error(`✗ discipline: ${findings.length} finding(s):`);
+    console.error(`✗ ${findings.length} finding(s):`);
     for (const f of findings) {
       console.error(`  [${f.rule}] ${f.tag}:${f.line}  ${f.message}\n      ${f.snippet}`);
     }
@@ -86,7 +93,24 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.error(`unknown command '${cmd}' — use: check | migrate | status`);
+  if (cmd === "lint:rls") {
+    // Live ground-truth coverage gate: every public table has RLS enabled + >=1 policy (AC-NFR-SEC.010.1).
+    const driver = new PgDriver(requireDbUrl());
+    try {
+      const { rlsDisabled, noPolicy } = await assertRlsCoverageLive(driver);
+      if (rlsDisabled.length === 0 && noPolicy.length === 0) {
+        console.log("✓ rls coverage (live): every public table has RLS enabled and >=1 policy.");
+        return;
+      }
+      if (rlsDisabled.length > 0) console.error(`✗ RLS DISABLED (silent bypass, #2): ${rlsDisabled.join(", ")}`);
+      if (noPolicy.length > 0) console.error(`✗ RLS enabled but NO policy (unguarded, #2): ${noPolicy.join(", ")}`);
+      process.exit(1);
+    } finally {
+      await driver.end();
+    }
+  }
+
+  console.error(`unknown command '${cmd}' — use: check | migrate | status | lint:rls`);
   process.exit(2);
 }
 
