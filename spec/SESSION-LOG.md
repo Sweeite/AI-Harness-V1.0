@@ -5,7 +5,7 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
-## Session 64 — 2026-07-05 — ✅ **ISSUE-080 (Release/canary model) `done` → CHECKPOINT 1 CLOSED → STAGE 2 OPEN.** Built `app/release/` + the merge-gate CI workflow; **LIVE two-party capstone proved the release train** (OD-173 Wait-for-CI spike PASS → **AF-064 🟡→🟢**; operator promote → fleet auto-deploy). 18/18 offline battery + independent verification.
+## Session 64 — 2026-07-05 — ✅ **ISSUE-080 (Release/canary model) `done` · operator sign-off ✅ → CHECKPOINT 1 CLOSED → STAGE 2 OPEN.** Built `app/release/` + the merge-gate CI workflow; **LIVE two-party capstone proved the release train** (OD-173 Wait-for-CI spike PASS → **AF-064 🟡→🟢**; operator promote → fleet auto-deploy). 18/18 offline battery + independent verification.
 
 **Environment:** 💻 FULL session (Mac, operator present). Preflight `full`. Reconciled trackers first (zero drift) → built ISSUE-080 offline half → independent zero-context verification (SAFE, no BLOCKER) → **two-party live Railway capstone** → tracker sync in lockstep.
 

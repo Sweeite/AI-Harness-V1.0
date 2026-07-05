@@ -120,3 +120,5 @@ The rollback ACs are proven by DOCS + **AF-065 🟢** (live, session 62) + the o
 gate, per §9 — a live `deploymentRollback` is not DoD-required. AF-066 (battery coverage) stays EVAL
 fast-follow. **Checkpoint 1 → GREEN** (008 apply+rollback ✅ · 017 forged/replayed ✅ · 080 deploys through
 the canary gate ✅); **Stage 2 opens (R1).** GitHub #80 closed.
+
+**Operator sign-off:** ✅ approved 2026-07-05 (session 64) — Stage 1 complete.
