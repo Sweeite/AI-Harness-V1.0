@@ -70,7 +70,43 @@ each piece against its `AC-*`, integration-test at the checkpoint, then climb to
 - 🔴 **high-care** — touches a non-negotiable directly (knowledge integrity / authorization / silent
   failure). Test with extra rigor.
 - 🧑 **you present** — needs credentials / accounts / a funded key / a human decision (R8).
+- 📱 **phone-safe** — can be built **and closed** from a cloud/phone session (code + offline/unit/
+  self-contained tests; no live infra in its `§9`). Author, `npm test`/`check`, commit, PR — from anywhere.
+- 💻 **Mac-needed to close** — its `§9` runs against **live infra** (the client silo, Railway, a real
+  vendor account, or an `AF-*` live spike). **Author it on your phone; the *close* needs your Mac (or
+  Remote Control).** See `spec/00-foundations/build-environments.md`.
 - ✅ **done**.
+
+---
+
+## Where to run each issue — 📱 phone vs 💻 Mac (plan your build location)
+
+**The rule (self-applying, always correct):** *author anywhere* — every issue's code + spec can be written
+and unit-tested in a cloud/phone session. An issue needs your **Mac to CLOSE** iff its **`§9` Verification**
+runs against **live infra** — the client silo, Railway, a real vendor, or an `AF-*` live spike. If `§9` is
+unit/offline/self-contained tests only, the issue is **📱 phone-safe end to end**. **Stage checkpoints** are
+**💻** whenever the integration test exercises the silo or Railway. **When unsure, open the issue's `§9` and
+run `scripts/build-preflight.sh` — never start a 💻 step in a 🌩️ cloud session (that is the half-baked risk).**
+
+| Stage | Gate | 💻 Mac-to-close members (everything else in the stage = 📱 author+unit-test) | Checkpoint |
+|---|---|---|---|
+| 1 | `008` ✅💻 | `080` (the push→Railway auto-deploy+migrate proof). **`017` = 📱** — its security battery is self-contained; the live per-vendor check is deferred to onboarding (OD-172). | 💻 silo + Railway |
+| 2 | `009` — 📱 coverage-CI gate; 💻 to prove RLS behaviour on the silo | `081` (live per-deployment migrate-on-release) | 💻 silo |
+| 3 | `018` 📱 (`can()` + matrix, pure logic) | `012` · `013` · `014`🧑 (auth/2FA/brute-force, live) | 💻 auth flow live |
+| 4 | `019` 📱 (clearance model) | `033` · `037` · `085`🧑 (backup & DR) | 💻 |
+| 5 | `022` — 📱 model; 💻 to prove entity resolution on the silo | `020` (RLS enforcement) · `038` · `039`/`040`/`041` (connectors, live OAuth/webhook) · `083` | 💻 silo |
+| 6 | `023` 💻 (HNSW/pgvector on the silo) | `024` (sole-writer path) | 💻 silo |
+| 7 | `025` 💻 (retrieval on the silo) | `082` (erasure) | 💻 silo |
+| 8 | `045` 💻 (memory injection on the silo) | — | 💻/mixed |
+| 9 | `053` 💻 (run pipeline end-to-end) | — | 💻 big integration |
+| 10 | `072` 📱 (command dispatch logic) | — | 💻 full-system |
+
+**Bottom line for planning:** the **logic** stages (much of 3, 4, and the model/guardrail/agent/prompt/
+proactive/command issues) are largely **📱** — knock out authoring + unit tests + PRs from your phone. The
+**infra** touchpoints (anything on the silo, Railway, connectors, embeddings/HNSW, RLS *enforcement*, the
+big run pipeline) are **💻** — save those for the Mac (or Remote Control). Typical flow: phone authors → PR →
+pull to the Mac → run the 💻 close. *(This table is stage-accurate; the per-issue definitive signal is that
+issue's `§9` + the preflight — a batch member is 💻 only if its own `§9` names a live step.)*
 
 ---
 
@@ -98,8 +134,8 @@ Gate everything. Not hands-off.
 
 ### Stage 1 — Bootstrap  *(OPEN since 2026-07-04 — Checkpoint 0 CLOSED)*
 - [x] ✅ **GATE — `008` Migration harness (expand-contract) + 0001 baseline** — **`done`** (session 62, 2026-07-04) 🔴 — `app/silo/` built + applied LIVE to the canary silo (44 tables · 43 CONCURRENTLY indexes · RLS-enable/default-deny · idempotent seed); runner proven idempotent + fail-loud + resumable; **AC-2.VEC.002.1 live**, discipline CI gate (AC-NFR-INF.002.1), and **AF-065 🟢** (AC-NFR-INF.002.2 mixed-fleet spike, live). Evidence `app/silo/results/live-capstone-evidence.2026-07-04.md`. GitHub #8 closed.
-- 🟢 BATCH: `017` Webhook auth (per-vendor) — **`ready`** (blocker 006 done) · `080` Release model (canary/release-train) — **`ready`** (blocker 007 done). Neither is blocked-by `008`, so both are parallel-safe with the gate; gate still tested hardest/first (R3).
-- ◇ **CHECKPOINT 1:** `008` migrations apply *and roll back* cleanly on the provisioned silo; `017`
+- 🟢 BATCH: `017` Webhook auth (per-vendor) — **`ready`** (blocker 006 done) · **📱 phone-safe** (self-contained security battery; live per-vendor check deferred to onboarding, OD-172) · `080` Release model (canary/release-train) — **`ready`** (blocker 007 done) · **💻 Mac to close** (logic + build-time gates are 📱, but the push→Railway auto-deploy+migrate integration proof needs Railway). Neither is blocked-by `008`, so both are parallel-safe with the gate; gate still tested hardest/first (R3).
+- ◇ **CHECKPOINT 1** (💻 Mac — silo + Railway integration): `008` migrations apply *and roll back* cleanly on the provisioned silo (✅ done, session 62); `017`
   rejects forged/replayed webhooks; `080` deploys through the canary gate.
 
 ### Stage 2 — Shared scaffold
