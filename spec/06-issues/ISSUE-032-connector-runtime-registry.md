@@ -2,7 +2,7 @@
 id: ISSUE-032
 title: Connector contract + shared runtime + tool registry
 epic: D — tool layer
-status: ready
+status: in-progress
 github: "#32"
 ---
 

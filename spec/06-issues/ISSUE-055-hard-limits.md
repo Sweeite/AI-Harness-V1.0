@@ -2,7 +2,7 @@
 id: ISSUE-055
 title: Seven hard limits — code enforcement, un-overridable
 epic: G — guardrails
-status: ready
+status: in-progress
 github: "#55"
 ---
 

@@ -1,0 +1,20 @@
+{
+  "name": "@harness/auth",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-013 — OAuth login + session lifecycle (C0 AUTH.001–004 / SESS.001–008). The only sign-in path for client-tenant users: provider-selectable Supabase OAuth (google→Google, microsoft→azure) with login-identity hardening (Azure single-tenant pin + email scope + xms_edov, Google verified-email), plus the full session mechanism — JWT access token + single-use rotating refresh token, 1h configurable access TTL, refresh rotation with 10s reuse-tolerance + reuse-detection whole-session revocation, inactivity + absolute lifetime bounds enforced lazily at refresh, cookie-not-localStorage storage with the AF-073 HttpOnly posture, local JWKS (getClaims) verification with getUser() on revocation-sensitive checks, expiry→re-auth with page-state preservation, and mid-task service_role continuation on benign expiry. Port + in-memory fake reference model (the AuthStore + a fake Supabase-OAuth/JWT double); supabase-store.ts is the live pg adapter authored to the 0006_profiles_mirror DDL — NOT run live (the real OAuth-provider handshake is the checkpoint live proof; AF-073 HttpOnly is a browser feasibility gate).",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

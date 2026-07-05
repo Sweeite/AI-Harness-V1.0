@@ -1,0 +1,20 @@
+{
+  "name": "@harness/task-queue",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-048 — the task_queue permanent-audit-record substrate (C5 QUE — FR-5.QUE.001–006). The full typed §6 row schema (incl. net-new originating_user_id + action_payload, NO client_slug per OD-096), a fixed status state machine over task_status (with the C5-defined/C6-set `flagged` quarantine hold distinct from awaiting_approval), config-tunable priority dequeue (lower = higher), the approval-blocking transition (requires_approval → awaiting_approval; record approved_by/at) with staleness escalation onto ISSUE-011's event_log (alert+badge seam; never auto-approve/abandon), and full per-attempt error history (never collapsed). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the DDL (results/proposed-migration-0008_task_queue.sql) — NOT run live (the REVOKE-delete + state-machine live proof is owed at the Stage-3 checkpoint).",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -2,7 +2,7 @@
 id: ISSUE-057
 title: Five pre-step anomaly checks (signal-not-gate, baseline learning)
 epic: G — guardrails
-status: ready
+status: in-progress
 github: "#57"
 ---
 

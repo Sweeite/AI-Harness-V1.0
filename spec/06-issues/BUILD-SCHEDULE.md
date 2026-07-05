@@ -135,8 +135,14 @@ or assign each shared file to exactly one agent).
 
 **Migration-chain lane (durable — Rule 0, don't leave this in chat).** `app/silo/migrations/` + its
 **`_journal.json`** are a single shared chain; **two worktree agents must never each pick the next tag** —
-they'd both grab `0003` and collide on `_journal.json`. **Current head: `0005_retention_prune_whitelist` → next
-free tag is `0006`.** *(Stage-2 landed: `0003_config_values_rls` [ISSUE-010], `0004_prompt_version_discipline`
+they'd both grab `0003` and collide on `_journal.json`. **Current head (authored, session 69): `0009_guardrails_append_only` → next
+free tag is `0010`.** *(Stage-3 authored `0006_profiles_owner_rls` [013], `0007_stage3_event_types` [013+047, 9 additive
+`event_type` values, `transactional:false`], `0008_connector_runtime_triggers` [032], `0009_guardrails_append_only`
+[060+059, [[OD-182]] — widens the LIVE append-only trigger for a monotonic escalation stamp + binds `injection_quarantine`].
+**Authored + discipline-gate clean; NOT yet applied to the silo — the live apply is Phase D, operator-present.** Lesson
+re-learned: `0001_baseline` already stands up all 44 tables, so migration authors must add only deltas [RLS/enums/triggers],
+never `create table`; and COMMIT the integration before any dependent fan-out [both session-69 fan-outs branched from a stale
+base and couldn't see the uncommitted packages].)* Previous head was `0005_retention_prune_whitelist`. *(Stage-2 landed: `0003_config_values_rls` [ISSUE-010], `0004_prompt_version_discipline`
 [ISSUE-042], `0005_retention_prune_whitelist` [OD-180 — retention-prune whitelist on the shared audit-immutability
 trigger + the latent guardrail_log field-access bugfix]. All applied LIVE + capstone-proven, session 66. The
 fan-out worked as designed — parallel logic in worktrees, migrations/journal serialized by the orchestrator — with

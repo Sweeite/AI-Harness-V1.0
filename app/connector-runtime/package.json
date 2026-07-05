@@ -1,0 +1,20 @@
+{
+  "name": "@harness/connector-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-032 — the C3 connector contract + shared tool runtime + tools registry (the spine every connector instance ISSUE-039/040/041 and every runtime concern ISSUE-033-038 inherits). Enforces the three non-negotiables once: uniform tool contract + read/write dispatch (FR-3.CONN.001), safety machinery composed once (FR-3.CONN.002), external-data boundary-tag on every read fail-closed (FR-3.CONN.003), idempotency ledger with durable pre-call intent + retry-suppression (FR-3.CONN.004), minimal-scope incl. delete-scope exclusion (FR-3.CONN.005); registry validation rejecting partial tools (FR-3.REG.001), description-drives-selection (FR-3.REG.002), tool versioning with mandatory change_reason + previous_version_id (FR-3.REG.003), and client_slug-is-not-an-RLS-key (FR-3.REG.004). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to migration 0007 DDL — NOT run live.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

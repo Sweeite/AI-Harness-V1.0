@@ -2,7 +2,7 @@
 id: ISSUE-013
 title: OAuth login + session lifecycle
 epic: B — identity & access
-status: ready
+status: in-progress
 github: "#13"
 ---
 

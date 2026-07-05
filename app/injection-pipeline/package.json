@@ -1,0 +1,21 @@
+{
+  "name": "@harness/injection-pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-059 — the C6 four-step application-layer prompt-injection pipeline (ADR-007 containment-first). Ordered seam between tool-read and AI-call: (1a) always-on deterministic regex tripwires + (1b) OFF-by-default embedding semantic scan → (2) <external_data> boundary-wrap ordering → (3) per-match prompt_injection guardrail_log emission → (4) high-confidence quarantine that RETAINS content (shadow-retain, never machine-discarded, #1) + pauses/flags the task + routes to a human (human-only discard/include decision) + escalates a stale review (#3). Detection is a signal, never the security boundary (ADR-007 §1). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the injection_quarantine DDL (schema.md §7 Guardrails) — NOT run live (the injection_quarantine table + guardrail_log FK land in the ISSUE-060 migration 0009_guardrails).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -2,7 +2,7 @@
 id: ISSUE-060
 title: guardrail_log sink + no-silent-failure invariant + approval/anomaly learning
 epic: G — guardrails
-status: ready
+status: in-progress
 github: "#60"
 ---
 

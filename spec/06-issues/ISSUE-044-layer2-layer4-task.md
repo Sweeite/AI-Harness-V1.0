@@ -2,7 +2,7 @@
 id: ISSUE-044
 title: Layer-2 business context + Layer-4 task instruction + templates
 epic: E — prompt
-status: ready
+status: in-progress
 github: "#44"
 ---
 

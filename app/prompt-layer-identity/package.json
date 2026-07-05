@@ -1,0 +1,21 @@
+{
+  "name": "@harness/prompt-layer-identity",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-043 (C4 CID/PRIN) — the required-content contract for a Layer-1 `core` record + the canonical seven-principle operating block, validated at save/edit time over the ISSUE-042 prompt_layers store. Six-element Layer-1 completeness (FR-4.CID.001), advisory ~500-word length warning (FR-4.CID.002), the three non-removable safety elements — external-data boundary instruction (FR-4.CID.003), hard-limit statement referencing the canonical set (FR-4.CID.004), uncertainty/conflict defaults-to-principles text (FR-4.CID.005) — the Cited/Inferred/Unknown never-dead-end answer-mode signalling instruction (FR-4.CID.006), the seven-principle canonical block stored verbatim (FR-4.PRIN.001), the Super-Admin-only principles-edit path via PERM-prompt.edit_principles with mandatory change_reason + a distinct safety-relevant edit event + propagation to every agent (FR-4.PRIN.002), the hard-blocking seven-principle floor (OD-053), and the principle-is-statement-not-enforcement invariant (FR-4.PRIN.003). Offline build (port + in-memory fake); NO migration (prompt_layers is ISSUE-042's). Implements FR-4.CID.001-006, FR-4.PRIN.001-003.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

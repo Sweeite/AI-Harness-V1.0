@@ -1,0 +1,21 @@
+{
+  "name": "@harness/cost-meter",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-074 — the C7 cost meter (FR-7.COST.001–004 / NFR-COST.001/004/005/006/010). The token→$ estimate-grade estimator (all vendors, fail-safe rounded up, cost_unknown sentinel never a silent 0), per-task-type aggregation from the first task, the running per-deployment daily/weekly spend meter, and the four-rung cost ladder (soft→alert, throttle/kill→C6 breach signal). Metering + signalling ONLY: C7 meters, C6 decides, C5 executes. Reads event_log/task_queue/config_values (price_table + cost_ladder_* keys owned by ISSUE-010/011); writes a cost_threshold_breach notifications row on the soft rung. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the DDL — NOT run live (the live proof is owed to the Stage-3 checkpoint).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

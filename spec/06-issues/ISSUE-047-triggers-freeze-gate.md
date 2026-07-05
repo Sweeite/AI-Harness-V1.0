@@ -2,7 +2,7 @@
 id: ISSUE-047
 title: Triggers + deployment-freeze gate
 epic: F — harness
-status: ready
+status: in-progress
 github: "#47"
 ---
 

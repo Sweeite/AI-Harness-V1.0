@@ -2,7 +2,7 @@
 id: ISSUE-048
 title: task_queue permanent record + status machine + approval-block + priority
 epic: F — harness
-status: ready
+status: in-progress
 github: "#48"
 ---
 

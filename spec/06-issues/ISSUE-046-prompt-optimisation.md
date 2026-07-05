@@ -2,7 +2,7 @@
 id: ISSUE-046
 title: Prompt optimisation — version-to-outcome attribution + dynamic-L2 + compression discipline
 epic: E — prompt
-status: ready
+status: in-progress
 github: "#46"
 ---
 

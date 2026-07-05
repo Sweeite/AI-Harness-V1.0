@@ -1,0 +1,21 @@
+{
+  "name": "@harness/triggers",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-047 — the C5 TRG task-entry boundary: the four trigger types (event/scheduled/human/chained) stamped on task_queue.type, the config-defined trigger registry (enable/disable per deployment at boot, no code change), the verified-webhook ingress consumer (consume-only; never re-verifies), the chained-trigger-on-completion handoff (fresh envelope + provenance link + own-scope memory re-retrieval, OD-059), the at-least-once verified-event -> task-row delivery guarantee with a delivery watermark (AF-112), and the deployment-freeze gate (a LOCAL read of deployment_settings.frozen_at that blocks + logs EVERY dispatch path and fails closed on any status-resolution ambiguity, OD-091 / OD-162 / NFR-INF.012, gated by SPIKE AF-135). Port + in-memory fake reference model captures every FR invariant; supabase-store.ts is the live pg adapter authored to schema.md sec6 (task_queue) / sec14 (deployment_settings) / sec8 (event_log). NO app/silo migration in this slice: task_queue is owned by ISSUE-048, deployment_settings is read-only here, event_log is written via the C7 sink; the freeze-block + ingest-failure event_type additions are proposed in results/ as a schema delta (same change-control class as OD-170/OD-179).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

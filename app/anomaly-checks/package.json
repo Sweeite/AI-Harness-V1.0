@@ -1,0 +1,21 @@
+{
+  "name": "@harness/anomaly-checks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-057 — the five pre-step anomaly checks (C6 FR-6.ANM.001-005). Detection-as-signal (ADR-007 pt3 / OD-063): every hit pauses the step + writes a guardrail_log row (type anomaly) + flags for soft review by default; a per-anomaly per-deployment severity can escalate a specific check to the FR-6.APR.002 hard-approval path. Thresholds are per-deployment config (anomaly_thresholds structured object, no code change to retune). Baseline learning proposes tighten/loosen from history; a change that would flip a GATE outcome requires admin confirmation, never silent auto-apply. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the guardrail_log DDL (sink owned by ISSUE-011 — this slice writes, does not create the table). AF-116 (per-anomaly precision/recall) is a build-time EVAL, not launch-gating.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

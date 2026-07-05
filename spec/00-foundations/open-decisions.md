@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟢 RESOLVED session 64 — confirmed LIVE at the ISSUE-080 capstone, AF-064 🟢, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. OD-180 (retention-prune whitelist on the audit-sink immutability trigger, change-control on NFR-CMP.006; 🟢 RESOLVED session 66 operator Option A, migration 0005, at file end) — do not reuse. OD-181 (config key→PERM-config map = explicit registry transcription + fail-closed default; 🟢 RESOLVED session 66, at file end) — do not reuse. Next OD number: OD-182.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟢 RESOLVED session 64 — confirmed LIVE at the ISSUE-080 capstone, AF-064 🟢, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. OD-180 (retention-prune whitelist on the audit-sink immutability trigger, change-control on NFR-CMP.006; 🟢 RESOLVED session 66 operator Option A, migration 0005, at file end) — do not reuse. OD-181 (config key→PERM-config map = explicit registry transcription + fail-closed default; 🟢 RESOLVED session 66, at file end) — do not reuse. OD-182 (audit-immutability trigger widened to permit a monotonic escalation stamp on guardrail_log + injection_quarantine, change-control on the live append-only invariant; 🟢 RESOLVED session 69, migration 0009, at file end) — do not reuse. OD-183 (AC-3.CONN.005.2 Drive-scope default deferred from the ISSUE-032 runtime to the ISSUE-040 Google connector; 🟢 RESOLVED session 69, at file end) — do not reuse. Next OD number: OD-184.
 
 ---
 
@@ -2540,3 +2540,54 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   `check` gate + tests pin **every** registry key (not a sample) against the expected node so any future divergence fails
   the build. **Status:** 🟢 RESOLVED (implementation-level authorization-scope decision; no FR/registry text changed —
   the map now matches the registry it always should have).
+
+---
+
+## OD-182 — audit-immutability trigger must permit a monotonic ESCALATION stamp 🟢 RESOLVED (2026-07-05, Stage-3 fan-out verification, session 69; change-control on the live append-only invariant)
+
+- **OD-182** ⚠️ **#1/#3 live-invariant gap (surfaced by the ISSUE-059 adversarial verify).** The live
+  `enforce_audit_append_only()` trigger (0001 baseline + OD-180 patch in 0005) permits a `guardrail_log` UPDATE **only**
+  for a forward status transition (`pending → approved|rejected|modified`). But **ISSUE-057** (`markEscalated`) and
+  **ISSUE-059** (`escalateStale`) must stamp `escalated_at` on a still-`pending` row when a quarantine/anomaly sits
+  un-actioned past its staleness window — i.e. an `escalated_at`-only UPDATE with **no** status change. Against the
+  un-amended trigger that UPDATE hits `raise exception 'in-place UPDATE forbidden'` and **rolls back**, so a stale
+  quarantine is **never escalated** — the exact never-silently-abandon guarantee (`AC-6.ANM.003.2` / `AC-6.INJ.006.4`)
+  fails at the DB layer (#1 lost signal / #3 silent). The same gap applies to `injection_quarantine`, which the baseline
+  never bound to the append-only trigger at all.
+- **Options.** (A) Widen the trigger to permit a strictly-monotonic, content-preserving escalation/review mutation.
+  (B) Model escalation as a NEW row (a separate escalations sink) so audit rows are never mutated. (C) Route escalation
+  through `service_role` only — rejected: the trigger fires regardless of role, and bypassing it would gut the guarantee.
+- **✅ Resolution (Option A — matches the schema's intent; `escalated_at` is an on-row server-owned column by design).**
+  Migration **`0009_guardrails_append_only.sql`** `create or replace`s the function, **preserving every existing branch
+  byte-for-byte** and adding: (1) a `guardrail_log` branch permitting `escalated_at` null→timestamp on a `pending` row
+  with status/description/task_id/guardrail_type/reviewers unchanged and `action_blocked` only `false→true` (escalation
+  never un-blocks); (2) an `injection_quarantine` branch permitting a **write-once** `human_decision` (`null →
+  discard|approved_safe`) and a monotonic `escalated_at` while the **shadow-retained `quarantined_content` /
+  `guardrail_log_id` / `created_at` stay immutable** (#1 retain); (3) binding `t_append_only` to `injection_quarantine`
+  + a normal-role DELETE revoke. The mutation is monotonic and content-preserving, so the tamper-evidence guarantee is
+  intact — nothing already written is ever rewritten or erased; only null→value forward stamps are allowed.
+- **Reference-model faithfulness (Rule 0).** The ISSUE-057/059 in-memory fakes model this exact whitelist (the drift the
+  verify caught was that the fakes had no trigger and accepted mutations the DB would reject). `schema.md` §Immutability
+  enforcement is updated with the two branches + a pointer here.
+- **Status:** 🟢 RESOLVED. Authored offline + passes the app/silo discipline+RLS `check`. **Live proof owed at the
+  Checkpoint-3 capstone (operator-present):** a normal in-place mutation still rejected · an `escalated_at`-only stamp on
+  a pending guardrail row succeeds · `quarantined_content` rewrite/delete rejected. Unblocks ISSUE-057 + ISSUE-059 + ISSUE-060.
+
+---
+
+## OD-183 — AC-3.CONN.005.2 (Drive scope default) belongs to the connector-instance issues, not the connector-agnostic runtime 🟢 RESOLVED (2026-07-05, ISSUE-032 adversarial verify, session 69)
+
+- **OD-183** **DoD-scope correction (surfaced by the ISSUE-032 verify).** `AC-3.CONN.005.2` ("Drive default config →
+  `drive.file` requested, not `drive.readonly`, unless full-corpus ingest is explicitly enabled") is bound to
+  `CFG-drive_full_corpus_ingest` and a specific connector's scope strings. ISSUE-032 is the **connector-agnostic** shared
+  runtime + registry + contract — by design (`§2`) it holds **no per-connector scope strings** and makes no drive.file-vs-
+  readonly decision (`requestedScopes()` only concatenates the caller's read/write scopes and filters delete-granting
+  ones). The runtime's genuine scope-safety AC — `AC-3.CONN.005.3` (delete-granting scopes excluded) — **is** real runtime
+  machinery and is genuinely tested. Proving `005.2` here required a fixture tautology (hand-set `drive.file`, assert it
+  echoes back), which overstates what is verified.
+- **✅ Resolution.** `AC-3.CONN.005.2`'s proof is **deferred to the connector-instance issues (ISSUE-039 GHL / ISSUE-040
+  Google / ISSUE-041 Slack)** — specifically the Google connector (ISSUE-040), which owns the Drive scope strings +
+  `CFG-drive_full_corpus_ingest` default binding (`FR-3.OBS.003` / `AC-3.OBS.003.1`). ISSUE-032 is marked done on its
+  genuine contract/registry ACs; the tautological `005.2` fixture test is removed from ISSUE-032 and the AC is tracked as
+  owed at ISSUE-040. No FR text changes — the AC simply verifies where the code that satisfies it actually lives.
+- **Status:** 🟢 RESOLVED (build-test DoD-scope correction; carries a coverage obligation onto ISSUE-040).

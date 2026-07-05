@@ -1,0 +1,21 @@
+{
+  "name": "@harness/retention",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-084 — the C10 retention / isolation / residency / legal-review invariants. Registers the four FR-10.RET.002 retention CFG keys into the ISSUE-010 config store (defaults 90/7/72/true, PERM-config.infra-gated, legal-minimum-floor-validated on write, every change audited), asserts the ISSUE-008 baseline schema carries NO client_slug on any application table (the isolation lint — identity lives only in the management-plane client_registry), records the v1 Sydney ap-southeast-2 residency default (never silently defaulted) + the v2 deployment_region stub, homes the intentional-retention detector (a hard-delete tombstone with no sanctioned DEL/OFF authorisation behind it is the RET.001 violation), and gates go-live on the mandatory legal review. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the DDL. NO migration authored (ISSUE-010 owns the config store, ISSUE-008 the base DDL). The legal-review sign-off (AC-10.LEG.001 / AC-NFR-CMP.011) is a live/you-present go-live precondition owed to onboarding (OD-172 pattern), not an offline test.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

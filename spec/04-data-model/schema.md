@@ -32,7 +32,9 @@ ADR-003 (cost), ADR-004 (sole-writer memory), ADR-006 (static data-driven RLS), 
 RLS does not protect the audit sinks because their writer is `service_role` (RLS-exempt by design). Their
 append-only / tamper-evident guarantee (#1 never lose knowledge · #3 never fail silently; AC-7.LOG.008.3)
 is therefore bound to the table with a `BEFORE UPDATE OR DELETE` trigger that raises unless the change is
-one of the two whitelisted UPDATE mutations — a forward status transition (`guardrail_log`) or a
+one of the whitelisted UPDATE mutations — a forward status transition (`guardrail_log`), a **monotonic
+escalation stamp** (`escalated_at` null→ts on `guardrail_log`/`injection_quarantine`, and a write-once
+`human_decision` on `injection_quarantine` — **OD-182**, migration `0009`, content always retained), or a
 redaction-tombstone (PII columns → `[REDACTED]`, row + audit metadata retained). **DELETE is forbidden
 except under the transaction-local retention-prune whitelist** (`app.retention_prune='on'`, set via
 `set local` by the retention job alone — **OD-180**, change-control on NFR-CMP.006; migration
@@ -62,6 +64,32 @@ begin
        and new.description = old.description and new.task_id = old.task_id then
       return new;                                     -- forward status transition (still append-only in spirit)
     end if;
+    -- OD-182 (migration 0009): monotonic escalation stamp — a stale/un-actioned pending guardrail row may be
+    -- escalated (escalated_at null→ts) WITHOUT a status change; everything else immutable, action_blocked only
+    -- false→true (escalation never un-blocks). ISSUE-057 markEscalated / ISSUE-059 escalateStale (#1/#3).
+    if old.escalated_at is null and new.escalated_at is not null
+       and new.status = old.status
+       and new.description = old.description and new.task_id = old.task_id
+       and new.guardrail_type = old.guardrail_type
+       and new.reviewed_by is not distinct from old.reviewed_by
+       and new.reviewed_at is not distinct from old.reviewed_at
+       and (new.action_blocked = old.action_blocked or (old.action_blocked = false and new.action_blocked = true)) then
+      return new;
+    end if;
+  elsif tg_table_name = 'injection_quarantine' then   -- OD-182 (migration 0009): shadow-retain sink, now bound
+    -- quarantined_content / guardrail_log_id / created_at are immutable forever (#1). A write-once human_decision
+    -- (null → discard|approved_safe) and a monotonic escalated_at stamp are the only legitimate mutations; a
+    -- `discard` decision does NOT delete the row.
+    if new.quarantined_content = old.quarantined_content
+       and new.guardrail_log_id = old.guardrail_log_id
+       and new.source_tool = old.source_tool
+       and new.source_record_id is not distinct from old.source_record_id
+       and new.created_at = old.created_at
+       and (old.human_decision is null or new.human_decision = old.human_decision)
+       and (old.escalated_at  is null or new.escalated_at  = old.escalated_at)
+       and (new.human_decision is null or new.human_decision in ('discard','approved_safe')) then
+      return new;
+    end if;
   elsif new.redacted_at is not null and old.redacted_at is null then
     return new;                                       -- one-way redaction-tombstone (FR-7.LOG.006 / OD-074)
   end if;
@@ -76,11 +104,13 @@ create trigger t_append_only before update or delete on access_audit
   for each row execute function enforce_audit_append_only();
 create trigger t_append_only before update or delete on config_audit_log
   for each row execute function enforce_audit_append_only();
+create trigger t_append_only before update or delete on injection_quarantine   -- OD-182 (migration 0009)
+  for each row execute function enforce_audit_append_only();
 ```
 
-Belt-and-braces: also `revoke delete on {these four} from anon, authenticated` so a normal-role DELETE can
-never even reach the trigger; only `service_role` can DELETE at all, and only inside a
-`app.retention_prune='on'` transaction (OD-180). (`event_log`/`access_audit`/`config_audit_log` add a
+Belt-and-braces: also `revoke delete on {these four + `injection_quarantine` (OD-182)} from anon, authenticated`
+so a normal-role DELETE can never even reach the trigger; only `service_role` can DELETE at all, and only inside
+a `app.retention_prune='on'` transaction (OD-180). (`event_log`/`access_audit`/`config_audit_log` add a
 `redacted_at timestamptz` column; retention pruning is a separate privileged job — the whitelisted DELETE
 path above — not an ordinary app/service DELETE.)
 

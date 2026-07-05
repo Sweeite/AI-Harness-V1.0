@@ -1,0 +1,21 @@
+{
+  "name": "@harness/alerting",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-075 — the alerting layer on the ISSUE-011 observability skeleton (C7 FR-7.ALR.001-007/009, NFR-OBS.008/009/016). The dashboard-first persistent notification centre, the seven configurable alert rules (hard_limit_hit always-on/non-suppressible), route-by-type through the C1 role model with escalate-don't-abandon, every-alert-logged to event_log, the escalation-window → secondary-alert chain on a single server-authoritative clock, dashboard-persisted-first delivery durability with best-effort Slack fan-out, the C5/C6 → C7 delivery seam, and the alert-routing config layer whose unroutable/misconfigured state fails loud. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the DDL (0001_baseline notifications/event_log + config_values structured objects) — NOT run live (its live proof is the ISSUE-011/075 Stage-3 checkpoint). AF-118/AF-120 window+watchdog math proven offline via an injected server clock; AF-119 out-of-band log-failure surface is a 🟡 seam noted, not owned here.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

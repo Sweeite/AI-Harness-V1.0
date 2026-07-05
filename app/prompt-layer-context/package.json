@@ -1,0 +1,21 @@
+{
+  "name": "@harness/prompt-layer-context",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-044 (C4 BIZ/TSK) — Layer-2 shared business context + Layer-4 task instruction + versioned task templates, authored as CONTENT on the ISSUE-042 prompt store. The explicit static-vs-dynamic field split (a field is exactly one), the config-declared dynamic-field set whose live values are read from the operator-editable dynamic_field_values store at assembly, the required staleness surfacing when last_updated exceeds dynamic_field_freshness_threshold (never silently current — #3), the Layer-4 content contract with an ALWAYS-explicit output format (a missing format is flagged incomplete), task-template parameter-slot filling (all slots filled), and task-template version discipline inherited from the ISSUE-042 machinery (version-on-change + mandatory change_reason + non-destructive rollback). Offline build (port + in-memory fake); the live silo proof (dynamic_field_values + prompt_layers rows against RLS + the version-discipline trigger) is owed to the Stage-3 checkpoint capstone. Implements FR-4.BIZ.001-003, FR-4.TSK.001-003.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@harness/guardrail-log",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-060 — the guardrail_log sink + no-silent-failure invariant + approval/anomaly learning loops (C6 FR-6.LOG.001-004 / FR-6.FMM.001 / FR-6.OPT.001-002). The append-only five-type security-event store every C6 slice writes into: the guardrail_type five-value enum, the hard_limit!=approved check constraint, the injection_quarantine shadow-retain table, the append-only forward-transition trigger, the fail-CLOSED guarded write path (a guardrail that cannot write halts, never proceeds silently — #3), and the admin-confirmed tier/baseline learning candidates that persist rather than vanish. Port + in-memory fake reference model (the offline proof of every invariant the DB enforces); supabase-store.ts is the live pg adapter authored to the 0009_guardrails DDL — NOT run live (the trigger/check-constraint live proof is results/issue-060-capstone.sql, owed to the Stage-3 checkpoint).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -2,7 +2,7 @@
 id: ISSUE-074
 title: Cost meter + per-task aggregation + ladder signal
 epic: J — observability
-status: ready
+status: in-progress
 github: "#74"
 ---
 

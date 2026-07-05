@@ -1,0 +1,20 @@
+{
+  "name": "@harness/prompt-optimisation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-046 (C4 OPT) — the three prompt-optimisation slices resting on AF-111. (1) FR-4.OPT.001 version-to-outcome attribution: the pinned prompt version(s) in force at assembly are captured against a completed task's outcome so a builder can ask 'which version produced better outcomes' — C4 owns the version-identity + required-fields capture contract (identity never lost); C5 FR-5.ASM.009 (ISSUE-053) writes the outcome record. (2) FR-4.OPT.002 dynamic-Layer-2 fresh injection: dynamic_field_values are read live at each assembly (not the static-config baked value) so an updated value appears next session with no redeploy/reboot; ISSUE-044 owns the field declaration + value-source semantics. (3) FR-4.OPT.003 compression discipline: word-by-word compression is an enabled, non-blocking editor affordance (word-count + the OD-051 advisory), never a save-gate. Offline build (port + in-memory fake reference model); the live silo proof + the AF-111 build-time EVAL (does the feedback loop yield usable signal; does compression measurably outperform) run once a deployment has real task history — feasibility-register block O. Implements FR-4.OPT.001/002/003.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

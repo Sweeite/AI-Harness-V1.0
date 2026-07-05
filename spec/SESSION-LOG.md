@@ -5,6 +5,35 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 69 — 2026-07-05 — 🔨 **Stage-3 batch — offline fan-out + orchestrator integration (Phase C). 15 packages built + adversarially verified + fixed + integrated onto main; migrations `0006–0009` authored; `Checkpoint 3 STAYS OPEN`.** The 17-issue Stage-3 batch, run as the marquee fan-out. **15 offline-authorable issues** are built, green (203 tests), and integrated; **012 + 014 stay `ready`** (serial, you-present — Phase D). Nothing applied LIVE yet.
+
+**Environment:** 💻 FULL (Mac). Reconciled trackers first — zero drift (018 `done`/#18 closed, all 17 batch `ready`, Checkpoint 3 open, migration head `0005`).
+
+**How it ran (two fan-out workflows + orchestrator serial work):**
+1. **Author fan-out** — 15 isolated-worktree agents, one package each (`app/<slug>/`, house port+fake+live-adapter pattern), each proving its §4 AC battery offline. Result: **6 clean, 9 needed fixes.**
+2. **Adversarial verify** (independent zero-context agent per issue) — earned its keep again: nearly every MAJOR was the **same class of real defect — the in-memory fake passes offline but the live pg adapter would throw against the real DDL** (fake-vs-schema drift), plus fail-closed gaps. Caught 1 BLOCKER (059) + ~8 MAJORs.
+3. **Fix fan-out** (7 packages) + **orchestrator hand-fixes**: 5 landed faithfully (013/059/060/075/076); **057 I patched on the verified original** (the agent rebuilt from scratch — rejected the rebuild for continuity); **048 I hand-fixed** (its fix agent correctly refused — see hazard below).
+
+**Migrations `0006–0009` authored (discipline-gate clean; NOT yet applied live).** Key discovery: **`0001_baseline` already stands up ALL these tables** (task_queue incl. `originating_user_id`/`action_payload`/`error`, tools incl. version columns, guardrail_log incl. the no-override CHECK + escalated_at, injection_quarantine, profiles) — so the authors' `create table` proposals were **no-ops**. I authored only the genuine additive deltas:
+- **`0006_profiles_owner_rls`** (013) — profiles owner-read/update RLS on the 009 default-deny floor.
+- **`0007_stage3_event_types`** (013+047) — 9 additive `event_type` enum values (7 auth events + `dispatch_frozen_blocked`/`ingest_failure`); `transactional:false`.
+- **`0008_connector_runtime_triggers`** (032) — tools version-discipline + idempotency_ledger write-once triggers.
+- **`0009_guardrails_append_only`** (060+059) 🔴 — **[[OD-182]]**: re-creates the LIVE `enforce_audit_append_only()` to permit a **monotonic escalation stamp** (`escalated_at` null→ts) on `guardrail_log` + binds/whitelists `injection_quarantine` (a #1 shadow-retain sink baseline never bound). This fixes the 059 BLOCKER + 057 MAJOR **at the DB source** — without it a stale quarantine can never be escalated (rolled back by the trigger → silent abandonment, #1/#3).
+
+**Decisions logged:** **[[OD-182]]** (audit-trigger escalation widening — change-control on the live append-only invariant, kin to OD-180). **OD-183** (AC-3.CONN.005.2 Drive-scope default deferred from the 032 runtime to the 040 Google connector — it was a fixture tautology; the runtime is connector-agnostic by design). `schema.md` §Immutability enforcement mirrored to match 0009 (Rule 0).
+
+**⚠️ Integration hazard re-learned (session-66 lesson, sharper):** both fan-out workflows branched worktrees from the **stale committed base `24f043b`** (1 behind main), so my **uncommitted** integration wasn't visible to the fix agents → most recovered by copying from the main working tree, but it caused the 057 rebuild + the 048 block. **Rule for next time: COMMIT the integration before launching any dependent fan-out.**
+
+**State now (all offline, verified; nothing live):**
+- 15 packages on main, **203 tests green + typecheck clean**; migrations `0006–0009` + `_journal.json` **discipline-gate clean** (`app/silo check`: 12 migrations clean, RLS coverage green). Not applied to the silo.
+- 15 built issues flipped **`ready → in-progress`**; **012 + 014 stay `ready`**. **No done-flips, no Checkpoint-3 tick** (R4 — the batch isn't proven together yet, and nothing is live).
+
+**Deferred (tracked, safe):** **config-key registration in `config-registry.md`** for the new Stage-3 keys (044/057/075/076/084) — coupled to the live [[OD-181]] keygroup map + its `check` gate, and unregistered keys **fail closed** (→ `PERM-config.infra`) — so deferred to the Checkpoint-3/onboarding pass rather than half-done. Each key is documented in its package's `results/proposed-shared-spec.md`. Traceability-matrix rows for the 15 issues also deferred to done-time (Phase E).
+
+**Next step — Phase D (💻 operator-present, one live session):** `source ~/.ai-harness-secrets.env`; apply migrations **`0006→0009`** to the canary silo (fresh-forward + the OD-182 live proof: normal in-place mutation still rejected · an `escalated_at`-only stamp on a pending row succeeds · `quarantined_content` rewrite/delete rejected); **build/close `012` (mgmt-plane) + `014` (pw/2FA/brute-force) with the operator**; `013` real-OAuth-flow proof; **`047` AF-135 freeze-propagation spike** (⚠️ R2 — unrun launch-gating spike; if it fails it's a design fork → OD); `084` legal gate logged onboarding-owed. Then **Phase E — Checkpoint-3 integration test** (`can()` enforces end-to-end + last-Super-Admin holds + batch-as-group + three-non-negotiables re-check) → flip the 17 issues `done` + close GitHub → tick Checkpoint 3 → **Stage 4 opens (R1).**
+
+---
+
 ## Session 68 — 2026-07-05 — ✅ **ISSUE-018 (role model + permission matrix + `can()` gate — the Stage-3 GATE) `done`.** Built `app/rbac/` (`@harness/rbac`) — the C1 authorization spine. **24/24 offline** (one per DoD AC + AF-080 differential) + `check` gate (CATALOG ≡ `PERMISSION_NODES.md`) + **LIVE capstone + a two-session concurrency spike**. Independent zero-context verification **caught 2 MAJORs — both fixed and re-proven LIVE.** Stage 3's gate is closed (R3); **Checkpoint 3 stays OPEN** — the 16-issue batch is next.
 
 **Environment:** 💻 FULL (Mac, operator present). Reconciled trackers first (zero drift — all 17 Stage-3 issues already `ready`, clean tree). Approach per R3: build the gate **serial, hardest, first**, before any fan-out.

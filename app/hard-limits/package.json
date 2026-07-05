@@ -1,0 +1,21 @@
+{
+  "name": "@harness/hard-limits",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-055 — the code half of the seven hard limits (C6 Guardrails HRD; FR-6.HRD.001–004 / NFR-SEC.004/005 / ADR-007). A pure, un-overridable, fail-closed classifier for the seven autonomous prohibitions; the HardLimitGate port + in-memory fake reference model that writes a guardrail_log row (type hard_limit) on every hit, holds the block even when the row write or the alert fails, refuses any status→approved on a hard_limit row (mirrors the schema check not(hard_limit and approved)), rejects at save any agent definition granting Comms-send / Finance-transact / non-Memory-Agent memory-write, and routes any new dangerous capability to hard-approval + a rate cap (never an eighth limit). supabase-store.ts is the live pg adapter authored to the schema.md §7 DDL — NOT run live (the CHECK/trigger live proof is the Stage-3 capstone; the AF-068 red-team against the running system is ISSUE-003's live proof).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
