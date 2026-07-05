@@ -2,7 +2,7 @@
 id: ISSUE-014
 title: "Super-Admin password + TOTP 2FA + brute-force defense"
 epic: B — identity & access
-status: blocked
+status: ready
 github: "#14"
 ---
 

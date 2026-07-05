@@ -2,7 +2,7 @@
 id: ISSUE-018
 title: Role model + permission matrix + can() gate
 epic: B — identity & access
-status: blocked
+status: ready
 github: "#18"
 ---
 

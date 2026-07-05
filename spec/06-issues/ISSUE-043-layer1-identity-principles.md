@@ -2,7 +2,7 @@
 id: ISSUE-043
 title: Layer-1 identity/principles/limits content + answer-mode signalling + seven-principle floor
 epic: E — prompt
-status: blocked
+status: ready
 github: "#43"
 ---
 

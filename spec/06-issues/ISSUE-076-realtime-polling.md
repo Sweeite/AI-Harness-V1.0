@@ -2,7 +2,7 @@
 id: ISSUE-076
 title: Real-time / polling contract + connection budget + degrade
 epic: J — observability
-status: blocked
+status: ready
 github: "#76"
 ---
 
