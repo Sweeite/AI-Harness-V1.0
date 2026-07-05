@@ -20,16 +20,20 @@ const allSql = [...files.values()].map((f) => f.sql).join("\n");
 const stripComments = (s: string) => s.replace(/--.*$/gm, "");
 const allDdl = stripComments(allSql);
 
-test("journal + files load: the 0001a-d baseline + the 0002 RLS scaffold are present and ordered", () => {
+test("journal + files load: the 0001a-d baseline + the 0002-0005 Stage-2 migrations are present and ordered", () => {
   assert.deepEqual(journal.entries.map((e) => e.tag), [
     "0001_baseline",
     "0001b_indexes",
     "0001c_rls",
     "0001d_seed",
     "0002_rls_scaffold", // ISSUE-009 — helpers + default-deny baseline policies
+    "0003_config_values_rls", // ISSUE-010 — config_values key-prefix RLS
+    "0004_prompt_version_discipline", // ISSUE-042 — prompt_layers version-discipline trigger + RLS
+    "0005_retention_prune_whitelist", // OD-180 — retention-prune whitelist on the audit-sink immutability trigger
   ]);
   assert.equal(journal.entries.find((e) => e.tag === "0001b_indexes")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0002_rls_scaffold")!.transactional, true);
+  assert.equal(journal.entries.find((e) => e.tag === "0005_retention_prune_whitelist")!.transactional, true);
 });
 
 test("every real migration passes the expand-contract discipline guardrails", () => {

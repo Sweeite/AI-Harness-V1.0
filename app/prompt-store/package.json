@@ -1,0 +1,21 @@
+{
+  "name": "@harness/prompt-store",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-042 (C4 LYR/STO) — the four-layer prompt data model + the prompt_layers store with version-never-overwrite discipline. Insert-new-version-on-edit (never overwrite), mandatory non-empty change_reason, previous_version_id linkage, non-destructive rollback, version pinning at assembly, the four fixed layer types + fixed order, per-agent Layer-1 keying, the single-source-of-truth guard (no agents.system_prompt), the FR-4.LYR.004 required-element assembly halt hook, and PERM-prompt.edit/.view_history/.rollback default-deny gating. Offline build (port + in-memory fake); the live silo proof (RLS + version-discipline trigger firing) is the Stage-2 checkpoint capstone. Implements FR-4.LYR.001-004, FR-4.STO.001-006.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -135,8 +135,13 @@ or assign each shared file to exactly one agent).
 
 **Migration-chain lane (durable — Rule 0, don't leave this in chat).** `app/silo/migrations/` + its
 **`_journal.json`** are a single shared chain; **two worktree agents must never each pick the next tag** —
-they'd both grab `0003` and collide on `_journal.json`. **Current head: `0002_rls_scaffold` → next free tag
-is `0003`.** For the **Stage-2 fan-out specifically:** ISSUE-008's `0001_baseline` already created **all 44
+they'd both grab `0003` and collide on `_journal.json`. **Current head: `0005_retention_prune_whitelist` → next
+free tag is `0006`.** *(Stage-2 landed: `0003_config_values_rls` [ISSUE-010], `0004_prompt_version_discipline`
+[ISSUE-042], `0005_retention_prune_whitelist` [OD-180 — retention-prune whitelist on the shared audit-immutability
+trigger + the latent guardrail_log field-access bugfix]. All applied LIVE + capstone-proven, session 66. The
+fan-out worked as designed — parallel logic in worktrees, migrations/journal serialized by the orchestrator — with
+one lesson: worktrees branched from a stale base, so integration was by copy-onto-current-main, not git-merge.)*
+For the **Stage-2 fan-out specifically:** ISSUE-008's `0001_baseline` already created **all 44
 tables + all 29 enums + the `t_append_only` trigger on all four audit sinks** (config_audit_log incl.), so
 `010`/`011`/`042` do **NOT** author `create table`/`create type` migrations — they *verify present* (an
 absence is an 008 gap) and add only **additive logic**: `010` = `config_values` key-prefix RLS policies (a
@@ -197,9 +202,8 @@ Gate everything. Not hands-off.
 
 ### Stage 2 — Shared scaffold  *(OPEN since 2026-07-05 — Checkpoint 1 CLOSED; all 5 issues `ready`)*
 - ✅ **GATE — `009` RLS scaffold (helpers, default-deny, 100% coverage CI gate)**  🟢 **DONE (session 65, 2026-07-05)** — 4 helpers + `default_deny` on all 44 tables + the `auth_rls_initplan`/coverage lints (`app/silo`); offline 55/55 + LIVE capstone on the silo (service_role bypass · grant/revoke instant · InitPlan · `lint:rls` coverage green). **AF-079 🔴→🟢.** The gate is real — it caught `_migrations` as RLS-on-no-policy on first live run (fixed, no carve-out). Evidence `app/silo/results/issue-009-rls-capstone-evidence.2026-07-05.md`.
-- 🟢 BATCH: `010` Config store + audit-immutability · `011` Observability skeleton (event_log + silent-failure detector) 🔴 · `042` Prompt store (version-never-overwrite) · `081` Migration propagation + per-deployment isolation
-- ◇ **CHECKPOINT 2:** `009` default-deny holds and the coverage gate is GREEN; `011` event_log is
-  append-only and the silent-failure detector actually fires; `010` audit rows are immutable.
+- 🟢 BATCH: [x] ✅ **`010`** Config store + audit-immutability — **done** (session 66; 14/14 + LIVE capstone 7/7; #2 key-map BLOCKER fixed → [[OD-181]]; GitHub #10) · [x] ✅ **`011`** Observability skeleton 🔴 — **done** (session 66; 27/27 + LIVE 5/5; AF-118/120 🟢, AF-119 🟡 seam; retention BLOCKER → [[OD-180]]; GitHub #11) · [x] ✅ **`042`** Prompt store (version-never-overwrite) — **done** (session 66; 14/14 + LIVE 7/7; GitHub #42) · [ ] `081` Migration propagation + per-deployment isolation (💻 live — **not yet built**; blocks Checkpoint-2 closure)
+- [ ] ◇ **CHECKPOINT 2 — OPEN (three of four batch members done + live-proven; awaiting `081`).** `009` default-deny + coverage gate GREEN ✅; `011` event_log append-only + silent-failure detector fires ✅ (LIVE); `010` audit rows immutable ✅ (LIVE); `042` version-discipline ✅ (LIVE). **Still required (R4): `081` built + done**, then re-run the integration test → tick this box → Stage 3 opens (R1). Live evidence: `app/silo/results/stage2-checkpoint-evidence.2026-07-05.md`.
 
 ### Stage 3 — Core models & safety  *(largest batch — 17 in parallel)*
 - 🟠 **GATE — `018` Role model + permission matrix + `can()` gate** — the authorization spine.

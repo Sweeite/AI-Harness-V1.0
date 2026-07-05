@@ -1,0 +1,21 @@
+{
+  "name": "@harness/observability",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-011 — the observability skeleton (Component 7, LOG + ALR.008): the append-only event_log write API (plain-English summary, redacted payload, cost_unknown≠0), the silent-failure detector (terminal task_queue ⋈ terminal event_log), the out-of-band log-write-failure path (stderr/file + log-write-failing health bit), cross-sink reconciliation (event_log ⋈ guardrail_log), retention + redaction-tombstone, and the independent alert-engine watchdog. Build-time logic proven with the house port+fake pattern + fault-injection (AF-118/119/120). The live pg adapter is authored to the ISSUE-008 0001 DDL, NOT run in this offline half.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.6.0"
+  }
+}

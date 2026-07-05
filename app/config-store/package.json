@@ -1,0 +1,21 @@
+{
+  "name": "@harness/config-store",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-010 — the config persistence backbone (C7 FR-7.LOG.008 / NFR-CMP.006/007 / NFR-SEC.003). config_values key-prefix RLS (migration 0003), the secret_manifest presence contract (presence + last_rotated only, never a value — the boot gate reads required-missing), the config_audit_log read + all-or-fail export gated by PERM-compliance.download_records, the retention job (never prunes a floor-window row, logs the run), the redaction-tombstone entry point on config_audit_log.actor_id, and the no-secret-in-log invariant. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the DDL — NOT run live (the trigger/RLS live proof is the ISSUE-010 capstone at the Stage-2 checkpoint).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

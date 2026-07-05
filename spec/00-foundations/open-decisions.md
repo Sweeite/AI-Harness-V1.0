@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟢 RESOLVED session 64 — confirmed LIVE at the ISSUE-080 capstone, AF-064 🟢, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. Next OD number: OD-180.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟢 RESOLVED session 64 — confirmed LIVE at the ISSUE-080 capstone, AF-064 🟢, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. OD-180 (retention-prune whitelist on the audit-sink immutability trigger, change-control on NFR-CMP.006; 🟢 RESOLVED session 66 operator Option A, migration 0005, at file end) — do not reuse. OD-181 (config key→PERM-config map = explicit registry transcription + fail-closed default; 🟢 RESOLVED session 66, at file end) — do not reuse. Next OD number: OD-182.
 
 ---
 
@@ -2487,3 +2487,56 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 - **Status:** 🟢 RESOLVED (schema source-of-truth updated; live migration owed at onboarding per OD-172). Does **not** block
   ISSUE-017 `done` — the DoD ACs are all proven offline against the reference model; the enum gap only affected the
   not-yet-run live adapter, and the source of truth now admits the writes.
+
+- **OD-180** ⚠️ **CHANGE-CONTROL on a locked non-negotiable (NFR-CMP.006 audit-sink immutability) — surfaced by the
+  Stage-2 fan-out verification (session 66).** `enforce_audit_append_only()` (`0001_baseline.sql`, verbatim from
+  `schema.md` §Immutability enforcement) forbids `DELETE` on all four append-only sinks (`event_log`, `guardrail_log`,
+  `access_audit`, `config_audit_log`) **unconditionally**. But a `BEFORE DELETE` **row-level trigger fires for every
+  role** (incl. `service_role` and the table owner) — privilege cannot bypass it. So the retention pruning that
+  **FR-7.LOG.006 / AC-7.LOG.008.2 / AC-7.LOG.006.1** mandate (delete rows past the configured window, never below the
+  audit/compliance floor) is literally un-runnable: the live `prune()` on `event_log` (ISSUE-011) **and** on
+  `config_audit_log` (ISSUE-010) always throws. The spec text calls retention "a separate privileged job" but never gave
+  that job a path through the immutability wall; the offline `InMemory*` reference models masked the gap with a plain
+  `Map.delete`. This is a genuine #1-vs-#2 tension: either the audit trail grows unbounded (retention never runs) or
+  someone disables the immutability trigger to prune (a tamper hole). Per R2, a red launch-gating mechanism is a design
+  fork, not a code-around — logged here, operator-decided.
+- **Options weighed:** **(A) GUC-whitelist branch** — a transaction-local session flag (`app.retention_prune='on'`, set
+  via `set local`, auto-reset at commit) that the retention job alone sets; the trigger allows `DELETE` only under it,
+  every other delete still rejected. **(B) `session_replication_role=replica`** owner job — disables ALL triggers for the
+  job's session (broader blast radius; needs elevated privilege `service_role` may lack on Supabase). **(C) partition +
+  DROP old partitions** — cleanest (no DELETE path ever) but a significant schema change beyond Stage 2; retention stays
+  un-pruned meanwhile. **(D) redaction-only, never delete** — simplest/most-immutable but unbounded growth, contradicts
+  FR-7.LOG.006's configurable-window pruning.
+- **✅ Resolution (operator-decided 2026-07-05, session 66 — Option A):** add the GUC-whitelist branch to
+  `enforce_audit_append_only()` via **migration `0005_retention_prune_whitelist.sql`** (`create or replace` the one
+  function — additive, no DROP, re-binds no triggers; passes the expand-contract discipline gate). A `DELETE` is allowed
+  **iff** the executing transaction has `current_setting('app.retention_prune', true) = 'on'`; normal writes/deletes by
+  any role stay rejected exactly as before — immutability for the non-retention path is unchanged. **Floor safety (#1)
+  stays in the retention JOB** (app-code: it selects only past-floor, non-referenced row ids and deletes them inside the
+  flagged transaction) — the trigger gates only *that* a delete happens within a declared retention transaction, not the
+  floor (which is per-sink policy the trigger can't know). **Tamper surface (#2), stated:** only `service_role` can DELETE
+  at all (0001c `revoke delete` from anon+authenticated), and the GUC is a second explicit per-transaction opt-in — a
+  retention delete is auditable-by-construction (the setting job is the only intended setter). A stricter external
+  retention-volume monitor is an ops concern (AF-139 family), not this trigger's job.
+- **Change-control trail:** `schema.md` §Immutability enforcement updated with the whitelist branch + a pointer here (the
+  source of truth must match the migration — Rule 0). The reference models (`app/config-store`, `app/observability`) now
+  model the same whitelist (reject `prune()` unless the retention flag is set) so the offline suite is faithful to DB
+  truth; the live `supabase-store` adapters issue `set local app.retention_prune='on'` inside the prune transaction.
+- **Status:** 🟢 RESOLVED (operator Option A). Live proof (normal DELETE still rejected · a `set local`-flagged retention
+  delete succeeds · floor rows survive) is owed at the **Stage-2 checkpoint** capstone. Unblocks ISSUE-010 + ISSUE-011.
+
+- **OD-181** **Config key→PERM-config group mapping is an explicit registry transcription with a fail-closed default
+  (ISSUE-010; surfaced by the Stage-2 fan-out verification, session 66).** `config_values` key-prefix RLS
+  (`0003_config_values_rls.sql` `config_key_group()` + its `keygroup.ts` mirror) must map each config key to the
+  `PERM-config.*` node that owns it. The registry (`config-registry.md` §"Permission gates" + sections A–N) is the
+  authoritative key→section→node table, but its keys are **overwhelmingly bare** (only sections A/B/C use dotted
+  prefixes); the fan-out's first cut used *content-based* prefixes (`rate_`/`cost_`/`risk_`/`anomaly_`/`backoff_`) that
+  **cross-routed 8 keys into the wrong delegable gate** (a real #2 leak, live in the RLS) and fail-closed-over-restricted
+  ~72 more. **✅ Resolution:** rebuild the map as an **explicit per-key transcription of the registry** (not heuristic
+  prefixes — only the genuinely-uniform `auth.`/`webhook.`/`support.` families stay prefix-matched, all → `PERM-config.auth`),
+  with the section-D RBAC keys (`clearance_review_*`) explicitly → `PERM-config.guardrails` per their registry row, and an
+  **unmapped key fails closed → `PERM-config.infra`** (Super-Admin-only, never delegable) so a newly-added registry key
+  denies-by-default rather than leaking (#2). The registry stays the source of truth; the SQL + TS map encode it and the
+  `check` gate + tests pin **every** registry key (not a sample) against the expected node so any future divergence fails
+  the build. **Status:** 🟢 RESOLVED (implementation-level authorization-scope decision; no FR/registry text changed —
+  the map now matches the registry it always should have).

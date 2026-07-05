@@ -32,25 +32,38 @@ ADR-003 (cost), ADR-004 (sole-writer memory), ADR-006 (static data-driven RLS), 
 RLS does not protect the audit sinks because their writer is `service_role` (RLS-exempt by design). Their
 append-only / tamper-evident guarantee (#1 never lose knowledge · #3 never fail silently; AC-7.LOG.008.3)
 is therefore bound to the table with a `BEFORE UPDATE OR DELETE` trigger that raises unless the change is
-one of the two whitelisted mutations — a forward status transition (`guardrail_log`) or a redaction-tombstone
-(PII columns → `[REDACTED]`, row + audit metadata retained). DELETE is always forbidden.
+one of the two whitelisted UPDATE mutations — a forward status transition (`guardrail_log`) or a
+redaction-tombstone (PII columns → `[REDACTED]`, row + audit metadata retained). **DELETE is forbidden
+except under the transaction-local retention-prune whitelist** (`app.retention_prune='on'`, set via
+`set local` by the retention job alone — **OD-180**, change-control on NFR-CMP.006; migration
+`0005_retention_prune_whitelist.sql` `create or replace`s the function below). Every non-retention DELETE,
+any role, stays rejected; the floor (never prune below the audit/compliance window) is the retention job's
+responsibility, not the trigger's.
 
 ```sql
 create or replace function enforce_audit_append_only() returns trigger
-  language plpgsql as $$
+  language plpgsql
+  set search_path = ''                                -- OD-180 hardening (0005): unqualified names can't be shadowed
+as $$
 begin
   if tg_op = 'DELETE' then
-    raise exception 'audit sink %: DELETE forbidden (append-only)', tg_table_name;
-  end if;                                             -- UPDATE: allow only whitelisted mutations
-  if tg_table_name = 'guardrail_log'
-     and old.status = 'pending' and new.status in ('approved','rejected','modified')
-     and new.description = old.description and new.task_id = old.task_id then
-    return new;                                       -- forward status transition (still append-only in spirit)
-  end if;
-  if tg_table_name <> 'guardrail_log' then             -- guardrail_log has no redacted_at column (H43 fix)
-    if new.redacted_at is not null and old.redacted_at is null then
-      return new;                                     -- one-way redaction-tombstone (FR-7.LOG.006 / OD-074)
+    -- OD-180 retention-prune whitelist: the retention job sets `set local app.retention_prune='on'`;
+    -- missing_ok current_setting → NULL when unset → still forbidden. Floor enforced by the job, not here.
+    if current_setting('app.retention_prune', true) = 'on' then
+      return old;
     end if;
+    raise exception 'audit sink %: DELETE forbidden (append-only; retention prune must set app.retention_prune)', tg_table_name;
+  end if;                                             -- UPDATE: allow only whitelisted mutations
+  -- guardrail_log branch MUST be an outer if (not an inline AND): event_log/access_audit/config_audit_log
+  -- have no `status` column, so referencing old.status there raises "record old has no field status" and
+  -- breaks the redaction-tombstone on those sinks. (Bugfix folded into migration 0005, session 66.)
+  if tg_table_name = 'guardrail_log' then
+    if old.status = 'pending' and new.status in ('approved','rejected','modified')
+       and new.description = old.description and new.task_id = old.task_id then
+      return new;                                     -- forward status transition (still append-only in spirit)
+    end if;
+  elsif new.redacted_at is not null and old.redacted_at is null then
+    return new;                                       -- one-way redaction-tombstone (FR-7.LOG.006 / OD-074)
   end if;
   raise exception 'audit sink %: in-place UPDATE forbidden (append-only / tamper-evident)', tg_table_name;
 end $$;
@@ -65,9 +78,11 @@ create trigger t_append_only before update or delete on config_audit_log
   for each row execute function enforce_audit_append_only();
 ```
 
-Belt-and-braces: also `revoke delete on {these four} from <app+service roles>` so a DELETE can never even
-reach the trigger. (`event_log`/`access_audit`/`config_audit_log` add a `redacted_at timestamptz` column;
-retention pruning is a separate privileged job, not an app/service DELETE.)
+Belt-and-braces: also `revoke delete on {these four} from anon, authenticated` so a normal-role DELETE can
+never even reach the trigger; only `service_role` can DELETE at all, and only inside a
+`app.retention_prune='on'` transaction (OD-180). (`event_log`/`access_audit`/`config_audit_log` add a
+`redacted_at timestamptz` column; retention pruning is a separate privileged job — the whitelisted DELETE
+path above — not an ordinary app/service DELETE.)
 
 ---
 

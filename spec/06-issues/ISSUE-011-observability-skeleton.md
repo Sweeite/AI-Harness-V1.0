@@ -2,7 +2,7 @@
 id: ISSUE-011
 title: Observability skeleton — event_log + silent-failure detector + alert-engine watchdog
 epic: A — foundations
-status: ready
+status: done
 github: "#11"
 ---
 
@@ -184,3 +184,17 @@ watcher is watched") — so that from this point on nothing the system does can 
 - **AF gate:** AF-118 / AF-119 / AF-120 are blocking (RP-1) build-time SPIKEs — each must be GREEN in
   `feasibility-register.md` before the #3 mechanism it proves is trusted at launch (`observability.md`
   launch-gate rule).
+
+## 10. Build result — ✅ DONE (session 66, 2026-07-05)
+Built `app/observability/` (`@harness/observability`) — app-code only, no new migration (verified 0001 present).
+Offline **27/27** (one test per §4 AC) + typecheck + `check`. The three build-time #3 spikes proven by fault
+injection: **AF-118 🟢** (silent-failure detector + independent watchdog incl. never-started/self-stalled), **AF-119 🟡**
+(out-of-band degraded-sink + `log-write-failing` bit — *seam* proven offline; last-resort **durability** with the silo
+DB truly down is owed at ISSUE-012 integration — caveat retained), **AF-120 🟢** (receiver/server-anchored window math).
+Independent verification caught a **#1/#3 BLOCKER**: retention `prune()` was un-runnable live — the append-only trigger
+forbade DELETE on `event_log` unconditionally. Resolved via **[[OD-180]]** (operator Option A): migration `0005`
+adds a transaction-local `app.retention_prune` whitelist; the live adapter's `prune()` sets it. **LIVE capstone** 5/5:
+AC-7.LOG.001.1 (UPDATE + unflagged-DELETE rejected), AC-7.LOG.006.3 (redaction-tombstone), **OD-180 flagged retention
+DELETE succeeds**, AC-7.LOG.001.2 (out-of-enum rejected). The capstone also caught + fixed a latent redaction bug in the
+shared trigger (see `0005`). Evidence `app/silo/results/stage2-checkpoint-evidence.2026-07-05.md`. GitHub #11 closed.
+The seven alert rules / notification lifecycle stay **ISSUE-075**; real-time/polling **ISSUE-076**; cost meter **ISSUE-074**.

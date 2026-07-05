@@ -2,7 +2,7 @@
 id: ISSUE-010
 title: Config store + secret manifest + config-audit-log immutability
 epic: A — foundations
-status: ready
+status: done
 github: "#10"
 ---
 
@@ -151,3 +151,18 @@ window exists where the sink is mutable.
   tamper-evidence check (NFR-CMP.007). — proves AC-7.LOG.008.2/.4
 - **AC→`Verified` path:** the NFR-CMP.006 / NFR-SEC.003 postures hold under the above build-time tests;
   no launch-gating AF blocks this slice.
+
+## 10. Build result — ✅ DONE (session 66, 2026-07-05)
+Built `app/config-store/` (`@harness/config-store`) + migration `0003_config_values_rls.sql` (config_values
+key-prefix RLS composing on the 0002 default_deny floor). Offline **14/14** (one test per §4 AC) + typecheck +
+`check`. Independent zero-context verification caught a **#2 BLOCKER** — the `config_key_group` map used greedy
+content-prefixes that cross-routed 8 keys into the wrong PERM-config gate; **rebuilt as an explicit per-key
+transcription of `config-registry.md` (147 keys), fail-closed default → `PERM-config.infra` ([[OD-181]])**, plus
+`isSecretKey` fixed to catch `GOOGLE_PUBSUB_SERVICE_ACCOUNT_KEY` + `auth.smtp_*`. **LIVE capstone** (silo, session 66)
+7/7: AC-NFR-CMP.006.1/.2/.3, AC-7.LOG.008.1 (key-prefix RLS scope), .008.4 (redaction-tombstone), default-deny,
+AC-NFR-SEC.003.1. Live checkpoint surfaced two shared fixes: the **redaction-tombstone was broken on config_audit_log**
+(guardrail_log field-access bug in `enforce_audit_append_only()`, fixed in `0005`) and **config_values needed a
+`grant select to authenticated`** (0001c's blanket revoke left the read policy unreachable). Retention prune now uses
+the **[[OD-180]]** `app.retention_prune` whitelist. Evidence `app/silo/results/stage2-checkpoint-evidence.2026-07-05.md`.
+GitHub #10 closed. Retention floor/export/tombstone app-code proven offline; the **ISSUE-086** write path appends into
+this sink.

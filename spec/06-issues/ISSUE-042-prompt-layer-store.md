@@ -2,7 +2,7 @@
 id: ISSUE-042
 title: Prompt layer model + store + version-never-overwrite
 epic: E — prompt
-status: ready
+status: done
 github: "#42"
 ---
 
@@ -98,3 +98,14 @@ Stand up the four-layer prompt data model — the `prompt_layers` store with its
 - **Single source of truth + pinning** — Layer 1 reads resolve only from `prompt_layers` `layer='core'`; a mid-task edit does not change the running task's pinned version (AC-4.STO.002.1, AC-4.STO.006.1, AC-4.LYR.003.1).
 - **Structure + assembly-halt** — assembled structure is exactly the four ordered layer types; a core record resolving without a required safety element halts loudly (AC-4.LYR.001.1/.2, AC-4.LYR.004.1); the FR-4.LYR.004 execution path is proven end-to-end in ISSUE-053.
 - **RBAC posture** — a user without `PERM-prompt.edit` is denied + logged; an edit by a permitted user takes effect on next assembly with no redeploy (AC-4.STO.005.1/.2). No `AC-NFR-*` posture is owned by this slice.
+
+## 10. Build result — ✅ DONE (session 66, 2026-07-05)
+Built `app/prompt-store/` (`@harness/prompt-store`) + migration `0004_prompt_version_discipline.sql` (append-only-by-version
+trigger + `prompt_edit` RLS policy composing on 0002 default_deny). Offline **14/14** (one test per §4 AC) + typecheck +
+`check`. Independent verification: SAFE, no BLOCKER — two MINORs applied (the trigger now also freezes `name`, not just
+content, so a rename can't split a version chain; revoke-comment corrected). **LIVE capstone** 7/7: AC-4.STO.001.1 (no
+client_slug), .003.1 (in-place edit rejected), .003.2 (empty change_reason rejected), .004.1 (DELETE forbidden), AC-4.LYR.002.1
+(core requires agent_id), AC-4.STO.005.2 deny+allow (RLS via `PERM-prompt.edit`). Checkpoint added `grant select, insert on
+prompt_layers to authenticated` to `0004` (0001c's blanket revoke had left the read policy unreachable) + a `::uuid` cast in the
+capstone. Evidence `app/silo/results/stage2-checkpoint-evidence.2026-07-05.md`. GitHub #42 closed. Content slices (043–046) +
+the run-pipeline assembly (053) build on this store; the FR-4.LYR.004 halt executes in ISSUE-053.

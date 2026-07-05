@@ -399,7 +399,7 @@ silently stall** (if it does, every card stays last-known-green and every alert 
 whole component exists to prevent). **Method:** SPIKE — build the heartbeat + watchdog, fault-inject (kill the
 evaluator, the reporter, the silo DB) and confirm each failure surfaces out-of-band. **Relied on by:** FR-7.ALR.008,
 FR-7.MGM.001/002. Does **not** hold an FR from Approved-on-paper; it gates the *liveness claim* of the silent-failure
-detectors. **Surfaced by:** C7 verification gate (finding F2/F7).
+detectors. **Surfaced by:** C7 verification gate (finding F2/F7). **→ 🟢 PASS 2026-07-05 (session 66, ISSUE-011):** fault-injection proved the silent-failure detector flags a terminal `task_queue` status with no terminal `event_log` row, and the alert-engine watchdog is **independent** of the engine — a stalled, never-started, AND self-stalled watchdog each surface (the meta-#3 addressed via `watchdogSelfStalled()` + an out-of-band health-bit latch). Independently re-verified (SAFE). Residual: the whole chain still runs on the infra it watches — the external dead-man's-switch is **AF-139** (out of ISSUE-011 scope). Evidence `app/silo/results/stage2-checkpoint-evidence.2026-07-05.md`.
 
 **AF-119 — Last-resort out-of-band log-failure surface durability (SPIKE, build-time).** AC-7.LOG.003.2 says an
 `event_log` write failure is surfaced via an out-of-band path (local stderr/file + a `log-write-failing` health bit
@@ -407,7 +407,7 @@ on the push) — i.e. NOT only through the DB substrate that just failed. The un
 path is **actually reachable** when the silo's own Postgres/Supabase is down (the classic "log the logging failure
 to the log" trap). **Method:** SPIKE — induce a DB-write failure and confirm the condition reaches the Super Admin
 grid without the local DB. **Relied on by:** AC-7.LOG.003.2. Gates the *durability claim* of the last-resort surface.
-**Surfaced by:** C7 verification gate (finding F8).
+**Surfaced by:** C7 verification gate (finding F8). **→ 🟡 SEAM-PROVEN 2026-07-05 (session 66, ISSUE-011):** the out-of-band path is architecturally proven offline — on an `event_log` write failure the degraded sink + `log-write-failing` health bit are set via a path that does NOT touch the failed `EventLogStore` (no "log the logging failure to the log"; the DB holds zero half-written rows). **Caveat retained (not yet 🟢):** the *durability* of the last-resort surface when the silo's own Postgres is truly down (stderr/local-file survives + the mgmt-plane push carries the bit off-box) is exercised only at **ISSUE-012** integration (the push is 012's). Evidence `app/silo/results/stage2-checkpoint-evidence.2026-07-05.md`.
 
 **AF-120 — Cross-deployment clock-sync for window math (DOCS/SPIKE, build-time).** All staleness / escalation /
 "N hours" / daily-weekly windows use a single server-authoritative timestamp (AC-7.MGM.002.4 / AC-7.ALR.005.3). The
@@ -415,7 +415,7 @@ unproven assumption: cross-deployment clocks (each silo + the management plane) 
 math is anchored receiver-side — so a skewed reporter clock can't make a dead deployment look fresh or an escalation
 window miscompute and skip its secondary alert (#3). **Method:** DOCS (Railway/Supabase NTP guarantees) + SPIKE
 (inject skew, confirm receiver-side anchoring holds). **Relied on by:** AC-7.MGM.002.4, AC-7.ALR.005.3. Gates the
-*window-correctness claim*. **Surfaced by:** C7 verification gate (finding F6).
+*window-correctness claim*. **Surfaced by:** C7 verification gate (finding F6). **→ 🟢 PASS 2026-07-05 (session 66, ISSUE-011):** proven receiver/server-anchored — `event_log.created_at` is stamped server-side (`EventLogInput` has no time field, so a caller cannot assert time), the retention cutoff is computed against the server clock, and the watchdog stall math is receiver-anchored (a beat claiming "recent" but server-old still trips the stall). A skewed reporter clock cannot make a dead thing look fresh. Cross-deployment NTP between silo + mgmt-plane is a DOCS item for ISSUE-012's push. Evidence `app/silo/results/stage2-checkpoint-evidence.2026-07-05.md`.
 
 **AF-139 — Out-of-band external monitor for the management plane itself (SPIKE, build-time).** The entire "watcher
 watches the watcher" chain — the alert-evaluation-engine watchdog (FR-7.ALR.008), the mgmt-plane staleness evaluator
