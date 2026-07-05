@@ -74,7 +74,8 @@ contracts those slices then specialise; it does **not** author any per-table sen
 - AC-NFR-SEC.010.1 (coverage check fails the build if any table lacks a policy)
 - **Gating spikes (if any):** AF-067 (SPIKE+LOAD — live data-driven RLS initPlan latency on the hot
   path) must be **GREEN** before this issue ships — this is the ISSUE-002 launch-gating spike
-  (blocked-by, per OD-157/RP-1; feasibility-register block G, currently 🔴). AF-079 (RLS coverage
+  (blocked-by, per OD-157/RP-1; feasibility-register block G — **🟢 PASS 2026-07-04** via ISSUE-002, so
+  this gate is already GREEN: initPlan 1.06 ms/stmt, once-per-statement, lint PASS). AF-079 (RLS coverage
   completeness) is the CI/lint gate this slice **builds**; its proof rides on the gate passing.
 
 ## 5. Touches (complete blast radius, by ID)
