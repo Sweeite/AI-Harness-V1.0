@@ -110,6 +110,49 @@ issue's `§9` + the preflight — a batch member is 💻 only if its own `§9` n
 
 ---
 
+## Fan-out / workflow guidance — where parallel agents safely speed the build
+
+**This invents nothing** — it re-expresses the batch/DAG structure already defined below (R2/R5) as an
+execution strategy. Same-stage issues have **no dependency path between them**, so building them **in
+parallel cannot create hidden coupling** — that is *why* a stage's **batch** is a fan-out target (one
+worktree-isolated agent per `ready` issue, each building to its §4 DoD + running its own AC battery).
+
+**Three things stay serial — always. Never fan these out:**
+- the **spine / gate** issue — everything above the stage rests on it; build + prove its `AC-*` **first**, alone (R3);
+- the **verification gate + the checkpoint** — fanning these out is exactly how silent drift slips in (#3);
+- every **💻 live / 🧑 you-present** step — serialized on the operator + real infra, not on compute; **no agent count helps** (batch them into ONE concentrated live session instead of interleaving author↔live).
+
+**The pattern (one workflow per open stage):** (1) build the gate serial + prove it (R3) → (2) **fan out the
+offline (📱) batch members** in parallel worktrees → (3) **adversarial verify** pass (independent agent per
+issue — kept rigorous, not fanned to death) → (4) **one live session** closes all the 💻/🧑 members together →
+(5) run the checkpoint → tick → next stage. Every issue still follows the **sync ritual** (frontmatter +
+BUILD-SCHEDULE box + `_backlog` + GitHub in lockstep) as it lands.
+
+**The one real collision risk — shared spec files.** DAG-independent ≠ same-file-independent. Several batch
+members still edit the shared **`schema.md`**, **`config-registry.md`**, or the **one shared migration chain**
+— parallel worktree agents WILL conflict there. Serialize those edits (a single "shared-spec" pass up front,
+or assign each shared file to exactly one agent).
+
+**Cost — say it out loud:** fan-out trades **tokens for wall-clock** (N agents ≈ N× the compute of one-by-one).
+Worth it on the big batches; wasteful on a 1–2-issue stage.
+
+| Stage | Batch | Fan-out payoff | How to run it |
+|---|---|---|---|
+| 2 | 4 | **Medium** — `010`/`011`/`042` are 📱; `081` is 💻 (live migrate-on-release) | fan out `010`/`011`/`042`; close `081` in the live session alongside the `009` gate. Good **trial** of the pattern on a small stage. |
+| 3 | **17** | **HUGE — the marquee fan-out** — mostly offline logic; only `013`/`014`🧑 live | one agent per offline issue → verify pass → batch `012`/`013`/`014` live |
+| 4 | 14 | **High** — mostly offline; `033`/`037`/`085`🧑 live | fan out the ~11 offline; batch the 3 live |
+| 5 | 16 | **High but connector-heavy** — `020`/`038`/`039`/`040`/`041`/`083` are 💻 | fan out the offline model/specialist issues; batch connectors + RLS-enforcement live |
+| 6 | 4 | Low–Med — silo-bound (`023` gate 💻, `024` sole-writer) | small; gate is live |
+| 7 | 6 | Medium — `025` gate 💻; batch has offline maintenance logic | fan out `026`/`027`/`028`/`029`/`066`; `082` is two-person live |
+| 8 | 3 | Low | small batch |
+| 9 | 2 | Low — `053` is the keystone; **resource it, don't split** | serial |
+| 10 | 1 | n/a | serial |
+
+**Payoff curve peaks at Stage 3 (17) → 5 (16) → 4 (14).** Those are where a workflow earns its token cost;
+the spine, the checkpoints, and the live steps are the floor no parallelism removes (*"spine slow, fans fast"*).
+
+---
+
 ## The schedule
 
 ### Stage 0 — Roots & spikes  🧑 you present
