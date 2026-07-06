@@ -2,7 +2,7 @@
 id: ISSUE-019
 title: Clearance + Restricted model — four tiers, per-role defaults, entity-scope, per-individual grants
 epic: B — identity & access
-status: blocked
+status: ready
 github: "#19"
 ---
 

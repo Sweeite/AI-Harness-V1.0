@@ -2,7 +2,7 @@
 id: ISSUE-050
 title: Context envelope + full-envelope-per-step + compression + originals retention
 epic: F — harness
-status: blocked
+status: ready
 github: "#50"
 ---
 

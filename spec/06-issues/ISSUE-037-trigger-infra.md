@@ -2,7 +2,7 @@
 id: ISSUE-037
 title: Trigger infra + liveness (watch re-arm, event-gap reconciliation)
 epic: D — tool layer
-status: blocked
+status: ready
 github: "#37"
 ---
 

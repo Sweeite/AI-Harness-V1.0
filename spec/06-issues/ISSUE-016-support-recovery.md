@@ -2,7 +2,7 @@
 id: ISSUE-016
 title: Support-request recovery intake
 epic: B — identity & access
-status: blocked
+status: ready
 github: "#16"
 ---
 

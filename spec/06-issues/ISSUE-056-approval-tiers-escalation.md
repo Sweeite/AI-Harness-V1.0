@@ -2,7 +2,7 @@
 id: ISSUE-056
 title: Approval tiers + mandatory-hard set + escalation/flagged workflow
 epic: G — guardrails
-status: blocked
+status: ready
 github: "#56"
 ---
 
