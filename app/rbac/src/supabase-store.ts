@@ -181,17 +181,70 @@ export class SupabaseRbacStore implements RbacStore {
   }
   async roleClearances(roleId: string): Promise<ClearanceRow[]> {
     const { rows } = await this.pool.query<ClearanceRow>(
-      `select role_id, user_id, tier, entity_type_scope from sensitivity_clearances where role_id = $1`,
+      `select id, role_id, user_id, tier, entity_type_scope, granted_by, granted_at, last_reviewed_at
+         from sensitivity_clearances where role_id = $1`,
       [roleId],
     );
     return rows;
   }
 
+  // ── Clearance grant/revoke/review (ISSUE-019). Revoke = hard DELETE (no revoked_at column, schema.md §2). ─
+  async insertClearance(row: ClearanceRow): Promise<ClearanceRow> {
+    const { rows } = await this.pool.query<ClearanceRow>(
+      `insert into sensitivity_clearances (role_id, user_id, tier, entity_type_scope, granted_by, last_reviewed_at)
+         values ($1, $2, $3::clearance_tier, $4, $5, $6)
+         returning id, role_id, user_id, tier, entity_type_scope, granted_by, granted_at, last_reviewed_at`,
+      [row.role_id, row.user_id, row.tier, row.entity_type_scope, row.granted_by ?? null, row.last_reviewed_at ?? null],
+    );
+    return rows[0]!;
+  }
+  async deleteClearance(id: string): Promise<boolean> {
+    const { rowCount } = await this.pool.query(`delete from sensitivity_clearances where id = $1`, [id]);
+    return (rowCount ?? 0) > 0;
+  }
+  async touchClearanceReview(id: string, reviewedAt: string): Promise<boolean> {
+    const { rowCount } = await this.pool.query(`update sensitivity_clearances set last_reviewed_at = $2 where id = $1`, [id, reviewedAt]);
+    return (rowCount ?? 0) > 0;
+  }
+  async listClearances(): Promise<ClearanceRow[]> {
+    const { rows } = await this.pool.query<ClearanceRow>(
+      `select id, role_id, user_id, tier, entity_type_scope, granted_by, granted_at, last_reviewed_at from sensitivity_clearances`,
+    );
+    return rows;
+  }
+
+  // ── Restricted grant/revoke (ISSUE-019). Revoke = instant soft-delete via revoked_at. ─────────────────
+  async insertRestricted(row: RestrictedGrantRow): Promise<RestrictedGrantRow> {
+    const { rows } = await this.pool.query<RestrictedGrantRow>(
+      `insert into restricted_grants (grantee_user_id, granter_user_id, entity_id, entity_type, reason)
+         values ($1, $2, $3, $4, $5)
+         returning id, grantee_user_id, granter_user_id, entity_id, entity_type, reason, granted_at, revoked_at, revoked_by`,
+      [row.grantee_user_id, row.granter_user_id ?? null, row.entity_id, row.entity_type, row.reason ?? null],
+    );
+    return rows[0]!;
+  }
+  async revokeRestrictedById(id: string, revokedBy: string, revokedAt: string): Promise<boolean> {
+    // Only revoke an active grant — a second revoke is a no-op, never a silent double-write.
+    const { rowCount } = await this.pool.query(
+      `update restricted_grants set revoked_at = $2, revoked_by = $3 where id = $1 and revoked_at is null`,
+      [id, revokedAt, revokedBy],
+    );
+    return (rowCount ?? 0) > 0;
+  }
+  async listRestricted(): Promise<RestrictedGrantRow[]> {
+    const { rows } = await this.pool.query<RestrictedGrantRow>(
+      `select id, grantee_user_id, granter_user_id, entity_id, entity_type, reason, granted_at, revoked_at, revoked_by from restricted_grants`,
+    );
+    return rows;
+  }
+
   async appendAudit(row: AuditRow): Promise<void> {
+    // actor_type is parameterized (default 'user'): the review scheduler writes 'system' — hardcoding 'user'
+    // would falsely attribute an auto-revoke to a person in the immutable trail (#3).
     await this.pool.query(
       `insert into access_audit (audit_type, actor_identity, actor_type, action, target_type, target_entity_id, reason)
-         values ($1, $2, 'user', $3, $4, $5, $6)`,
-      [row.audit_type, row.actor_identity, row.action, row.target_type, row.target_entity_id, row.reason],
+         values ($1, $2, $3::actor_type, $4, $5, $6, $7)`,
+      [row.audit_type, row.actor_identity, row.actor_type ?? 'user', row.action, row.target_type, row.target_entity_id, row.reason],
     );
   }
   async audits(): Promise<AuditRow[]> {

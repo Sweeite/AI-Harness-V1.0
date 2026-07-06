@@ -16,6 +16,7 @@ import {
   type Role,
 } from './catalog.ts';
 import { can } from './can.ts';
+import { seedDefaultClearances, SHIPPED_ENTITY_TYPES } from './clearance.ts';
 import {
   RbacError,
   ERR_DENIED,
@@ -29,27 +30,14 @@ import {
 
 export const ROLE_MANAGE_NODE = 'PERM-system.role_manage';
 
-/** The per-role default clearance seed (ISSUE-018 scope). tier ∈ {confidential, personal}; Global scope
- * (entity_type_scope null). Standard is implicit for every role (no row). The entity-scoped narrowing
- * (Finance→confidential-finance-only, HR→personal-team-only, Account Manager→confidential-client-only) is
- * ISSUE-019 territory (it composes with the entity model, ISSUE-022) — NOT seeded here to avoid inventing
- * entity-type tokens. Source: design-doc L509-615 "SENSITIVITY CLEARANCE" (the "(all)" rows). */
-function defaultClearances(role: Role): Array<{ tier: 'confidential' | 'personal'; entity_type_scope: string | null }> {
-  if (role === 'Super Admin' || role === 'Admin') {
-    return [
-      { tier: 'confidential', entity_type_scope: null },
-      { tier: 'personal', entity_type_scope: null },
-    ];
-  }
-  return []; // standard-implicit only; entity-scoped defaults are ISSUE-019
-}
-
 /**
- * Provisioning seed (FR-1.ROLE.001 / AC-1.ROLE.001.1). Fresh deployment → exactly the six named roles, each
- * with its default node set + default clearances. Fails loud on a partial pre-existing seed rather than
- * silently completing an inconsistent state. Idempotent on a fully-seeded deployment.
+ * Provisioning seed (FR-1.ROLE.001 / AC-1.ROLE.001.1 + FR-1.CLR.002 / AC-1.CLR.002.1). Fresh deployment →
+ * exactly the six named roles, each with its default node set + its default clearances (the entity-type-scoped
+ * table + OD-186 finance set live in clearance.ts). Fails loud on a partial pre-existing seed rather than
+ * silently completing an inconsistent state, and fails loud if a default clearance scope token is absent from
+ * the deployment's entity_types (OD-186). Idempotent on a fully-seeded deployment.
  */
-export async function seedRoles(store: RbacStore): Promise<void> {
+export async function seedRoles(store: RbacStore, entityTypes: readonly string[] = SHIPPED_ENTITY_TYPES, provisionedAt?: string): Promise<void> {
   const existing = await store.listRoles();
   const seedRolesPresent = existing.filter((r) => (ROLES as readonly string[]).includes(r.name));
   if (seedRolesPresent.length !== 0 && seedRolesPresent.length !== 6) {
@@ -57,14 +45,16 @@ export async function seedRoles(store: RbacStore): Promise<void> {
   }
 
   const matrix = defaultMatrix();
+  const roleIds = new Map<Role, string>();
   for (const name of ROLES) {
     let role = await store.getRoleByName(name);
     if (!role) role = await store.createRole(name, true, name === PROTECTED_ROLE);
+    roleIds.set(name, role.id);
     for (const node of matrix.get(name)!) await store.setNode(role.id, node, true);
-    for (const cl of defaultClearances(name)) {
-      await store.seedClearance({ role_id: role.id, user_id: null, tier: cl.tier, entity_type_scope: cl.entity_type_scope });
-    }
   }
+
+  // Default clearances (FR-1.CLR.002 — entity-type-scoped, OD-186). Fails loud on a missing scope token.
+  await seedDefaultClearances(store, (name) => roleIds.get(name)!, entityTypes, provisionedAt);
 
   // Post-condition: exactly the six seed roles exist (fail loud if not).
   const after = (await store.listRoles()).filter((r) => (ROLES as readonly string[]).includes(r.name));

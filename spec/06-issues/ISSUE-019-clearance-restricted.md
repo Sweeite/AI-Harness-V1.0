@@ -2,7 +2,7 @@
 id: ISSUE-019
 title: Clearance + Restricted model — four tiers, per-role defaults, entity-scope, per-individual grants
 epic: B — identity & access
-status: ready
+status: done
 github: "#19"
 ---
 
@@ -165,3 +165,42 @@ grant/revoke records the audit slice later proves complete.
   is Verified in ISSUE-020 (RLS) and ISSUE-025 (retrieval, where AF-067's GREEN spike is the blocking
   `AC → Verified` path). This slice's DoD is met when the model + flows pass; the enforcement ACs it
   shares are re-Verified in the enforcing slices.
+
+## 10. Build result (session 70, 2026-07-06 — 💻 FULL, operator-present) — ✅ DONE
+
+**Built** `app/rbac/src/clearance.ts` (+ store/roles/supabase/index extensions) on the ISSUE-018 `can()` gate —
+the four-tier model, the OD-186 per-role default seed, clearance grant/revoke, the review cadence (both
+branches), Restricted grant/revoke, and the never-auto-inject + control-before-gate rules. **No new migration**
+(tables landed in ISSUE-008; RLS enforcement is ISSUE-020). Migration head unchanged `0010`.
+
+**Verification — DoD met:**
+- **45 tests green** (21 new clearance ACs in `src/clearance.test.ts` + 24 ISSUE-018) + `typecheck` + `check`
+  gate (now incl. a clearance-model-integrity gate: scope tokens ⊆ entity_types, no Restricted role default,
+  Standard implicit). Every AC-1.CLR.* / AC-1.RST.* maps to a non-tautological test exercising the failure branch.
+- **LIVE capstone PASS** (`results/issue-019-capstone.sql`, one rolled-back txn): the seed lands as real rows
+  (Finance = 4 finance-scoped Confidential, no Client scope, no Restricted); the `num_nonnulls(user_id,role_id)=1`
+  exactly-one-subject CHECK rejects both/neither; clearance revoke = hard DELETE; Restricted `reason` NOT NULL
+  rejects a null reason; grant captures granter/grantee/time/reason; Restricted revoke = soft-delete (active
+  query then excludes); and the **access_audit append-only trigger rejects both UPDATE and DELETE** (#1
+  audit-immutability at the DB source).
+
+**Decisions logged:** **OD-186** (finance-entity-type set `{Invoice, Contract/Retainer, Financial Period, Deal}`
++ seed-default-tokens-with-fail-loud portability — operator-decided) · **OD-187** (review cadence targets
+user-scoped grants only; role defaults never auto-revoked by the sweep — adversarial-verification BLOCKER catch).
+
+**Independent adversarial verification** (zero-context) caught **2 real defects — both fixed + pinned:**
+(1) BLOCKER — the sweep would hard-delete seeded **role-default** clearances fleet-wide under `fail_closed=true`
+(#1 access-loss), masked by a `NOW`-provisioned fixture → **OD-187** scopes the cadence to user grants; teeth-test
+proves a long-overdue role default is never swept. (2) MAJOR — the live adapter hardcoded `actor_type='user'`, so
+a scheduler auto-revoke was falsely attributed to a user in the immutable trail (#3) → `actor_type` threaded
+through `AuditRow`, sweep audits as `'system'`. I also self-caught a fake-vs-schema drift (the fake's
+`seedClearance` wasn't assigning `id`/`granted_at` like the DDL).
+
+**Scope honesty (Rule 0 / §2-Out):** ships the CLR + RST *model + flows*. The RLS row-access predicates that READ
+it (ISSUE-020), the retrieval-path enforcement + AF-067 hot-path composition (ISSUE-025), memory sensitivity
+tagging (ISSUE-022), and the clearance/Restricted **UI** + user-mgmt lifecycle (ISSUE-021) are seams, not built
+here. AC-1.CLR.006.1 / AC-1.RST.003.1 are proven as the *model contract* (`applyClearanceControl`/
+`filterAutoInjectable`); their runtime enforcement re-Verifies in 020/025.
+
+**Sign-off:** Stage-4 GATE closed (R3 — built serial, hardest, first; proven offline + LIVE). The 14-issue
+Stage-4 batch (already `ready`) may now fan out.

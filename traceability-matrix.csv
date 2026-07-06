@@ -59,15 +59,15 @@ FR-1.PERM.004,Permission matrix is data,1,Approved,Must,L502-504;L639,PERM-syste
 FR-1.PERM.005,PERMISSION_NODES.md source of truth,1,Approved,Must,L625-639,n/a,n/a,UI-PERMISSION-MATRIX,PERMISSION_NODES.md;role_permissions,AC-1.PERM.005.1;AC-1.PERM.005.2,,ISSUE-018,app/rbac/src/rbac.test.ts
 FR-1.PERM.006,Denied-access behavior,1,Approved,Must,L462;L420,n/a,n/a,all-gated-surfaces,n/a,AC-1.PERM.006.1;AC-1.PERM.006.2,,ISSUE-018,app/rbac/src/rbac.test.ts
 FR-1.PERM.007,Node catalog homed (12 categories),1,Approved,Must,L509-615,n/a,n/a,UI-PERMISSION-MATRIX,PERMISSION_NODES.md;role_permissions,AC-1.PERM.007.1,,ISSUE-018,app/rbac/src/rbac.test.ts
-FR-1.CLR.001,Four sensitivity tiers,1,Approved,Must,L426-433,n/a,n/a,n/a,memories.sensitivity,AC-1.CLR.001.1,,ISSUE-019,,
-FR-1.CLR.002,Default clearances per role,1,Approved,Must,L435-443,n/a,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances,AC-1.CLR.002.1,,ISSUE-019,,
-FR-1.CLR.003,Clearance explicitly granted never inherited,1,Approved,Must,L448,PERM-user.grant_clearance,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances,AC-1.CLR.003.1,,ISSUE-019,,
-FR-1.CLR.004,Clearance scoped by entity type,1,Approved,Must,L450;ADR-006,n/a,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances.entity_type_scope;memories.entity_type,AC-1.CLR.004.1,,ISSUE-019,,
-FR-1.CLR.005,Clearance review cadence,1,Approved,Should,L454,PERM-user.grant_clearance,CFG-clearance_review_cadence_days,UI-CLEARANCE-REVIEW,sensitivity_clearances,AC-1.CLR.005.1,,ISSUE-019,,
-FR-1.CLR.006,Clearance enforced before ranking/injection,1,Approved,Must,L464;L1725;ADR-006,n/a,n/a,n/a,memories,AC-1.CLR.006.1,,ISSUE-019,,
-FR-1.RST.001,Restricted per named individual,1,Approved,Must,L452;L524;L620;L577,PERM-user.grant_restricted,n/a,UI-RESTRICTED-GRANT,restricted_grants,AC-1.RST.001.1;AC-1.RST.001.2,,ISSUE-019,,
-FR-1.RST.002,Restricted grant logged who/when/why,1,Approved,Must,L452;ADR-006,PERM-user.grant_restricted,n/a,UI-RESTRICTED-GRANT,restricted_grants;access_audit,AC-1.RST.002.1;AC-1.RST.002.2;AC-1.RST.002.3,,ISSUE-019,,
-FR-1.RST.003,Restricted never auto-injected,1,Approved,Must,L433,restricted-grant,n/a,n/a,memories;access_audit,AC-1.RST.003.1,,ISSUE-019,,
+FR-1.CLR.001,Four sensitivity tiers,1,Approved,Must,L426-433,n/a,n/a,n/a,memories.sensitivity,AC-1.CLR.001.1,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.CLR.002,Default clearances per role,1,Approved,Must,L435-443,n/a,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances,AC-1.CLR.002.1,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.CLR.003,Clearance explicitly granted never inherited,1,Approved,Must,L448,PERM-user.grant_clearance,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances,AC-1.CLR.003.1,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.CLR.004,Clearance scoped by entity type,1,Approved,Must,L450;ADR-006,n/a,n/a,UI-CLEARANCE-MGMT,sensitivity_clearances.entity_type_scope;memories.entity_type,AC-1.CLR.004.1,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.CLR.005,Clearance review cadence,1,Approved,Should,L454,PERM-user.grant_clearance,CFG-clearance_review_cadence_days,UI-CLEARANCE-REVIEW,sensitivity_clearances,AC-1.CLR.005.1,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.CLR.006,Clearance enforced before ranking/injection,1,Approved,Must,L464;L1725;ADR-006,n/a,n/a,n/a,memories,AC-1.CLR.006.1,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.RST.001,Restricted per named individual,1,Approved,Must,L452;L524;L620;L577,PERM-user.grant_restricted,n/a,UI-RESTRICTED-GRANT,restricted_grants,AC-1.RST.001.1;AC-1.RST.001.2,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.RST.002,Restricted grant logged who/when/why,1,Approved,Must,L452;ADR-006,PERM-user.grant_restricted,n/a,UI-RESTRICTED-GRANT,restricted_grants;access_audit,AC-1.RST.002.1;AC-1.RST.002.2;AC-1.RST.002.3,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
+FR-1.RST.003,Restricted never auto-injected,1,Approved,Must,L433,restricted-grant,n/a,n/a,memories;access_audit,AC-1.RST.003.1,,ISSUE-019,,app/rbac/src/clearance.test.ts;issue-019-capstone.sql
 FR-1.RLS.001,Every table has RLS policy (default-deny),1,Approved,Must,L717-719;L733-735;ADR-006,n/a,n/a,n/a,all-tables,AC-1.RLS.001.1,,ISSUE-009,,app/silo/src/rls-lint.test.ts;app/silo/results/issue-009-rls-capstone.sql
 FR-1.RLS.002,Static data-driven policies (initPlan),1,Approved,Must,ADR-006;L722-732,n/a,n/a,n/a,roles;role_permissions;user_roles;sensitivity_clearances;restricted_grants,AC-1.RLS.002.1;AC-1.RLS.002.2,,ISSUE-020,,
 FR-1.RLS.003,RLS row-access subset intra-client,1,Approved,Must,L722-732;ADR-006;ADR-001,n/a,n/a,n/a,memories,AC-1.RLS.003.1;AC-1.RLS.003.2,,ISSUE-020,,

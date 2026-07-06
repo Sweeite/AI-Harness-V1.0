@@ -34,6 +34,12 @@ import {
   type Category,
   type CatalogNode,
 } from './catalog.ts';
+import {
+  assertScopeTokensPresent,
+  assertNoRestrictedRoleDefault,
+  isAutoInjectable,
+  DEFAULT_CLEARANCES,
+} from './clearance.ts';
 
 // ── re-exports (public surface) ───────────────────────────────────────────────────────────────────
 export {
@@ -86,6 +92,38 @@ export {
   ROLE_MANAGE_NODE,
 } from './roles.ts';
 export { SupabaseRbacStore } from './supabase-store.ts';
+export {
+  // ISSUE-019 — clearance + Restricted model + flows.
+  BASE_SENSITIVITY_TIERS,
+  TIER_HANDLING,
+  sensitivityTiers,
+  isAutoInjectable,
+  filterAutoInjectable,
+  applyClearanceControl,
+  DEFAULT_CLEARANCES,
+  FINANCE_ENTITY_TYPES,
+  SHIPPED_ENTITY_TYPES,
+  assertScopeTokensPresent,
+  assertNoRestrictedRoleDefault,
+  seedDefaultClearances,
+  grantClearance,
+  revokeClearance,
+  effectiveClearances,
+  hasClearanceFor,
+  confirmClearanceReview,
+  reviewOverdueClearances,
+  grantRestricted,
+  revokeRestricted,
+  InMemoryAlertSink,
+  GRANT_CLEARANCE_NODE,
+  GRANT_RESTRICTED_NODE,
+  ADD_SENSITIVITY_NODE,
+  type SensitivityTier,
+  type DefaultClearance,
+  type ClearanceAlert,
+  type ClearanceAlertSink,
+} from './clearance.ts';
+export { type RestrictedGrantRow } from './store.ts';
 
 interface Finding {
   gate: string;
@@ -222,6 +260,30 @@ function checkFailClosed(): Finding[] {
   return findings;
 }
 
+/** Gate 6 — the ISSUE-019 clearance model integrity (offline, static): every default scope token is a shipped
+ *  entity type (OD-186), no role default is Restricted (FR-1.RST.001), Standard User carries no clearance row
+ *  (Standard is implicit), and Restricted is never auto-injectable (FR-1.RST.003). */
+function checkClearanceModel(): Finding[] {
+  const findings: Finding[] = [];
+  try {
+    assertScopeTokensPresent(); // every default scope token ∈ SHIPPED_ENTITY_TYPES (OD-186)
+  } catch (e) {
+    findings.push({ gate: 'clearance', message: (e as Error).message });
+  }
+  try {
+    assertNoRestrictedRoleDefault(); // FR-1.RST.001 — Restricted is never a role default
+  } catch (e) {
+    findings.push({ gate: 'clearance', message: (e as Error).message });
+  }
+  if (DEFAULT_CLEARANCES['Standard User'].length !== 0) {
+    findings.push({ gate: 'clearance', message: `Standard User has ${DEFAULT_CLEARANCES['Standard User'].length} default clearance row(s) — Standard is implicit, expected none` });
+  }
+  if (isAutoInjectable('restricted')) {
+    findings.push({ gate: 'clearance', message: `Restricted is auto-injectable — FR-1.RST.003 requires it is never auto-injected (#2)` });
+  }
+  return findings;
+}
+
 function runCheck(): Finding[] {
   const findings = [
     ...checkCatalogParity(),
@@ -229,10 +291,11 @@ function runCheck(): Finding[] {
     ...checkMatrixCompleteness(),
     ...checkSeedCompleteness(),
     ...checkFailClosed(),
+    ...checkClearanceModel(),
   ];
   if (findings.length === 0) {
     console.log(
-      `✓ rbac check: CATALOG ≡ PERMISSION_NODES.md (${CATALOG.length} nodes) · all four fields present · admin matrix renders every node · ${THIRTEEN_CATEGORIES.length} categories + ${C0_STUB_NODES.length} C0 stubs seeded · fail-closed default holds.`,
+      `✓ rbac check: CATALOG ≡ PERMISSION_NODES.md (${CATALOG.length} nodes) · all four fields present · admin matrix renders every node · ${THIRTEEN_CATEGORIES.length} categories + ${C0_STUB_NODES.length} C0 stubs seeded · fail-closed default holds · clearance model integrity (scope tokens ⊆ entity_types, no Restricted role default, Standard implicit).`,
     );
   } else {
     console.error(`✗ rbac check: ${findings.length} finding(s):`);

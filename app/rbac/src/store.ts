@@ -30,24 +30,40 @@ export interface UserRoleRow {
   role_id: string;
   active: boolean;
 }
+/** restricted_grants (schema.md §2). Per-named-individual only (grantee_user_id NOT NULL — no role column,
+ *  structurally never a role default, FR-1.RST.001). `reason` mandatory; revoke = soft-delete via revoked_at
+ *  (instant, effective next query, FR-1.RST.002). ISSUE-018 read the active rows for can(); ISSUE-019 owns the
+ *  grant/revoke flows, so the full audit columns (id/granter/reason/granted_at/revoked_by) are surfaced here. */
 export interface RestrictedGrantRow {
+  id?: string;
   grantee_user_id: string;
+  granter_user_id?: string;
+  reason?: string;
   entity_id: string | null;
   entity_type: string | null;
+  granted_at?: string;
   revoked_at: string | null; // null = active
+  revoked_by?: string | null;
 }
 /** sensitivity_clearances (schema.md §2). tier ∈ {confidential, personal}; standard is implicit, Restricted
- *  is per-individual via restricted_grants. entity_type_scope null = Global. ISSUE-018 seeds the per-role
- *  DEFAULT rows only; the grant/revoke/review flows + entity-scoped narrowing are ISSUE-019. */
+ *  is per-individual via restricted_grants (never a tier here — the enum can't hold it). entity_type_scope
+ *  null = Global. ISSUE-018 seeds the per-role DEFAULT rows; ISSUE-019 adds the grant/revoke/review flows +
+ *  the entity-scoped narrowing. `id`/`granted_by`/`last_reviewed_at` are present on stored rows (the review
+ *  cadence reads last_reviewed_at; a grant/auto-revoke targets a row by id). */
 export interface ClearanceRow {
+  id?: string;
   role_id: string | null;
   user_id: string | null;
   tier: 'confidential' | 'personal';
   entity_type_scope: string | null; // null = Global
+  granted_by?: string | null;
+  granted_at?: string;
+  last_reviewed_at?: string | null; // null = never reviewed since grant → cadence measured from granted_at
 }
 export interface AuditRow {
   audit_type: string;
   actor_identity: string;
+  actor_type?: 'user' | 'agent' | 'system'; // schema.md §Types actor_type enum; the scheduler audits as 'system'
   action: string;
   target_type: string | null;
   target_entity_id: string | null;
@@ -106,6 +122,20 @@ export interface RbacStore {
   seedClearance(row: ClearanceRow): Promise<void>;
   roleClearances(roleId: string): Promise<ClearanceRow[]>;
 
+  // ── Clearance grant/revoke/review (ISSUE-019). ────────────────────────────────────────────────────
+  // A clearance has NO revoked_at column (schema.md §2) — revoke is a hard delete of the row. The review
+  // cadence reads last_reviewed_at (null ⇒ measure from granted_at) and either touches it (confirm) or
+  // deletes the row (fail-closed auto-revoke). listClearances returns every stored row (seed + granted).
+  insertClearance(row: ClearanceRow): Promise<ClearanceRow>; // returns the row incl. its assigned id
+  deleteClearance(id: string): Promise<boolean>; // true ⇒ a row was removed (revoke / auto-revoke)
+  touchClearanceReview(id: string, reviewedAt: string): Promise<boolean>; // set last_reviewed_at (confirm)
+  listClearances(): Promise<ClearanceRow[]>;
+
+  // ── Restricted grant/revoke (ISSUE-019). ──────────────────────────────────────────────────────────
+  insertRestricted(row: RestrictedGrantRow): Promise<RestrictedGrantRow>; // returns the row incl. its id
+  revokeRestrictedById(id: string, revokedBy: string, revokedAt: string): Promise<boolean>; // instant soft-delete
+  listRestricted(): Promise<RestrictedGrantRow[]>;
+
   // Audit sink (append-only).
   appendAudit(row: AuditRow): Promise<void>;
   audits(): Promise<AuditRow[]>;
@@ -113,6 +143,11 @@ export interface RbacStore {
 
 let __id = 0;
 const nextId = () => `id-${++__id}`;
+
+/** Fallback provisioning timestamp for a seeded clearance whose granted_at the caller didn't supply. Deliberately
+ *  old ("unknown-age seed is stale") so an un-timestamped seed fails TOWARD review, never toward silent staleness
+ *  (#3). The seed path (seedDefaultClearances) passes the real provisioning time; the live DDL uses now(). */
+export const SEED_PROVISION_TS = '2000-01-01T00:00:00.000Z';
 
 // ── The in-memory fake reference model ────────────────────────────────────────────────────────────
 export class InMemoryRbacStore implements RbacStore {
@@ -183,10 +218,78 @@ export class InMemoryRbacStore implements RbacStore {
     const dup = this.clearances.some(
       (c) => c.role_id === row.role_id && c.user_id === row.user_id && c.tier === row.tier && c.entity_type_scope === row.entity_type_scope,
     );
-    if (!dup) this.clearances.push(row);
+    // Mirror the DDL defaults the live INSERT relies on (schema.md §2): id gen_random_uuid, granted_at now().
+    // A seed row WITHOUT these masked the review-cadence sweep (undefined id, no age) — a fake-vs-schema drift.
+    if (!dup) {
+      this.clearances.push({
+        id: row.id ?? nextId(),
+        role_id: row.role_id,
+        user_id: row.user_id,
+        tier: row.tier,
+        entity_type_scope: row.entity_type_scope,
+        granted_by: row.granted_by ?? null,
+        granted_at: row.granted_at ?? SEED_PROVISION_TS,
+        last_reviewed_at: row.last_reviewed_at ?? null,
+      });
+    }
   }
   async roleClearances(roleId: string): Promise<ClearanceRow[]> {
-    return this.clearances.filter((c) => c.role_id === roleId);
+    return this.clearances.filter((c) => c.role_id === roleId).map((c) => ({ ...c }));
+  }
+
+  async insertClearance(row: ClearanceRow): Promise<ClearanceRow> {
+    const stored: ClearanceRow = {
+      id: row.id ?? nextId(),
+      role_id: row.role_id,
+      user_id: row.user_id,
+      tier: row.tier,
+      entity_type_scope: row.entity_type_scope,
+      granted_by: row.granted_by ?? null,
+      granted_at: row.granted_at ?? '1970-01-01T00:00:00.000Z',
+      last_reviewed_at: row.last_reviewed_at ?? null,
+    };
+    this.clearances.push(stored);
+    return { ...stored };
+  }
+  async deleteClearance(id: string): Promise<boolean> {
+    const before = this.clearances.length;
+    this.clearances = this.clearances.filter((c) => c.id !== id);
+    return this.clearances.length < before;
+  }
+  async touchClearanceReview(id: string, reviewedAt: string): Promise<boolean> {
+    const row = this.clearances.find((c) => c.id === id);
+    if (!row) return false;
+    row.last_reviewed_at = reviewedAt;
+    return true;
+  }
+  async listClearances(): Promise<ClearanceRow[]> {
+    return this.clearances.map((c) => ({ ...c }));
+  }
+
+  async insertRestricted(row: RestrictedGrantRow): Promise<RestrictedGrantRow> {
+    const stored: RestrictedGrantRow = {
+      id: row.id ?? nextId(),
+      grantee_user_id: row.grantee_user_id,
+      granter_user_id: row.granter_user_id,
+      reason: row.reason,
+      entity_id: row.entity_id,
+      entity_type: row.entity_type,
+      granted_at: row.granted_at ?? '1970-01-01T00:00:00.000Z',
+      revoked_at: row.revoked_at,
+      revoked_by: row.revoked_by ?? null,
+    };
+    this.restricted.push(stored);
+    return { ...stored };
+  }
+  async revokeRestrictedById(id: string, revokedBy: string, revokedAt: string): Promise<boolean> {
+    const row = this.restricted.find((g) => g.id === id && g.revoked_at === null);
+    if (!row) return false; // absent or already revoked — idempotent, never a silent double-revoke
+    row.revoked_at = revokedAt;
+    row.revoked_by = revokedBy;
+    return true;
+  }
+  async listRestricted(): Promise<RestrictedGrantRow[]> {
+    return this.restricted.map((g) => ({ ...g }));
   }
 
   // ADR-004 atomic guards. The body runs to completion synchronously (NO await between the count-check and

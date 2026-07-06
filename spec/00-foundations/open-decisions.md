@@ -2641,3 +2641,65 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   live run, THAT is the fork (log a follow-up OD then).
 - **Status:** 🟡 OPERATOR-DEFERRED — AF-135 owed at first-live-deployment onboarding before any client goes live; does
   not block Checkpoint 3 / Stage 4 (R1). Tracked on ISSUE-047 §9 + the feasibility register.
+
+---
+
+## OD-186 — Default clearance-scope tokens: the "finance entities" set + per-deployment `entity_types` portability 🟢 RESOLVED (2026-07-06, operator-decided, ISSUE-019 gate build, session 70)
+
+- **OD-186** **Surfaced building the ISSUE-019 gate (FR-1.CLR.002 default-clearance seed).** The per-role default
+  clearances scope above-Standard tiers to entity types (design-doc L438–441): HR → *team member entities*, Finance →
+  *finance entities*, Account Manager → *assigned clients*. Two gaps the design leaves implicit, both #2-relevant (a
+  wrong clearance scope = over-clearance or a role that can't do its job):
+  1. **HR + Account Manager map cleanly** to exactly one default `entity_types` token each — **`Team Member`** and
+     **`Client`** (both in the shipped ~22-kind `config_values['entity_types']` default, config-registry §A). The
+     `entity_type_scope text` column is singular (schema.md §2), and the ISSUE-020 RLS `user_clearances` helper
+     compares a row's **concrete** entity type against the scope token — so one clearance row = one entity-type scope,
+     `null` = Global. "Assigned clients" is the entity **type** `Client` here; the *assignment* (which specific clients)
+     is a visibility/ownership concern owned by ISSUE-020/022, not a clearance-scope token.
+  2. **"Finance entities" is NOT a single `entity_types` token** — the design never enumerates the set.
+- **Decision (operator, 2026-07-06):**
+  - **(a) Finance = Confidential scoped to the four finance-domain types `{Invoice, Contract/Retainer, Financial Period,
+    Deal}`**, seeded as **one `sensitivity_clearances` row per type** (four rows). Matches the design's Finance Agent
+    remit — "invoice status, retainer tracking, payment flagging" (L3437). (Option chosen over a 2-type minimal set and
+    over global-defer.)
+  - **(b) Portability = seed the concrete default tokens** (`Team Member`, `Client`, the four finance types) **matching
+    the shipped default `entity_types`, and FAIL LOUD at provisioning if any seeded scope token is absent from the
+    deployment's `entity_types` at boot** (#3 — a silently-skipped scope is invisible over-restriction). A deployment
+    that renames/removes a default type re-grants the affected clearance via the clearance UI (`UI-CLEARANCE-MGMT`,
+    ISSUE-021). (Option chosen over "validate + silently skip missing".)
+- **Consumers:** `DEFAULT_CLEARANCES` + `FINANCE_ENTITY_TYPES` + the boot-time `assertScopeTokensPresent(entityTypes)`
+  guard in `app/rbac/src/clearance.ts` (ISSUE-019). Standard User seeds **no** clearance row (Standard is implicit).
+  Restricted is **never** a default (OD-027 / FR-1.RST.001) — the `clearance_tier` enum can't even hold it.
+- **Status:** 🟢 RESOLVED — seeds the ISSUE-019 default-clearance model + AC-1.CLR.002.1; no schema change (existing
+  `entity_type_scope` column); no new migration.
+
+---
+
+## OD-187 — Clearance review cadence targets user-scoped grants only; role-default clearances are never auto-revoked by the sweep 🟢 RESOLVED (2026-07-06, ISSUE-019 gate build, session 70 — adversarial-verification catch)
+
+- **OD-187** **Surfaced by the ISSUE-019 independent adversarial verification (a BLOCKER catch).** FR-1.CLR.005 says
+  "surface **above-Standard** clearances for Super Admin review on a configurable cadence," with an opt-in
+  `CFG-clearance_review_fail_closed` that AUTO-REVOKES an un-actioned overdue review. Role-DEFAULT clearances
+  (`sensitivity_clearances.role_id` set — e.g. Finance's Confidential-finance defaults, Admin's Global
+  Confidential+Personal) are technically above-Standard rows too. **The first-cut `reviewOverdueClearances` swept
+  every clearance including these** → with `fail_closed=true`, ~90 days post-provisioning the nightly job would
+  **hard-delete every role's baseline clearance fleet-wide** (a #1 access-loss on the security substrate) with no
+  human ever having "confirmed" a role default (there is no per-role-default confirm UI — that's role management).
+  The offline test masked it by provisioning defaults at `NOW` and reviewing at `NOW`.
+- **Decision (safety-obvious — a periodic job must never silently delete a role's security baseline; #1 wins over
+  a literal reading of "above-Standard"):** the review cadence targets **user-scoped clearances only** (the
+  explicit per-individual grants a Super Admin made and might forget — `user_id` set, `role_id` null). A
+  **role-default clearance is out of the auto-revoke cadence entirely** — it is part of the role's definition and
+  is changed through **role management (ISSUE-021)**, not by the periodic sweep. (A future "periodically re-affirm
+  role defaults" need, if it arises, is a *flag-only* role-config review, never an auto-revoke — a separate OOS,
+  not built now.)
+- **Consumers:** `reviewOverdueClearances` (`app/rbac/src/clearance.ts`) skips `user_id === null` rows; pinned by
+  two tests — a user grant IS swept (both branches), a long-overdue role default under `fail_closed=true` is NOT
+  (the role-baseline substrate stays intact). Also fixes the sibling audit-attribution bug the verifier caught:
+  the sweep now audits `actor_type='system'` (was falsely `'user'` on the live adapter, a #3 audit corruption).
+- **Status:** 🟢 RESOLVED — no schema change; the cadence is user-scoped by design. Kin to OD-028 (which resolved
+  the un-actioned-review *handling*; this resolves its *subject scope*).
+
+<!-- Next OD number: OD-188 -->
+
+
