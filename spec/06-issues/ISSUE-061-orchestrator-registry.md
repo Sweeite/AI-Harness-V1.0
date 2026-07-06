@@ -2,7 +2,7 @@
 id: ISSUE-061
 title: Orchestrator + 7-step routing + agents registry
 epic: H — agent design
-status: ready
+status: in-progress
 github: "#61"
 ---
 

@@ -1,0 +1,20 @@
+{
+  "name": "@harness/tool-optimisation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-036 — the four C3 runtime cost/quality optimisations built ONCE into the shared connector runtime (ISSUE-032) so every connector inherits them: confidence-gated tool selection (FR-3.OPT.001 — below CFG-tool_selection_confidence_threshold → ask, never call a possibly-wrong tool, log the ask), run-scoped read cache (FR-3.OPT.002 — repeat identical read served from cache; a write is structurally ineligible, never cached, never served; discarded at run end), connector batching (FR-3.OPT.003 — group batch-eligible reads to the connector's documented limit, clamp/reject over-limit, non-batching connectors fall back to individual calls), and graceful degradation (FR-3.OPT.004 — a missing tool logs the gap, completes the doable part, and attaches a STRUCTURED, MANDATORY-TO-READ gap field so a downstream consumer cannot present the partial as complete; a fully blocking dependency raises a recoverable pause, never a hard fail — #3 at the tool grain). Rests on ADR-007 (containment-first: degradation never masks a gap) + ADR-004 (idempotency is the write-side guard that pairs with never-cache-writes). No schema of its own; reads tools + idempotency_ledger. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter for the event_log emission, authored to the 0001 baseline DDL — NOT run live.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

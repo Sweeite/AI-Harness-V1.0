@@ -1,0 +1,21 @@
+{
+  "name": "@harness/write-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-035 — write tools + the seven hard limits at the connector grain (C3 ACT; FR-3.ACT.001/002, NFR-SEC.004/005, ADR-001/004/006/007). The generic write-path gate built once in the shared runtime so every connector inherits it: a category=write tool carries risk_level + requires_approval and, when requires_approval=true, routes the proposed action to the C6 approval queue BEFORE any external effect (FR-3.ACT.001); every autonomous write is classified by the C6 hard-limit code gate (@harness/hard-limits) before it can reach a consequential effect — a hit is blocked fail-closed, logged, alerted, with no C3 approve path (FR-3.ACT.002). Wires the seven at the connector grain (email→draft, #3 delete pre-empted at the scope grant AC-3.CONN.005.3, #4 cross-client physically impossible ADR-001, #6 self-approve barred by construction, #7 tool-content-as-instructions via the boundary tag) and hands the un-overridable code-gate enforcement to C6/ISSUE-055. ApprovalQueue port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the baseline guardrail_log/task_queue DDL — NOT run live. AF-068 (containment red-team) is GREEN via ISSUE-055/ISSUE-003 and reused here, not re-run live.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

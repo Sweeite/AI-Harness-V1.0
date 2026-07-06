@@ -48,7 +48,7 @@ summary is reachable at `aal1`.
 | Table | Human-path read | Human-path write | Agent path |
 |---|---|---|---|
 | `profiles` | self-row (`auth.uid() = id`) **OR** caller holds any User-Management-category node | `PERM-user.deactivate` (deactivation — the only `profiles` write path; self-row edits are not PERM-gated) | service_role |
-| `support_requests` | `PERM-support.view` | **public INSERT-only** intake (cannot SELECT existing) + `PERM-support.resolve` for updates | — |
+| `support_requests` | `PERM-support.view` (aal2) | **public INSERT-only** intake — `anon`/`authenticated` may INSERT a `status='pending' and assigned_to is null` row but can never SELECT existing rows; this is the ONE table whose intake is intentionally **not** aal2-gated (pre-auth "Trouble signing in?" form, FR-0.REC.002) + `PERM-support.resolve` (aal2) for updates. **No DELETE** (resolved = immutable history, FR-0.REC.005; the FR-0.REC.007 stale-sweep read runs as service_role). Concrete policies: migration `0014` (`support_requests_public_insert` / `_view` / `_resolve`). | service_role (stale-sweep read) |
 | `webhook_secrets` / `connector_credentials` | **none** (never surfaced) | — | service_role only (Vault decrypt) |
 | `webhook_replay_cache` | none | — | service_role |
 | `roles` / `role_permissions` | any authenticated (read) | `PERM-system.role_manage` (Super Admin) | service_role reads for helpers |

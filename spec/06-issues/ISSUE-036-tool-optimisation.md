@@ -2,7 +2,7 @@
 id: ISSUE-036
 title: Tool optimisation — confidence-gate, run-cache, batch, graceful degrade
 epic: D — tool layer
-status: ready
+status: in-progress
 github: "#36"
 ---
 

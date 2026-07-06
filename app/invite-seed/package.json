@@ -1,0 +1,21 @@
+{
+  "name": "@harness/invite-seed",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-015 — Invite + seed bootstrap (C0). Invite-only account genesis and the first-boot Super-Admin seed. Owns: the InviteSeedStore port + in-memory fake reference model + supabase-store.ts live pg adapter (authored to app/silo/migrations/0001_baseline.sql — profiles / support_requests / roles / user_roles / event_log / access_audit — NOT run live). No custom invite-token table (OD-014): native Supabase invite/OTP link only, capped ≤24h (AF-074, LIVE-owed). The seed's exactly-once creation is closed with an ADR-004 atomic guard (pg_advisory_xact_lock + the user_roles unique(user_id) constraint) — not a bare check-then-create — so concurrent boots mint exactly one Super Admin. SMTP send-side failure is surfaced explicitly to the issuer, never a false 'sent' (#3). Setup wires to UI-2FA-ENROLL / OAuth-connect (ISSUE-013/014) but does not own the factor logic; partial Option-B never activates.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

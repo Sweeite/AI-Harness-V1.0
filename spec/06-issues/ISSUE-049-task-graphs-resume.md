@@ -2,7 +2,7 @@
 id: ISSUE-049
 title: Task graphs + idempotency keys + resume-from-incomplete-step
 epic: F — harness
-status: ready
+status: in-progress
 github: "#49"
 ---
 

@@ -1,0 +1,21 @@
+{
+  "name": "@harness/task-graphs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-049 (C5 GRP — FR-5.GRP.001–004 + NFR-PERF.007). Versioned, dependency-ordered task graphs the harness executes deterministically: the append-only task_graph_versions store with mandatory change_reason (change-control mirrored from C4), graph resolution at dequeue with a LOUD recorded error for a graph-less type (never left silently pending, #3), the chain_depth_limit ceiling honoured as a visible reject (never a silent truncation), per-task/per-step collision-resistant idempotency keys committed no later than the side effect (ADR-004 §4 ledger pattern), and resume-from-first-incomplete-step reusing preserved outputs (reads the ISSUE-050 durable originals). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the baseline DDL (task_graph_versions / task_history) — NOT run live. AF-112 (crash-window key-before-side-effect + catch-up dedup at scale) + AF-115 (originals retention) are LOAD/EVAL — the offline crash-window/property portions are proven; the live posture is owed.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@harness/task-queue": "file:../task-queue",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

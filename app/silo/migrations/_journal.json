@@ -15,6 +15,13 @@
     { "tag": "0007_stage3_event_types", "file": "0007_stage3_event_types.sql", "transactional": false },
     { "tag": "0008_connector_runtime_triggers", "file": "0008_connector_runtime_triggers.sql", "transactional": true },
     { "tag": "0009_guardrails_append_only", "file": "0009_guardrails_append_only.sql", "transactional": true },
-    { "tag": "0010_guardrail_escalation_nullfix", "file": "0010_guardrail_escalation_nullfix.sql", "transactional": true }
+    { "tag": "0010_guardrail_escalation_nullfix", "file": "0010_guardrail_escalation_nullfix.sql", "transactional": true },
+    { "tag": "0011_stage4_event_types", "file": "0011_stage4_event_types.sql", "transactional": false },
+    { "tag": "0012_rate_limit_deferred", "file": "0012_rate_limit_deferred.sql", "transactional": true },
+    { "tag": "0013_task_graph_versions_append_only", "file": "0013_task_graph_versions_append_only.sql", "transactional": true },
+    { "tag": "0014_support_requests_rls", "file": "0014_support_requests_rls.sql", "transactional": true },
+    { "tag": "0015_guardrail_redacted_at", "file": "0015_guardrail_redacted_at.sql", "transactional": true },
+    { "tag": "0016_agents_version_discipline", "file": "0016_agents_version_discipline.sql", "transactional": true },
+    { "tag": "0017_stage4_indexes", "file": "0017_stage4_indexes.sql", "transactional": false }
   ]
 }

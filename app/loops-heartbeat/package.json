@@ -1,0 +1,21 @@
+{
+  "name": "@harness/loops-heartbeat",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-051 (C5 LOP — FR-5.LOP.001-005). The harness loop layer that DRIVES recurring work (not the work itself): three default cadence loops (fast/medium/slow) config-extensible at boot (ADR-005 Inngest cron registered at boot), running independently/in-parallel, with a code DB-condition idle short-circuit before the orchestrator is woken (no LLM call on an idle tick — ADR-003 §5 idle floor), no-concurrent-same-loop overlap prevention (skip or queue exactly ONE pending run on overrun), single-catch-up-not-backfill dedup on missed runs (leaning on the ISSUE-048 queue + ISSUE-049 graph idempotency keys — AF-112 offline portion), per-run logging with timestamp + outcome, a detected-miss loop_missed signal, and a three-consecutive-failure loop-failure heartbeat that is NEVER silent (#3). Reads task_queue + task_graph_versions; WRITES only event_log. No new table (ISOLATION). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the baseline DDL — NOT run live (AF-112 LOAD/EVAL owed at the Stage-4 checkpoint).",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "@harness/task-queue": "file:../task-queue"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

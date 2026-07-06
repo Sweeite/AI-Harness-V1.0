@@ -1,0 +1,22 @@
+{
+  "name": "@harness/approval-tiers",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-056 (C6 APR + ESC) — the human-in-the-loop control layer: the three-tier approval classifier (auto/soft/hard) with a non-downgradable mandatory-hard FLOOR (all external comms — no sub-type exemption per OD-161 — financial ops, Confidential/Restricted memory ops, + the FR-6.HRD.004 gated extensions), default-hard-if-uncertain (#2 fail-safe); contextual reviewer routing with no-self-approval (initiator ≠ approver — the human-tier expression of hard limit #6) + fallback/escalate; the C6/C5 seam (C6 sets requires_approval + tier, C5 holds/resumes — call into @harness/task-queue, never re-implement the state machine); the escalation/flagged workflow (guardrail hit → pause → flagged, most-restrictive multi-fire precedence, notify + queue-place, the three resolutions approve/reject/modify with already-applied side-effects shown + human-visible compensation task — NEVER auto-rollback (OD-010/#2), no-silent-abandon escalation timeout over BOTH flagged and awaiting_approval wait-points); soft auto-execute reversible-only on approval_soft_timeout + Hold-for-full-review promotion (soft→explicit, one-directional, OD-120); and the surface-04 approval-queue view model (filter chips, tier/hold badges, soft countdown, live/degraded/reconnecting honesty, stale-action guard). A hard_limit row is NEVER approvable (#2) and NEVER carries an Approve affordance. Port + in-memory FAKE reference model mirroring the baseline DDL; supabase-store.ts is the live pg adapter authored to app/silo/migrations/0001_baseline.sql (guardrail_log + task_queue + access_audit + the CHECK not(guardrail_type='hard_limit' and status='approved')) — NOT run live offline. Ship gate: AF-068 (containment red-team) must be GREEN — currently owed-to-live, listed in residualAFs.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "@harness/task-queue": "file:../task-queue",
+    "@harness/realtime": "file:../realtime"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -21,7 +21,13 @@ ADR-003 (cost), ADR-004 (sole-writer memory), ADR-006 (static data-driven RLS), 
 - **Timestamps:** `timestamptz`; server-authoritative (`now()`), never client-asserted (AC-7.ALR.005.3).
 - **Versioned tables** (`prompt_layers`, `tools`, `agents`, `task_graph_versions`, `execution_plans`)
   are **append-only-by-version**: an edit inserts a new row with `previous_version_id` + a non-empty
-  `change_reason`; prior versions are never overwritten.
+  `change_reason`; prior versions are never overwritten. This is backstopped at the DB with a
+  `BEFORE UPDATE OR DELETE` trigger (fires regardless of role, incl. `service_role`) on the tables that
+  have one: `prompt_layers` (migration `0004`), `task_graph_versions` (migration `0013` — any UPDATE/DELETE
+  of an existing version row is forbidden; a graph edit inserts a NEW version, FR-5.GRP.002 / change-control),
+  and `agents` (migration `0016` — DELETE forbidden and the version-lineage columns `id`/`version`/
+  `previous_version_id`/`change_reason`/`created_at`/`created_by` are immutable in place; an edit is a new
+  version, FR-8.REG.004). See "Immutability enforcement — versioned tables" below.
 - **Audit sinks** (`event_log`, `guardrail_log`, `access_audit`, `config_audit_log`) are **append-only**;
   the only mutation is a controlled forward status transition or a redaction-tombstone on erasure.
   **This is enforced by a DB trigger, NOT by RLS** — the writing path is `service_role`, which bypasses
@@ -78,6 +84,22 @@ begin
        and (new.action_blocked = old.action_blocked or (old.action_blocked = false and new.action_blocked = true)) then
       return new;
     end if;
+    -- (c) OD-074 / FR-7.LOG.007.4 one-way redaction-tombstone (migration 0015): redacted_at null→ts, description
+    -- scrubbed to the '[redacted]' sentinel, every OTHER field immutable. The ONLY in-place content mutation
+    -- guardrail_log permits; distinguishable from a covert rewrite (which leaves redacted_at null and is rejected).
+    -- The C7 export integrity check (AC-7.LOG.007.3) treats it as an authorized redaction (NFR-CMP.007), not a tamper.
+    if old.redacted_at is null and new.redacted_at is not null
+       and new.description = '[redacted]'
+       and new.status = old.status
+       and new.task_id is not distinct from old.task_id
+       and new.guardrail_type = old.guardrail_type
+       and new.action_blocked = old.action_blocked
+       and new.reviewed_by is not distinct from old.reviewed_by
+       and new.reviewed_at is not distinct from old.reviewed_at
+       and new.escalated_at is not distinct from old.escalated_at
+       and new.created_at = old.created_at then
+      return new;
+    end if;
   elsif tg_table_name = 'injection_quarantine' then   -- OD-182 (migration 0009): shadow-retain sink, now bound
     -- quarantined_content / guardrail_log_id / created_at are immutable forever (#1). A write-once human_decision
     -- (null → discard|approved_safe) and a monotonic escalated_at stamp are the only legitimate mutations; a
@@ -112,9 +134,36 @@ create trigger t_append_only before update or delete on injection_quarantine   -
 
 Belt-and-braces: also `revoke delete on {these four + `injection_quarantine` (OD-182)} from anon, authenticated`
 so a normal-role DELETE can never even reach the trigger; only `service_role` can DELETE at all, and only inside
-a `app.retention_prune='on'` transaction (OD-180). (`event_log`/`access_audit`/`config_audit_log` add a
-`redacted_at timestamptz` column; retention pruning is a separate privileged job — the whitelisted DELETE
-path above — not an ordinary app/service DELETE.)
+a `app.retention_prune='on'` transaction (OD-180). (`event_log`/`access_audit`/`config_audit_log` — and now
+`guardrail_log` (migration `0015`, branch (c) below) — carry a `redacted_at timestamptz` column; retention
+pruning is a separate privileged job — the whitelisted DELETE path above — not an ordinary app/service DELETE.)
+
+### Immutability enforcement (versioned tables — append-only-by-version, fires regardless of role)
+
+The append-only-by-version guarantee (Global rules) is likewise bound at the table with a `BEFORE UPDATE OR
+DELETE` trigger, so even the RLS-exempt `service_role` writer cannot rewrite history. Two Stage-4 additions
+(both mirror the `prompt_layers` idiom from migration `0004`, `search_path=''`-pinned, with a belt-and-braces
+`revoke update, delete … from anon, authenticated`):
+
+```sql
+-- task_graph_versions (migration 0013 · FR-5.GRP.002 / change-control · #1): the whole existing version row
+-- is frozen — any UPDATE or DELETE raises; a graph edit inserts a NEW version (version = prior+1,
+-- previous_version_id = prior.id). DB backstop to the app-layer SupabaseGraphStore.putVersion gate.
+create or replace function public.task_graph_versions_block_mutation() returns trigger ...
+  -- raises on any UPDATE/DELETE of an existing version: "append-only by version … insert a NEW version instead".
+create trigger trg_task_graph_versions_no_update
+  before update or delete on task_graph_versions for each row execute function ...;
+
+-- agents (migration 0016 · FR-8.REG.004 / #1): DELETE forbidden (a rollback is a NEW version, never a delete);
+-- on UPDATE the version-lineage columns (id, version, previous_version_id, change_reason, created_at,
+-- created_by) are immutable — an edit is an INSERT of a new version. SCOPE-honest (Rule 0): this migration
+-- freezes the version-lineage columns only; it does NOT yet force content edits (description / memory_scope /
+-- tools_allowed) through the version chain — that lands with the agent-builder surface (ISSUE-067 / OD-080),
+-- so the `enabled` routing toggle (REG.005) is left mutable in place for now.
+create or replace function public.enforce_agents_version_lineage() returns trigger ... ;
+create trigger trg_agents_version_lineage
+  before update or delete on agents for each row execute function ...;
+```
 
 ---
 
@@ -160,7 +209,12 @@ create type event_type          as enum ('task_started','tool_called','memory_re
                                           'approval_queue_stale','cost_threshold_breach','loop_missed',
                                           'reporter_push',
                                           'authz_revoked_midtask','rls_harness_divergence',
-                                          'webhook_verified','webhook_replay_dropped','webhook_rate_throttled','webhook_failure_alert');   -- FR-7.ALR.004 alert types (6) + FR-7.MGM.001.3 reporter-attempt log + FR-0.WHK observability
+                                          'webhook_verified','webhook_replay_dropped','webhook_rate_throttled','webhook_failure_alert',
+                                          'email_send_ok','email_send_failed','invite_bounced','account_activated',
+                                          'support_request_created','support_notification_sent','support_notification_failed','support_reescalation',
+                                          'rate_limit_throttled','rate_limit_paused','rate_limit_backoff','rate_limit_halt_escalated',
+                                          'tool_selection_ask','tool_unavailable',
+                                          'task_graph_missing','task_graph_chain_depth_over_limit');   -- +16 Stage-4 slice events (migration 0011)
 -- OD-170 (2026-07-03, Phase-6 gap-sweep change-control): +'authz_revoked_midtask' (FR-1.RLS.007 mid-task
 -- authorization-stop → event_log, C1 L702) and +'rls_harness_divergence' (FR-1.RLS.008 divergence signal →
 -- event_log, C1 L722/726). Both FRs mandate an event_log write but the enum admitted no matching value — a
@@ -170,10 +224,18 @@ create type event_type          as enum ('task_started','tool_called','memory_re
 -- throttle→event_log), +'webhook_failure_alert' (FR-0.WHK.005 threshold alert). Same class as OD-170: the WHK FRs
 -- mandate event_log writes but the enum admitted no matching value. Additive/expand-contract-safe; applying it as a
 -- live silo migration (a 0002 enum-add) is owed at the ISSUE-017 onboarding live run (OD-172).
+-- Stage-4 (migration 0011, expand-contract-safe): +16 values feeding the append-only event_log from five
+-- Stage-4 slices — ISSUE-015 invite/seed (email_send_ok/email_send_failed/invite_bounced/account_activated,
+-- FR-0.INV.003/.005/.007), ISSUE-016 support-recovery (support_request_created/support_notification_sent/
+-- support_notification_failed/support_reescalation, FR-0.REC.002/.006/.007), ISSUE-034 rate-limiting
+-- (rate_limit_throttled/rate_limit_paused/rate_limit_backoff/rate_limit_halt_escalated, FR-3.RL.003-006),
+-- ISSUE-036 tool-optimisation (tool_selection_ask/tool_unavailable, FR-3.OPT.001/.004), ISSUE-049 task-graphs
+-- (task_graph_missing/task_graph_chain_depth_over_limit, FR-5.GRP.001 / NFR-PERF.007). Same class as OD-170.
 create type notification_read   as enum ('unread','read','actioned');
 create type alert_type          as enum ('task_failure_spike','queue_backup','memory_confidence_drop',
                                           'approval_queue_stale','hard_limit_hit','cost_threshold_breach','loop_missed',
-                                          'proactive','alert_delivery_misconfigured','alert_engine_stalled');
+                                          'proactive','alert_delivery_misconfigured','alert_engine_stalled',
+                                          'support_request');   -- +ISSUE-016 support-recovery admin notification (FR-0.REC.006; migration 0011)
 
 -- Agents (C8)
 create type step_failure_mode   as enum ('retry','skip_and_continue','halt_and_escalate');
@@ -468,6 +530,21 @@ create table idempotency_ledger (                        -- net-new (FR-3.CONN.0
   result          jsonb,
   created_at      timestamptz not null default now()
 );
+
+create table rate_limit_deferred (                       -- net-new (FR-3.RL.004 persisted 95% deferral queue; migration 0012)
+  id              uuid primary key default gen_random_uuid(),
+  connector       text not null,
+  window_label    text not null,                         -- the tracker window this call was paused against
+  run_after       timestamptz not null,                  -- = the window reset_at at enqueue time
+  risk_level      text,                                  -- carried across the pause so drain can re-route
+  irreversible    boolean not null default false,        -- an irreversible write never queues (it halts); kept for drain-time assertion
+  urgency         text not null,                         -- 'urgent' | 'background' (explicit, FR-3.RL.003)
+  idempotency_key text,                                  -- present for writes → drain re-consults idempotency_ledger
+  enqueued_at     timestamptz not null default now(),
+  drained_at      timestamptz                            -- null = pending; set when drained (survives restart)
+);  -- durable so a runtime restart never silently drops a paused call (AC-3.RL.004.1-2, #3). NO client_slug; carries
+-- only the 0002 default_deny RLS floor (written/read by the connector runtime as service_role, RLS-exempt — ADR-006).
+-- Drain scan served by rate_limit_deferred_due_idx (indexes.md; built CONCURRENTLY in migration 0017).
 ```
 
 ## 5. Prompt Content  (C4)
@@ -556,6 +633,7 @@ create table guardrail_log (                              -- append-only
   reviewed_by   uuid references profiles(id),
   reviewed_at   timestamptz,
   escalated_at  timestamptz,                              -- ⊕ net-new owed to C6 (server-owned)
+  redacted_at   timestamptz,                              -- one-way redaction-tombstone target (§Immutability branch (c); FR-7.LOG.007.4 / OD-074) — added migration 0015 (reverses the 0001 H43 exclusion now C7/ISSUE-077 owns the erasure)
   created_at    timestamptz not null default now(),
   check (not (guardrail_type = 'hard_limit' and status = 'approved'))  -- AC-6.LOG.001.2: no override
 );

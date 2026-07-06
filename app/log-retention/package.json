@@ -1,0 +1,21 @@
+{
+  "name": "@harness/log-retention",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-077 — the C7 observability backbone above the ISSUE-011 skeleton: three-sink retention + compliance redaction-tombstone (event_log/guardrail_log; config_audit_log is ISSUE-010), the client-presentable all-or-nothing guardrail_log export (PERM-gated), the mgmt-plane read side (health-reporter allow-list, independent-heartbeat server-authoritative staleness evaluator [AF-118/AF-120], health grid + cross-deployment alerts + backup-health + cost overview contracts), the five RBAC-gated dashboard data contracts (panel->producer map, answer-mode pill, mobile push routing), and the feedback-flywheel + benchmarking substrate. Built with the house port+fake pattern; the live pg adapter (supabase-store.ts) is authored to the ISSUE-008 0001 DDL, NOT run in this offline half. The Supabase Management API backup-health read (ADR-008) is stubbed offline.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@harness/support-recovery",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-016 — the C0 REC area (login support / 'trouble signing in'). The public 3-field intake that files a `pending` support_requests row (FR-0.REC.001/.002), the PERM-support.view/.resolve-gated queue + pending→in_progress→resolved status machine with actor+timestamp per transition and resolved-is-immutable history (FR-0.REC.003/.005), Super-Admin+Admin notification on submit (FR-0.REC.006), and the scheduled stale-request re-escalation over pending rows older than CFG-support.stale_request_minutes (FR-0.REC.007). Port + in-memory fake reference model (mirrors the ISSUE-008 support_requests DDL + the public-INSERT / PERM-gated RLS boundary); supabase-store.ts is the live pg adapter authored to that DDL. Authors NO new DDL — the support_requests table + support_status enum land in ISSUE-008 baseline; the RLS policy + the three event_type/alert_type additions are proposed to the orchestrator in results/proposed-shared-spec.md. Consumes the ISSUE-018 PERM-support.* nodes as default-deny stubs via the SupportAuthz port (backed by @harness/rbac can() live).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

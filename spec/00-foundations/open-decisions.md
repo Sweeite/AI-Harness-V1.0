@@ -2700,6 +2700,51 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 - **Status:** 🟢 RESOLVED — no schema change; the cadence is user-scoped by design. Kin to OD-028 (which resolved
   the un-actioned-review *handling*; this resolves its *subject scope*).
 
-<!-- Next OD number: OD-188 -->
+## OD-188 — Live persistence mechanism for Hold-for-full-review (`guardrail_log`) ⚪ OPEN (deferred to the Checkpoint-4 live session)
+
+- **Surfaced by:** the ISSUE-056 (approval-tiers) Stage-4 fan-out — `app/approval-tiers/results/proposed-shared-spec.md`
+  DELTA-2. The Hold-for-full-review path (AC-6.APR.003.3 / OD-120) promotes a soft item to explicit approval while
+  the `guardrail_log` row **stays `pending`** (a human is mid-review). The reference model records the promotion by
+  appending a note to `description`. On the live row that is (a) a `pending→pending` UPDATE and (b)
+  `new.description <> old.description` — both disqualified by the `enforce_audit_append_only()` whitelist → the live
+  `holdForFullReview` throws `ERR_ESCALATED_AT_NEEDS_DELTA` rather than half-doing it. The offline logic + AC test
+  fully prove the *behaviour* (ISSUE-056 26/26); only live *persistence* under the append-only trigger is blocked.
+- **Options:**
+  - **(A) Add a nullable server-owned column `guardrail_log.held_for_review_at timestamptz` + a one-way `null→set`,
+    status-unchanged, description-unchanged whitelist branch** (identical shape to the 0015 redaction-tombstone /
+    0009 escalation stamp). Keeps `description` immutable and makes Hold a first-class, queryable state for the
+    surface-04 badge. **[RECOMMENDED]**
+  - (B) Reuse a generic server-owned one-way stamp mechanism for any such column; `held_for_review_at` rides it.
+  - (C) Don't persist (Hold offline-only) — **rejected** (#3: the live Hold state would be invisible).
+- **Recommendation:** Option A. It is change-control on the LIVE audit-immutability trigger (kin to OD-074/OD-182),
+  so it is **deferred to the operator-present live session** — authored + applied + proven live in one pass (as a
+  new migration, next free tag after `0017`), not authored blind offline. Until then the live Hold path throws loud
+  (never a silent half-write).
+- **Status:** ⚪ OPEN — deferred to Checkpoint-4 live session. No offline blocker (ISSUE-056 integrated offline).
+
+---
+
+## OD-189 — `awaiting_clarification` as a distinct `task_status` value (vs reusing `awaiting_approval`) ⚪ OPEN (deferred to ISSUE-053 / live reconciliation)
+
+- **Surfaced by:** the ISSUE-061 (orchestrator) Stage-4 fan-out — `app/orchestrator/results/proposed-shared-spec.md`
+  item C. ORC.006 (OD-077) sets a task to an **awaiting-clarification** state when routing confidence is below the
+  `orchestrator_confidence_threshold`. The C5 `task_status` enum (ISSUE-048) is
+  `pending|running|awaiting_approval|completed|failed|flagged` — with **no `awaiting_clarification`**. The
+  orchestrator fake models clarification as a distinct status; the live `QueueGate` adapter must map to whatever C5
+  lands.
+- **Options:**
+  - **(A) Add a distinct `task_status` value `awaiting_clarification`** (a C5/ISSUE-048-owned additive enum change).
+    Keeps "a human answering a clarifying question" distinguishable from "a human approving an action" in My-Queue,
+    surfaces, and metrics. **[RECOMMENDED]**
+  - (B) Reuse `awaiting_approval` semantics for clarification — conflates two different waits, muddying the queue
+    view + approval metrics.
+- **Recommendation:** Option A — an additive enum value, **owned by C5** and reconciled when the run-pipeline
+  (ISSUE-053) wires the orchestrator↔queue path live. Not needed until that live wiring is exercised; the offline
+  orchestrator (35/35) models it distinctly.
+- **Status:** ⚪ OPEN — deferred to ISSUE-053 / live reconciliation. No offline blocker (ISSUE-061 integrated offline).
+
+---
+
+<!-- Next OD number: OD-190 -->
 
 

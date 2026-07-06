@@ -1,0 +1,20 @@
+{
+  "name": "@harness/rate-limiting",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-034 (C3 RL — FR-3.RL.001–008). The shared-runtime rate-limit subsystem: the rate_limit_tracker as the source of truth (before-call check / after-call increment, conservative vendor-header reconciliation), the graduated 80% / 95% / 429 backoff tiers, a PERSISTED (restart-durable) 95% deferral queue that re-consults the idempotency guard on drain, exponential backoff with jitter honouring Retry-After exactly when present, and the high-risk / irreversible-write halt-and-escalate branch (excluded from the 429 auto-retry path regardless of urgency). Per-connector config surface seeded from the dossiers; per-deployment physical tracker isolation (ADR-001). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the baseline DDL (0001_baseline.sql: rate_limit_tracker, idempotency_ledger) — NOT run live. Only EMITS rate-limit events; C7 surfaces them, C6 (ISSUE-058) owns the escalation machinery.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

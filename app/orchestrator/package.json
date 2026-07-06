@@ -1,0 +1,21 @@
+{
+  "name": "@harness/orchestrator",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-061 (C8 ORC/REG) — the data-driven agent layer's spine: the `agents` registry (version-discipline, empty-description reject, PERM-agents authority split OD-080, enabled-gated discovery, idempotent canonical-roster seed incl. the positive Comms/Finance seed check REG.006.3) plus the single orchestrator running the seven-step routing engine (classify → registry-read → score → build-plan → confidence-check → version+log → outcome-track), with the crash-window re-route guard (ORC.001.3) and the secondary-sink outcome-write guarantee (ORC.007.2). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the baseline DDL (agents / execution_plans / prompt_layers / event_log / task_queue) — NOT run live. Reads @harness/prompt-store (Layer-1 resolution) and @harness/task-queue (dequeue + awaiting-clarification status). Routing-accuracy/confidence/outcome claims rest on AF-121/122/126 (EVAL, owed to live).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

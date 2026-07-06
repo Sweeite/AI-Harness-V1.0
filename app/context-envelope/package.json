@@ -1,0 +1,20 @@
+{
+  "name": "@harness/context-envelope",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-050 — C5 ENV: the stateful context envelope (FR-5.ENV.001), full-envelope-per-step read/append/pass-forward with no cold start (FR-5.ENV.002), and inter-step compression above compression_threshold_tokens that summarises older outputs into the working envelope for the next step's prompt WHILE retaining the full uncompressed originals in the durable task_history store (FR-5.ENV.003 / OD-055 — economy, never knowledge loss / #1). Runtime envelope lives in Inngest step-state; task_history is the C5-owned durable originals tail (the AF-115 authoritative store) that resume + audit read back. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the 0001_baseline task_history DDL — NOT run live (owed at the Stage-4 checkpoint). AF-114 (compression fidelity, EVAL) + AF-115 (retention lifetime, DOCS/SPIKE) are residual live gates.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
