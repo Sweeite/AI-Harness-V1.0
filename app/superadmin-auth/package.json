@@ -1,0 +1,20 @@
+{
+  "name": "@harness/superadmin-auth",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-014 — Super-Admin password + TOTP 2FA + brute-force defense (C0 AUTH.005–009 app-layer). The non-OAuth sign-in slice for EXTERNAL (operator-side) Super Admins only: email+password grant that hands off same-page to a TOTP challenge (does NOT itself mint a session), TOTP enrollment (otpauth:// secret → QR/manual-entry → aal2-capable factor), the same-page 2FA challenge that elevates to aal2 and soft-locks after mfa_softlock_threshold wrong codes, the IP-independent per-account brute-force soft-lock (counter → temporary block + Super-Admin alert), CAPTCHA/Turnstile fail-closed gate + leaked-password enforcement, and the app-layer aal1→forced-challenge gate. Writes the C7 event_log security sink using the 7 auth event_type values added by migration 0007. Port + in-memory fake reference model (SuperAdminAuthStore); supabase-store.ts is the live pg adapter authored to the existing auth.* (Supabase-managed) + event_log DDL — NOT run live. AF-077 is 🟢 (ISSUE-005 spike); the LIVE attack-simulation + TOTP enrollment against a throwaway Supabase Auth project are 🧑 you-present, owed to onboarding. No net-new app table, no migration. Consumes ISSUE-013 (app/auth) session establishment; does NOT edit it.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

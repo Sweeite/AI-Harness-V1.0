@@ -2,7 +2,7 @@
 id: ISSUE-084
 title: Retention configs + isolation (client_slug deleted) + residency + legal-review gate
 epic: K — infra & compliance
-status: in-progress
+status: done
 github: "#84"
 ---
 

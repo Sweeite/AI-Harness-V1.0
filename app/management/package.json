@@ -1,0 +1,21 @@
+{
+  "name": "@harness/management",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-012 — the management-plane bootstrap (C10 FR-10.MGT.001-004 / C7 FR-7.MGM.001-005 / NFR-SEC.002 / NFR-INF.010 / NFR-OBS.006). The client_registry + push-fed deployment_health store, the internal_token lifecycle (mint + dual-store + encrypted-at-rest + rotate + revoke), the internal_token-authed ingest endpoint (operational-metadata allow-list, business-data rejected at the boundary, idempotent re-delivery), the outbound health-reporter (allow-list at source + local event_log push-attempt log), the independent-heartbeat staleness evaluator (AF-118) with server-authoritative window math (AF-120) and frozen-not-dead reconciliation, and the cross-deployment read contracts. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the DDL — NOT run live (the live ingest/staleness/rotation proofs against the mgmt Supabase are the orchestrator's live capstone, see results/).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

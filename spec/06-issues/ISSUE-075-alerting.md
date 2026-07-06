@@ -2,7 +2,7 @@
 id: ISSUE-075
 title: Alerting — seven rules + routing + escalation + notification centre + fails-loud
 epic: J — observability
-status: in-progress
+status: done
 github: "#75"
 ---
 

@@ -52,12 +52,12 @@ export const REALTIME_SURFACES: readonly SurfaceId[] = ['approval_queue', 'notif
 export const SURFACE_CATALOGUE: readonly SurfaceSpec[] = [
   { id: 'approval_queue', transport: 'realtime', trustCritical: true },
   { id: 'notification_centre', transport: 'realtime', trustCritical: true },
-  { id: 'health_metrics', transport: 'poll', pollIntervalKey: 'poll_interval_health_seconds', defaultPollSeconds: 30 },
-  { id: 'event_log', transport: 'poll', pollIntervalKey: 'poll_interval_event_log_seconds', defaultPollSeconds: 60 },
-  { id: 'memory_health', transport: 'poll', pollIntervalKey: 'poll_interval_memory_health_seconds', defaultPollSeconds: 300 },
-  { id: 'self_improvement', transport: 'poll', pollIntervalKey: 'poll_interval_self_improvement_seconds', defaultPollSeconds: 600 },
-  { id: 'cost_tracking', transport: 'poll', pollIntervalKey: 'poll_interval_cost_tracking_seconds', defaultPollSeconds: 300 },
-  { id: 'agent_health', transport: 'poll', pollIntervalKey: 'poll_interval_agent_health_seconds', defaultPollSeconds: 60 },
+  { id: 'health_metrics', transport: 'poll', pollIntervalKey: 'polling_interval_health_metrics_s', defaultPollSeconds: 30 },
+  { id: 'event_log', transport: 'poll', pollIntervalKey: 'polling_interval_event_log_s', defaultPollSeconds: 60 },
+  { id: 'memory_health', transport: 'poll', pollIntervalKey: 'polling_interval_memory_health_s', defaultPollSeconds: 300 },
+  { id: 'self_improvement', transport: 'poll', pollIntervalKey: 'polling_interval_self_improvement_s', defaultPollSeconds: 600 },
+  { id: 'cost_tracking', transport: 'poll', pollIntervalKey: 'polling_interval_cost_tracking_s', defaultPollSeconds: 300 },
+  { id: 'agent_health', transport: 'poll', pollIntervalKey: 'polling_interval_agent_health_s', defaultPollSeconds: 60 },
 ] as const;
 
 const CATALOGUE_BY_ID = new Map<SurfaceId, SurfaceSpec>(SURFACE_CATALOGUE.map((s) => [s.id, s]));

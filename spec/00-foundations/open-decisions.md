@@ -2215,7 +2215,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 > reconciliation — do not reuse. OD-169 (ranking sub-signal normalization for FR-2.RET.005, resolved above) was minted
 > by the ISSUE-025 build-test reconciliation — do not reuse. OD-170 (event_type enum additions, resolved below)
 > was minted by the ISSUE-020 build-test gap-sweep — do not reuse. OD-171 (Phase-6 connector build-order fork, 🟡
-> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟢 RESOLVED session 64 — confirmed LIVE at the ISSUE-080 capstone, AF-064 🟢, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. OD-180 (retention-prune whitelist on the audit-sink immutability trigger, change-control on NFR-CMP.006; 🟢 RESOLVED session 66 operator Option A, migration 0005, at file end) — do not reuse. OD-181 (config key→PERM-config map = explicit registry transcription + fail-closed default; 🟢 RESOLVED session 66, at file end) — do not reuse. OD-182 (audit-immutability trigger widened to permit a monotonic escalation stamp on guardrail_log + injection_quarantine, change-control on the live append-only invariant; 🟢 RESOLVED session 69, migration 0009, at file end) — do not reuse. OD-183 (AC-3.CONN.005.2 Drive-scope default deferred from the ISSUE-032 runtime to the ISSUE-040 Google connector; 🟢 RESOLVED session 69, at file end) — do not reuse. Next OD number: OD-184.
+> OPERATOR, resolved below) — do not reuse. OD-172 (webhook live-vendor verification re-gated to per-connector onboarding, 🟢 operator-decided Option A, resolved above) — do not reuse. OD-173 (Railway promotion mechanism = Git-merge, no native promote; 🟢 RESOLVED session 64 — confirmed LIVE at the ISSUE-080 capstone, AF-064 🟢, at file end) — do not reuse. OD-174 (manual Railway GitHub App install as a consent-gated onboarding step + pre-flight verify; 🟡 recommendation, minted by the Railway dossier, at file end) — do not reuse. OD-175 (per-client login-OAuth registration re-gated from the ISSUE-007 gate to per-deployment onboarding, FR-10.PRV.002; 🟢 resolved session 61, at file end) — do not reuse. OD-176 (migration harness = raw-SQL + custom runner, not drizzle-kit generate/schema.ts; 🟢 RESOLVED operator-ratified session 62, at file end) — do not reuse. OD-177 (9-agent roster seed: name amended to slug-only via FR-8.REG.001 change-control, memory_scope owed to ISSUE-063; 🟢 RESOLVED session 62, at file end) — do not reuse. OD-178 (config_values defaults seed deferred from 0001 to ISSUE-010; 🟢 resolved+ratified session 62, at file end) — do not reuse. OD-179 (event_type enum lacks values for the FR-0.WHK.* webhook event_log writes; 🟢 RESOLVED session 63 via additive change-control, live enum-add migration owed at onboarding, at file end) — do not reuse. OD-180 (retention-prune whitelist on the audit-sink immutability trigger, change-control on NFR-CMP.006; 🟢 RESOLVED session 66 operator Option A, migration 0005, at file end) — do not reuse. OD-181 (config key→PERM-config map = explicit registry transcription + fail-closed default; 🟢 RESOLVED session 66, at file end) — do not reuse. OD-182 (audit-immutability trigger widened to permit a monotonic escalation stamp on guardrail_log + injection_quarantine, change-control on the live append-only invariant; 🟢 RESOLVED session 69, migration 0009, at file end) — do not reuse. OD-183 (AC-3.CONN.005.2 Drive-scope default deferred from the ISSUE-032 runtime to the ISSUE-040 Google connector; 🟢 RESOLVED session 69, at file end) — do not reuse. OD-184 (Stage-3 config-key registration: keys pre-registered, zero map/SQL change; 076 key-name bug fixed, 044/075 items deferred fail-closed-safe; 🟢 RESOLVED session 69, at file end) — do not reuse. OD-185 (AF-135 freeze-propagation completeness spike deferred to first-live-deployment onboarding; 🟡 OPERATOR-DEFERRED session 69, at file end) — do not reuse. Next OD number: OD-186.
 
 ---
 
@@ -2591,3 +2591,53 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   genuine contract/registry ACs; the tautological `005.2` fixture test is removed from ISSUE-032 and the AC is tracked as
   owed at ISSUE-040. No FR text changes — the AC simply verifies where the code that satisfies it actually lives.
 - **Status:** 🟢 RESOLVED (build-test DoD-scope correction; carries a coverage obligation onto ISSUE-040).
+
+---
+
+## OD-184 — Stage-3 config-key registration: no map/SQL change needed (keys pre-registered); package-level reconciliations only 🟢 RESOLVED (2026-07-05, Phase D, session 69)
+
+- **OD-184** **Deferred-item resolution (Phase C flagged config-key registration as OD-181-coupled + owed).** An
+  independent audit of the five Stage-3 config-touching packages (044/057/075/076/084) against `config-registry.md`
+  §§A–N, `app/config-store/src/keygroup.ts` (`KEY_NODE_MAP`), and `0003_config_values_rls.sql` (`config_key_group()`)
+  found that **every delegable key these slices read is ALREADY an explicit entry in both maps** (added when the
+  registry was built, session 28, and transcribed per OD-181). **Zero `KEY_NODE_MAP` edits, zero `config_key_group()`
+  CASE edits, and NO new migration are required** to register them — the earlier Phase-C deferral was over-cautious.
+- **The genuine work was package-level reconciliation, not registration:**
+  - **✅ ISSUE-076 key-name bug FIXED (this session):** `app/realtime/src/surfaces.ts` read `poll_interval_<surface>_seconds`,
+    but the registry §J uses `polling_interval_<surface>_s` (and `health`→`health_metrics`). A mismatched key **fails
+    closed → `PERM-config.infra`** (over-restrictive, not a #2 leak) and a live cadence edit would silently miss.
+    Renamed all six to the registry names; 13/13 tests still green.
+  - **✅ ISSUE-075 `SLACK_WEBHOOK_URL` is correctly a SECRET** (group N → `secret_manifest`, never `config_values`/`KEY_NODE_MAP`)
+    — verified in `app/alerting/src/{types,supabase-store}.ts`. No change.
+  - **Deferred (fail-closed-SAFE, not blocking):** **`business_context.dynamic_fields`** (ISSUE-044) has **no registry
+    row**, so it correctly fails closed → `PERM-config.infra` (Super-Admin-only). If Admin-editability is wanted, a §G
+    registry row must be added via change-control first (spec→map, per OD-181) — owed at onboarding, not now.
+  - **Deferred (needs a decision, fail-closed meanwhile):** ISSUE-075's nine dotted `alert.*` per-rule threshold keys
+    do **not** exist in the registry; the registry §J already carries the same concepts under non-dotted names
+    (`task_failure_spike_threshold`, etc.). **Disposition: treat `alert.*` as the slice's internal slugs mapping onto the
+    existing §J keys; do NOT register a new `alert.*` family without an explicit registry change-control decision** (a new
+    unmapped family fails closed → infra either way — safe, but the source of truth must not fork).
+  - **Two default-value drifts to reconcile at the config-seed (registry wins):** `dynamic_field_freshness_threshold`
+    (package 604800s vs registry 30d) and `alert_email_enabled` (package `false` vs registry `true`).
+- **Status:** 🟢 RESOLVED — no authorization-map change; the one real bug (076 names) fixed + re-proven; the rest are
+  fail-closed-safe onboarding/change-control items recorded above so they are not lost (Rule 0).
+
+---
+
+## OD-185 — AF-135 (deployment-freeze-propagation completeness spike) deferred from launch-gate to first-live-deployment onboarding 🟡 OPERATOR-DEFERRED (2026-07-05, Phase D, session 69)
+
+- **OD-185** **Infra-gated launch spike (surfaced at the ISSUE-047 Checkpoint-3 close).** `AF-135` is a launch-gating
+  SPIKE (RP-1 / NFR-INF.012): freeze a real test deployment and confirm **every** dispatch path (event trigger,
+  scheduled loop, manual task, chained successor, cross-slice Inngest job) is blocked + logged, plus real-DB
+  status-ambiguity fail-closed. It requires a **live Railway deployment**, which is not set up this session (~$0
+  Railway credit; noted since session 59). The ISSUE-047 freeze-gate LOGIC is built + offline-proven (11/11 — every
+  dispatch path routes `assertNotFrozen`, block+log, fail-closed-on-ambiguity) and the two new `event_type` values
+  (`dispatch_frozen_blocked`, `ingest_failure`) are applied live (migration 0007).
+- **Decision (same class as OD-172 webhook-vendor deferral + AF-069 Path A restore).** Defer the **live** AF-135
+  completeness spike to the **first live client-deployment onboarding** (the first time a real Railway deployment
+  exists to freeze) — it is a **pre-go-live gate, NOT a Stage-4 dependency** (nothing in Stage 4 builds on the freeze
+  gate). ISSUE-047 flips `done` on its offline DoD; AF-135 stays 🔴/owed in `feasibility-register.md` with a loud
+  pre-go-live note. R2 is respected: the spike is **unrun**, not **failed** — no design fork; if it ever fails on the
+  live run, THAT is the fork (log a follow-up OD then).
+- **Status:** 🟡 OPERATOR-DEFERRED — AF-135 owed at first-live-deployment onboarding before any client goes live; does
+  not block Checkpoint 3 / Stage 4 (R1). Tracked on ISSUE-047 §9 + the feasibility register.

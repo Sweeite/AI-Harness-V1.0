@@ -2,7 +2,7 @@
 id: ISSUE-059
 title: Injection sanitization pipeline (4-step) + quarantine (retain + route-to-human)
 epic: G — guardrails
-status: in-progress
+status: done
 github: "#59"
 ---
 

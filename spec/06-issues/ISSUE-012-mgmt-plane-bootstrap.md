@@ -2,7 +2,7 @@
 id: ISSUE-012
 title: Management-plane bootstrap — client_registry + ingest + health push
 epic: A — foundations
-status: ready
+status: done
 github: "#12"
 ---
 
