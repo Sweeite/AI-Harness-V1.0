@@ -20,7 +20,7 @@ const allSql = [...files.values()].map((f) => f.sql).join("\n");
 const stripComments = (s: string) => s.replace(/--.*$/gm, "");
 const allDdl = stripComments(allSql);
 
-test("journal + files load: the 0001a-d baseline + the 0002-0005 Stage-2 migrations are present and ordered", () => {
+test("journal + files load: the 0001a-d baseline + the 0002-0005 Stage-2 + 0006-0010 Stage-3 migrations are present and ordered", () => {
   assert.deepEqual(journal.entries.map((e) => e.tag), [
     "0001_baseline",
     "0001b_indexes",
@@ -30,10 +30,19 @@ test("journal + files load: the 0001a-d baseline + the 0002-0005 Stage-2 migrati
     "0003_config_values_rls", // ISSUE-010 — config_values key-prefix RLS
     "0004_prompt_version_discipline", // ISSUE-042 — prompt_layers version-discipline trigger + RLS
     "0005_retention_prune_whitelist", // OD-180 — retention-prune whitelist on the audit-sink immutability trigger
+    "0006_profiles_owner_rls", // ISSUE-013 — profiles owner-reads-own RLS
+    "0007_stage3_event_types", // ISSUE-013+047 — 9 additive event_type values (transactional:false)
+    "0008_connector_runtime_triggers", // ISSUE-032 — tools version-discipline + idempotency_ledger immutability
+    "0009_guardrails_append_only", // ISSUE-060+059 / OD-182 — escalation-stamp widening + injection_quarantine bind
+    "0010_guardrail_escalation_nullfix", // OD-182 — NULL-safe task_id in the guardrail_log trigger branches
   ]);
   assert.equal(journal.entries.find((e) => e.tag === "0001b_indexes")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0002_rls_scaffold")!.transactional, true);
   assert.equal(journal.entries.find((e) => e.tag === "0005_retention_prune_whitelist")!.transactional, true);
+  // 0007 is transactional:false (ALTER TYPE ADD VALUE under autocommit); the rest of Stage-3 are transactional.
+  assert.equal(journal.entries.find((e) => e.tag === "0007_stage3_event_types")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0009_guardrails_append_only")!.transactional, true);
+  assert.equal(journal.entries.find((e) => e.tag === "0010_guardrail_escalation_nullfix")!.transactional, true);
 });
 
 test("every real migration passes the expand-contract discipline guardrails", () => {
