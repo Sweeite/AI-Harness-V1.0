@@ -188,6 +188,10 @@ export class InMemoryInjectionPipeline implements InjectionPipeline {
   readonly quarantine: QuarantineRow[] = [];
   /** task_id → status (the C5 task_queue mirror; a quarantine flips it to `flagged`). */
   readonly taskStates = new Map<string, TaskStatus>();
+  /** quarantine id → the content as originally RETAINED, snapshotted at insert. The #1 retain invariant is
+   *  "content is never lost or mutated after quarantine"; this snapshot is what allContentRetained() checks
+   *  the live row against, so a truncation/mutation is actually detected (not a `.length >= 0` tautology). */
+  private readonly retainedAtInsert = new Map<string, string>();
 
   constructor(config: InjectionConfig, scorer?: SemanticScorer) {
     this.config = validateConfig(config);
@@ -278,6 +282,8 @@ export class InMemoryInjectionPipeline implements InjectionPipeline {
       created_at: this.iso(now),
     };
     this.quarantine.push(qrow);
+    // Snapshot the retained content so allContentRetained() has a ground truth to compare against (#1).
+    this.retainedAtInsert.set(qrow.id, qrow.quarantined_content);
 
     // Pause + set flagged via FR-6.ESC.001 (owned by ISSUE-056). No further step runs until the flag resolves.
     if (read.task_id) this.taskStates.set(read.task_id, 'flagged');
@@ -436,9 +442,16 @@ export class InMemoryInjectionPipeline implements InjectionPipeline {
     throw new Error(ERR_QUARANTINE_NO_DELETE);
   }
 
-  /** True iff EVERY quarantine row still retains its content (the #1 sink-wide assertion). */
+  /** True iff EVERY quarantine row still retains its content verbatim (the #1 sink-wide assertion).
+   *  logic-sweep fix: the old predicate `q.quarantined_content.length >= 0` was a tautology (a string's .length
+   *  is ALWAYS >= 0), so a row truncated to '' or otherwise mutated still passed — vacuous, false assurance.
+   *  Now each row is compared against the content snapshotted at insert (retainedAtInsert): any truncation or
+   *  mutation of retained content — or a row with no snapshot — fails the assertion, giving it real teeth. */
   allContentRetained(): boolean {
-    return this.quarantine.every((q) => typeof q.quarantined_content === 'string' && q.quarantined_content.length >= 0);
+    return this.quarantine.every((q) => {
+      const original = this.retainedAtInsert.get(q.id);
+      return typeof q.quarantined_content === 'string' && original !== undefined && q.quarantined_content === original;
+    });
   }
 }
 
