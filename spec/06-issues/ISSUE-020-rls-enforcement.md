@@ -2,7 +2,7 @@
 id: ISSUE-020
 title: RLS enforcement — visibility/sensitivity/Restricted/aal2 + service_role path + mid-task revocation
 epic: B — identity & access
-status: blocked
+status: ready
 github: "#20"
 ---
 

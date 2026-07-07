@@ -2,7 +2,7 @@
 id: ISSUE-052
 title: Inngest execution engine + step retry + fan-out + DLQ
 epic: F — harness
-status: blocked
+status: ready
 github: "#52"
 ---
 

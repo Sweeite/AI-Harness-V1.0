@@ -2,7 +2,7 @@
 id: ISSUE-058
 title: Rate-limit guardrails + cost-ladder enforcement
 epic: G — guardrails
-status: blocked
+status: ready
 github: "#58"
 ---
 

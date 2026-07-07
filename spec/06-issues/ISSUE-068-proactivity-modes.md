@@ -2,7 +2,7 @@
 id: ISSUE-068
 title: Proactivity modes + action-autonomy matrix (Prepare-only, OD-161)
 epic: I — proactive
-status: blocked
+status: ready
 github: "#68"
 ---
 

@@ -2,7 +2,7 @@
 id: ISSUE-062
 title: Eight specialist definitions + per-agent hard limits
 epic: H — agent design
-status: blocked
+status: ready
 github: "#62"
 ---
 

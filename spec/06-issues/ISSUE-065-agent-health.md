@@ -2,7 +2,7 @@
 id: ISSUE-065
 title: Agent health / drift / dead-agent metrics + producer heartbeat (flag-never-auto-correct)
 epic: H — agent design
-status: blocked
+status: ready
 github: "#65"
 ---
 
