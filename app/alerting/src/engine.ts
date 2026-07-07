@@ -153,7 +153,13 @@ export class AlertEngine {
     // ── 3. unroutable → FAIL LOUD (AC-7.ALR.009.1 / AC-NFR-OBS.008.1) ──────────────────────────────
     // The alert itself already persists on the always-present dashboard (step 1). If it has NO deliverable
     // destination, raise a DISTINCT misconfigured critical to Super Admin + latch the mgmt-plane bit.
-    if (!hasResolvableDestination(alert.type, config, this.deps.roles)) {
+    // logic-sweep fix (engine.ts:156): the `recipient` computed at step 1 is the GROUND TRUTH of routability —
+    // it already covers the direct-to-reviewer stale-approval path (resolveRecipient short-circuits on
+    // approvalReviewer). hasResolvableDestination only inspects the routing rule + escalation chain and IGNORES
+    // that direct recipient, so a correctly-delivered stale-approval with no (non-required) approval_queue_stale
+    // rule would spuriously trip this #2/#3 critical. Gate on recipient === null — matching the DeliveryOutcome
+    // contract (resolvedRecipient is null iff unroutable). Only a genuinely-unroutable alert fails loud here.
+    if (recipient === null && !hasResolvableDestination(alert.type, config, this.deps.roles)) {
       const critId = await this.raiseMisconfiguredCritical(alert, nowMs);
       outcome.misconfiguredCriticalId = critId;
       // A misconfigured NON-critical alert is not itself further delivered; the loud signal is the critical.

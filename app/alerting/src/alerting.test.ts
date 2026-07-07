@@ -247,6 +247,31 @@ test("AC-7.ALR.003.1 — a stale-approval alert is delivered to its specific rev
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// AC-7.ALR.003.1 (regression, logic-sweep engine.ts:156) — a stale-approval that resolved to its reviewer
+// must NOT trip the misconfigured-critical just because config has no approval_queue_stale routing rule.
+// approval_queue_stale is non-critical and not required by validateConfigOrReject, so an omitted rule is a
+// VALID config. The direct-to-reviewer delivery IS the resolved destination; recipient (not the rule/chain
+// lookup) is the ground truth of routability.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+test("AC-7.ALR.003.1 (regression) — a reviewer-resolved stale-approval with no routing rule raises NO misconfigured critical", async () => {
+  // NO approval_queue_stale rule at all — only the required criticals are routed (a valid config).
+  const cfg = healthyConfig();
+  assert.equal(cfg.alert_routing_rules.approval_queue_stale, undefined); // precondition: no rule for this type
+  const { engine, notifications, health } = makeEngine(cfg);
+  const outcome = await engine.deliverStaleApproval("appr-1", "u-reviewer-bob", 4_000_000);
+  // teeth: it resolved to the named reviewer...
+  assert.equal(outcome.resolvedRecipient, "u-reviewer-bob");
+  // ...and did NOT spuriously fire the "alerting is broken" critical for a correctly-delivered alert...
+  assert.equal(outcome.misconfiguredCriticalId, undefined);
+  assert.equal(
+    (await notifications.all()).some((r) => r.type === "alert_delivery_misconfigured"),
+    false,
+  );
+  // ...nor latch the mgmt-plane health bit (which would pollute the Super Admin grid).
+  assert.equal(health.snapshot().alert_delivery_misconfigured, false);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
 // AC-7.ALR.003.2 — routing resolves through C1 roles; unresolvable → escalate (via chain), not drop
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────
 test("AC-7.ALR.003.2 — an unresolvable role escalates to the chain instead of being dropped", async () => {
