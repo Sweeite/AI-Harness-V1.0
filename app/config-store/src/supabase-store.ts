@@ -17,8 +17,8 @@
 //     which the trigger's redaction branch permits. Retention prune runs as a privileged job outside the
 //     app/service DELETE grant (schema.md L69-70) — modelled here but gated to the operator context.
 //   - config_values reads run as `authenticated` under the 0003 key-prefix RLS. The audit READ/EXPORT run
-//     as service_role (RLS-exempt) and therefore re-apply the SAME key-prefix scope in SQL via
-//     config_key_group(key) = any($perms) — otherwise service_role would over-return (#2).
+//     as the postgres owner (RLS-bypass) and therefore re-apply the SAME key-prefix scope in SQL via
+//     config_key_group(key) = any($perms) — otherwise the owner (RLS-bypass) would over-return (#2).
 //   - SECRET keys never reach this table (guarded in appendAudit, matching the fake) and credential
 //     material is redacted BEFORE the insert (redactCredentialMaterial) — no secret ever lands in a row.
 
@@ -47,7 +47,7 @@ export class SupabaseConfigStore implements ConfigStore {
 
   async readConfigValue(key: string, callerConfigPerms: readonly string[]): Promise<ConfigValueRow | null> {
     // Under the 0003 RLS, an authenticated session already sees only its group's rows; this adapter path
-    // is service_role, so re-apply the key-prefix scope explicitly (config_key_group is the SQL mirror).
+    // is the postgres owner (RLS-bypass), so re-apply the key-prefix scope explicitly (config_key_group is the SQL mirror).
     if (!callerConfigPerms.includes(configKeyGroup(key))) return null;
     const res = await this.pool.query<ConfigValueRow>(
       `select key, value, updated_at, updated_by from config_values where key = $1`,

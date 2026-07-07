@@ -13,7 +13,7 @@
 // verified until the capstone records evidence.
 //
 // Design notes tied to the three non-negotiables:
-//   - A retention-value write is service_role but re-applies the PERM-config.infra gate + the floor check
+//   - A retention-value write is under the postgres owner (RLS-bypass) but re-applies the PERM-config.infra gate + the floor check
 //     BEFORE the upsert, then appends a config_audit_log row in the SAME transaction — so a value can
 //     never be set without its audit (#3) nor below its floor (#2).
 //   - client_registry is on the MANAGEMENT deployment; the app-table writes go to the client silo, which

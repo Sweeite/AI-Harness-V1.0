@@ -13,7 +13,7 @@
 //      is never UPDATEd/DELETEd. (The append-only-by-version trigger + REVOKE are owed to the shared migration —
 //      see results/proposed-shared-spec.md; the adapter never issues an UPDATE/DELETE on `agents`.)
 //   #2 the OD-080 authority split is enforced at the store via the injected PermChecker (Super Admin only for
-//      capability edits; SA+Admin for description). RLS `service_role` is bypass — the app gate is the control.
+//      capability edits; SA+Admin for description). The postgres owner (RLS-bypass) is RLS-bypass — the app gate is the control.
 //   #3 the routing outcome write's failure is surfaced via the SECONDARY sink; the routing events INSERT onto
 //      event_log; nothing silently drops.
 

@@ -79,10 +79,10 @@ export const DOWNLOAD_RECORDS_PERM = 'PERM-compliance.download_records' as const
 
 // The port. Sync in the fake, modelled async for the DB adapter.
 export interface ConfigStore {
-  // ── config_values (RLS-scoped reads; writes are service_role / ISSUE-086) ──
+  // ── config_values (RLS-scoped reads; writes are under the postgres owner (RLS-bypass) / ISSUE-086) ──
   /** Read a single config value IFF the caller holds the owning PERM-config.* node (key-prefix RLS). */
   readConfigValue(key: string, callerConfigPerms: readonly string[]): Promise<ConfigValueRow | null>;
-  /** service_role upsert (the ISSUE-086 write path calls this AFTER validate; RLS-exempt). */
+  /** postgres-owner (RLS-bypass) upsert (the ISSUE-086 write path calls this AFTER validate; RLS-bypass). */
   putConfigValue(key: string, value: unknown, updatedBy: string | null, now: number): Promise<ConfigValueRow>;
 
   // ── secret_manifest — presence + last_rotated only ──

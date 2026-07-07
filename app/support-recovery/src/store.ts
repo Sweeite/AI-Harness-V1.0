@@ -88,7 +88,7 @@ export interface SupportStore {
   transition(actorId: string, id: string, to: SupportStatus, now: string): Promise<SupportRequestRow>;
   transitionsFor(actorId: string, id: string): Promise<StatusTransition[]>;
 
-  // Stale sweep source — system read (no auth.uid(); runs as service_role). Returns pending rows whose
+  // Stale sweep source — system read (no auth.uid(); runs as the postgres owner (RLS-bypass)). Returns pending rows whose
   // created_at is older than `cutoff` (now - stale_request_minutes). Read-only; never mutates (FR-0.REC.007).
   pendingOlderThan(cutoff: string): Promise<SupportRequestRow[]>;
 }
@@ -180,7 +180,7 @@ export class InMemorySupportStore implements SupportStore {
   }
 
   async pendingOlderThan(cutoff: string): Promise<SupportRequestRow[]> {
-    // System read (service_role, no auth.uid()) — the stale sweep runs off the RLS path (ADR-006). Read-only.
+    // System read (postgres owner (RLS-bypass), no auth.uid()) — the stale sweep runs off the RLS path (ADR-006 — runtime role = postgres owner per OD-193). Read-only.
     return this.requests.filter((r) => r.status === 'pending' && r.created_at < cutoff).map((r) => ({ ...r }));
   }
 

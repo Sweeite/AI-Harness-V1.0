@@ -17,7 +17,7 @@
 //   event_dedup_ledger        -- seen event ids, keyed (connector,event_id), idempotent receive (FR-3.TRIG.004)
 // Every mutating method is a SINGLE atomic statement (an upsert / insert-on-conflict), which also fixes the
 // review MAJOR (the old jsonb read-modify-write was a non-atomic lost-update over the whole array). The trigger
-// runtime writes as service_role, which bypasses the 0002 default_deny RLS floor by design (ADR-006).
+// runtime writes as the postgres owner (RLS-bypass), which bypasses the 0002 default_deny RLS floor by design (ADR-006 — runtime role = postgres owner per OD-193).
 
 import pg from 'pg';
 import type { Connector } from './seam.js';

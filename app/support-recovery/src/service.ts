@@ -109,7 +109,7 @@ export class SupportService {
    * `staleMinutes` (CFG-support.stale_request_minutes), re-alert all Super Admin + Admin (escalation) and emit
    * support_reescalation. Read-only over the requests (never mutates status) so a never-picked-up request
    * KEEPS re-alerting each run rather than vanishing silently (#3, bounded by the sweep cadence). Runs as
-   * service_role (no auth.uid()) off the RLS path (ADR-006).
+   * the postgres owner (RLS-bypass) (no auth.uid()) off the RLS path (ADR-006 — runtime role = postgres owner per OD-193).
    */
   async runStaleSweep(now: string, staleMinutes: number = DEFAULT_STALE_REQUEST_MINUTES): Promise<SweepResult> {
     const cutoff = new Date(new Date(now).getTime() - staleMinutes * 60_000).toISOString();

@@ -6,7 +6,7 @@
 // WRITES 'hard_limit' rows and RELIES on that schema check for the DB-level no-override guard.
 //
 // ⚠️ NOT YET RUN LIVE. The schema CHECK actually rejecting an approve, the append-only trigger, and the
-// row write under service_role (ADR-004 — the agent path is service_role) are proven at the Stage-3
+// row write under the postgres owner (RLS-bypass) (ADR-004 — the agent path runs as the owner (RLS-bypass); runtime role = postgres owner per OD-193) are proven at the Stage-3
 // checkpoint live capstone (results/issue-055-capstone.sql). This adapter is authored to the DDL so the
 // seam is real and typechecks; the InMemoryHardLimitGate is the proven offline reference model. Do NOT
 // claim these paths verified until the capstone records evidence.
@@ -65,7 +65,7 @@ export class SupabaseHardLimitGate implements HardLimitGate {
     let alertDropped = false;
 
     try {
-      // service_role INSERT (ADR-004 — the agent path is service_role). created_at + id defaulted by DDL.
+      // postgres-owner (RLS-bypass) INSERT (ADR-004 — the agent path runs as the owner (RLS-bypass); runtime role = postgres owner per OD-193). created_at + id defaulted by DDL.
       const res = await this.pool.query<{ id: string }>(
         `insert into guardrail_log (task_id, guardrail_type, description, action_blocked, status)
          values ($1, 'hard_limit', $2, true, 'pending')

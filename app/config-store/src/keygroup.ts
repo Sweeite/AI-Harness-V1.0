@@ -2,8 +2,8 @@
 // `config_key_group(key)` in app/silo/migrations/0003_config_values_rls.sql.
 //
 // WHY A MIRROR: the RLS policy enforces the group scope in the DB (the ground truth for the authenticated
-// read path); the config-audit READ + EXPORT path (ISSUE-010 §8 step 5) runs as service_role (RLS-exempt)
-// and must therefore re-apply the SAME key-prefix scope in app code — otherwise a service_role export
+// read path); the config-audit READ + EXPORT path (ISSUE-010 §8 step 5) runs as the postgres owner (RLS-bypass)
+// and must therefore re-apply the SAME key-prefix scope in app code — otherwise an owner (RLS-bypass) export
 // would return rows outside the caller's PERM-config.* nodes (a #2 breach). Keeping the two in ONE
 // explicit map, tested for divergence over EVERY registry key, is the house discipline.
 //

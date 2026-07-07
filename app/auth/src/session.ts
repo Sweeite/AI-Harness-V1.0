@@ -4,7 +4,7 @@
 // Auth session store, because the platform's real token minting is a live-checkpoint proof — but every RULE
 // the platform enforces (TTL expiry, single-use rotation, 10s reuse tolerance, reuse-detection whole-session
 // revocation, inactivity + absolute bounds enforced LAZILY at refresh, JWKS-local vs getUser revocation
-// checks, mid-task service_role continuation) is a decision this model makes and the AC tests exercise.
+// checks, mid-task postgres-owner (RLS-bypass) continuation) is a decision this model makes and the AC tests exercise.
 //
 // Determinism (house discipline): every method takes a logical `now` in epoch seconds. No Date.now(), no
 // random — a test supplies time, so windows are exact and results are reproducible.
@@ -15,7 +15,7 @@
 //   #2 never do what it shouldn't: an expired/reused/bounded token is REFUSED (no session granted on stale
 //      credentials); getUser() sees server-side logout that a local getClaims() cannot (FR-0.SESS.008).
 //   #3 never fail silently: every refusal returns a typed reason (never a silent hang); a benign expiry does
-//      not kill a running task — it continues as service_role and surfaces a re-auth prompt (FR-0.SESS.006/007).
+//      not kill a running task — it continues as the postgres owner (RLS-bypass) and surfaces a re-auth prompt (FR-0.SESS.006/007).
 
 import type { AuthConfig } from './config.js';
 
@@ -228,12 +228,12 @@ export class SessionManager {
 
   /**
    * FR-0.SESS.006 — mid-task continuation. A background task started by this session continues as
-   * `service_role` (off the RLS path, no auth.uid()) even after the client session expires — a BENIGN
+   * the postgres owner (RLS-bypass) (off the RLS path, no auth.uid()) even after the client session expires — a BENIGN
    * expiry does not halt it. (The revocation/deactivation halt that DOES stop a task is NFR-SEC.012 /
    * ISSUE-020, deliberately NOT implemented here.) Returns the run-context the task executes under.
    */
   continueBackgroundTask(session_id: string): { role: 'service_role'; auth_uid: null; halted: boolean } {
-    // Benign client-session expiry never halts a running task; it runs as service_role to completion.
+    // Benign client-session expiry never halts a running task; it runs as the postgres owner (RLS-bypass) to completion.
     return { role: 'service_role', auth_uid: null, halted: false };
   }
 }

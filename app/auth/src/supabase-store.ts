@@ -11,11 +11,12 @@
 // The InMemoryAuthStore is the proven reference model. Do NOT claim these code paths verified until the
 // checkpoint records live evidence.
 //
-// service_role vs authenticated (ADR-006): the login-side upsert + the event_log writes + the
-// task-continuation write run as service_role (RLS-exempt). The owner-reads-own guarantee is enforced by
-// the 0006 RLS policy for `authenticated` callers (a user reading their OWN dashboard). This adapter is
-// written for the service_role side (provisioning/runtime); readProfile is expressed with an explicit
-// caller=target predicate so it is safe even if ever run under service_role (defence in depth, #2).
+// postgres owner (RLS-bypass) vs authenticated (ADR-006 — runtime role = postgres owner per OD-193): the
+// login-side upsert + the event_log writes + the task-continuation write run as the owner (RLS-bypass). The
+// owner-reads-own guarantee is enforced by the 0006 RLS policy for `authenticated` callers (a user reading
+// their OWN dashboard). This adapter is written for the owner (RLS-bypass) side (provisioning/runtime);
+// readProfile is expressed with an explicit caller=target predicate so it is safe even if ever run under the
+// owner (RLS-bypass) (defence in depth, #2).
 
 import pg from 'pg';
 import type { OAuthProvider } from './config.js';

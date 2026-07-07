@@ -2,6 +2,20 @@
 
 - **Status:** Accepted
 - **Date decided:** 2026-06-23
+- **Amended:** 2026-07-07 (OD-193) — see *Amendment A1* below.
+
+> **Amendment A1 (2026-07-07, [[OD-193]] — runtime-role correction, not a decision change).**
+> Part 6 below and the design doc (`L1055`) name **`service_role`** as the RLS-bypassing role the backend
+> connects as. The session-73 live-adapter audit found the silo adapters actually connect as the **`postgres`
+> DB owner** (`rolbypassrls=t`), confirmed via `select current_user` on the canary. **The ADR's decision is
+> unchanged** — the backend runs off the RLS path with an RLS-bypassing role, and correctness rests on harness
+> RBAC + the ADR-004 sole-writer invariant, exactly as decided; only the *identity* of that role is corrected
+> from `service_role` to the `postgres` owner. This matters for a future RLS-grant audit: the two roles bypass
+> RLS identically, but `0001c_rls.sql` REVOKEs DELETE from `service_role` while the owner retains it (so the
+> retention/prune DELETEs work today only because the real role is the owner — [[OD-180]]). Wherever this ADR or
+> an adapter comment says "service_role" as the *runtime connection role*, read "postgres owner (RLS-bypass)".
+> RLS remains defence-in-depth for a future authenticated/PostgREST path. Operator-ratified (OD-193 Option A);
+> doc-only, no migration/reconnect.
 - **Resolves:** OD-006
 - **Affects:** Data model (the permission tables + RLS policies on every table), RBAC standard,
   the harness permission-check layer, memory read/retrieval path (ADR-002/003), Super Admin

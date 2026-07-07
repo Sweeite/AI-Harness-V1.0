@@ -13,7 +13,7 @@
 //      is appended via jsonb || (never overwritten). A hold into flagged persists work-in-progress to
 //      task_history (ISSUE-050's store) so nothing is discarded.
 //   #2 status writes run through the same ALLOWED_TRANSITIONS table (validated in TS before the UPDATE);
-//      `flagged` is set only by setFlagged. Reads/writes run as service_role (ADR-006 harness-enforced path).
+//      `flagged` is set only by setFlagged. Reads/writes run as the postgres owner (RLS-bypass) (ADR-006 harness-enforced path; runtime role = postgres owner per OD-193).
 //   #3 the staleness escalation INSERTs onto event_log; a task never silently drops out of awaiting_approval.
 
 import pg from 'pg';

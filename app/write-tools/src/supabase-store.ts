@@ -6,7 +6,7 @@
 // surface + the three-tier classification + escalation; this adapter only enqueues + reads back a decision.
 //
 // ⚠️ NOT YET RUN LIVE. The guardrail_log CHECK (no hard_limit approve), the append-only trigger, the
-// awaiting_approval task transition under service_role (ADR-006 — the agent path is service_role) are proven
+// awaiting_approval task transition under the postgres owner (RLS-bypass) (ADR-006 — the agent path runs as the owner (RLS-bypass); runtime role = postgres owner per OD-193) are proven
 // at the Stage-4 checkpoint live capstone, not here. This adapter is authored to the DDL so the seam is real
 // and typechecks; InMemoryApprovalQueue is the proven offline reference model.
 //

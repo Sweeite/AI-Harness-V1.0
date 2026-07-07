@@ -158,7 +158,7 @@ export class SupabaseSupportStore implements SupportStore {
   }
 
   async pendingOlderThan(cutoff: string): Promise<SupportRequestRow[]> {
-    // System read (service_role, no auth.uid()) — the stale sweep runs off the RLS path (ADR-006). Read-only.
+    // System read (postgres owner (RLS-bypass), no auth.uid()) — the stale sweep runs off the RLS path (ADR-006 — runtime role = postgres owner per OD-193). Read-only.
     const { rows } = await this.pool.query<SupportRequestRow>(
       `select ${SELECT_COLS} from support_requests where status = 'pending' and created_at < $1 order by created_at asc`,
       [cutoff],

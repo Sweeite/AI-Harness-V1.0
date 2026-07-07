@@ -6,7 +6,7 @@
 //
 // The `check` CLI runs the offline build-time gates (no DB, no network):
 //   (1) keygroup ≡ SQL — the TS configKeyGroup must not diverge from the 0003 SQL config_key_group in the
-//       cases the check can compare (a divergence would let the service_role export path scope differently
+//       cases the check can compare (a divergence would let the postgres-owner (RLS-bypass) export path scope differently
 //       from the authenticated RLS path — a #2 gap).
 //   (2) fail-closed default — an unknown key maps to the Super-Admin-only PERM-config.infra (never leaks).
 //   (3) redaction sanity — a known token shape is scrubbed; the classifier flags secret-shaped keys.
