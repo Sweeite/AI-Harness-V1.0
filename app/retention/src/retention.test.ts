@@ -218,6 +218,20 @@ test('AC-10.ISO.001.1 (negative) — the lint CATCHES a client_slug it should re
   assert.doesNotMatch(cbody, /(^|,)\s*client_slug\b/im);
 });
 
+test('AC-10.ISO.001.1 (nested-paren) — a client_slug AFTER a mid-table `);` is still scanned (logic-sweep index.ts:87)', async () => {
+  // REGRESSION: a multi-line parenthesised constraint whose closing paren wraps onto its own line puts a
+  // `\n);` INSIDE the table body. A non-greedy `([\s\S]*?)\n\)\s*;` terminator truncates the body there,
+  // so every column after it (here `client_slug`) escaped the identity scan — a #2/#3 silent false-clean.
+  const { tableBlocks, stripComments } = await import('./index.ts');
+  const evilSql = `create table evil (\n  id uuid primary key,\n  bounds int check (\n    id in (1,2,3)\n);\n  client_slug text not null\n);`;
+  const blocks = tableBlocks(evilSql);
+  // TEETH: the whole table body must be captured (not truncated at the inner `);`).
+  assert.equal(blocks.length, 1, 'the nested `);` must NOT split one table into a truncated block');
+  const body = stripComments(blocks[0]![1]);
+  // TEETH: the client_slug that sits AFTER the inner `);` is inside the linted body and IS caught.
+  assert.match(body, /(^|,)\s*client_slug\b/im, 'client_slug after a mid-table `);` must be scanned');
+});
+
 test('AC-10.ISO.001.2 / AC-NFR-SEC.001.2 — identity lives only in the registry; an app-row can never carry it', async () => {
   const s = await fresh();
   // Client identity is written to the management-plane registry — the ONE valid home.

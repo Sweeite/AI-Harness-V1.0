@@ -81,13 +81,33 @@ const BASELINE = join(HERE, '..', '..', 'silo', 'migrations', '0001_baseline.sql
 /** The client-identity column names the isolation invariant forbids on ANY application table. */
 const IDENTITY_COLUMNS = ['client_slug', 'client_id', 'tenant_id', 'tenant'] as const;
 
-/** Split the baseline SQL into per-table `create table … ( … );` blocks. Returns [tableName, body]. */
+/** Split the baseline SQL into per-table `create table … ( … );` blocks. Returns [tableName, body].
+ *
+ * logic-sweep fix (index.ts:87 tableBlocks): the old terminator `([\s\S]*?)\n\)\s*;` closed each block at
+ * the FIRST `\n);`, so a multi-line parenthesised constraint whose closing paren wraps onto its own line
+ * (a mid-table `\n);`) truncated the body — every column after it (e.g. a `client_slug`) escaped the
+ * identity scan, a #2/#3 silent false-clean. We now match the CREATE TABLE header, then walk the body
+ * tracking paren depth to find the TRUE top-level closing `)` before the statement's `;`, so nested `);`
+ * inside a constraint no longer ends the block early. */
 function tableBlocks(sql: string): Array<[string, string]> {
   const blocks: Array<[string, string]> = [];
-  const re = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_]*)\s*\(([\s\S]*?)\n\)\s*;/gi;
+  const head = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_]*)\s*\(/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(sql)) !== null) {
-    blocks.push([m[1]!.toLowerCase(), m[2]!]);
+  while ((m = head.exec(sql)) !== null) {
+    // `head` consumed through the opening `(`; walk from here tracking paren depth (starting at 1).
+    let depth = 1;
+    let i = head.lastIndex;
+    for (; i < sql.length && depth > 0; i++) {
+      const ch = sql[i];
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+    }
+    // On a balanced close, `i` sits just past the top-level `)`; the body is between the opening `(` and it.
+    if (depth === 0) {
+      blocks.push([m[1]!.toLowerCase(), sql.slice(head.lastIndex, i - 1)]);
+      // Resume scanning after this table's closing paren so nested `create table` text can't be re-matched.
+      head.lastIndex = i;
+    }
   }
   return blocks;
 }
@@ -114,6 +134,12 @@ function checkIsolationLint(): Finding[] {
   const blocks = tableBlocks(sql);
   if (blocks.length === 0) {
     return [{ gate: 'isolation-lint', message: `no create-table blocks parsed from the baseline — the isolation lint cannot run (a silent pass would be a #3 false-clean)` }];
+  }
+  // logic-sweep fix (index.ts:87): defence-in-depth — if the parser ever captures fewer tables than the raw
+  // `create table` count, some table's columns went unscanned. Fail LOUD rather than silently skip them.
+  const rawTableCount = (sql.match(/create\s+table\b/gi) ?? []).length;
+  if (blocks.length !== rawTableCount) {
+    return [{ gate: 'isolation-lint', message: `parsed ${blocks.length} table block(s) but the baseline declares ${rawTableCount} 'create table' statement(s) — the identity scan would miss ${rawTableCount - blocks.length} table('s) columns (a #3 false-clean); fix the parse before trusting the lint` }];
   }
   // (1) NO application table may declare a client-identity column (AC-10.ISO.001.1 / AC-NFR-SEC.001.1).
   for (const [table, rawBody] of blocks) {
