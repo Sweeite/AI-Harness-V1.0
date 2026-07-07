@@ -87,7 +87,13 @@ export async function handleInbound(ev: VerifiedEvent, deps: HandleDeps, now: nu
   }
   const normalized = parsed.event;
 
-  await store.recordEvent(ev.connector, ev.rawEventId, now);
+  // logic-sweep fix (BLOCKER pipeline.ts handleInbound): DO NOT record the event as seen here. Recording
+  // before the launch loop meant a partial launch failure (rule 2 of 3 throws) left the event marked seen,
+  // so the at-least-once redelivery (ADR-004) deduped and the un-launched rules were silently lost — an
+  // at-most-once effect (#1 lost effect / #3 silent failure), the opposite of the L10-11 contract. The
+  // event is now recorded only AFTER every matched task has launched (see below), so a mid-loop launch
+  // rejection propagates with the event UNrecorded and the redelivery re-runs the loop. This makes launch
+  // at-least-once per matched rule → launch must be idempotent per taskName (ISSUE-047+ C5 seam contract).
   await store.logEvent(
     {
       task_id: null,
@@ -105,9 +111,12 @@ export async function handleInbound(ev: VerifiedEvent, deps: HandleDeps, now: nu
   const defaults = await store.getDefaultTriggers(ev.connector);
   const def = defaults.find((d) => d.eventName === normalized.eventName);
   if (!def) {
+    // Terminal, launch-free outcome — safe to record seen now (nothing left to launch, so redelivery can dedup).
+    await store.recordEvent(ev.connector, ev.rawEventId, now);
     return { outcome: 'no_default_trigger', eventName: normalized.eventName };
   }
   if (!def.enabled) {
+    await store.recordEvent(ev.connector, ev.rawEventId, now);
     return { outcome: 'default_disabled', eventName: normalized.eventName };
   }
 
@@ -117,6 +126,9 @@ export async function handleInbound(ev: VerifiedEvent, deps: HandleDeps, now: nu
   for (const rule of rules) {
     if (!rule.enabled) continue;
     if (ruleMatches(rule, normalized)) {
+      // A launch that rejects (transient C5 outage) propagates out of handleInbound WITHOUT the event ever
+      // being recorded seen (recordEvent is below, after the loop) — so ADR-004 redelivery re-runs the loop
+      // and no matched rule is silently dropped. logic-sweep fix (BLOCKER): record-after-launch, not before.
       await launch(rule.taskName, normalized, now);
       launched.push(rule.taskName);
       await store.logEvent(
@@ -131,6 +143,11 @@ export async function handleInbound(ev: VerifiedEvent, deps: HandleDeps, now: nu
       );
     }
   }
+
+  // logic-sweep fix (BLOCKER): only NOW — every matched task has launched successfully — is the event marked
+  // seen. A mid-loop launch rejection above never reaches this line, so the event stays UNrecorded and the
+  // redelivery re-fires the remaining rules (at-least-once per rule; launch must be idempotent per taskName).
+  await store.recordEvent(ev.connector, ev.rawEventId, now);
 
   return { outcome: 'processed', eventName: normalized.eventName, launched };
 }

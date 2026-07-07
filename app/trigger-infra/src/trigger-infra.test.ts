@@ -220,6 +220,50 @@ test('AC-3.TRIG.004.2 — Slack scheme is HMAC-SHA256, deduped on event_id + a r
   assert.equal(launched.length, 1); // fired exactly once despite two deliveries
 });
 
+test('AC-3.TRIG.002.1 — a PARTIAL launch failure does not mark the event seen; redelivery re-fires the un-launched rule (at-least-once → exactly-once, #1/#3)', async () => {
+  // logic-sweep regression (pipeline.ts handleInbound): recordEvent must NOT persist before every matched
+  // task has launched. Two matching rules; the FIRST launch succeeds, the SECOND throws. Pre-fix the event
+  // was marked seen after R1 fired, so the redelivery deduped and R2 was silently lost forever.
+  const store = ghlStore();
+  await store.saveRule(
+    { connector: 'ghl', eventName: 'ContactCreate', conditions: [], taskName: 'task_a', enabled: true },
+    'admin@client',
+    NOW,
+  );
+  await store.saveRule(
+    { connector: 'ghl', eventName: 'ContactCreate', conditions: [], taskName: 'task_b', enabled: true },
+    'admin@client',
+    NOW,
+  );
+
+  const launched: string[] = [];
+  let failNext = true; // fail exactly the first task_b launch (transient task-queue outage), then heal
+  const flakyLaunch: LaunchTask = async (taskName) => {
+    if (taskName === 'task_b' && failNext) {
+      failNext = false;
+      throw new Error('task queue transiently down');
+    }
+    launched.push(taskName);
+  };
+
+  const inbound = ev({ verifiedPayload: { type: 'ContactCreate', tag: 'vip', locationId: 'loc1' }, rawEventId: 'partial-1' });
+
+  // First delivery: task_a launches, task_b rejects → handleInbound surfaces the failure (never silent).
+  await assert.rejects(() => handleInbound(inbound, { store, launch: flakyLaunch, armReady: armAlwaysReady }, NOW));
+  assert.deepEqual(launched, ['task_a']);
+
+  // The event MUST NOT be marked seen after a partial launch — otherwise the redelivery is deduped and
+  // task_b is lost forever. On redelivery (ADR-004 at-least-once) the pipeline must run the loop again.
+  assert.equal(await store.seenEvent('ghl', 'partial-1'), false, 'a partial launch must not mark the event seen (#1/#3)');
+
+  const second = await handleInbound(inbound, { store, launch: flakyLaunch, armReady: armAlwaysReady }, NOW);
+  assert.equal(second.outcome, 'processed');
+  // task_b (the previously-lost rule) fires on redelivery. task_a re-fires too — accepted per the finding's
+  // fix (launch must be idempotent per taskName); the invariant that matters is no rule is silently dropped.
+  assert.ok(launched.includes('task_b'), 'the un-launched rule must fire on redelivery, not be silently lost');
+  assert.equal(await store.seenEvent('ghl', 'partial-1'), true); // now fully processed → recorded seen
+});
+
 test('AC-3.TRIG.004.3 — Gmail scheme is OIDC-JWT; the Google parser normalizes a Pub/Sub push', () => {
   const s = schemeFor('google');
   assert.equal(s.algorithm, 'oidc_jwt');
@@ -358,6 +402,31 @@ test('AC-3.TRIG.006.1 — a Slack delivery gap is re-read via history from the w
   assert.ok(store.events.some((r) => r.event_type === 'event_gap_detected'));
   assert.ok(store.events.some((r) => r.event_type === 'event_gap_reconciled'));
   assert.equal((await store.getWatermark('slack', 'C1'))!.position, 'ts-102'); // advanced
+});
+
+test('AC-3.TRIG.006.1 edge — a PARTIAL re-ingest does NOT advance the watermark and fails LOUD (never skip un-ingested events, #1/#3)', async () => {
+  // logic-sweep regression (liveness.ts runReconciliationSweep): onReingest returns a COUNT that can be less
+  // than events.length. Pre-fix the watermark advanced unconditionally to newPosition, permanently skipping
+  // the un-ingested events on every later sweep — a silent knowledge loss on the liveness spine.
+  const store = new InMemoryTriggerStore();
+  await store.setWatermark('slack', 'C1', 'ts-100', NOW);
+  const report = await runReconciliationSweep(store, {
+    connector: 'slack',
+    channel: 'C1',
+    read: async () => ({ events: [{ ts: 'ts-101' }, { ts: 'ts-102' }, { ts: 'ts-103' }], newPosition: 'ts-103' }),
+    onReingest: async () => 1, // only 1 of 3 re-ingested (partial) — 2 events would be lost by advancing
+    fullSync: false,
+    now: NOW,
+  });
+  assert.equal(report.gapDetected, true);
+  assert.equal(report.reconciled, 1);
+  assert.equal(report.sweepFailed, true, 'a re-ingest shortfall must surface as a failed sweep (fail-loud, #3)');
+  // The watermark MUST stay at ts-100 so the next sweep re-reads the full gap and the 2 un-ingested events
+  // are not permanently skipped (#1). Pre-fix it jumped to ts-103.
+  assert.equal((await store.getWatermark('slack', 'C1'))!.position, 'ts-100', 'a partial re-ingest must NOT advance the watermark');
+  // And the shortfall is loudly logged, not silent.
+  const row = store.events.find((r) => r.event_type === 'reconcile_sweep_failed');
+  assert.ok(row && /shortfall|1 of 3|partial/i.test(row.summary), 'the re-ingest shortfall must be logged loudly');
 });
 
 test('AC-3.TRIG.006.2 — approaching the 95%/60min threshold flags degraded (not silent)', async () => {

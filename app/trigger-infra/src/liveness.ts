@@ -221,6 +221,29 @@ export async function runReconciliationSweep(
       now,
     );
     report.reconciled = await onReingest(result.events);
+
+    // logic-sweep fix (BLOCKER liveness.ts runReconciliationSweep): onReingest returns a COUNT that can be
+    // LESS than result.events.length (C2 accepts only some of the gap, or 0, without throwing). Advancing
+    // the watermark past events that were NOT re-ingested permanently skips them on every later sweep — a
+    // silent knowledge loss (#1) on the very spine that exists to prevent it (#3). A shortfall is therefore
+    // treated as a FAILED sweep: the watermark is LEFT UNADVANCED (the next sweep re-reads the whole gap)
+    // and a LOUD reconcile_sweep_failed row is written. Only a FULLY reconciled gap advances the watermark.
+    if (report.reconciled < result.events.length) {
+      report.sweepFailed = true;
+      await store.logEvent(
+        {
+          task_id: null,
+          event_type: EVT_RECONCILE_SWEEP_FAILED,
+          entity_ids: [],
+          summary:
+            `reconcile SHORTFALL [${connector}/${channel}] — only ${report.reconciled} of ${result.events.length} gap event(s) re-ingested; watermark NOT advanced (gap re-read next sweep, never skipped)`,
+          payload: { connector, channel, reconciled: report.reconciled, detected: result.events.length, newPosition: result.newPosition },
+        },
+        now,
+      );
+      return report; // leave the watermark where it is — do NOT jump past un-ingested events (#1)
+    }
+
     await store.logEvent(
       {
         task_id: null,
@@ -234,8 +257,9 @@ export async function runReconciliationSweep(
   }
 
   // 4. Advance the watermark to the newest read position (even a zero-gap read advances it so the next
-  //    sweep does not re-scan the same window). A watermark that NEVER advances while events are expected
-  //    is the never-arriving-webhook signal (OD-104(a)) — surfaced by the degraded/gap paths above.
+  //    sweep does not re-scan the same window). Reached only on a FULLY reconciled gap or a zero-gap read;
+  //    a partial re-ingest returns above with the watermark unadvanced. A watermark that NEVER advances
+  //    while events are expected is the never-arriving-webhook signal (OD-104(a)) — surfaced above.
   await store.setWatermark(connector, channel, result.newPosition, now);
   return report;
 }
