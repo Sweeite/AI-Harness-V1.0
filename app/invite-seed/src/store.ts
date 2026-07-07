@@ -429,6 +429,11 @@ export class InMemoryInviteSeedStore implements InviteSeedStore {
     if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED);
     const old = this.invites.get(token);
     if (!old) throw new Error(ERR_TOKEN_INVALID);
+    // logic-sweep fix: reissue is only for an expired/revoked invite (port doc L206) — a USED invite already
+    // backs an active account, so re-minting a fresh setup link would be an unpermitted re-setup path (#2) and
+    // would leave the used token + a fresh live token coexisting for the same profile. Reject it, mirroring
+    // revokeInvite's used-invite no-op.
+    if (old.state === 'used') throw new Error(ERR_TOKEN_INVALID);
     // A fresh ≤24h link for the SAME invitee/profile (FR-0.INV.006.2). The old token is retired.
     if (old.state === 'pending') old.state = 'expired';
     const fresh = this.mintInvite(old.email, old.accountType, old.origin, old.issuedBy, now, undefined, old.profileId);

@@ -183,6 +183,23 @@ test('AC-0.INV.006.2 — re-issuing an expired invite delivers a fresh ≤24h li
   assert.equal((await store.getInvite(out.invite.token))?.state, 'expired', 'old token retired');
 });
 
+test('AC-0.INV.006.2 — re-issuing a USED invite is refused (no re-setup of an active account, #2)', async () => {
+  const { store, auth, smtp } = fresh();
+  const out = await store.issueInvite({ email: 'u@client.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, now: T0 }, auth, smtp);
+  await store.completeSetup({ token: out.invite.token, method: 'oauth', now: T0 + 60 }); // now 'used' + active
+  const activationsBefore = store.eventLog().filter((e) => e.event_type === 'account_activated').length;
+  // reissue is only for an expired/revoked invite (port doc L206) — a used invite must not mint a fresh setup link.
+  await assert.rejects(() => store.reissueInvite(out.invite.token, true, smtp, T0 + 120), (e: Error) => e.message === ERR_TOKEN_INVALID);
+  // the used token stays used (not silently retired); no second live token coexists for the same account.
+  assert.equal((await store.getInvite(out.invite.token))?.state, 'used', 'used invite left used (no-op)');
+  assert.equal(store.profiles.get(out.invite.profileId)?.active, true, 'the activated account is untouched (#1)');
+  assert.equal(
+    store.eventLog().filter((e) => e.event_type === 'account_activated').length,
+    activationsBefore,
+    'no spurious second account_activated event',
+  );
+});
+
 test('AC-0.INV.006 — one-click resend of a still-pending invite is audit-logged', async () => {
   const { store, auth, smtp } = fresh();
   const out = await store.issueInvite({ email: 'u@client.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, now: T0 }, auth, smtp);
