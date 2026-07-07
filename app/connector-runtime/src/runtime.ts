@@ -68,8 +68,17 @@ export interface RuntimeDeps {
 }
 
 // ── The escape used by the boundary-tag wrapper (prevents a payload smuggling a fake close tag). ──
+// logic-sweep fix (runtime.ts:72): `source` is interpolated inside a DOUBLE-QUOTED attribute, so the
+// `"` (and `'`) delimiters must be escaped too — otherwise an externally-influenced source (e.g.
+// `ghl:${args.id}`) carrying a quote breaks out of the attribute and injects structure into the
+// wrapper (FR-3.CONN.003 / AC-3.CONN.003.1 — external DATA must never smuggle structure, hard-limit #2).
 function escapeForTag(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export class ToolRuntime {

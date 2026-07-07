@@ -228,6 +228,25 @@ test('AC-3.CONN.003.2 tagging failure is fail-closed and logged', async () => {
   // Teeth: nothing was returned as forwardable content — the throw prevents forwarding entirely.
 });
 
+// AC-3.CONN.003.1 (regression, logic-sweep) — the `source` attribute value is ALSO externally
+// influenced (the harness labels it `ghl:${args.id}`), so a quote in it must not break out of the
+// double-quoted attribute. Before the fix, escapeForTag escaped &,<,> but NOT `"`, so an id carrying
+// a `"` produced `<external_data source="ghl:x"&gt;&lt;x">…` — the payload quote closed the source
+// attribute early, corrupting the source label and leaving stray tokens before the tag's `>`.
+test('AC-3.CONN.003.1 a quote in the source attribute cannot break out of the boundary tag', async () => {
+  const { store, runtime } = harness();
+  const readTool = await store.registerTool(readContract(), NOW);
+  // The harness sets source = `ghl:${args.id}` — feed an id carrying an attribute-breakout quote.
+  const out = await runtime.invokeRead(readTool, { id: 'x">payload_here' });
+  // The opening tag must be well-formed: source="...">  — the value's closing `"` is immediately
+  // followed by the tag's `>`. With the un-escaped quote the value closes early (source="ghl:x")
+  // and stray tokens (&gt;payload_here) sit between the closing quote and the `>`.
+  const openTag = out.wrapped.match(/^<external_data source="[^"]*">/);
+  assert.ok(openTag, `opening tag must be well-formed; got: ${out.wrapped}`);
+  // And the recovered source value must be the FULL source, not a truncated `ghl:x`.
+  assert.match(out.wrapped, /^<external_data source="ghl:x&quot;&gt;payload_here">/);
+});
+
 // ════════════════════════════════════════════════════════════════════════════════════════
 // FR-3.CONN.004 — idempotency ledger (REAL machinery; connector arms 004.2/.3 land in 039/041)
 // ════════════════════════════════════════════════════════════════════════════════════════
