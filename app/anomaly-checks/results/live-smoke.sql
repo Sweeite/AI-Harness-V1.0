@@ -41,23 +41,27 @@ begin
 end $$;
 
 -- ── 2. transitionGuardrail: forward pending -> approved (adapter WHERE: id AND status='pending') ──
-update guardrail_log
-   set status = 'approved', reviewed_by = null, reviewed_at = to_timestamp(1751846400)
- where id = :'log1_id' and status = 'pending';
+-- NB: the UPDATE runs INSIDE the do-block so `get diagnostics row_count` reflects it — a top-level
+-- UPDATE is invisible to a get-diagnostics in a separate procedural block (would always read 0).
 do $$
-declare n int;
+declare n int; log1 uuid;
 begin
+  select id into log1 from guardrail_log where description = 'smoke: default-severity anomaly';
+  update guardrail_log
+     set status = 'approved', reviewed_by = null, reviewed_at = to_timestamp(1751846400)
+   where id = log1 and status = 'pending';
   get diagnostics n = row_count;
   if n <> 1 then raise exception 'transitionGuardrail: expected 1 row updated, got %', n; end if;
 end $$;
 
 -- assert the forward-only guard: a second transition on the now-approved row is a 0-row no-op
 -- (the adapter turns rowCount=0 into a LOUD throw — never a silent overwrite, #3).
-update guardrail_log set status = 'rejected', reviewed_at = to_timestamp(1751846401)
- where id = :'log1_id' and status = 'pending';
 do $$
-declare n int;
+declare n int; log1 uuid;
 begin
+  select id into log1 from guardrail_log where description = 'smoke: default-severity anomaly';
+  update guardrail_log set status = 'rejected', reviewed_at = to_timestamp(1751846401)
+   where id = log1 and status = 'pending';
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'transitionGuardrail forward-guard: expected 0-row no-op on non-pending, got %', n; end if;
 end $$;
@@ -67,25 +71,27 @@ insert into guardrail_log (task_id, guardrail_type, description, action_blocked,
 values ('11111111-1111-1111-1111-111111111111', 'anomaly', 'smoke: to-escalate', false, 'pending', null)
 returning id \gset log2_
 
-update guardrail_log set escalated_at = to_timestamp(1751846500), action_blocked = true
- where id = :'log2_id' and escalated_at is null;
 do $$
-declare n int; r guardrail_log%rowtype;
+declare n int; r guardrail_log%rowtype; log2 uuid;
 begin
+  select id into log2 from guardrail_log where description = 'smoke: to-escalate';
+  update guardrail_log set escalated_at = to_timestamp(1751846500), action_blocked = true
+   where id = log2 and escalated_at is null;
   get diagnostics n = row_count;
   if n <> 1 then raise exception 'markEscalated: expected 1 row, got %', n; end if;
-  select * into r from guardrail_log where id = :'log2_id';
+  select * into r from guardrail_log where id = log2;
   if r.escalated_at is null then raise exception 'markEscalated: escalated_at not set'; end if;
   if r.action_blocked <> true then raise exception 'markEscalated: action_blocked not true'; end if;
   if r.status <> 'pending' then raise exception 'markEscalated: status must stay pending, got %', r.status; end if;
 end $$;
 
 -- assert write-once: a re-escalate is a 0-row no-op (adapter throws on rowCount=0, never silent — #3).
-update guardrail_log set escalated_at = to_timestamp(1751846600), action_blocked = true
- where id = :'log2_id' and escalated_at is null;
 do $$
-declare n int;
+declare n int; log2 uuid;
 begin
+  select id into log2 from guardrail_log where description = 'smoke: to-escalate';
+  update guardrail_log set escalated_at = to_timestamp(1751846600), action_blocked = true
+   where id = log2 and escalated_at is null;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'markEscalated write-once: expected 0-row no-op, got %', n; end if;
 end $$;
@@ -102,12 +108,14 @@ end $$;
 -- NOTE (MINOR, #3): the adapter's flagForReview does NOT check rowCount. A flag for a non-existent
 -- task_id is a silent 0-row no-op (below) — the caller believes the task was flagged. The guardrail_log
 -- row is persisted first so the anomaly is never lost (#1 safe), but the flag routing can silently vanish.
-update task_queue set status = 'flagged' where id = '22222222-2222-2222-2222-222222222222';
 do $$
 declare n int;
 begin
+  update task_queue set status = 'flagged' where id = '22222222-2222-2222-2222-222222222222';
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'flagForReview missing-task: expected 0-row (adapter does NOT detect this), got %', n; end if;
 end $$;
+
+do $$ begin raise notice 'ALL ASSERTIONS PASS'; end $$;
 
 rollback;

@@ -27,7 +27,13 @@
 \set ON_ERROR_STOP on
 begin;
 
--- ── Fixture parents (uuid FK targets). profiles NOT NULL: id, email. ────────────────────────────
+-- ── Fixture parents (uuid FK targets). profiles.id FK -> auth.users(id), so seed auth.users first. ─
+insert into auth.users (id)
+  values ('00000000-0000-4000-8000-0000000000a1'),
+         ('00000000-0000-4000-8000-0000000000a2'),
+         ('00000000-0000-4000-8000-0000000000a3'),
+         ('00000000-0000-4000-8000-0000000000a4');
+-- ── profiles NOT NULL: id, email. ────────────────────────────────────────────────────────────────
 insert into profiles (id, email, name)
   values ('00000000-0000-4000-8000-0000000000a1', 'ret-smoke-actor@example.test', 'Ret Smoke Actor');
 insert into profiles (id, email, name)

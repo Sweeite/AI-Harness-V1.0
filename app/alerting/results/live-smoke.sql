@@ -35,16 +35,21 @@ begin;
 -- ── parent rows created inside the txn (rolled back at the end) ──────────────
 -- A real profile to satisfy notifications.recipient → profiles(id) and be a
 -- concrete deliverable user id (what resolveContact() would have produced).
-insert into profiles (id)
-  values ('11111111-1111-1111-1111-111111111111')
+-- profiles.id → auth.users(id); profiles.email is NOT NULL → seed the auth.users
+-- parent first, then the profile with its required columns (email, active).
+insert into auth.users (id, email)
+  values ('11111111-1111-1111-1111-111111111111', 'alert075-recipient@example.com')
+  on conflict (id) do nothing;
+insert into profiles (id, email, active)
+  values ('11111111-1111-1111-1111-111111111111', 'alert075-recipient@example.com', true)
   on conflict (id) do nothing;
 
 -- A real task_queue row to satisfy event_log.task_id → task_queue(id).
 -- task_queue(id) is uuid; other NOT-NULL columns default or are permissive
 -- enough for a smoke — if this insert fails on a required column, that itself
 -- is a signal to widen the fixture, not an adapter bug.
-insert into task_queue (id)
-  values ('22222222-2222-2222-2222-222222222222')
+insert into task_queue (id, type, task_name)
+  values ('22222222-2222-2222-2222-222222222222', 'chained'::task_type, '__alert075_smoke_task__')
   on conflict (id) do nothing;
 
 -- ============================================================================

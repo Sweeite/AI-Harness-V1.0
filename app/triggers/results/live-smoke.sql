@@ -50,6 +50,10 @@ end $$;
 
 -- ── Parent row for insertTask.originating_user_id (uuid references profiles(id)) ──
 -- The silo is empty (no profiles); create one inside the txn so the FK holds.
+-- profiles.id references auth.users(id) (profiles_id_fkey), so the auth.users
+-- parent row must exist first, with the SAME id.
+insert into auth.users (id)
+values ('00000000-0000-4000-8000-0000000047a1');
 insert into profiles (id, email)
 values ('00000000-0000-4000-8000-0000000047a1', 'smoke-047@example.test');
 

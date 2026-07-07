@@ -40,10 +40,15 @@ WITH ins AS (
 )
 SELECT id AS smoke_row_id FROM ins \gset
 
+-- Stash the psql-side id into a session GUC so the dollar-quoted DO blocks below
+-- can read it via current_setting() (psql :'var' interpolation does NOT reach
+-- inside $$ … $$ — the bare ':' would be sent literally and error).
+SELECT set_config('smoke.row_id', :'smoke_row_id', false);
+
 DO $$
 DECLARE r record;
 BEGIN
-  SELECT * INTO r FROM guardrail_log WHERE id = :'smoke_row_id';
+  SELECT * INTO r FROM guardrail_log WHERE id = current_setting('smoke.row_id')::uuid;
   IF r.id IS NULL THEN RAISE EXCEPTION 'enforce INSERT: row not found after insert'; END IF;
   IF r.guardrail_type <> 'hard_limit'  THEN RAISE EXCEPTION 'enforce INSERT: guardrail_type=% (want hard_limit)', r.guardrail_type; END IF;
   IF r.status         <> 'pending'     THEN RAISE EXCEPTION 'enforce INSERT: status=% (want pending)', r.status; END IF;
@@ -62,7 +67,7 @@ WHERE id = :'smoke_row_id';
 DO $$
 DECLARE r record;
 BEGIN
-  SELECT * INTO r FROM guardrail_log WHERE id = :'smoke_row_id';
+  SELECT * INTO r FROM guardrail_log WHERE id = current_setting('smoke.row_id')::uuid;
   IF r.status <> 'rejected'   THEN RAISE EXCEPTION 'setStatus: status=% (want rejected)', r.status; END IF;
   IF r.reviewed_at IS NULL    THEN RAISE EXCEPTION 'setStatus: reviewed_at not stamped'; END IF;
   RAISE NOTICE 'PASS 2: setStatus() pending->rejected survived append-only trigger; reviewed_at stamped';

@@ -38,21 +38,21 @@ on conflict (id) do nothing;
 
 -- ── 1. createRole ── mirrors: insert into roles (name,is_default,is_protected) ...
 insert into roles (name, is_default, is_protected)
-  values ('Super Admin', false, true), ('Member', true, false);
+  values ('Super Admin (smoke)', false, true), ('Member (smoke)', true, false);
 
 -- ── 2. assignRole upsert ── on conflict (user_id) do update set role_id=excluded.role_id, active=true
 insert into user_roles (user_id, role_id, active)
   values ('11111111-1111-1111-1111-111111111111',
-          (select id from roles where name='Super Admin'), true)
+          (select id from roles where name='Super Admin (smoke)'), true)
   on conflict (user_id) do update set role_id = excluded.role_id, active = true;
 insert into user_roles (user_id, role_id, active)
   values ('22222222-2222-2222-2222-222222222222',
-          (select id from roles where name='Super Admin'), true)
+          (select id from roles where name='Super Admin (smoke)'), true)
   on conflict (user_id) do update set role_id = excluded.role_id, active = true;
 
 do $$ begin
   if (select count(*) from user_roles ur join roles r on ur.role_id=r.id
-      where r.name='Super Admin' and ur.active) <> 2 then
+      where r.name='Super Admin (smoke)' and ur.active) <> 2 then
     raise exception 'FAIL 2: expected 2 active Super Admins after assignRole upsert';
   end if;
 end $$;
@@ -60,7 +60,7 @@ end $$;
 -- Re-run the upsert for user 1 to prove idempotency + active reset (no duplicate row).
 insert into user_roles (user_id, role_id, active)
   values ('11111111-1111-1111-1111-111111111111',
-          (select id from roles where name='Super Admin'), true)
+          (select id from roles where name='Super Admin (smoke)'), true)
   on conflict (user_id) do update set role_id = excluded.role_id, active = true;
 do $$ begin
   if (select count(*) from user_roles where user_id='11111111-1111-1111-1111-111111111111') <> 1 then
@@ -76,9 +76,9 @@ begin
   update user_roles set active = false
     where user_id = '11111111-1111-1111-1111-111111111111' and active
       and not (
-        role_id = (select id from roles where name='Super Admin')
+        role_id = (select id from roles where name='Super Admin (smoke)')
         and (select count(*) from user_roles ur join roles r on ur.role_id=r.id
-               where r.name='Super Admin' and ur.active) <= 1
+               where r.name='Super Admin (smoke)' and ur.active) <= 1
       );
   get diagnostics rc = row_count;
   if rc <> 1 then raise exception 'FAIL 3a: first SA deactivate should succeed (2 active), rowCount=%', rc; end if;
@@ -91,37 +91,37 @@ begin
   update user_roles set active = false
     where user_id = '22222222-2222-2222-2222-222222222222' and active
       and not (
-        role_id = (select id from roles where name='Super Admin')
+        role_id = (select id from roles where name='Super Admin (smoke)')
         and (select count(*) from user_roles ur join roles r on ur.role_id=r.id
-               where r.name='Super Admin' and ur.active) <= 1
+               where r.name='Super Admin (smoke)' and ur.active) <= 1
       );
   get diagnostics rc = row_count;
   if rc <> 0 then raise exception 'FAIL 3b: last-Super-Admin deactivate must be REFUSED, rowCount=%', rc; end if;
   if (select count(*) from user_roles ur join roles r on ur.role_id=r.id
-      where r.name='Super Admin' and ur.active) <> 1 then
+      where r.name='Super Admin (smoke)' and ur.active) <> 1 then
     raise exception 'FAIL 3c: exactly 1 active Super Admin must survive the guard';
   end if;
 end $$;
 
 -- ── 4. setNode grant (on conflict do nothing) + revoke (delete) ──
 insert into role_permissions (role_id, permission_node)
-  values ((select id from roles where name='Member'), 'PERM-memory.write')
+  values ((select id from roles where name='Member (smoke)'), 'PERM-memory.write')
   on conflict (role_id, permission_node) do nothing;
 insert into role_permissions (role_id, permission_node)      -- duplicate grant = no-op
-  values ((select id from roles where name='Member'), 'PERM-memory.write')
+  values ((select id from roles where name='Member (smoke)'), 'PERM-memory.write')
   on conflict (role_id, permission_node) do nothing;
 do $$ begin
   if (select count(*) from role_permissions
-      where role_id=(select id from roles where name='Member')
+      where role_id=(select id from roles where name='Member (smoke)')
         and permission_node='PERM-memory.write') <> 1 then
     raise exception 'FAIL 4a: setNode grant must be idempotent (unique(role_id,permission_node))';
   end if;
 end $$;
 delete from role_permissions
-  where role_id=(select id from roles where name='Member') and permission_node='PERM-memory.write';
+  where role_id=(select id from roles where name='Member (smoke)') and permission_node='PERM-memory.write';
 do $$ begin
   if (select count(*) from role_permissions
-      where role_id=(select id from roles where name='Member') and permission_node='PERM-memory.write') <> 0 then
+      where role_id=(select id from roles where name='Member (smoke)') and permission_node='PERM-memory.write') <> 0 then
     raise exception 'FAIL 4b: setNode revoke (delete) left a row';
   end if;
 end $$;
@@ -131,7 +131,7 @@ do $$
 declare cid uuid;
 begin
   insert into sensitivity_clearances (role_id, user_id, tier, entity_type_scope, granted_by, last_reviewed_at, granted_at)
-    values ((select id from roles where name='Member'), null, 'confidential'::clearance_tier,
+    values ((select id from roles where name='Member (smoke)'), null, 'confidential'::clearance_tier,
             null, '11111111-1111-1111-1111-111111111111', null, coalesce(null, now()))
     returning id into cid;
   -- touchClearanceReview
@@ -193,4 +193,5 @@ do $$ begin
 end $$;
 
 -- All assertions passed. Nothing persists.
+do $$ begin raise notice 'ALL ASSERTIONS PASS'; end $$;
 rollback;

@@ -29,8 +29,8 @@ begin;
 -- Insert only the columns the smoke needs; rely on table defaults (token_id/token_active from 0002, plus
 -- whatever 0001 declares NOT NULL). If 0001 requires more NOT NULL columns without defaults, the orchestrator
 -- extends this INSERT — the assertions below are the load-bearing part.
-insert into client_registry (client_slug)
-values ('smoke-release-0080')
+insert into client_registry (client_slug, client_name, internal_token)
+values ('smoke-release-0080', 'Smoke Release 0080', 'smoke-internal-token-0080')
 on conflict (client_slug) do nothing;
 
 -- ── The row the adapter reads. Representative literals matching real column types. One nullable column

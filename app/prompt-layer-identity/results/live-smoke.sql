@@ -44,14 +44,14 @@ values
 returning id \gset core1_
 
 do $$
-declare n int; ver int; prev uuid;
+declare n int; ver int; any_prev boolean;
 begin
-  select count(*), max(version), max(previous_version_id)
-    into n, ver, prev
+  select count(*), max(version), bool_or(previous_version_id is not null)
+    into n, ver, any_prev
     from public.prompt_layers
    where layer='core' and agent_id='aaaaaaaa-0000-0000-0000-000000000001';
-  if n <> 1 or ver <> 1 or prev is not null then
-    raise exception 'createCore FAILED: expected 1 row v1 prev=null, got n=% ver=% prev=%', n, ver, prev;
+  if n <> 1 or ver <> 1 or coalesce(any_prev, false) then
+    raise exception 'createCore FAILED: expected 1 row v1 prev=null, got n=% ver=% any_prev=%', n, ver, any_prev;
   end if;
   raise notice 'PASS 1: createCore inserted v1 core, previous_version_id=null';
 end $$;
@@ -171,43 +171,48 @@ begin
 end $$;
 
 -- ══════════════════════════════════════════════════════════════════════════════════════════════
--- 5. FINDING F-1 (BLOCKER) — duplicate-core is NOT prevented at the DB.
---    The live adapter's createCore has no "agent already has a core" guard (the fake does, store.ts:109),
---    and there is NO unique index on (agent_id,layer). A second createCore INSERTs cleanly → two v1 roots.
+-- 5. F-1 (RESOLVED by migration 0026) — duplicate-core IS prevented at the DB.
+--    prompt_layers_root_unique = UNIQUE(layer, name, coalesce(agent_id,'0…0')) WHERE previous_version_id IS NULL
+--    (0026, mirrors the version-chain backstops). A second createCore for the SAME (layer,name,agent) root is
+--    now REJECTED. [Stale note: the original F-1 asserted this as an open BLOCKER pre-0026, and evaded the index
+--    by using a DIFFERENT name ('… (dup)'); reconciled to assert the guard, like prompt-store's M5 flip.]
 -- ══════════════════════════════════════════════════════════════════════════════════════════════
 do $$
-declare roots int;
 begin
-  -- Replay createCore a SECOND time for agent A (same statement shape as supabase-store.ts:64-69).
+  -- Replay createCore for agent A with the SAME (layer,name,agent_id) root as core1 (stmt shape = supabase-store.ts createCore).
   insert into public.prompt_layers
     (layer,name,content,agent_id,enabled,version,previous_version_id,change_reason,created_by)
-  values ('core','Layer 1 — agent A (dup)','v1 dup','aaaaaaaa-0000-0000-0000-000000000001',true,1,null,'dup core',null);
-  select count(*) into roots from public.prompt_layers
-    where layer='core' and agent_id='aaaaaaaa-0000-0000-0000-000000000001' and version=1 and previous_version_id is null;
-  if roots < 2 then
-    raise exception 'F-1 unexpectedly guarded: only % v1 root(s) — a unique constraint may exist', roots;
-  end if;
-  raise notice 'PASS 5 (F-1 CONFIRMED): % v1 root cores now coexist for one agent with NO DB error → duplicate-core is unenforced live', roots;
+  values ('core','Layer 1 — agent A','v1 dup','aaaaaaaa-0000-0000-0000-000000000001',true,1,null,'dup core',null);
+  raise exception 'F-1 REGRESSION: a duplicate v1 root core was ACCEPTED — prompt_layers_root_unique is missing/ineffective (#1)';
+exception
+  when unique_violation then
+    raise notice 'PASS 5 (F-1 RESOLVED, 0026): duplicate v1 root core REJECTED by prompt_layers_root_unique — duplicate-core is guarded live (#1)';
 end $$;
 
 -- ══════════════════════════════════════════════════════════════════════════════════════════════
--- 6. FINDING F-2 (BLOCKER) — duplicate VERSION is NOT prevented at the DB.
---    Insert a SECOND version=2 row for agent A: proves no unique (agent_id,version), so two concurrent
---    appendCoreVersion calls that both read head.v=1 and both insert version 2 would BOTH succeed (lost update).
+-- 6. F-2 (RESOLVED by migration 0026) — duplicate VERSION is prevented at the DB.
+--    prompt_layers_prev_unique = UNIQUE(previous_version_id) WHERE previous_version_id IS NOT NULL (0026). Two
+--    concurrent appendCoreVersion calls that both read head.v=1 and both insert version 2 pointing at the same
+--    previous_version_id can no longer BOTH succeed — the second is rejected (the lost-update is guarded).
+--    [Stale note: the original F-2 asserted both v2 coexist as an open BLOCKER pre-0026; reconciled below.]
 -- ══════════════════════════════════════════════════════════════════════════════════════════════
 do $$
-declare dupv2 int;
 begin
+  -- The first v2 (prev=v1) already exists from PASS 2 (appendCoreVersion). A racing second v2 with the SAME
+  -- previous_version_id collides on prompt_layers_prev_unique.
   insert into public.prompt_layers
     (layer,name,content,agent_id,enabled,version,previous_version_id,change_reason,created_by)
   values ('core','Layer 1 — agent A','v2 concurrent','aaaaaaaa-0000-0000-0000-000000000001',true,2,
-          :'core1_id','concurrent edit racing the first v2',null);
-  select count(*) into dupv2 from public.prompt_layers
-    where layer='core' and agent_id='aaaaaaaa-0000-0000-0000-000000000001' and version=2;
-  if dupv2 < 2 then
-    raise exception 'F-2 unexpectedly guarded: only % v2 row(s) — a unique (agent_id,version) may exist', dupv2;
-  end if;
-  raise notice 'PASS 6 (F-2 CONFIRMED): % version-2 rows coexist for one agent → the CTE increment is NOT race-safe (no unique (agent_id,version))', dupv2;
+          (select id from public.prompt_layers
+             where layer='core' and agent_id='aaaaaaaa-0000-0000-0000-000000000001'
+               and version=1 and previous_version_id is null
+             order by id limit 1),
+          'concurrent edit racing the first v2',null);
+  raise exception 'F-2 REGRESSION: a racing version-2 (same previous_version_id) was ACCEPTED — prompt_layers_prev_unique missing/ineffective (#1)';
+exception
+  when unique_violation then
+    raise notice 'PASS 6 (F-2 RESOLVED, 0026): racing v2 with the same previous_version_id REJECTED by prompt_layers_prev_unique — the lost-update is guarded live (#1)';
 end $$;
 
+do $$ begin raise notice 'ALL ASSERTIONS PASS'; end $$;
 rollback;  -- nothing persists
