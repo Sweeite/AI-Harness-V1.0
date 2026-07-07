@@ -1,0 +1,21 @@
+{
+  "name": "@harness/token-lifecycle",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-033 — the generic OAuth TOK runtime that lives once in the C3 spine and serves every connector (FR-3.TOK.001-009). Encrypted connector_credentials access + no-token-leak redaction boundary (FR-3.TOK.001 / NFR-SEC.003), the ATOMIC rotate-persist of rotated refresh tokens with single-flight + post-refresh-pre-persist grace-window recovery -> degrade-loud (FR-3.TOK.005, the #1 never-silently-lose-access backstop), the 3-layer refresh model — Layer-1 proactive job (FR-3.TOK.002), Layer-2 reactive refresh-and-retry-once-on-401 (FR-3.TOK.003), Layer-3 dead-token detection -> state=degraded + pause/re-auth signal (FR-3.TOK.004) — the automatic-vs-manual metric hook (FR-3.TOK.006), and the three per-connector token PARAMETER sets fed as data — Google non-rotating (FR-3.TOK.007), GHL single-use rotating (FR-3.TOK.008), Slack xoxb-non-expiring/xoxe-opt-in (FR-3.TOK.009). Port + in-memory fake reference model mirroring the connector_credentials DDL (baseline 0001); supabase-store.ts is the live pg adapter authored to that DDL — NOT run live. The GHL rotate-persist arm's concurrency correctness (30s same-token grace) is AF-089 — offline concurrency/property proven here, live SPIKE/LOAD owed.",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@harness/connector-runtime": "file:../connector-runtime",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

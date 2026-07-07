@@ -22,6 +22,7 @@
     { "tag": "0014_support_requests_rls", "file": "0014_support_requests_rls.sql", "transactional": true },
     { "tag": "0015_guardrail_redacted_at", "file": "0015_guardrail_redacted_at.sql", "transactional": true },
     { "tag": "0016_agents_version_discipline", "file": "0016_agents_version_discipline.sql", "transactional": true },
-    { "tag": "0017_stage4_indexes", "file": "0017_stage4_indexes.sql", "transactional": false }
+    { "tag": "0017_stage4_indexes", "file": "0017_stage4_indexes.sql", "transactional": false },
+    { "tag": "0018_trigger_event_types", "file": "0018_trigger_event_types.sql", "transactional": false }
   ]
 }

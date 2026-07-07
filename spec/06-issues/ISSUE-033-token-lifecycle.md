@@ -2,7 +2,7 @@
 id: ISSUE-033
 title: OAuth token lifecycle — 3-layer refresh + atomic rotate-persist
 epic: D — tool layer
-status: ready
+status: in-progress
 github: "#33"
 ---
 

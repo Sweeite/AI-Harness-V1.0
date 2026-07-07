@@ -1,0 +1,20 @@
+{
+  "name": "@harness/trigger-infra",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-037 — the C3 generic connector trigger layer + liveness spine. The once-per-connector inbound handler/parser consuming an ALREADY-VERIFIED event from C0 webhook-auth (ISSUE-017) → normalized event → trigger evaluation (FR-3.TRIG.001); the per-vendor transport/verification-SCHEME identity wiring homing OD-044 (FR-3.TRIG.004; GHL Ed25519 / Slack / Google arms gated on AF-090/084/083/108/109); the no-code event+condition→task config + runtime condition-matching (FR-3.TRIG.002); the per-connector default trigger set with per-deployment enable/disable toggles (FR-3.TRIG.003); and the load-bearing #3 liveness pair — proactive watch/subscription re-arm before expiry with fail-LOUD degraded on lapse (FR-3.TRIG.005) + event-delivery gap detection + watermark reconciliation (FR-3.TRIG.006). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the tools.config jsonb + event_log/audit DDL — NOT run live. Liveness tested with an INJECTED clock (no real scheduler).",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

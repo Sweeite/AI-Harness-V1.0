@@ -1,0 +1,21 @@
+{
+  "name": "@harness/backup-dr",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-085 — Backup & DR (ADR-008 / NFR-DR.001-009). The per-silo backup & disaster-recovery posture: the hourly client-owned off-platform pg_dump job definition (default RPO ~1h) + free daily in-project floor (below-hourly = a LOGGED downgrade, never silent); the operator-run restore-REHEARSAL job (restore into a throwaway project, assert DB + pgvector memory + auth user rows come back complete & queryable, log result+timestamp, monthly + on every migration release) built ON the GREEN AF-069 (ISSUE-004 Path B); the FIVE backup-health fields assembled onto the mgmt-plane deployment_health.backup_health push with a loud lapse/stale alert (never silently assume-healthy, #3); and the off-platform backup-purge leg of compliance erasure (NFR-DR.009 receive-leg). Port + in-memory FAKE for offline tests + a live pg/CLI adapter (backup-dr-live.ts) authored to the real DDL/CLI — NOT executed offline. The live rehearsal run + AF-072 (LOAD) + AF-069 Path A (PITR) are operator-present residuals — implemented-to-AC, offline-proven, listed owed-to-live.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
