@@ -118,6 +118,10 @@ export class InMemoryTriggerStore implements TriggerStore {
   /** Test seam: when true, the NEXT insertTask throws — models an engine-unreachable / DB insert failure
    *  (AC-5.TRG.005.1). One-shot so a retry can succeed. */
   private failNextInsert = false;
+  /** Test seam: when true, the NEXT markDelivered throws — models a POST-commit watermark-write failure
+   *  (trigger_delivery contention / transient outage AFTER task_queue committed). One-shot. Distinct from
+   *  failNextInsert because the watermark is a separate, non-atomic write (logic-sweep fix triggers.ts:177). */
+  private failNextMark = false;
 
   async readDeploymentSettings(): Promise<DeploymentSettingsRow> {
     if (this.settingsUnresolvable) {
@@ -168,6 +172,10 @@ export class InMemoryTriggerStore implements TriggerStore {
     return this.watermark.has(deliveryId);
   }
   async markDelivered(deliveryId: string, taskId: string): Promise<void> {
+    if (this.failNextMark) {
+      this.failNextMark = false;
+      throw new TriggerError('watermark_failed', 'trigger_delivery watermark write failed (contention/outage)');
+    }
     this.watermark.set(deliveryId, taskId);
   }
 
@@ -180,6 +188,9 @@ export class InMemoryTriggerStore implements TriggerStore {
   }
   _failNextInsert(): void {
     this.failNextInsert = true;
+  }
+  _failNextMark(): void {
+    this.failNextMark = true;
   }
   _tasks(): TaskRow[] {
     return this.tasks.map((t) => ({ ...t }));

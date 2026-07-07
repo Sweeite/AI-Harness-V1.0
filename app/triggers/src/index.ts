@@ -45,6 +45,7 @@ export {
   fireChained,
   EVT_FROZEN_BLOCKED,
   EVT_INGEST_FAILURE,
+  EVT_WATERMARK_FAILURE,
   type FreezeVerdict,
   type FireArgs,
   type IngestResult,

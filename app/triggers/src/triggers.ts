@@ -20,6 +20,10 @@ import { TriggerRegistry } from './registry.ts';
 // The C7 enum admits neither today — recorded as a shared-spec proposal, NOT edited into schema.md here.
 export const EVT_FROZEN_BLOCKED = 'dispatch_frozen_blocked';
 export const EVT_INGEST_FAILURE = 'ingest_failure';
+// logic-sweep fix (triggers.ts:177): a POST-commit watermark-write failure is NOT an ingest failure (a row DID
+// commit) — it is a distinct condition (a committed row left un-acknowledged => a controlled at-least-once
+// duplicate on re-delivery). Recorded distinctly so the C7 event_log never lies "produced no task row" (#3).
+export const EVT_WATERMARK_FAILURE = 'watermark_failure';
 
 /** The reason a dispatch was allowed/blocked by the freeze gate. */
 export type FreezeVerdict =
@@ -135,6 +139,10 @@ export interface IngestResult {
   /** Set when a verified event was NOT converted to a row: the ingest-failure was recorded + surfaced, and
    *  the event was NOT acknowledged (AC-5.TRG.005.1) — a re-delivery will retry. */
   ingest_failure?: boolean;
+  /** logic-sweep fix (triggers.ts:177): set when the task row DID commit but the post-commit delivery watermark
+   *  write failed. The committed row is kept (task is present), the failure is recorded distinctly, and the
+   *  delivery is left un-acknowledged — a re-delivery is a CONTROLLED at-least-once duplicate, not a lost event. */
+  watermark_failed?: boolean;
   /** Set when a re-delivered event was de-duplicated by the watermark (AC-5.TRG.005.2). */
   deduped?: boolean;
 }
@@ -163,19 +171,22 @@ export async function ingestVerifiedEvent(store: TriggerStore, evt: VerifiedEven
   // FREEZE GATE — a verified event during a freeze is blocked + logged, creates no row.
   await assertNotFrozen(store, 'event', { trigger_key: evt.delivery_id });
 
+  // logic-sweep fix (triggers.ts:177): insert (pre-commit) and markDelivered (post-commit watermark) are two
+  // INDEPENDENT, non-atomic writes to two tables — they must NOT share one catch. A pre-commit insert failure
+  // means no row was produced (EVT_INGEST_FAILURE); a POST-commit watermark failure means a row DID commit and
+  // must never be reported as "produced no task row" (that would be a lying event_log — #3). We therefore run
+  // the insert in its own try, then the watermark in a SEPARATE try.
+  let task: TaskRow;
   try {
-    const task = await store.insertTask({
+    task = await store.insertTask({
       type: 'event',
       task_name: evt.task_name,
       payload: evt.payload,
       originating_user_id: null,
       parent_task_id: null,
     });
-    // Watermark ONLY after a committed row — accept→row is at-least-once (AC-5.TRG.005.2).
-    await store.markDelivered(evt.delivery_id, task.id);
-    return { ok: true, task };
   } catch (e) {
-    // AC-5.TRG.005.1 — a verified event that produced no row is a recorded + surfaced ingest-failure, and is
+    // AC-5.TRG.005.1 — a verified event that produced NO row is a recorded + surfaced ingest-failure, and is
     // NOT acknowledged (no watermark), so no verified event is silently lost. Re-throw class stays loud.
     await store.appendEvent({
       event_type: EVT_INGEST_FAILURE,
@@ -185,6 +196,24 @@ export async function ingestVerifiedEvent(store: TriggerStore, evt: VerifiedEven
     });
     return { ok: false, ingest_failure: true };
   }
+
+  // Watermark ONLY after a committed row — accept→row is at-least-once (AC-5.TRG.005.2).
+  try {
+    await store.markDelivered(evt.delivery_id, task.id);
+  } catch (e) {
+    // logic-sweep fix (triggers.ts:177): the row IS committed but the watermark write failed. Record this as a
+    // DISTINCT condition (NOT "produced no task row") and leave the delivery un-acknowledged. On re-delivery the
+    // dedup (isDelivered) misses, so the event is re-inserted — a CONTROLLED at-least-once duplicate, not a
+    // phantom lost event. We return ok:true with watermark_failed so the committed task is not disowned (#1/#3).
+    await store.appendEvent({
+      event_type: EVT_WATERMARK_FAILURE,
+      task_id: task.id,
+      summary: `Verified event ${evt.delivery_id} produced task ${task.id} but the delivery watermark failed — row kept, delivery NOT acknowledged (at-least-once re-delivery will duplicate).`,
+      payload: { delivery_id: evt.delivery_id, task_id: task.id, error: e instanceof Error ? e.message : String(e) },
+    });
+    return { ok: true, task, watermark_failed: true };
+  }
+  return { ok: true, task };
 }
 
 // ── Chained-trigger-on-completion handoff (FR-5.TRG.004 / AC-5.TRG.004.1-.2, OD-059) ────────────────

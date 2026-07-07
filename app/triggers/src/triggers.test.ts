@@ -33,6 +33,7 @@ import {
   ERR_UNVERIFIED,
   EVT_FROZEN_BLOCKED,
   EVT_INGEST_FAILURE,
+  EVT_WATERMARK_FAILURE,
   type ScopedRetrieval,
   type VerifiedEvent,
 } from './index.ts';
@@ -228,6 +229,33 @@ test('AC-5.TRG.005.1 — a verified event whose insert fails is recorded + surfa
   const retry = await ingestVerifiedEvent(store, evt);
   assert.equal(retry.ok, true, 're-delivery after the failure produces the row — no silent loss');
   assert.equal(store._taskCount(), 1);
+});
+
+// ── logic-sweep (triggers.ts:177) — a POST-commit watermark failure must NOT be reported as "no task row" ──
+test('logic-sweep — insert commits then markDelivered fails: distinct watermark-failure event, committed row preserved, NOT a false lost-ingest', async () => {
+  const store = new InMemoryTriggerStore();
+  store._failNextMark(); // insert commits, then the watermark write throws (post-commit contention/outage)
+  const evt: VerifiedEvent = { delivery_id: 'd-mark-fail', verified: true, task_name: 'e', payload: { n: 7 } };
+  const res = await ingestVerifiedEvent(store, evt);
+
+  // The row WAS committed — the audit trail and return value must not claim otherwise (#3: no lying event_log).
+  assert.equal(store._taskCount(), 1, 'the committed task row is NOT lost when only the watermark fails');
+  assert.notEqual(res.ingest_failure, true, 'a committed row is NOT a "produced no task row" ingest-failure');
+
+  const evts = store._events();
+  assert.equal(evts.length, 1, 'the watermark failure is loudly recorded');
+  assert.equal(
+    evts[0]!.event_type,
+    EVT_WATERMARK_FAILURE,
+    'a post-commit watermark failure is a DISTINCT event, not EVT_INGEST_FAILURE',
+  );
+  assert.notEqual(evts[0]!.event_type, EVT_INGEST_FAILURE, 'must not claim the event produced no task row');
+
+  // Still un-acknowledged: no watermark => a re-delivery is a CONTROLLED at-least-once duplicate, not a lost event.
+  assert.equal(await store.isDelivered('d-mark-fail'), false, 'a failed watermark leaves the delivery un-acknowledged');
+  const retry = await ingestVerifiedEvent(store, evt);
+  assert.equal(retry.ok, true, 're-delivery succeeds (at-least-once); no silent loss');
+  assert.equal(store._taskCount(), 2, 'the un-acknowledged delivery yields a controlled duplicate on retry, not a phantom loss');
 });
 
 // ── AC-5.TRG.005.2 — watermark at-least-once + re-delivery dedup ─────────────────────────────────────
