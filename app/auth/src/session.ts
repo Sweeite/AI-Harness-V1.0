@@ -59,6 +59,7 @@ export interface SessionRecord {
   last_activity_at: number; // inactivity anchor, advanced on each successful refresh (FR-0.SESS.004)
   current_refresh_generation: number; // the ONLY generation accepted (single-use rotation)
   current_refresh_token: string; // the persisted rotated token (FR-0.SESS.003 — #1)
+  previous_refresh_token: string | null; // the immediately-prior token value — the ONLY stale token the 10s race window tolerates (logic-sweep fix session.ts:191)
   last_rotated_at: number; // supports the 10s reuse-interval tolerance
   server_logged_out: boolean; // set by a server-side logout; only getUser() sees it (FR-0.SESS.008)
   revoke_reason: RevokeReason | null;
@@ -121,6 +122,7 @@ export class SessionManager {
       last_activity_at: now,
       current_refresh_generation: 1,
       current_refresh_token: this.nextId('rt'),
+      previous_refresh_token: null,
       last_rotated_at: now,
       server_logged_out: false,
       revoke_reason: null,
@@ -190,11 +192,19 @@ export class SessionManager {
     // (1) reuse-detection BEFORE bounds — a compromised token must revoke even a fresh session.
     if (presented.generation < rec.current_refresh_generation) {
       const withinReuseInterval = now - rec.last_rotated_at <= REUSE_INTERVAL_SECONDS;
-      if (!withinReuseInterval) {
+      // logic-sweep fix session.ts:191 — the race window tolerates ONLY the genuine immediately-prior token
+      // value. A lower generation with a token that was never issued is forgery, not a race — revoke (#2).
+      const isGenuinePriorToken = presented.token === rec.previous_refresh_token;
+      if (!withinReuseInterval || !isGenuinePriorToken) {
         this.revoke(rec, 'reuse_detected'); // FR-0.SESS.003 — whole-session revocation
         return { ok: false, revoked: true, reason: 'reuse_detected' };
       }
-      // within the race window: tolerate — re-issue against the CURRENT generation without rotating again.
+      // logic-sweep fix session.ts:198 — the tolerate re-issue must still respect the lifetime bounds; a
+      // time-boxed/idle session must not leak a fresh credential via the race window.
+      const bounded = this.enforceLifetimeBounds(rec, now);
+      if (bounded) return bounded;
+      // within the race window with the genuine prior token: tolerate — re-issue against the CURRENT
+      // generation without rotating again.
       return { ok: true, access: this.mintAccess(rec, now), refresh: this.mintRefresh(rec) };
     }
     if (presented.generation > rec.current_refresh_generation) {
@@ -209,6 +219,25 @@ export class SessionManager {
     }
 
     // (3) lifetime bounds — lazy, at refresh (FR-0.SESS.004).
+    const bounded = this.enforceLifetimeBounds(rec, now);
+    if (bounded) return bounded;
+
+    // (2) single-use rotation — mint + persist a new generation (#1: persisted every rotation).
+    rec.previous_refresh_token = rec.current_refresh_token; // remember the token the 10s race may re-present
+    rec.current_refresh_generation += 1;
+    rec.current_refresh_token = this.nextId('rt');
+    rec.last_rotated_at = now;
+    rec.last_activity_at = now;
+    return { ok: true, access: this.mintAccess(rec, now), refresh: this.mintRefresh(rec) };
+  }
+
+  /**
+   * FR-0.SESS.004 — the lazy lifetime bounds (inactivity + absolute time-box), enforced at refresh time.
+   * Returns a revoked outcome if either bound is exceeded, else null. Shared by the normal rotation path
+   * and the reuse-interval race branch so a time-boxed session cannot leak a credential via the race
+   * (logic-sweep fix session.ts:198).
+   */
+  private enforceLifetimeBounds(rec: SessionRecord, now: number): RefreshOutcome | null {
     if (now - rec.last_activity_at > this.cfg.session_inactivity_timeout) {
       this.revoke(rec, 'inactivity');
       return { ok: false, revoked: true, reason: 'inactivity' };
@@ -217,13 +246,7 @@ export class SessionManager {
       this.revoke(rec, 'absolute_timeout');
       return { ok: false, revoked: true, reason: 'absolute_timeout' };
     }
-
-    // (2) single-use rotation — mint + persist a new generation (#1: persisted every rotation).
-    rec.current_refresh_generation += 1;
-    rec.current_refresh_token = this.nextId('rt');
-    rec.last_rotated_at = now;
-    rec.last_activity_at = now;
-    return { ok: true, access: this.mintAccess(rec, now), refresh: this.mintRefresh(rec) };
+    return null;
   }
 
   /**

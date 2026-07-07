@@ -264,6 +264,55 @@ test('AC-0.SESS.003.1 — refresh rotation is single-use; out-of-window reuse re
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// logic-sweep regression (session.ts:191) — the reuse-interval race branch must NOT
+// grant credentials on a FORGED token value. Only the genuine prior token is tolerated.
+// ─────────────────────────────────────────────────────────────────────────────
+test('logic-sweep — reuse-race branch rejects a forged lower-generation token (never issued)', () => {
+  const sessions = new SessionManager(DEFAULT_AUTH_CONFIG);
+  const { refresh: r1, session_id } = sessions.establish('user-1', 'aal2', NOW);
+
+  // legitimate rotation gen1 → gen2 at t=100 (last_rotated_at=100)
+  const rot = sessions.refresh(r1, NOW + 100);
+  assert.ok(rot.ok);
+
+  // attacker presents a forged handle with a LOWER generation, inside the 10s window.
+  // It was NEVER an issued token — it must be refused (revoked), not honoured.
+  const forged = { token: 'forged-never-issued', session_id, generation: 1 };
+  const out = sessions.refresh(forged, NOW + 105);
+  assert.equal(out.ok, false, 'a forged lower-generation token must not mint a valid access JWT');
+  assert.ok(out.ok === false && out.revoked && out.reason === 'reuse_detected');
+
+  // the genuine prior token r1, re-presented inside the window, is still tolerated (race).
+  const s2 = new SessionManager(DEFAULT_AUTH_CONFIG);
+  const { refresh: a1 } = s2.establish('user-2', 'aal2', NOW);
+  const rot2 = s2.refresh(a1, NOW + 5);
+  assert.ok(rot2.ok);
+  const raced = s2.refresh(a1, NOW + 10);
+  assert.ok(raced.ok, 'the genuine prior token is still tolerated within the reuse window');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// logic-sweep regression (session.ts:198) — the reuse-interval race branch must still
+// enforce the lifetime bounds; a time-boxed session must not leak a credential via the race.
+// ─────────────────────────────────────────────────────────────────────────────
+test('logic-sweep — reuse-race branch still refuses a session past its absolute time-box', () => {
+  // absolute box small enough that a legit rotation lands just under it, then the race arrives just past it.
+  const cfg: AuthConfig = { ...DEFAULT_AUTH_CONFIG, session_inactivity_timeout: 100000, session_absolute_timeout: 500 };
+  const sessions = new SessionManager(cfg);
+  const { refresh: r1 } = sessions.establish('user-1', 'aal2', NOW);
+
+  // legit rotation at t=497 (< 500 box → passes); last_rotated_at=497, r1→r2.
+  const rot = sessions.refresh(r1, NOW + 497);
+  assert.ok(rot.ok);
+
+  // present the stale prior token r1 at t=504: past the absolute box (504 > 500) but within 10s of last rotation.
+  // The race branch must NOT re-issue — the session is time-boxed out.
+  const raced = sessions.refresh(r1, NOW + 504);
+  assert.equal(raced.ok, false, 'a session past its absolute time-box must not leak a credential via the reuse race');
+  assert.ok(raced.ok === false && raced.reason === 'absolute_timeout');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AC-0.SESS.004.1 — an idle session past inactivity_timeout is refused at its next refresh
 // ─────────────────────────────────────────────────────────────────────────────
 test('AC-0.SESS.004.1 — inactivity bound refuses the refresh (lazy, at refresh time)', () => {
