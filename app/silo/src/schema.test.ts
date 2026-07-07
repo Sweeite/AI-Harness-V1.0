@@ -20,7 +20,7 @@ const allSql = [...files.values()].map((f) => f.sql).join("\n");
 const stripComments = (s: string) => s.replace(/--.*$/gm, "");
 const allDdl = stripComments(allSql);
 
-test("journal + files load: the 0001a-d baseline + the 0002-0005 Stage-2 + 0006-0010 Stage-3 migrations are present and ordered", () => {
+test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010 Stage-3 + 0011-0020 Stage-4 migrations are present and ordered", () => {
   assert.deepEqual(journal.entries.map((e) => e.tag), [
     "0001_baseline",
     "0001b_indexes",
@@ -35,6 +35,16 @@ test("journal + files load: the 0001a-d baseline + the 0002-0005 Stage-2 + 0006-
     "0008_connector_runtime_triggers", // ISSUE-032 — tools version-discipline + idempotency_ledger immutability
     "0009_guardrails_append_only", // ISSUE-060+059 / OD-182 — escalation-stamp widening + injection_quarantine bind
     "0010_guardrail_escalation_nullfix", // OD-182 — NULL-safe task_id in the guardrail_log trigger branches
+    "0011_stage4_event_types", // ISSUE-015/016/034/036/049 — +16 event_type + 1 alert_type (transactional:false)
+    "0012_rate_limit_deferred", // ISSUE-034 — persisted 95% deferral queue + default-deny RLS
+    "0013_task_graph_versions_append_only", // ISSUE-049 — append-only-by-version trigger
+    "0014_support_requests_rls", // ISSUE-016 — public-insert / view / resolve policies
+    "0015_guardrail_redacted_at", // ISSUE-077 / OD-074 — redacted_at column + redaction-tombstone branch
+    "0016_agents_version_discipline", // ISSUE-061 — agents version-lineage trigger
+    "0017_stage4_indexes", // ISSUE-034+016 — CONCURRENTLY indexes (transactional:false)
+    "0018_trigger_event_types", // ISSUE-037 — 9 trigger event_type values (transactional:false)
+    "0019_connector_trigger_state", // ISSUE-037 / OD-190 — 5 trigger runtime-state tables + default-deny RLS
+    "0020_connector_trigger_indexes", // ISSUE-037 / OD-190 — CONCURRENTLY indexes (transactional:false)
   ]);
   assert.equal(journal.entries.find((e) => e.tag === "0001b_indexes")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0002_rls_scaffold")!.transactional, true);
@@ -43,6 +53,12 @@ test("journal + files load: the 0001a-d baseline + the 0002-0005 Stage-2 + 0006-
   assert.equal(journal.entries.find((e) => e.tag === "0007_stage3_event_types")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0009_guardrails_append_only")!.transactional, true);
   assert.equal(journal.entries.find((e) => e.tag === "0010_guardrail_escalation_nullfix")!.transactional, true);
+  // Stage-4: the enum-add + CONCURRENTLY-index migrations are transactional:false (autocommit); the DDL ones true.
+  assert.equal(journal.entries.find((e) => e.tag === "0011_stage4_event_types")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0017_stage4_indexes")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0018_trigger_event_types")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0019_connector_trigger_state")!.transactional, true);
+  assert.equal(journal.entries.find((e) => e.tag === "0020_connector_trigger_indexes")!.transactional, false);
 });
 
 test("every real migration passes the expand-contract discipline guardrails", () => {

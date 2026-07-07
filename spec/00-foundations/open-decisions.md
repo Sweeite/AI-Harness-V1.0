@@ -2745,6 +2745,15 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-<!-- Next OD number: OD-190 -->
+## OD-190 — Trigger runtime state gets its own mutable tables (not the version-locked `tools.config`) 🟢 RESOLVED (2026-07-07, Stage-4 full-review, session 71 — operator-decided)
+
+- **Surfaced by:** the Stage-4 full-review (correctness + live-smoke pass) on **ISSUE-037** (trigger-infra). The trigger layer stored ALL runtime state (watches, watermarks, the seen-event dedup ledger, the delivery sample, and the rules/defaults) inside `tools.config` jsonb and mutated it **in place** (`update tools set config = config || …`). But `tools` is version-locked by the `0008 enforce_tool_version_discipline` trigger (only `enabled`/`updated_at` may flip in place) — so **every trigger write RAISES live** (a BLOCKER, live-confirmed by the smoke: the in-place `config` UPDATE is rejected). High-churn operational state (advancing watermarks, a growing dedup ledger) cannot live in a version-disciplined column. The ISSUE-037 author had flagged the possibility ("if jsonb insufficient … raise via change-control against ISSUE-008").
+- **Decision (operator, session 71):** re-home the trigger **runtime state** into **dedicated mutable operational tables**, preserving the `tools` append-only-by-version audit invariant. **Rejected:** (B) exempting the `<connector>__triggers` carrier row from the `0008` version-discipline trigger — it carves a hole in the `tools` append-only audit (trigger-config changes would be un-versioned, a #1 auditability erosion); (C) leaving state in `tools.config` — non-functional live.
+- **Consumers:** migration **`0019_connector_trigger_state`** (+ `0020` CONCURRENTLY index if needed) creates `connector_triggers` / `connector_watches` / `event_watermarks` / `connector_delivery_health` / `event_dedup_ledger` (each with the 0002 `default_deny` RLS floor + REVOKE; **no `client_slug`**, silo isolation ADR-001). `app/trigger-infra/src/supabase-store.ts` + `store.ts` rewritten to those tables with **atomic upserts** (this also fixes the review's MAJOR non-atomic read-modify-write lost-update). `schema.md §4` mirrored. Live-smoke rewritten to replay the new statements.
+- **Status:** 🟢 RESOLVED (own-tables) — implemented session 71 (migration `0019`/`0020`); the trigger append-only-by-version invariant on `tools` stays intact.
+
+---
+
+<!-- Next OD number: OD-191 -->
 
 

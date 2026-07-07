@@ -6,12 +6,15 @@
 // test double AND the reference model: it enforces every invariant the real DDL enforces, so it cannot
 // pass offline where the live supabase-store.ts would throw (the session-69/71 fake-vs-live drift class).
 //
-// SCHEMA HOMING (issue §5 + schema.md §4 note): there is NO dedicated trigger_config / watch_state /
-// event_watermark table. Trigger definitions, the default-set enable/disable flags, watch/subscription
-// state (channel id, resource id, expiry) and per-channel watermarks (`ts` / `historyId`) all ride in
-// `tools.config` jsonb — one row per (connector) trigger-carrier tool. The fake stores exactly that shape
-// so the live adapter reads/writes the same jsonb sub-tree. If a builder finds jsonb insufficient, that
-// is a schema gap to raise via change-control (issue §5), NOT to improvise a table here.
+// SCHEMA HOMING (OD-190, session 71): trigger runtime state has its OWN dedicated MUTABLE tables (migration
+// 0019_connector_trigger_state) — NOT `tools.config` jsonb. The prior homing (all state in tools.config,
+// mutated in place) was a live-confirmed BLOCKER: `tools` is version-locked by the 0008 version-discipline
+// trigger, so every in-place `config` write RAISES. The tables are: connector_triggers (defaults kind='default'
+// + rules kind='rule'), connector_watches (keyed (connector,kind)), event_watermarks (keyed (connector,channel)),
+// connector_delivery_health (keyed connector), event_dedup_ledger (keyed (connector,event_id)). This fake MODELS
+// those keys/constraints exactly — a dedup insert is idempotent on (connector,event_id), a watch upserts on
+// (connector,kind), a default is unique per (connector,event_name) — so the fake CANNOT pass offline where the
+// live DDL would reject (the session-69/71 fake-vs-live drift class).
 //
 // SINKS: event_log (append-only, C7) and audit — this slice WRITES the trigger-lifecycle rows (inbound
 // volume, parse/verify failures, trigger firings, re-arm success/fail, detected/reconciled gaps) and
@@ -63,7 +66,7 @@ export interface NormalizedEvent {
   boundary_tagged: true;
 }
 
-// ── Trigger definition + config (rides in tools.config jsonb) ─────────────────────────────────────────
+// ── Trigger definition + config (persisted in connector_triggers; OD-190) ─────────────────────────────
 export type TriggerConditionOp = 'eq' | 'neq' | 'exists' | 'in';
 
 /** A single condition clause matched against a NormalizedEvent.fields entry. Missing-field semantics:
@@ -97,7 +100,7 @@ export interface TriggerRule {
   enabled: boolean;
 }
 
-// ── Watch / subscription state (FR-3.TRIG.005) — rides in tools.config.watches[] ─────────────────────
+// ── Watch / subscription state (FR-3.TRIG.005) — persisted in connector_watches, keyed (connector,kind) ─
 /** One expiring push subscription / watch channel. Only the Google family expires (Gmail Pub/Sub ~7d;
  *  Drive files 1d / changes 7d; Calendar bounded). Slack Events + GHL app-webhook do NOT expire → they
  *  carry NO watch row and the re-arm job skips them (FR-3.TRIG.005 branch). */
@@ -113,7 +116,7 @@ export interface WatchState {
   degraded: boolean;
 }
 
-// ── Per-channel delivery watermark (FR-3.TRIG.006) — rides in tools.config.watermarks[] ──────────────
+// ── Per-channel delivery watermark (FR-3.TRIG.006) — persisted in event_watermarks, keyed (connector,channel)
 /** The persisted high-water mark per channel: Slack `ts` per channel; Gmail `historyId`. A sweep re-reads
  *  from here; a watermark that never advances while events are expected is the never-arriving-webhook
  *  signal (OD-104(a)). */
@@ -226,11 +229,16 @@ export class InMemoryTriggerStore implements TriggerStore {
     return new Date(now * 1000).toISOString();
   }
 
-  // ── seeding helpers (test setup; mirror what provisioning writes into tools.config) ──
+  // ── seeding helpers (test setup; mirror what provisioning writes into connector_triggers / delivery_health) ──
   seedDefaults(connector: Connector, defs: DefaultTrigger[]): void {
     this.defaults.set(connector, defs.map((d) => ({ ...d })));
   }
   seedDeliverySample(s: DeliverySample): void {
+    // connector_delivery_health CHECK (success_rate >= 0 and success_rate <= 1) — the live insert would reject
+    // an out-of-range rate; the fake must too (fake-vs-live drift). connector is the pk → upsert-by-connector.
+    if (s.successRate < 0 || s.successRate > 1) {
+      throw new Error(`connector_delivery_health: success_rate ${s.successRate} out of [0,1] (CHECK)`);
+    }
     const i = this.deliverySamples.findIndex((x) => x.connector === s.connector);
     if (i >= 0) this.deliverySamples[i] = { ...s };
     else this.deliverySamples.push({ ...s });
@@ -268,6 +276,11 @@ export class InMemoryTriggerStore implements TriggerStore {
   }
 
   async saveRule(rule: Omit<TriggerRule, 'id'>, actor: string, now: number): Promise<TriggerRule> {
+    // connector_triggers CHECK (kind <> 'rule' or task_name is not null): a rule MUST name a task. The live
+    // insert would violate the CHECK on an empty taskName — the fake must reject it too (fake-vs-live drift).
+    if (!rule.taskName || rule.taskName.trim() === '') {
+      throw new Error("connector_triggers: a rule must name a task (CHECK kind<>'rule' or task_name is not null)");
+    }
     const full: TriggerRule = { id: this.nextId('rule'), ...rule, conditions: rule.conditions.map((c) => ({ ...c })) };
     this.rules.push(full);
     await this.writeAudit(

@@ -10,12 +10,13 @@
 //     CALL into it, never re-implement it (FR-6.APR.006).
 //   • access_audit — every Approve/Reject/Modify/Hold is appended (seam; append-only).
 //
-// ⚠️ NOT YET RUN LIVE. The append-only trigger's whitelist does NOT permit an escalated_at-only UPDATE
-// (it requires a status transition). Setting escalated_at on a still-`pending` row therefore needs an additive
-// DB delta (see results/proposed-shared-spec.md — the orchestrator applies it serially). The InMemory model is
-// the proven offline reference; this adapter is authored to the DDL so the seam typechecks + is real. The
-// AF-068 red-team (no autonomous bypass of the hard-approval floor) is the LIVE ship gate — owed, listed in
-// residualAFs. Do NOT claim these paths verified until a live capstone records evidence.
+// ⚠️ NOT YET FULLY RUN LIVE. The escalated_at-only UPDATE the whitelist once rejected is now PERMITTED by
+// migration 0015 branch (b) (kin 0010/OD-182 — escalated_at null→ts on a still-pending row), so
+// escalateStaleWaits performs the real stamp. Hold-for-full-review still awaits its own held_for_review_at
+// column (deferred under OD-188 — absent from every migration), so holdForFullReview stays deferred. The
+// InMemory model is the proven offline reference; this adapter is authored to the DDL so the seam typechecks +
+// is real. The AF-068 red-team (no autonomous bypass of the hard-approval floor) is the LIVE ship gate — owed,
+// listed in residualAFs. Do NOT claim these paths verified until a live capstone records evidence.
 //
 // Design notes tied to the three non-negotiables:
 //   #2  The tier DECISION (tiers.classifyTier) + the floor are pure and identical in both stores — decided in
@@ -38,9 +39,11 @@ import {
   InMemoryApprovalWorkflow,
   InMemoryTaskSeam,
   type ApprovalConfig,
+  type ApprovalNotification,
   type ApprovalWorkflow,
   type AppliedEffect,
   type CompensationSink,
+  type CompensationTask,
   type FlagOutcome,
   type FreshnessMode,
   type GuardrailHit,
@@ -64,15 +67,25 @@ import type { TaskSeam } from './store.ts';
 //     polling). Our local FreshnessMode (store.ts) is the SAME closed union — the queue view rides its two
 //     Realtime subscriptions at wire time.
 
-export const ERR_ESCALATED_AT_NEEDS_DELTA =
-  'approval-workflow(live): setting escalated_at on a still-pending guardrail_log row is refused by the ' +
-  'append-only trigger whitelist (it permits only a status transition). Needs the additive trigger delta in ' +
-  'results/proposed-shared-spec.md before this path can run live.';
+// NOTE: the escalated_at delta this once guarded has LANDED (migration 0015 branch (b), kin 0010/OD-182) —
+// escalateStaleWaits now performs the real null→ts stamp and no longer throws. This message is retained only
+// for holdForFullReview, whose column (held_for_review_at) is a DIFFERENT, still-deferred delta (OD-188).
+export const ERR_HELD_FOR_REVIEW_AT_NEEDS_DELTA =
+  'approval-workflow(live): persisting Hold-for-full-review needs the held_for_review_at column, which is ' +
+  'deferred under OD-188 (not yet in any app/silo/migrations). The reference model proves the soft→explicit ' +
+  'promotion offline; the live persist path is owed that additive delta before it can run.';
 
 export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
   private pool: pg.Pool;
   private readonly taskQueue: TaskSeam;
   private readonly config: ApprovalConfig;
+  // The compensation sink is driven DIRECTLY by this live adapter (not via the ref): a held item's already-
+  // applied reversible effects are the real inputs (opts.appliedEffects), and the empty ref never holds the
+  // live rowId, so delegating there silently lost every compensation task (#1 hidden by #3). See resolve().
+  private readonly comp: CompensationSink;
+  // The escalation notification is emitted directly by this live adapter (escalateStaleWaits drives off real
+  // rows, not the empty ref) — a stale wait-point must be surfaced, never dropped (#3).
+  private readonly notify: NotificationSink;
   // The pure parts (classify, route) + the reference workflow logic are DB-free / identical to the reference
   // model; where a method is purely computational we delegate rather than duplicate the invariants.
   private readonly ref: InMemoryApprovalWorkflow;
@@ -88,6 +101,8 @@ export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
     this.pool = new pg.Pool({ connectionString, ssl });
     this.taskQueue = taskQueue;
     this.config = config;
+    this.comp = comp;
+    this.notify = notify;
     this.ref = new InMemoryApprovalWorkflow(new InMemoryTaskSeam(), notify, comp, config);
   }
 
@@ -142,15 +157,34 @@ export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
         // auto-run has NO human reviewer — the resume is attributed to the server timer, not a person.
         await this.taskQueue.resume(row.task_id, 'system:soft-auto-run', now);
       }
-      // Forward status transition — legal under the append-only trigger whitelist (description/task_id fixed).
-      const upd = await this.pool.query<GuardrailLogRow>(
-        `update guardrail_log set status = 'approved', reviewed_at = now()
-         where id = $1 and status = 'pending'
-         returning id, task_id, guardrail_type, description, action_blocked, status, reviewed_by, reviewed_at,
-                   escalated_at, created_at`,
-        [row.id],
-      );
-      if (upd.rows[0]) ran.push(upd.rows[0]);
+      // Forward status transition + its audit are ONE atomic unit (same as resolve(): never a transition without
+      // its audit — #1/#3). actor_type='system' — the timer auto-run has NO human reviewer (it is attributed to
+      // the server timer, not a person; 'system' is a valid actor_type enum member).
+      const client = await this.pool.connect();
+      try {
+        await client.query('begin');
+        // Forward status transition — legal under the append-only trigger whitelist (description/task_id fixed).
+        const upd = await client.query<GuardrailLogRow>(
+          `update guardrail_log set status = 'approved', reviewed_at = now()
+           where id = $1 and status = 'pending'
+           returning id, task_id, guardrail_type, description, action_blocked, status, reviewed_by, reviewed_at,
+                     escalated_at, created_at`,
+          [row.id],
+        );
+        if (upd.rows[0]) {
+          await client.query(
+            `insert into access_audit (audit_type, actor_identity, actor_type, action, target_type)
+             values ('approval_resolution', 'system:soft-auto-run', 'system', 'approve', 'guardrail_log')`,
+          );
+        }
+        await client.query('commit');
+        if (upd.rows[0]) ran.push(upd.rows[0]);
+      } catch (err) {
+        await client.query('rollback').catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
     }
     return ran;
   }
@@ -166,12 +200,14 @@ export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
     const found = cur.rows[0];
     if (!found) throw new Error(`guardrail_log row ${rowId} not found`);
     if (found.guardrail_type !== 'approval_gate') throw new Error(ERR_HOLD_ONLY_SOFT);
-    // The promotion note is appended to the description. NOTE: the append-only trigger requires description to
-    // be UNCHANGED on a whitelisted status transition — and Hold is NOT a status transition (status stays
-    // pending). Persisting the promotion therefore also needs the additive trigger delta (proposed-shared-spec).
+    // The promotion needs a dedicated held_for_review_at column to persist (a status/description mutation is NOT
+    // permitted by the append-only trigger — Hold is not a status transition, status stays pending). That column
+    // is deferred under OD-188 and is absent from every app/silo/migrations file, so this live persist path
+    // remains owed its additive delta. The reference model (store.ts holdForFullReview) proves the soft→explicit
+    // promotion offline in the meantime.
     void by;
-    void this.ref; // reference model holds the pure invariant; live persistence awaits the delta
-    throw new Error(ERR_ESCALATED_AT_NEEDS_DELTA);
+    void this.ref;
+    throw new Error(ERR_HELD_FOR_REVIEW_AT_NEEDS_DELTA);
   }
 
   async raiseFlag(
@@ -248,8 +284,27 @@ export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
     }
 
     // Already-applied effects → durable compensation (reversible) / non-compensable surface (irreversible).
-    // Delegate the compensation-sink emit + non-compensable list to the reference model (single source).
-    const effOut = await this.ref.resolve(rowId, resolution, by, opts, now).catch(() => null);
+    // MAJOR FIX: drive this DIRECTLY off the REAL inputs (opts.appliedEffects) via the live CompensationSink.
+    // The prior code delegated to this.ref.resolve(...), but the ref is a FRESH empty InMemoryApprovalWorkflow
+    // that never holds the live rowId → it always threw 'row not found' → .catch swallowed → compensation was
+    // never queued (#1 effect-loss hidden by #3). We mirror the reference model's compensation logic (store.ts
+    // resolve) but from the real appliedEffects: a reversible effect gets a durable human-visible cleanup task
+    // (NEVER an auto-rollback — #2/OD-010); an irreversible effect is surfaced non-compensable.
+    const compensationQueued: CompensationTask[] = [];
+    const nonCompensable: string[] = [];
+    for (const eff of opts.appliedEffects ?? []) {
+      if (eff.reversible) {
+        const t: CompensationTask = {
+          for_task_id: found.task_id ?? rowId,
+          description: `Human-visible cleanup for already-applied reversible effect: ${eff.description}`,
+          created_at: new Date(now * 1000).toISOString(),
+        };
+        await this.comp.queue(t);
+        compensationQueued.push(t);
+      } else {
+        nonCompensable.push(`NON-COMPENSABLE (irreversible, no auto-undo): ${eff.description}`);
+      }
+    }
 
     const nextStatus = resolution === 'approve' ? 'approved' : resolution === 'reject' ? 'rejected' : 'modified';
     // Drive the C5 seam — C6 CALLS INTO C5's state machine (FR-6.APR.006), it never re-implements it. The live
@@ -264,23 +319,43 @@ export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
         await this.taskQueue.requeueModified(found.task_id, opts.editedPayload ?? null, now);
       }
     }
-    // Forward status transition — legal under the trigger whitelist (description/task_id unchanged).
-    const upd = await this.pool.query<GuardrailLogRow>(
-      `update guardrail_log set status = $2, reviewed_by = $3, reviewed_at = now()
-       where id = $1 and status = 'pending'
-       returning id, task_id, guardrail_type, description, action_blocked, status, reviewed_by, reviewed_at,
-                 escalated_at, created_at`,
-      [rowId, nextStatus, by],
-    );
-    // Append the review to access_audit (seam).
-    await this.pool.query(
-      `insert into access_audit (audit_type, actor_identity, actor_type, action, target_type)
-       values ('approval_resolution', $1, 'human', $2, 'guardrail_log')`,
-      [by, resolution],
-    );
+
+    // BLOCKER FIX: the guardrail_log forward transition AND its access_audit append are ONE atomic unit. Before,
+    // they ran on the non-transactional pool: the row flipped to approved/rejected and THEN the audit insert
+    // threw (actor_type='human' is not a member of the enum ('user','agent','system')) — leaving an inconsistent,
+    // un-audited resolution (#1/#3). We check out ONE client, BEGIN, run both, COMMIT — ROLLBACK on any error so
+    // the transition can never land without its audit. actor_type reflects the REAL actor: a human reviewer
+    // resolution is 'user'; the timer auto-run path (autoRunElapsedSoft) is 'system' (it appends its own audit).
+    const client = await this.pool.connect();
+    let upd: pg.QueryResult<GuardrailLogRow>;
+    try {
+      await client.query('begin');
+      // Forward status transition — legal under the trigger whitelist (description/task_id unchanged).
+      upd = await client.query<GuardrailLogRow>(
+        `update guardrail_log set status = $2, reviewed_by = $3, reviewed_at = now()
+         where id = $1 and status = 'pending'
+         returning id, task_id, guardrail_type, description, action_blocked, status, reviewed_by, reviewed_at,
+                   escalated_at, created_at`,
+        [rowId, nextStatus, by],
+      );
+      // Append the review to access_audit (seam). actor_type='user' — a human reviewer resolution (NOT 'human',
+      // which is a task_type value and is invalid for the actor_type enum).
+      await client.query(
+        `insert into access_audit (audit_type, actor_identity, actor_type, action, target_type)
+         values ('approval_resolution', $1, 'user', $2, 'guardrail_log')`,
+        [by, resolution],
+      );
+      await client.query('commit');
+    } catch (err) {
+      await client.query('rollback').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+
     return {
       row: upd.rows[0]!,
-      task: (found.task_id ? await this.taskQueue.get(found.task_id) : null) ?? effOut?.task ?? {
+      task: (found.task_id ? await this.taskQueue.get(found.task_id) : null) ?? {
         id: found.task_id ?? rowId,
         task_name: found.task_id ?? rowId,
         status: 'flagged',
@@ -290,16 +365,51 @@ export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
         originating_user_id: null,
         action_payload: null,
       },
-      compensationQueued: effOut?.compensationQueued ?? [],
-      nonCompensable: effOut?.nonCompensable ?? [],
+      compensationQueued,
+      nonCompensable,
     };
   }
 
-  async escalateStaleWaits(_now: number): Promise<GuardrailLogRow[]> {
-    // Setting escalated_at on a still-pending row is refused by the append-only trigger whitelist (it only
-    // permits a status transition). This path needs the additive trigger delta (proposed-shared-spec) before
-    // it can run live. The reference model proves the escalate-don't-abandon logic offline.
-    throw new Error(ERR_ESCALATED_AT_NEEDS_DELTA);
+  async escalateStaleWaits(now: number): Promise<GuardrailLogRow[]> {
+    // MINOR FIX: migration 0015 branch (b) (kin 0010, OD-182) now PERMITS an escalated_at null→ts stamp on a
+    // still-pending row (status/description/task_id/guardrail_type/reviewers unchanged) — the delta that
+    // ERR_ESCALATED_AT_NEEDS_DELTA claimed was owed has landed. So this path performs the REAL stamp instead of
+    // throwing. A stale wait-point escalates and stays visibly pending — never auto-resolved, never dropped (#3,
+    // AC-6.ESC.004.1/.3, AC-NFR-OBS.007.1). Both wait kinds are covered: a `flagged` guardrail hit AND an
+    // `awaiting_approval` tiered gate both live as pending guardrail_log rows here.
+    const cutoffIso = new Date((now - this.config.escalationTimeoutSeconds) * 1000).toISOString();
+    // Stamp escalated_at on every un-escalated, still-pending row older than the escalation window. The
+    // append-only trigger branch (b) allows exactly this monotonic null→ts stamp (nothing else mutated). The
+    // hard_limit rows are excluded — a killed block has no escalation/resume path (#2, AC-6.ESC.001.2).
+    const upd = await this.pool.query<GuardrailLogRow>(
+      `update guardrail_log
+         set escalated_at = now()
+       where status = 'pending' and escalated_at is null and guardrail_type <> 'hard_limit'
+         and created_at <= $1
+       returning id, task_id, guardrail_type, description, action_blocked, status, reviewed_by, reviewed_at,
+                 escalated_at, created_at`,
+      [cutoffIso],
+    );
+    // Emit the escalation for each stamped wait-point — a dropped emit is surfaced, never a silent un-escalated
+    // wait (#3). The escalated_at record stands regardless of the notification outcome.
+    for (const row of upd.rows) {
+      const n: ApprovalNotification = {
+        kind: 'stale_wait_escalation',
+        guardrail_log_id: row.id,
+        task_id: row.task_id,
+        reviewer_identity: null,
+        reviewer_role: 'reviewer',
+        summary:
+          `Wait-point on '${row.task_id ?? row.id}' un-actioned past the escalation window ` +
+          `(> ${this.config.escalationTimeoutSeconds}s) — escalated, not auto-resolved.`,
+        emitted_at: new Date(now * 1000).toISOString(),
+      };
+      await this.notify.emit(n).catch(() => {
+        /* dropped emit is surfaced out-of-band by C7; the escalated_at stamp already stands (#3). */
+      });
+    }
+    void this.ref; // the reference model proves the widen/no-abandon logic offline; live drives off real rows.
+    return upd.rows;
   }
 
   async buildQueueView(filter: QueueFilter, freshness: FreshnessMode, now: number): Promise<QueueView> {

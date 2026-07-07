@@ -65,6 +65,21 @@ function toRow(r: RawAgent): AgentRow {
   };
 }
 
+/** The domain an agent serves is stored live inside the `memory_scope` jsonb as a `__domain` key (see insert()).
+ * candidates(domain)/disable() resolve routing candidacy off it. The reference model (registry.ts) keeps domain
+ * in a SEPARATE root-keyed map, so it is immune to a scope replacement dropping the tag; the live adapter is not.
+ * These two helpers are the single choke point that keeps the tag alive across a memory_scope-replacing edit. */
+export function domainOf(scope: MemoryScope): AgentDomain | undefined {
+  return (scope as unknown as { __domain?: AgentDomain }).__domain;
+}
+/** Re-inject `__domain` into a (possibly domain-less) replacement memory_scope. A no-op when domain is undefined.
+ * A `__domain` already on `scope` wins over `domain` (an explicit tag on the incoming scope is authoritative). */
+export function withDomain(scope: MemoryScope, domain: AgentDomain | undefined): MemoryScope {
+  if (domain === undefined) return scope;
+  const existing = domainOf(scope);
+  return { ...scope, __domain: existing ?? domain } as MemoryScope;
+}
+
 export class SupabaseAgentRegistry implements AgentRegistry {
   private pool: pg.Pool;
   constructor(
@@ -150,9 +165,31 @@ export class SupabaseAgentRegistry implements AgentRegistry {
     return cur;
   }
 
+  /** The version-chain ROOT id (the row with previous_version_id IS NULL) for any version id in the chain.
+   * Walk UP the previous_version_id links to the origin — the stable per-agent identity across every version.
+   * Used by disable() to exclude the agent's OWN chain when deciding sole-agent-ness, so two same-named agents
+   * in a domain can't mask each other (names are NOT unique-constrained — cf. registry.ts rootOf, ~L405). */
+  private async rootId(id: string): Promise<string> {
+    const res = await this.pool.query<{ root: string }>(
+      `with recursive up as (
+         select id, previous_version_id from agents where id = $1
+         union all
+         select a.id, a.previous_version_id from agents a join up u on a.id = u.previous_version_id
+       )
+       select id as root from up where previous_version_id is null limit 1`,
+      [id],
+    );
+    return res.rows[0]?.root ?? id;
+  }
+
   /** Append a new version (INSERT, never UPDATE) linking previous_version_id — #1 append-only. */
   private async appendVersion(cur: AgentRow, patch: Partial<AgentRow>, change_reason: string): Promise<AgentRow> {
     const next = { ...cur, ...patch };
+    // Preserve the version-chain's `__domain` routing tag. A capability edit that REPLACES memory_scope carries no
+    // `__domain` (the caller passes a plain MemoryScope) — writing it verbatim would silently drop the tag, so the
+    // new current version would vanish from candidates(domain)/disable() lookups (#1 knowledge loss / #3 silent
+    // routing gap). Re-inject the domain read off the current head before the write.
+    next.memory_scope = withDomain(next.memory_scope, domainOf(cur.memory_scope));
     const res = await this.pool.query<RawAgent>(
       `insert into agents (name, description, memory_scope, tools_allowed, max_tokens, enabled, version,
          previous_version_id, change_reason, created_by)
@@ -195,8 +232,16 @@ export class SupabaseAgentRegistry implements AgentRegistry {
     this.gate(actorId, PERM_AGENTS_EDIT_CAPABILITY, 'agents.disable', id, now);
     if (!change_reason?.trim()) throw new Error(ERR_EMPTY_CHANGE_REASON);
     const cur = await this.currentRaw(id);
-    const domain = (cur.memory_scope as unknown as { __domain?: AgentDomain }).__domain;
-    const others = domain ? (await this.candidates(domain)).filter((r) => r.name !== cur.name && r.enabled) : [];
+    const domain = domainOf(cur.memory_scope);
+    // Sole-agent check excludes the agent's OWN chain by version-chain ROOT identity (not name — names aren't
+    // unique, so two same-named agents in a domain must not mask each other), mirroring the reference model.
+    let others: AgentRow[] = [];
+    if (domain !== undefined) {
+      const curRoot = await this.rootId(cur.id);
+      const cands = await this.candidates(domain);
+      const roots = await Promise.all(cands.map((r) => this.rootId(r.id)));
+      others = cands.filter((r, i) => roots[i] !== curRoot && r.enabled);
+    }
     const isSole = cur.enabled && domain !== undefined && others.length === 0;
     const row = await this.appendVersion(cur, { enabled: false }, change_reason);
     const warning: SoleAgentDisableWarning | null =

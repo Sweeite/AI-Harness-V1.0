@@ -51,6 +51,7 @@ import {
   type LinkOrigin,
 } from './types.ts';
 import { ERR_SMTP_NOT_CONFIGURED, type SmtpMessage, type SmtpSender } from './smtp.ts';
+import { type AuthAdmin } from './auth-admin.ts';
 
 /** A deterministic advisory-lock key for the seed critical section (ADR-004). Any fixed 64-bit int works;
  *  all boots must use the SAME key so pg_advisory_xact_lock serializes them. */
@@ -122,21 +123,27 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
     return { sent: false, reason: res.reason ?? ERR_SMTP_NOT_CONFIGURED };
   }
 
-  async issueInvite(input: IssueInviteInput, smtp: SmtpSender): Promise<IssueOutcome> {
+  async issueInvite(input: IssueInviteInput, auth: AuthAdmin, smtp: SmtpSender): Promise<IssueOutcome> {
     if (!input.canInvite) throw new Error(ERR_INVITE_DENIED); // fail closed (#2)
 
     // Public signup is OFF at the Supabase project level (FR-0.INV.001) — the admin API is the only genesis
-    // path. Create the auth user (no password, no auto-email) via the admin API [SA13], then mirror the
-    // profiles row (inactive until activation). generateLink mints the native ≤24h invite token (OD-014).
-    // (The auth.users createUser + inviteUserByEmail/generateLink calls are Supabase-managed; shown as the
-    // seam — the token/expiry come back from the admin API, capped by the GLOBAL OTP-expiry setting, AF-074.)
+    // path. Create the auth.users row (no password, no auto-email) via the admin API [SA13] FIRST, then mirror
+    // the profiles row using the id the admin API RETURNS. generateLink mints the native ≤24h invite token
+    // (OD-014). (The auth.users createUser + inviteUserByEmail/generateLink calls are Supabase-managed via the
+    // AuthAdmin port — the token/expiry come back from the admin API, capped by the GLOBAL OTP-expiry setting,
+    // AF-074.)
+    //
+    // ISSUE-015 BLOCKER fix: profiles.id FKs auth.users(id) (0001_baseline.sql L98). The mirror row MUST reuse
+    // the REAL auth.users.id from createUser — a fabricated gen_random_uuid() has no parent and raises
+    // foreign_key_violation on EVERY live invite. Same discipline as app/auth upsertProfile(id, …).
     const now = input.now;
     const expiresAt = this.cappedExpiry(now, input.ttlSeconds);
 
-    // profiles mirror row (id references auth.users(id); email not null). active=false until activation.
+    // Create the auth.users parent, then mirror it. profiles.id = the returned auth.users.id (FK satisfied).
+    const authUser = await auth.createUser(input.email);
     const prof = await this.pool.query<{ id: string }>(
-      `insert into profiles (id, email, active) values (gen_random_uuid(), $1, false) returning id`,
-      [input.email],
+      `insert into profiles (id, email, active) values ($1, $2, false) returning id`,
+      [authUser.id, input.email],
     );
     const profileId = prof.rows[0]!.id;
 
@@ -319,7 +326,7 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
     return inv;
   }
 
-  async runSeed(superAdminEmail: string | undefined, smtp: SmtpSender, now: number): Promise<SeedOutcome> {
+  async runSeed(superAdminEmail: string | undefined, auth: AuthAdmin, smtp: SmtpSender, now: number): Promise<SeedOutcome> {
     if (!superAdminEmail || superAdminEmail.trim() === '') throw new Error(ERR_SEED_ENV_UNSET); // abort loudly (#2/#3)
 
     // ADR-004 atomic guard. Everything runs inside ONE transaction holding pg_advisory_xact_lock — a
@@ -345,10 +352,18 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
       }
 
       // Create the Super Admin: auth.users createUser (admin API, no password/email — the setup link follows),
-      // mirror the profiles row, assign the Super Admin role. The role insert is the atomic commit point.
+      // mirror the profiles row USING THE RETURNED id, assign the Super Admin role. The role insert is the
+      // atomic commit point. ISSUE-015 BLOCKER fix: profiles.id FKs auth.users(id) (0001_baseline.sql L98) —
+      // the mirror row MUST reuse the real auth.users.id from createUser, never a fabricated gen_random_uuid()
+      // (which would raise foreign_key_violation on the genesis seed, so no Super Admin is ever created). The
+      // createUser call is external to the pg txn; it runs only after the lock is held AND no admin exists, so
+      // a re-boot/lost-race never reaches it. If the txn later rolls back, on delete cascade on the FK means
+      // the (uncommitted) profiles row was never visible — the auth.users row is reconciled by the idempotent
+      // re-run (createUser returns the same id for the same email).
+      const authUser = await auth.createUser(superAdminEmail);
       const prof = await client.query<{ id: string }>(
-        `insert into profiles (id, email, active) values (gen_random_uuid(), $1, false) returning id`,
-        [superAdminEmail],
+        `insert into profiles (id, email, active) values ($1, $2, false) returning id`,
+        [authUser.id, superAdminEmail],
       );
       const profileId = prof.rows[0]!.id;
       await client.query(

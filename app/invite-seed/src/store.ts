@@ -46,6 +46,7 @@ import {
   type SmtpMessage,
   type SmtpSender,
 } from './smtp.ts';
+import { type AuthAdmin } from './auth-admin.ts';
 
 // PROTECTED_ROLE from @harness/rbac IS the seeded Super Admin role name — single source of truth, so this
 // slice can never drift from the role catalog (AF-080 non-drift discipline).
@@ -183,9 +184,11 @@ export interface CompleteSetupInput {
 // THE PORT. Async so the pg adapter matches. Every invariant a live silo enforces is enforced here.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────
 export interface InviteSeedStore {
-  /** FR-0.INV.001/.002/.003: issue a native ≤24h invite, gated on PERM-user.invite, public-signup OFF;
-   *  deliver via SMTP with EXPLICIT send-failure surfacing. Fails closed if !canInvite. */
-  issueInvite(input: IssueInviteInput, smtp: SmtpSender): Promise<IssueOutcome>;
+  /** FR-0.INV.001/.002/.003: issue a native ≤24h invite, gated on PERM-user.invite, public-signup OFF.
+   *  Creates the auth.users row via the admin API (`auth`) FIRST and reuses its id for the profiles mirror
+   *  (FK to auth.users(id) — never a fabricated id); delivers via SMTP with EXPLICIT send-failure surfacing.
+   *  Fails closed if !canInvite. */
+  issueInvite(input: IssueInviteInput, auth: AuthAdmin, smtp: SmtpSender): Promise<IssueOutcome>;
 
   /** FR-0.INV.001: self-registration is always rejected (no account created). */
   attemptSelfRegister(email: string): Promise<never>;
@@ -210,8 +213,10 @@ export interface InviteSeedStore {
   markBounced(token: string, now: number): Promise<Invite>;
 
   /** FR-0.SEED.001/.002/.003: run the seed. Aborts loudly if SUPER_ADMIN_EMAIL is unset. Creates the first
-   *  Super Admin under the ADR-004 atomic guard; a lost race is a clean no-op (never a second admin). */
-  runSeed(superAdminEmail: string | undefined, smtp: SmtpSender, now: number): Promise<SeedOutcome>;
+   *  Super Admin under the ADR-004 atomic guard — the auth.users row via the admin API (`auth`), its returned
+   *  id reused for the profiles mirror (FK to auth.users(id)); a lost race is a clean no-op (never a second
+   *  admin). */
+  runSeed(superAdminEmail: string | undefined, auth: AuthAdmin, smtp: SmtpSender, now: number): Promise<SeedOutcome>;
 
   /** There is NO UI path to the seed (FR-0.SEED.003 / AC-0.SEED.003.2) — this always refuses. */
   triggerSeedFromUi(): Promise<never>;
@@ -314,13 +319,17 @@ export class InMemoryInviteSeedStore implements InviteSeedStore {
     return inv;
   }
 
-  async issueInvite(input: IssueInviteInput, smtp: SmtpSender): Promise<IssueOutcome> {
+  async issueInvite(input: IssueInviteInput, auth: AuthAdmin, smtp: SmtpSender): Promise<IssueOutcome> {
     // FAIL CLOSED on the permission gate (#2). The node + can() are ISSUE-018's; we consume the boolean.
     if (!input.canInvite) throw new Error(ERR_INVITE_DENIED);
 
-    // Public signup is OFF — an admin-issued invite is the ONLY genesis path (FR-0.INV.001). We create the
-    // profiles mirror row (inactive until activation — FR-1.USR.002 deactivation ≠ delete semantics apply).
-    const profileId = this.nextId('usr');
+    // Public signup is OFF — an admin-issued invite is the ONLY genesis path (FR-0.INV.001). Create the
+    // auth.users row via the admin API FIRST; its returned id IS the profiles-mirror primary key (profiles.id
+    // FKs auth.users(id) — 0001_baseline.sql L98). Reusing it (never a fabricated gen_random_uuid()) is what
+    // guarantees the mirror row always has a real auth.users parent (the ISSUE-015 BLOCKER fix). Mirror row is
+    // inactive until activation (FR-1.USR.002 deactivation ≠ delete semantics apply).
+    const authUser = await auth.createUser(input.email);
+    const profileId = authUser.id;
     this.profiles.set(profileId, { email: input.email, active: false });
 
     const inv = this.mintInvite(
@@ -468,7 +477,7 @@ export class InMemoryInviteSeedStore implements InviteSeedStore {
     return null;
   }
 
-  async runSeed(superAdminEmail: string | undefined, smtp: SmtpSender, now: number): Promise<SeedOutcome> {
+  async runSeed(superAdminEmail: string | undefined, auth: AuthAdmin, smtp: SmtpSender, now: number): Promise<SeedOutcome> {
     // FR-0.SEED.001: env unset → ABORT LOUDLY. Never create a blank/guessable admin (#2/#3).
     if (!superAdminEmail || superAdminEmail.trim() === '') throw new Error(ERR_SEED_ENV_UNSET);
 
@@ -498,9 +507,12 @@ export class InMemoryInviteSeedStore implements InviteSeedStore {
         return { created: false, superAdminProfileId: existing, reason: 'already_present' };
       }
 
-      // Create the first Super Admin (no password, no auto-email — the setup link follows). Assign the role;
-      // the unique(user_id) constraint makes the role assignment itself the atomic commit point.
-      const profileId = this.nextId('usr');
+      // Create the first Super Admin (no password, no auto-email — the setup link follows). The auth.users row
+      // is created via the admin API and its returned id IS the profiles-mirror primary key (profiles.id FKs
+      // auth.users(id) — never a fabricated id; the ISSUE-015 BLOCKER fix). Assign the role; the
+      // unique(user_id) constraint makes the role assignment itself the atomic commit point.
+      const authUser = await auth.createUser(superAdminEmail);
+      const profileId = authUser.id;
       this.profiles.set(profileId, { email: superAdminEmail, active: false });
       this.userRoles.set(profileId, SUPER_ADMIN_ROLE);
       this.writeAudit(

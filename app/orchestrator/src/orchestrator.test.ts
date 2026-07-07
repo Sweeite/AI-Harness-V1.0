@@ -17,6 +17,7 @@ import {
   type NewAgent,
   type PermChecker,
 } from './registry.ts';
+import { domainOf, withDomain } from './supabase-store.ts';
 import {
   ERR_COMMS_HAS_SEND,
   ERR_FINANCE_HAS_TXN,
@@ -147,6 +148,37 @@ test('AC-8.REG.004.2 — an edit creates a new version with previous_version_id;
   // get() resolves to the CURRENT version
   const cur = await reg.get(v1.id);
   assert.equal(cur!.version, 2);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// REG.004 — domain-preservation contract across a memory_scope-replacing capability edit.
+// The live pg adapter (supabase-store.ts) stores an agent's routing domain INSIDE the memory_scope jsonb as a
+// `__domain` key. A capability edit that REPLACES memory_scope carries a plain MemoryScope with NO `__domain`;
+// if the adapter wrote it verbatim the new current version would silently drop the tag and vanish from
+// candidates(domain)/disable() — #1 knowledge loss / #3 silent routing gap. appendVersion() re-injects the tag
+// via withDomain(next.memory_scope, domainOf(cur.memory_scope)). These assert that exact merge logic directly
+// (the in-memory reference model can't cover it — it decouples domain into a side map). Teeth against the old bug.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+test('AC-8.REG.004.3 — a memory_scope-replacing capability edit PRESERVES the __domain routing tag (adapter merge)', () => {
+  // The current head as the live adapter stores it: __domain lives inside the memory_scope jsonb.
+  const curScope = { tiers: ['semantic', 'entity'], entity_model: true, tool_registry: false, __domain: 'finance' } as unknown as MemoryScope;
+  assert.equal(domainOf(curScope), 'finance');
+
+  // The caller's replacement scope on a capability edit — a plain MemoryScope, __domain ABSENT (the old bug path).
+  const replacement: MemoryScope = { tiers: ['semantic'], entity_model: true, tool_registry: false };
+  assert.equal(domainOf(replacement), undefined);
+
+  // What appendVersion() actually writes: re-inject the current head's domain into the replacement scope.
+  const merged = withDomain(replacement, domainOf(curScope));
+  assert.equal(domainOf(merged), 'finance'); // tag survives → still resolvable by candidates(domain)/disable()
+  assert.deepEqual(merged.tiers, ['semantic']); // the caller's replacement content is honoured
+  // And the round-trip the DB sees (JSON) still carries __domain, so the `memory_scope->>'__domain'` filter matches.
+  assert.equal(JSON.parse(JSON.stringify(merged)).__domain, 'finance');
+  // An explicit __domain on the incoming scope wins over the fallback (never silently re-homed).
+  const reScoped = { tiers: ['semantic'], entity_model: true, tool_registry: false, __domain: 'ops' } as unknown as MemoryScope;
+  assert.equal(domainOf(withDomain(reScoped, 'finance')), 'ops');
+  // No domain to preserve (undefined) → withDomain is a no-op, adds no spurious tag.
+  assert.equal(domainOf(withDomain(replacement, undefined)), undefined);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────

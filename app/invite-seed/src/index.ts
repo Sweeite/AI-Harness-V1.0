@@ -39,6 +39,11 @@ export {
   type SendResult,
 } from './smtp.ts';
 export {
+  InMemoryAuthAdmin,
+  type AuthAdmin,
+  type AuthUser,
+} from './auth-admin.ts';
+export {
   InMemoryInviteSeedStore,
   ROLE_DEFAULT_VIEW,
   SUPER_ADMIN_ROLE,
@@ -63,6 +68,7 @@ export { SupabaseInviteSeedStore } from './supabase-store.ts';
 
 import { InMemoryInviteSeedStore } from './store.ts';
 import { InMemorySmtpSender } from './smtp.ts';
+import { InMemoryAuthAdmin } from './auth-admin.ts';
 import { LINK_TTL_HARD_CAP_SECONDS } from './types.ts';
 import { SupabaseInviteSeedStore } from './supabase-store.ts';
 
@@ -92,9 +98,11 @@ async function runChecks(): Promise<Finding[]> {
   // (2) SMTP-FAIL-LOUD — SMTP not configured → issue returns an EXPLICIT failure (not sent), never silent.
   {
     const store = new InMemoryInviteSeedStore();
+    const auth = new InMemoryAuthAdmin();
     const smtp = new InMemorySmtpSender({ notConfigured: true });
     const out = await store.issueInvite(
       { email: 'invitee@example.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, now: T0 },
+      auth,
       smtp,
     );
     const surfaced = store.eventLog().some((e) => e.event_type === 'email_send_failed');
@@ -104,9 +112,11 @@ async function runChecks(): Promise<Finding[]> {
   // (3) TTL-CAPPED — request a 72h TTL, the issued link still expires ≤24h (AF-074 offline portion).
   {
     const store = new InMemoryInviteSeedStore();
+    const auth = new InMemoryAuthAdmin();
     const smtp = new InMemorySmtpSender();
     const out = await store.issueInvite(
       { email: 'i@example.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, ttlSeconds: 72 * 3600, now: T0 },
+      auth,
       smtp,
     );
     const ttl = out.invite.expiresAt - out.invite.issuedAt;
@@ -116,10 +126,11 @@ async function runChecks(): Promise<Finding[]> {
   // (4a) SEED-ONCE (concurrency) — two seed runs on first boot mint exactly one Super Admin.
   {
     const store = new InMemoryInviteSeedStore();
+    const auth = new InMemoryAuthAdmin();
     const smtp = new InMemorySmtpSender();
     const [a, b] = await Promise.all([
-      store.runSeed('boss@example.com', smtp, T0),
-      store.runSeed('boss@example.com', smtp, T0),
+      store.runSeed('boss@example.com', auth, smtp, T0),
+      store.runSeed('boss@example.com', auth, smtp, T0),
     ]);
     const created = [a, b].filter((r) => r.created).length;
     const admins = [...store.userRoles.values()].filter((r) => r === 'Super Admin').length;
@@ -129,11 +140,12 @@ async function runChecks(): Promise<Finding[]> {
   // (4b) SEED env-unset aborts loudly; no UI trigger exists.
   {
     const store = new InMemoryInviteSeedStore();
+    const auth = new InMemoryAuthAdmin();
     const smtp = new InMemorySmtpSender();
     let aborted = false;
     let noUi = false;
     try {
-      await store.runSeed(undefined, smtp, T0);
+      await store.runSeed(undefined, auth, smtp, T0);
     } catch {
       aborted = true;
     }

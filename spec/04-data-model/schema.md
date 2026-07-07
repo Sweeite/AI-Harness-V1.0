@@ -545,6 +545,65 @@ create table rate_limit_deferred (                       -- net-new (FR-3.RL.004
 );  -- durable so a runtime restart never silently drops a paused call (AC-3.RL.004.1-2, #3). NO client_slug; carries
 -- only the 0002 default_deny RLS floor (written/read by the connector runtime as service_role, RLS-exempt — ADR-006).
 -- Drain scan served by rate_limit_deferred_due_idx (indexes.md; built CONCURRENTLY in migration 0017).
+
+-- ── C3 trigger runtime state (OD-190; migration 0019_connector_trigger_state + 0020 indexes) ─────────────────
+-- The trigger layer's MUTABLE operational state gets its OWN tables, NOT `tools.config`. tools.config is
+-- version-locked by the 0008 enforce_tool_version_discipline trigger (only enabled/updated_at flip in place), so
+-- the prior homing (all trigger state in tools.config, mutated in place) was a live-confirmed BLOCKER — every
+-- trigger write RAISED. OD-190 re-homed the state below, keeping the tools append-only-by-version audit intact.
+-- All net-new, intra-silo, NO client_slug (physical isolation is the boundary, ADR-001); each carries only the
+-- 0002 default_deny RLS floor (written/read by the trigger runtime as service_role, RLS-exempt — ADR-006). All
+-- mutating writes are single atomic upserts / insert-on-conflict (also fixes the prior non-atomic lost-update).
+
+create table connector_triggers (                        -- net-new (FR-3.TRIG.002/003; migration 0019). Admin-edited, low-churn.
+  id               uuid primary key default gen_random_uuid(),
+  connector        text not null,
+  kind             text not null,                         -- 'default' (shipped default set) | 'rule' (no-code rule)
+  event_name       text not null,
+  available_fields text[] not null default '{}',          -- the fields a default trigger carries (kind='default') — a rule validates against these at save
+  conditions       jsonb not null default '[]',           -- rule condition clauses (kind='rule')
+  task_name        text,                                  -- the task a matched rule launches (kind='rule')
+  enabled          boolean not null default true,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  check (kind in ('default', 'rule')),
+  check (kind <> 'rule' or task_name is not null)         -- a rule MUST name a task
+);  -- one 'default' per (connector,event_name) via the PARTIAL unique index connector_triggers_default_uq (kind='default';
+-- migration 0020, CONCURRENTLY) — the ON CONFLICT arbiter for setDefaultTriggerEnabled. RULES are deliberately NOT unique
+-- per event (overlapping rules all fire), so each is its own id-keyed row. Lookup by connector: connector_triggers_connector_idx (0020).
+
+create table connector_watches (                         -- net-new (FR-3.TRIG.005; migration 0019). Expiring push-subscription liveness.
+  connector    text not null,
+  kind         text not null,                             -- gmail | drive_files | drive_changes | calendar
+  channel_id   text not null,
+  resource_id  text not null,
+  expires_at   bigint not null,                           -- epoch seconds the watch lapses
+  degraded     boolean not null default false,            -- true once a re-arm failed/lapsed (AC-3.TRIG.005.2)
+  updated_at   timestamptz not null default now(),
+  primary key (connector, kind)                           -- STABLE identity: channel_id/resource_id change every re-arm; upsert on (connector,kind) keeps one live row
+);
+
+create table event_watermarks (                          -- net-new (FR-3.TRIG.006; migration 0019). High-churn reconciliation cursor.
+  connector   text not null,
+  channel     text not null,                              -- slack channel id / gmail 'default'
+  position    text not null,                              -- opaque last-good position (slack `ts` / gmail `historyId`)
+  updated_at  bigint not null,                            -- caller-supplied logical now (epoch seconds)
+  primary key (connector, channel)
+);  -- advances every sweep — high-churn, which is exactly why it cannot ride in the version-locked tools.config (OD-190).
+
+create table connector_delivery_health (                 -- net-new (FR-3.TRIG.006; migration 0019). Slack 2xx-rate monitor.
+  connector     text primary key,
+  success_rate  numeric not null,                         -- rolling 2xx delivery rate in [0,1]
+  updated_at    bigint not null,                          -- caller-supplied logical now (epoch seconds)
+  check (success_rate >= 0 and success_rate <= 1)
+);
+
+create table event_dedup_ledger (                         -- net-new (FR-3.TRIG.004; migration 0019). Idempotent receive.
+  connector   text not null,
+  event_id    text not null,                              -- connector delivery id (deliveryId / event_id / messageId)
+  seen_at     bigint not null,                            -- caller-supplied logical now (epoch seconds)
+  primary key (connector, event_id)                       -- recordEvent is insert ... on conflict do nothing → a re-delivery fires nothing twice (defence-in-depth over C0)
+);
 ```
 
 ## 5. Prompt Content  (C4)

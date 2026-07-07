@@ -53,7 +53,16 @@ the orchestrator; this slice does not edit that package.
 
 ---
 
-## 2. `tools.config` jsonb sub-tree — the trigger-config carrier (verify-present)  ⟵ NO DDL CHANGE
+## 2. `tools.config` jsonb sub-tree — the trigger-config carrier (verify-present)  ⟵ SUPERSEDED by OD-190
+
+> **⚠️ SUPERSEDED (OD-190, session 71).** This jsonb-homing plan was a live-confirmed BLOCKER: `tools` is
+> version-locked by the 0008 `enforce_tool_version_discipline` trigger, so every in-place `config` write
+> RAISES. OD-190 re-homed trigger runtime state into dedicated MUTABLE tables — `connector_triggers`,
+> `connector_watches`, `event_watermarks`, `connector_delivery_health`, `event_dedup_ledger` (migrations
+> `0019_connector_trigger_state` + `0020_connector_trigger_indexes`; mirrored in `schema.md §4`). The
+> `SupabaseTriggerStore` + `InMemoryTriggerStore` now read/write those tables with atomic upserts. The
+> description below is retained for provenance only — it is NO LONGER the data model.
+
 
 Per issue §5 + `schema.md` §4 schema-note, there is **no dedicated `trigger_config` / `watch_state` /
 `event_watermark` table** — trigger definitions, default-set enable/disable flags, watch/subscription
