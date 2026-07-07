@@ -199,6 +199,40 @@ begin
     raise notice 'PASS #H3: event_log in-place UPDATE rejected -> %', sqlerrm;
   end;
 
+  -- ── #I OD-192 invite lifecycle (0027 markers) — revoke stamps revoked_at + invalidates the token;
+  -- markBounced stamps bounced_at on the delivery axis WITHOUT invalidating. Replays the exact adapter UPDATEs
+  -- (revokeInvite / markBounced) and the loadInviteLive guard reads against the real profiles DDL. ────────────
+  -- revoke path: a pending invite (v_uid2) → stamp revoked_at (adapter: update profiles set revoked_at=to_timestamp($now)).
+  insert into profiles (id, email, active) values (v_uid2, 'invitee2@example.com', false);
+  update profiles set revoked_at = to_timestamp(extract(epoch from now())) where id = v_uid2;
+  select (revoked_at is not null and active = false) into v_active from profiles where id = v_uid2;
+  if v_active is not true then raise exception 'FAIL #I1: revoke did not persist revoked_at on the pending invite'; end if;
+  raise notice 'PASS #I1: revokeInvite stamps profiles.revoked_at (pending invite revoked)';
+
+  -- loadInviteLive guard: the choke-point read (select id,email,active,revoked_at,bounced_at) now sees
+  -- revoked_at IS NOT NULL for this token → the adapter throws ERR_TOKEN_INVALID, so a REVOKED invite can never
+  -- activate (#2). Assert the guard input is live: the row is returned with revoked_at set + still inactive.
+  perform 1 from profiles where id = v_uid2 and active = false and revoked_at is not null;
+  if not found then
+    raise exception 'FAIL #I2: loadInviteLive guard input wrong — a revoked pending invite is not distinguishable live';
+  end if;
+  raise notice 'PASS #I2: loadInviteLive would reject the revoked token (revoked_at set, active=false) — a revoked invite cannot activate (#2)';
+
+  -- markBounced path: a SEPARATE pending invite → stamp bounced_at; must NOT set revoked_at (delivery axis only),
+  -- so loadInviteLive still returns it (token stays valid) with delivery='bounced' (never a silent "sent", #3).
+  declare
+    v_bnc_uid uuid := gen_random_uuid();
+  begin
+    insert into auth.users (id, email) values (v_bnc_uid, 'bounced@example.com');
+    insert into profiles (id, email, active) values (v_bnc_uid, 'bounced@example.com', false);
+    update profiles set bounced_at = to_timestamp(extract(epoch from now())) where id = v_bnc_uid;
+    perform 1 from profiles where id = v_bnc_uid and bounced_at is not null and revoked_at is null and active = false;
+    if not found then
+      raise exception 'FAIL #I3: markBounced did not stamp bounced_at cleanly on the delivery axis (or wrongly touched revoked_at/active)';
+    end if;
+    raise notice 'PASS #I3: markBounced stamps profiles.bounced_at only (revoked_at null, active false) — invite reads undelivered, token still valid (#3)';
+  end;
+
   raise notice 'ALL ASSERTIONS PASS';
 end $$;
 

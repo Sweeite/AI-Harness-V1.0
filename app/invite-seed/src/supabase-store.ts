@@ -48,6 +48,7 @@ import {
   SAFE_NO_ACCESS_VIEW,
   type Activation,
   type Invite,
+  type InviteState,
   type LinkOrigin,
 } from './types.ts';
 import { ERR_SMTP_NOT_CONFIGURED, type SmtpMessage, type SmtpSender } from './smtp.ts';
@@ -57,10 +58,15 @@ import { type AuthAdmin } from './auth-admin.ts';
  *  all boots must use the SAME key so pg_advisory_xact_lock serializes them. */
 const SEED_ADVISORY_LOCK_KEY = 715015; // arbitrary fixed key ("issue 015")
 
-/** [[OD-192]] fail-loud message for the not-yet-wired live invite-lifecycle methods (see revokeInvite et al.). */
-export const ERR_INVITE_LIFECYCLE_OWED = (method: string): string =>
-  `invite-seed ${method}: live invite-lifecycle persistence owed (OD-192) — not implemented against the live ` +
-  `\`profiles\` model yet; fails loud rather than returning a silently-wrong in-memory result (#3).`;
+/** The profiles-row projection the invite lifecycle reads (OD-192). `revoked_at`/`bounced_at` are the 0027
+ *  additive markers; `active` is the pending(false)/used(true) axis. */
+interface ProfileInviteRow {
+  id: string;
+  email: string;
+  active: boolean;
+  revoked_at: string | null;
+  bounced_at: string | null;
+}
 
 export class SupabaseInviteSeedStore implements InviteSeedStore {
   private pool: pg.Pool;
@@ -214,16 +220,32 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
    *  routed to the support-request re-request path, never a blank/half-activated account (FR-0.REC.002 seam).
    *  accountType is not a persisted app column (schema.md §1) — the seed is always external_admin; a native
    *  invite's branch is selected by the setup method the invitee submits (see completeSetup). */
-  private async loadInviteLive(client: pg.PoolClient, token: string): Promise<Invite> {
+  private async loadInviteLive(client: pg.PoolClient | pg.Pool, token: string): Promise<Invite> {
     const parsed = this.parseToken(token);
     if (!parsed) throw new Error(ERR_TOKEN_INVALID);
-    const prof = await client.query<{ id: string; email: string; active: boolean }>(
-      `select id, email, active from profiles where id = $1`,
+    const prof = await client.query<ProfileInviteRow>(
+      `select id, email, active, revoked_at, bounced_at from profiles where id = $1`,
       [parsed.profileId],
     );
     const row = prof.rows[0];
     if (!row) throw new Error(ERR_TOKEN_INVALID); // no such profile → invalid token
     if (row.active) throw new Error(ERR_TOKEN_INVALID); // already activated → the token is consumed (used)
+    // OD-192: a REVOKED invite must never validate/activate (#2). loadInviteLive is the choke point for
+    // validateToken + completeSetup, so rejecting here closes the token for every consume path.
+    if (row.revoked_at != null) throw new Error(ERR_TOKEN_INVALID); // issuer-revoked → invalid token
+    return this.inviteFromRow(row, parsed, token, 'pending');
+  }
+
+  /** Build the live Invite view from a profiles row. `state` is decided by the caller (pending for a live
+   *  loadInviteLive; used/revoked for the lifecycle ops that surface those states). `delivery` is derived from
+   *  the bounced_at marker (OD-192). accountType/origin come from the token; issue/expiry are server-side
+   *  (OD-014), not app-persisted; issuedBy is not a persisted profiles column (schema.md §1). */
+  private inviteFromRow(
+    row: ProfileInviteRow,
+    parsed: { profileId: string; origin: LinkOrigin },
+    token: string,
+    state: InviteState,
+  ): Invite {
     return {
       token,
       email: row.email,
@@ -232,8 +254,8 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
       profileId: row.id,
       issuedAt: 0, // native token — issue/expiry are Supabase-auth-server-side (OD-014); not app-persisted
       expiresAt: 0,
-      state: 'pending',
-      delivery: 'sent_unconfirmed',
+      state,
+      delivery: row.bounced_at != null ? 'bounced' : 'sent_unconfirmed',
       issuedBy: null,
     };
   }
@@ -330,33 +352,105 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
     }
   }
 
-  // ── Invite lifecycle (revoke / reissue / resend / mark-bounced) — FAIL LOUD ([[OD-192]] immediate sub-fix) ──
-  // These 4 methods previously delegated to `this.ref` (the InMemoryInviteSeedStore), which the LIVE `issueInvite`
-  // never populates (it writes `profiles`/`user_roles`, not the fake's in-memory map). So live they returned a
-  // silently-WRONG result: a revoke/reissue/resend appeared to succeed against empty in-memory state, and a
-  // provider bounce webhook silently failed to mark the invite undelivered — a bounced/revoked invite still read
-  // "sent" (#1/#3). OD-192 (operator-resolved) DIRECTION is to model the lifecycle on the existing pending-
-  // `profiles` row (Option A, no new table), but the `profiles` table has only `active boolean` — there is no
-  // column to distinguish pending vs revoked vs bounced state, so the full impl needs an invite-state modeling
-  // decision (likely a small additive migration) + a live-adapter smoke (R10). Until that lands, these MUST fail
-  // loud rather than return a silently-wrong result. See OD-192 / live-adapter-backfill-findings.2026-07-07.md B5.
-  async revokeInvite(_token: string, issuerCanInvite: boolean, _now: number): Promise<Invite> {
+  // ── Invite lifecycle (revoke / reissue / resend / mark-bounced) — LIVE against the pending-`profiles` row ──
+  // [[OD-192]] (operator Option A, no new table). These previously delegated to `this.ref` (an in-memory fake
+  // the live `issueInvite` never populates) → a silently-WRONG live result. Now modelled on the profiles row +
+  // the 0027 markers: revoke ⇒ stamp `revoked_at` (the token then no longer validates — loadInviteLive rejects
+  // it, #2); markBounced ⇒ stamp `bounced_at` (reads "undelivered", never a silent "sent", #3); resend/reissue
+  // ⇒ re-deliver the setup link for a still-pending invite + audit. Invite expiry/consumption stay server-side
+  // (OD-014). The one residual: reissue's TRUE server-side token refresh (Supabase generateLink) needs an
+  // AuthAdmin seam that is not built — tracked as AF-074; the app-schema lifecycle is complete here.
+
+  async revokeInvite(token: string, issuerCanInvite: boolean, now: number): Promise<Invite> {
     if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED); // fail closed first (#2)
-    throw new Error(ERR_INVITE_LIFECYCLE_OWED('revokeInvite'));
+    // Read-then-write under ONE transaction with `for update` — the stamp AND its audit are atomic (a crash can
+    // never revoke without the audit, #1/#3), and the row lock serialises a concurrent activation so we never
+    // revoke a row that just went active(used).
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      const parsed = this.parseToken(token);
+      if (!parsed) throw new Error(ERR_TOKEN_INVALID);
+      const prof = await client.query<ProfileInviteRow>(
+        `select id, email, active, revoked_at, bounced_at from profiles where id = $1 for update`,
+        [parsed.profileId],
+      );
+      const row = prof.rows[0];
+      if (!row) throw new Error(ERR_TOKEN_INVALID);
+      // Revoking an already-USED invite is a NO-OP (the account exists — FR-0.INV.006 edge): never tear it down.
+      if (row.active) {
+        await client.query('commit');
+        return this.inviteFromRow(row, parsed, token, 'used');
+      }
+      // Idempotent: a second revoke on an already-revoked pending invite stays revoked (no duplicate audit).
+      if (row.revoked_at == null) {
+        await client.query(`update profiles set revoked_at = to_timestamp($2) where id = $1`, [parsed.profileId, now]);
+        await this.writeAudit(client, 'invite_revoked', 'issuer', 'user', 'revoke_invite', 'admin pre-use revoke');
+        row.revoked_at = new Date(now * 1000).toISOString();
+      }
+      await client.query('commit');
+      return this.inviteFromRow(row, parsed, token, 'revoked');
+    } catch (e) {
+      await client.query('rollback').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
-  async reissueInvite(_token: string, issuerCanInvite: boolean, _smtp: SmtpSender, _now: number): Promise<IssueOutcome> {
+  async reissueInvite(token: string, issuerCanInvite: boolean, smtp: SmtpSender, now: number): Promise<IssueOutcome> {
     if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED);
-    throw new Error(ERR_INVITE_LIFECYCLE_OWED('reissueInvite'));
+    void now; // native-token issue/expiry are server-side (OD-014); `now` is part of the port shape for the fake.
+    // A fresh link for a still-pending invitee (FR-0.INV.006.2). loadInviteLive is the pending-gate: it rejects a
+    // used (active) or revoked invite as ERR_TOKEN_INVALID, so reissue only proceeds for a live pending invite.
+    // RESIDUAL (AF-074): the true server-side native-token refresh (Supabase generateLink) needs an AuthAdmin
+    // seam that is not built; at the app-schema level we re-audit + re-deliver the setup link.
+    const inv = await this.loadInviteLive(this.pool, token);
+    await this.writeAudit(this.pool, 'invite_expired', 'service_role', 'system', 'reissue_invite', 'expired → re-issued');
+    const { sent, reason } = await this.deliver(inv, smtp);
+    return { invite: inv, sent, ...(sent ? {} : { sendFailureReason: reason }) };
   }
 
-  async resendInvite(_token: string, issuerCanInvite: boolean, _smtp: SmtpSender, _now: number): Promise<IssueOutcome> {
+  async resendInvite(token: string, issuerCanInvite: boolean, smtp: SmtpSender, now: number): Promise<IssueOutcome> {
     if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED);
-    throw new Error(ERR_INVITE_LIFECYCLE_OWED('resendInvite'));
+    void now;
+    // One-click resend of a still-pending link (FR-0.INV.006). loadInviteLive rejects used/revoked → the caller
+    // must re-issue instead. Same link, re-delivered; delivery outcome is surfaced explicitly (never a false sent).
+    const inv = await this.loadInviteLive(this.pool, token);
+    await this.writeAudit(this.pool, 'invite_resent', 'service_role', 'system', 'resend_invite', 'one-click resend');
+    const { sent, reason } = await this.deliver(inv, smtp);
+    return { invite: inv, sent, ...(sent ? {} : { sendFailureReason: reason }) };
   }
 
-  async markBounced(_token: string, _now: number): Promise<Invite> {
-    throw new Error(ERR_INVITE_LIFECYCLE_OWED('markBounced'));
+  async markBounced(token: string, now: number): Promise<Invite> {
+    // Best-effort bounce (FR-0.INV.007): the provider reported the setup email bounced → mark undelivered + emit
+    // the issuer re-alert. A bounce NEVER silently looks "sent" (#3). Idempotent: a duplicate bounce webhook does
+    // not re-emit. The stamp + event + audit are ONE atomic unit. Does not invalidate the token (delivery axis).
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      const parsed = this.parseToken(token);
+      if (!parsed) throw new Error(ERR_TOKEN_INVALID);
+      const prof = await client.query<ProfileInviteRow>(
+        `select id, email, active, revoked_at, bounced_at from profiles where id = $1 for update`,
+        [parsed.profileId],
+      );
+      const row = prof.rows[0];
+      if (!row) throw new Error(ERR_TOKEN_INVALID);
+      if (row.bounced_at == null) {
+        await client.query(`update profiles set bounced_at = to_timestamp($2) where id = $1`, [parsed.profileId, now]);
+        await this.writeEvent(client, 'invite_bounced', `setup email to ${row.email} BOUNCED — invite marked undelivered, issuer re-alerted`);
+        await this.writeAudit(client, 'invite_bounced', 'service_role', 'system', 'mark_bounced', 'provider bounce webhook');
+        row.bounced_at = new Date(now * 1000).toISOString();
+      }
+      await client.query('commit');
+      return this.inviteFromRow(row, parsed, token, row.active ? 'used' : row.revoked_at != null ? 'revoked' : 'pending');
+    } catch (e) {
+      await client.query('rollback').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   async runSeed(superAdminEmail: string | undefined, auth: AuthAdmin, smtp: SmtpSender, now: number): Promise<SeedOutcome> {

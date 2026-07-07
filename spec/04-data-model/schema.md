@@ -279,7 +279,9 @@ create table profiles (
   name           text,
   active         boolean not null default true,        -- FR-1.USR.002 deactivation ≠ delete
   created_at     timestamptz not null default now(),
-  last_active_at timestamptz
+  last_active_at timestamptz,
+  revoked_at     timestamptz,                           -- 0027/OD-192: issuer pre-use invite revoke (one-way; revoked invite no longer validates)
+  bounced_at     timestamptz                            -- 0027/OD-192: setup email bounced (FR-0.INV.007 delivery axis; does not invalidate the token)
 );
 
 create table support_requests (
