@@ -144,9 +144,11 @@ or assign each shared file to exactly one agent).
 
 **Migration-chain lane (durable — Rule 0, don't leave this in chat).** `app/silo/migrations/` + its
 **`_journal.json`** are a single shared chain; **two worktree agents must never each pick the next tag** —
-they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head (session 71 — Checkpoint 4 CLOSED): `0020_connector_trigger_indexes`.
-next free silo tag is `0021`.** **ALL of `0011–0020` are APPLIED LIVE to the silo + verified**, and the **mgmt-plane chain** (hand-applied, no
-journal) is at **`0003_backup_dr`** (ISSUE-085 — 4 enums + 5 operator-side backup tables, APPLIED LIVE to the mgmt DB). Highlights: 16/16 Stage-4
+they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head: `0026_version_chain_lost_update_backstops` (session 73).
+Next free silo tag is `0027`.** **ALL of `0011–0026` are APPLIED LIVE to the silo + verified** — `0021–0023` (Checkpoint-3 review,
+session 72) + `0024_webhook_event_types` / `0025_agents_version_chain_unique` / `0026_version_chain_lost_update_backstops` (session-73
+Part-B adapter sweep; see `spec/00-foundations/standards/live-adapter-backfill-findings.2026-07-07.md`). The **mgmt-plane chain**
+(hand-applied, no journal) is at **`0003_backup_dr`** (ISSUE-085 — 4 enums + 5 operator-side backup tables, APPLIED LIVE to the mgmt DB). Highlights: 16/16 Stage-4
 `event_type` + 1 `alert_type` value (`0011`), 9 trigger `event_type` values (`0018`), `rate_limit_deferred`+RLS (`0012`), `guardrail_log.redacted_at` +
 redaction-tombstone branch (`0015`, carries BOTH the redaction AND the OD-182 escalation branch), the task_graph/agents append-only triggers
 (`0013`/`0016`), the 5 trigger-state tables ([[OD-190]] own-tables rework, `0019`/`0020`). **⚠️ the `0011` semicolon-in-comment splitter trap was caught
@@ -258,7 +260,9 @@ Gate everything. Not hands-off.
   AF-089 (033 GHL race) · per-vendor arms AF-090/084/083 (037→039/040/041) · AF-069 Path A + AF-072 LOAD + the standing
   live rehearsal (085). **Stage 5 (gate `022` + batch) may now open (R1).**
 
-### Stage 5 — Integration & specialists  *(OPEN since 2026-07-07 — Checkpoint 4 CLOSED; gate `022` + `021`/`038`/`039`/`040`/`041`/`078`/`079`/`083`/`086` now `ready`; `020`/`052`/`058`/`062`/`064`/`065`/`068` still `blocked` on undone deps)*  *(16 in parallel)*
+### Stage 5 — Integration & specialists  *(OPEN since 2026-07-07 — Checkpoint 4 CLOSED; gate `022` + `021`/`038`/`039`/`040`/`041`/`078`/`079`/`083`/`086` now `ready`; `020`/`052`/`058`/`062`/`064`/`065`/`068` marked `blocked`)*  *(16 in parallel)*
+
+> ⚠️ **KNOWN DRIFT (session 73, operator decision owed — do not build on this line as-is):** of the 7 marked `blocked` above, **6 (`020`/`052`/`058`/`062`/`065`/`068`) have ALL their §7 blockers `done`**, so by the written rule they are `ready`, not "blocked on undone deps" — the phrase above is factually wrong for them (only `064` is correctly blocked, on the still-not-done `052`). Left un-flipped pending an operator call: flip the 6 → `ready`, or record an explicit "hold until gate `022` closes" convention. See SESSION-LOG Session 73. Reconcile before picking work here.
 - 🟠 **GATE — `022` Memory + entity model + sensitivity/visibility tagging**  🔴 — get the entity model wrong and knowledge fragments (#1).
 - 🟢 BATCH: `020` RLS enforcement (visibility/sensitivity/Restricted/aal2 + service_role) 🔴 · `021` User mgmt + RBAC audit · `038` Disconnection + recovery · `039` GHL connector · `040` Google connector · `041` Slack connector · `052` Inngest engine + retry + DLQ · `058` Rate-limit + cost-ladder enforcement · `062` Eight specialists + per-agent hard limits · `064` Execution plans + failure-mode · `065` Agent health / dead-agent · `068` Proactivity modes + autonomy matrix · `078` Ops dashboards · `079` Mobile surface · `083` Client offboarding · `086` Config admin surface
 - ◇ **CHECKPOINT 5:** `022` entity resolution *links, not fragments*; tags apply. `020` RLS enforcement

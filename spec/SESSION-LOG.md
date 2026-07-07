@@ -37,7 +37,7 @@ next session reads the top entry to know exactly where to resume.
 
 **Next step (HANDOFF POINT — build not advanced; Stage 5 still open, foundation NOT yet cleared):**
 1. **Foundation is NOT cleared for Stage 5 yet.** Remaining before it is: resolve OD-191/192/193/194 (operator decisions); fix the owed code MAJORs (invite-seed atomicity + completeSetup, hard-limits setStatus); land the prompt-optimisation/triggers tables (ISSUE-049/053); polish the 10 smokes; then one live cross-component integration pass (Layer 3).
-2. **A separate adversarial LOGIC-bug sweep of the NON-adapter business logic is queued for a FRESH chat** (operator's explicit request — see memory `queued-logic-bug-sweep`). This session covered the DB-adapter boundary only; the pure business logic beyond its 767 green tests was not re-hunted.
+2. **A separate adversarial LOGIC-bug sweep of the NON-adapter business logic is queued for a FRESH chat** (operator's explicit request). Full plan in the repo: `spec/00-foundations/standards/logic-bug-sweep-plan.md`. This session covered the DB-adapter boundary only; the pure business logic beyond its 767 green tests was not re-hunted.
 3. The 6 stale-`blocked` tracker issues (020/052/058/062/065/068) + the OD decisions remain owed.
 
 ---

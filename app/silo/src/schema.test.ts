@@ -5,6 +5,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { loadJournal, loadMigrationFiles } from "./journal.ts";
@@ -20,7 +21,10 @@ const allSql = [...files.values()].map((f) => f.sql).join("\n");
 const stripComments = (s: string) => s.replace(/--.*$/gm, "");
 const allDdl = stripComments(allSql);
 
-test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010 Stage-3 + 0011-0020 Stage-4 + 0021-0023 Checkpoint-3-review migrations are present and ordered", () => {
+// ⚠️ MAINTENANCE TRIPWIRE — this list has gone stale 3× (sessions 71/72/73). APPEND every new migration
+// tag here in the SAME commit that adds the .sql + journal entry, or this test fails 1/N. The
+// journal≡disk assertion below is the self-maintaining backstop; this list additionally documents intent.
+test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010 Stage-3 + 0011-0020 Stage-4 + 0021-0023 Checkpoint-3-review + 0024-0026 session-73 backfill migrations are present and ordered", () => {
   assert.deepEqual(journal.entries.map((e) => e.tag), [
     "0001_baseline",
     "0001b_indexes",
@@ -48,7 +52,17 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0021_task_queue_append_only", // Checkpoint-3 review (session 72) — revoke DELETE on task_queue
     "0022_dynamic_field_values_rls", // Checkpoint-3 review (session 72) — PERM-config.prompts grant + policy
     "0023_realtime_publication", // Checkpoint-3 review (session 72) — add task_queue/notifications to supabase_realtime
+    "0024_webhook_event_types", // session-73 Part-B / OD-179 — 4 webhook event_type values (transactional:false)
+    "0025_agents_version_chain_unique", // session-73 Part-B / B4 — agents_prev_unique partial index (transactional:false)
+    "0026_version_chain_lost_update_backstops", // session-73 Part-B — prompt_layers + tools chain/genesis unique indexes (transactional:false)
   ]);
+  // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
+  // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.
+  const onDiskTags = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => f.replace(/\.sql$/, ""))
+    .sort();
+  assert.deepEqual([...journal.entries.map((e) => e.tag)].sort(), onDiskTags);
   assert.equal(journal.entries.find((e) => e.tag === "0001b_indexes")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0002_rls_scaffold")!.transactional, true);
   assert.equal(journal.entries.find((e) => e.tag === "0005_retention_prune_whitelist")!.transactional, true);
