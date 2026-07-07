@@ -252,6 +252,30 @@ test('AC-5.LOP.004.2: a queued catch-up after an overrun re-runs ONCE and duplic
   assert.equal(runner.sideEffectCounts.get('same-key'), 1, 'no duplicate side effect from the catch-up');
 });
 
+test('AC-5.LOP.004.2: two CONCURRENT ticks over the same idempotency key dispatch it exactly once (no double-act)', async () => {
+  // logic-sweep regression (store.ts:319): the dispatchOnce ledger guard was non-atomic — has-check → await
+  // dispatch → record key. Two concurrent ticks over the SAME key both saw it absent and both did the real side
+  // effect, corrupting the "≤ 1 / ZERO duplicate side effects" invariant (AF-112 / #1). A slow dispatch widens
+  // the race window so the check-then-act gap is deterministically hit.
+  const sink = new RecordingSink();
+  class SlowSource extends FakeSource {
+    override async dispatch(loop: string, u: WorkUnit, now: number): Promise<void> {
+      await new Promise((r) => setTimeout(r, 5)); // hold the await so both racers pass the has-check first
+      await super.dispatch(loop, u, now);
+    }
+  }
+  const source = new SlowSource([unit('SAME')]);
+  const runner = new InMemoryLoopRunner(source, sink);
+
+  const [a, b] = await Promise.all([runner.tick('fast', 100), runner.tick('fast', 100)]);
+
+  // exactly one real side effect ever — the other racer must observe the key as already-taken and no-op.
+  assert.equal(source.dispatched.length, 1, 'the same-key work was dispatched exactly once across two racing ticks');
+  assert.equal(runner.sideEffectCounts.get('SAME'), 1, 'no duplicate side effect under concurrency (≤ 1, AF-112 / #1)');
+  const dispatchedTotal = a.dispatchedKeys.length + b.dispatchedKeys.length;
+  assert.equal(dispatchedTotal, 1, 'exactly one of the two racing ticks reports dispatching the key');
+});
+
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // AC-5.LOP.005.1 — three consecutive failures → alert event; every run logged with timestamp + outcome.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────

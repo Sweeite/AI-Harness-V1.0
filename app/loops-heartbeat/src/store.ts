@@ -319,10 +319,17 @@ export class InMemoryLoopRunner implements LoopRunner {
     if (this.dispatchedKeys.has(unit.idempotencyKey)) {
       return false; // already done — the catch-up/self-overlap replay does NOTHING (no double-act)
     }
-    // Do the real side effect FIRST; only record the key once it succeeds so a failed dispatch can be retried
-    // (a failure is not "done"). This mirrors enqueue-then-mark-idempotent at the queue.
-    await this.source.dispatch(loop, unit, now);
+    // logic-sweep fix (store.ts:319, AF-112 / #1): RESERVE the key synchronously — before the `await` — so a
+    // concurrent tick over the SAME key sees it taken and no-ops, instead of both racers slipping past a
+    // check-then-await-then-record gap and double-acting. On dispatch failure we release the reservation so a
+    // failed run is not "done" and can be retried (preserving the record-only-on-success intent).
     this.dispatchedKeys.add(unit.idempotencyKey);
+    try {
+      await this.source.dispatch(loop, unit, now);
+    } catch (err) {
+      this.dispatchedKeys.delete(unit.idempotencyKey); // failed dispatch is retryable — un-reserve the key
+      throw err;
+    }
     this.sideEffectCounts.set(unit.idempotencyKey, (this.sideEffectCounts.get(unit.idempotencyKey) ?? 0) + 1);
     return true;
   }
