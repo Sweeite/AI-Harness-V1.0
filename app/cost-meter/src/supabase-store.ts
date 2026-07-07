@@ -148,16 +148,28 @@ export class SupabaseCostMeterStore implements CostMeterStore {
     const written: NotificationRow[] = [];
     for (const breach of ladder.breaches) {
       if (breach.action === 'alert') {
-        written.push(await this.writeCostBreachNotification(breach.window, breach.estimated_usd, breach.threshold_usd));
+        const note = await this.writeCostBreachNotification(breach.window, breach.estimated_usd, breach.threshold_usd);
+        if (note) written.push(note);
       }
       // throttle/kill: C7 only EMITS ladder.signals (enforced_by_c7=false); no task_queue mutation here.
     }
     return { window, ladder, notificationsWritten: written };
   }
 
-  private async writeCostBreachNotification(window: 'daily' | 'weekly', estimatedUsd: number, thresholdUsd: number): Promise<NotificationRow> {
+  private async writeCostBreachNotification(window: 'daily' | 'weekly', estimatedUsd: number, thresholdUsd: number): Promise<NotificationRow | null> {
     const title = `Cost threshold breach (${window})`;
     const body = `Estimated ${window} spend $${estimatedUsd.toFixed(2)} exceeded the $${thresholdUsd.toFixed(2)} soft alert. Estimate-grade (never the vendor invoice).`;
+    // Dedup: while spend stays above the soft rung, meterAndEvaluate fires every poll tick (as often as every
+    // few minutes) — without this check every tick would insert a fresh notification, flooding the ops surface.
+    // Suppress a repeat for the same window until the prior one has aged out of the period it covers.
+    const windowInterval = window === 'daily' ? '1 day' : '7 days';
+    const recent = await this.pool.query(
+      `select 1 from notifications
+       where type = $1 and title = $2 and created_at > now() - interval '${windowInterval}'
+       limit 1`,
+      [COST_THRESHOLD_BREACH, title],
+    );
+    if (recent.rows[0]) return null;
     const res = await this.pool.query<NotificationRow>(
       `insert into notifications (type, severity, title, body)
        values ($1, 'warning', $2, $3)

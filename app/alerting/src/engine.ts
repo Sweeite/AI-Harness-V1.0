@@ -250,9 +250,28 @@ export class AlertEngine {
       return null;
     }
 
-    // Fire the secondary alert to the next recipient in the chain.
-    const nextRecipient = chain[nextStep]!;
-    await this.deps.notifications.escalate(notificationId, `step:${nextStep}`, this.iso(nowMs));
+    // Fire the secondary alert to the next recipient in the chain. A chain entry is a resolvable user id OR a
+    // role name (config-validation only guarantees SOME entry in the chain resolves, not every entry) — scan
+    // forward from nextStep for the first entry that actually resolves to someone, same fail-closed skip
+    // resolveRecipient uses, rather than writing an unresolved role string into the uuid recipient column.
+    let fireStep = nextStep;
+    let nextRecipient: string | null = null;
+    while (fireStep < chain.length) {
+      const resolved = resolveContact(chain[fireStep]!, this.deps.roles);
+      if (resolved !== null) {
+        nextRecipient = resolved;
+        break;
+      }
+      fireStep++;
+    }
+    if (nextRecipient === null) {
+      // No remaining chain entry resolves to anyone — same handling as an exhausted chain.
+      await this.deps.notifications.escalate(notificationId, "exhausted", this.iso(nowMs));
+      return null;
+    }
+    // Create the secondary WITH its chain step stamped in the same write (rather than a follow-up UPDATE) —
+    // a crash after this call simply never created the secondary (safe to retry next window check); it can
+    // no longer leave a persisted secondary row indistinguishable from a fresh, never-escalated primary.
     const secondary = await this.deps.notifications.create(
       {
         type: row.type,
@@ -261,12 +280,12 @@ export class AlertEngine {
         body: `No acknowledgement within the escalation window (${windowMs} ms); escalated to ${nextRecipient}.`,
         recipient: nextRecipient,
         recipient_role: role,
+        escalation_state: `step:${fireStep}`,
       },
       this.deps.newId(),
       this.iso(nowMs),
     );
-    // Carry the chain step onto the secondary so a further escalation continues the chain, not restarts it.
-    await this.deps.notifications.escalate(secondary.id, `step:${nextStep}`, this.iso(nowMs));
+    await this.deps.notifications.escalate(notificationId, `step:${fireStep}`, this.iso(nowMs));
     // audit the escalation itself (independent of delivery).
     await this.deps.eventLog.append({
       id: this.deps.newId(),

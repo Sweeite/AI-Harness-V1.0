@@ -59,8 +59,8 @@ export class InMemoryNotificationStore implements NotificationStore {
       recipient: input.recipient ?? null,
       recipient_role: input.recipient_role ?? null,
       read_state: "unread", // unread-until-actioned (FR-7.ALR.001)
-      escalation_state: null,
-      escalated_at: null,
+      escalation_state: input.escalation_state ?? null,
+      escalated_at: input.escalation_state ? createdAt : null,
       actioned_at: null,
       delivery_state: null, // set AFTER, by the best-effort fan-out (never a precondition of persistence)
       created_at: createdAt,

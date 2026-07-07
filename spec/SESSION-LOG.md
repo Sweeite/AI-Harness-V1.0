@@ -5,6 +5,35 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 72 — 2026-07-07 — 🔍 **Checkpoint-3 retroactive adversarial review — 7 BLOCKER + 11 MAJOR found across the 18-member batch, all fixed + live-verified; migrations `0021–0023` applied LIVE.** Operator asked for an adversarial review of Checkpoint 3's issue batch (gate `018` + the 17-member Stage-3 batch, closed session 69). Ran the same live-adapter-vs-real-schema method the Stage-4 full review (`a1ad9b2`) used — 18 parallel independent reviews cross-checking each package's live Postgres adapter against the actually-applied migration DDL and live `\d`/`pg_policy` reads, not just the offline-fake-passing test suite.
+
+**Environment:** 💻 FULL (Mac, operator present). Reconciled trackers first — silo head `0020` matched the journal, all 18 issues `status: done`, no drift.
+
+**Findings, triaged and fixed (operator chose "fix everything now"):**
+- **management (012):** BLOCKER `ingest()` silently cleared `log_write_failing` on any push omitting it (missing `coalesce`, unlike every sibling column) · MAJOR `ingest()`'s 3 writes weren't transactional (a crash mid-sequence permanently loses the push, disguised as a replay) · MAJOR `registerClient()` threw a raw pg error instead of the documented `ManagementError(duplicate_slug)` · MAJOR `transitionStatus()` was a lost-update race (no CAS guard).
+- **task-queue (048):** BLOCKER `service_role` still held live DELETE on `task_queue` — the no-delete invariant (Rule 0 §1) was asserted only against a never-applied scratch migration file; `task_history` cascades on delete, so one DELETE would have silently erased the audit trail too.
+- **prompt-layer-context (044):** BLOCKER `dynamic_field_values` never got the RLS grant+policy `prompt_layers` got in migration `0004` — the ISSUE-044 operator dynamic-value editor would throw `permission denied`.
+- **retention (084):** BLOCKER `registerClient`/`registryHome` targeted the mgmt-plane-only `client_registry` table using the silo pool (architecturally wrong either way) · MAJOR the RET.001 unauthorized-hard-delete detector was a stub always returning `[]` — silently non-functional.
+- **rbac (018, the gate):** MAJOR ×2 `seedClearance`/`insertClearance` omitted `granted_at`, so Postgres silently substituted `now()` for the caller's value.
+- **realtime (076):** BLOCKER `task_queue`/`notifications` were never added to the `supabase_realtime` publication (Realtime delivers nothing regardless of RLS) · MAJOR config-key naming drift between `surfaces.ts` and its own proposed-spec doc.
+- **alerting (075):** BLOCKER ×2 the escalation chain passed unresolved role-name strings into a uuid recipient column; `loop_missed` cast a loop name into `uuid[]` `entity_ids` · MAJOR a 3-step escalation write could desync state on partial failure.
+- **cost-meter (074):** MAJOR unbounded duplicate `cost_threshold_breach` notifications (no dedup; bug shared by the in-memory fake, so no existing test caught it).
+- **guardrail-log (060):** MAJOR `all()` omitted the `redacted_at` column (migration `0015`) from both the SQL and the TS type.
+- **Clean:** auth (013), connector-runtime (032), hard-limits (055), anomaly-checks (057), injection-pipeline (059), prompt-layer-identity (043) — matched live schema exactly.
+- **Disclosed gaps carried forward, not fixed (owned elsewhere):** prompt-optimisation (046, tables owned by ISSUE-053) · triggers (047, `trigger_delivery` owned by ISSUE-049) · superadmin-auth (014, never had a live-smoke pass written).
+
+**Migrations authored + applied LIVE** (silo head `0020` → `0023`): `0021_task_queue_append_only` (revoke DELETE from anon/authenticated/service_role) · `0022_dynamic_field_values_rls` (`PERM-config.prompts` policy + grant) · `0023_realtime_publication` (add `task_queue`/`notifications` to `supabase_realtime`). All via `npm run migrate` after `npm run check` (discipline + RLS-coverage gates green).
+
+**Every fix live-verified** (not just offline-tested): management's 4 fixes and rbac's `granted_at` fix via disposable rows against the real mgmt/silo DBs (cleaned up after); task_queue's revoke via `SET ROLE service_role; DELETE ...` → `permission denied`; retention's detector via a real unauthorised `access_audit` hard-delete row it now correctly flags; the 3 migrations' effects confirmed via direct `pg_policy`/`role_table_grants`/`pg_publication_tables` reads. Full offline sweep across every `app/*` package: all green (also caught + fixed the same stale-hardcoded-migration-list test bug in `app/silo/schema.test.ts` that `a1ad9b2` fixed for `0011-0020`, now covering `0021-0023`).
+
+**Concurrency note:** a separate, concurrent session was active on this repo mid-review (commits `ede7f5e` Checkpoint-4-close, `cf5b3c1` handoff-patch). `cf5b3c1` incidentally swept this session's in-progress edits to `management`/`rbac`/`guardrail-log` into its own commit (whose message only describes "2 stale pointers"). Content verified intact via full re-test + live re-verification; operator chose not to rewrite that history (risk of diverging a possibly-still-active session) — flagged here and in the evidence doc so `git log` isn't misread later.
+
+**Files changed:** `app/management/src/{store,supabase-store}.ts` · `app/rbac/src/supabase-store.ts` · `app/task-queue/src/supabase-store.ts` (n/a — fix was migration-only) · `app/task-queue/src/task-queue.test.ts` · `app/retention/src/supabase-store.ts` · `app/realtime/results/proposed-shared-spec.md` · `app/alerting/src/{engine,rules,store,supabase-store,types}.ts` · `app/cost-meter/src/{store,supabase-store}.ts` · `app/guardrail-log/src/{types,supabase-store}.ts` · `app/silo/migrations/0021-0023*.sql` + `_journal.json` · `app/silo/src/schema.test.ts` · `spec/06-issues/BUILD-SCHEDULE.md` (Checkpoint-3 line) · `app/silo/results/checkpoint3-review-evidence.2026-07-07.md` (new).
+
+**Next step:** unchanged for the build — Stage 5 is open (per the concurrent session) and this review doesn't block or reopen anything. If picking this up cold: read `app/silo/results/checkpoint3-review-evidence.2026-07-07.md` for the full findings/fix table before touching any of the 9 touched packages again.
+
+---
+
 ## Session 71 — 2026-07-07 — 🔨 **Stage-4 offline batch fan-out — 11 members built + adversarially verified + integrated onto main; migrations `0011–0017` authored (discipline-clean, NOT yet live).** The marquee-style fan-out over the 14-member Stage-4 batch: the **11 offline-authorable** members built via worktree-isolated author agents → independent adversarial verify → 2 BLOCKER fixes → serial migration/shared-spec integration. **Survived a mid-run power loss** (all work was committed on worktree branches; nothing lost). The 3 live/🧑 members (`033`/`037`/`085`) + Checkpoint 4 remain for the operator-present session.
 
 **Environment:** 💻 FULL (Mac, operator present, then a power cut mid-fan-out, then resumed). Reconciled trackers first — zero drift at start (Checkpoint 3 CLOSED, gate `019` `done`, all 14 batch `ready`, migration head `0010`, clean tree).

@@ -168,7 +168,8 @@ export class InMemoryCostMeterStore implements CostMeterStore {
     for (const breach of ladder.breaches) {
       if (breach.action === 'alert') {
         // The soft rung: WRITE the cost_threshold_breach notification (FR-7.COST.004 → AC-7.COST.004.1).
-        written.push(this.writeCostBreachNotification(breach.window, breach.estimated_usd, breach.threshold_usd, now));
+        const note = this.writeCostBreachNotification(breach.window, breach.estimated_usd, breach.threshold_usd, now);
+        if (note) written.push(note);
       }
       // breach.action === 'signal' rungs (throttle/kill): C7 EMITS the signal only (already in ladder.signals);
       // C7 does NOT throttle or kill here (NFR-COST.004). No enforcement code exists in this module by design.
@@ -176,12 +177,20 @@ export class InMemoryCostMeterStore implements CostMeterStore {
     return { window, ladder, notificationsWritten: written };
   }
 
-  private writeCostBreachNotification(window: 'daily' | 'weekly', estimatedUsd: number, thresholdUsd: number, now: number): NotificationRow {
+  private writeCostBreachNotification(window: 'daily' | 'weekly', estimatedUsd: number, thresholdUsd: number, now: number): NotificationRow | null {
+    const title = `Cost threshold breach (${window})`;
+    // Dedup: mirrors the live adapter — suppress a repeat notification for the same window until the most
+    // recent one has aged out of the period it covers, so a sustained breach doesn't flood one row per poll tick.
+    const windowSec = window === 'daily' ? 86_400 : 7 * 86_400;
+    const mostRecent = this.notes
+      .filter((n) => n.type === COST_THRESHOLD_BREACH && n.title === title)
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+    if (mostRecent && now - Date.parse(mostRecent.created_at) / 1000 < windowSec) return null;
     this.noteSeq += 1;
     const input: NotificationInput = {
       type: COST_THRESHOLD_BREACH,
       severity: 'warning',
-      title: `Cost threshold breach (${window})`,
+      title,
       body: `Estimated ${window} spend $${estimatedUsd.toFixed(2)} exceeded the $${thresholdUsd.toFixed(2)} soft alert. Estimate-grade (never the vendor invoice).`,
     };
     const row: NotificationRow = { ...input, id: `note-${String(this.noteSeq).padStart(4, '0')}`, created_at: this.iso(now) };

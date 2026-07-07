@@ -82,10 +82,15 @@ test('AC-5.QUE.001.1 — no task_queue row is ever deletable (permanent audit re
   assert.ok(still, 'the row must survive a retention/cleanup pass');
   assert.equal(still!.status, 'failed');
 
-  // The authored DDL must carry the audit-record contract: revoke delete + no cascade onto this table.
-  const ddl = readFileSync(join(HERE, '..', 'results', 'proposed-migration-0008_task_queue.sql'), 'utf8');
-  assert.match(ddl, /revoke delete on task_queue/i, 'migration must revoke DELETE on task_queue');
-  assert.doesNotMatch(ddl, /references\s+task_queue[^;]*on delete cascade/i, 'no ON DELETE CASCADE onto task_queue');
+  // The APPLIED migration (0021, session 72 — the review-caught gap: the original proposed-migration-0008
+  // scratch file was never folded into the applied chain, so service_role held live DELETE the whole time)
+  // must carry the audit-record contract: revoke delete from every normal role, including service_role
+  // (the role the harness runtime authenticates as). task_history.task_id DOES reference task_queue(id) ON
+  // DELETE CASCADE in the real baseline (0001_baseline.sql) — that's fine BY DESIGN as long as DELETE on
+  // task_queue itself is unreachable; the guarantee is "no role can ever issue the DELETE", not "nothing
+  // cascades if one somehow did".
+  const ddl = readFileSync(join(HERE, '..', '..', 'silo', 'migrations', '0021_task_queue_append_only.sql'), 'utf8');
+  assert.match(ddl, /revoke delete on public\.task_queue from anon, authenticated, service_role/i, 'migration must revoke DELETE on task_queue');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

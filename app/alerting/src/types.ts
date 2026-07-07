@@ -94,6 +94,10 @@ export interface NotificationInput {
   /** resolved user id, or null when routed to a role/broadcast (see routing). */
   recipient?: string | null;
   recipient_role?: string | null;
+  /** set only by an escalation create — stamps the chain step at creation so a second write to set it
+   *  is never needed (a crash between "create secondary" and "stamp its step" would otherwise leave the
+   *  secondary indistinguishable from a fresh, never-escalated primary). */
+  escalation_state?: string | null;
 }
 
 /** A persisted notification row (schema-faithful; `notifications`). */

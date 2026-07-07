@@ -49,11 +49,20 @@ import {
 
 export class SupabaseRetentionStore implements RetentionStore {
   private pool: pg.Pool;
+  private mgmtPool: pg.Pool;
   private floors: FloorRegistry;
 
-  constructor(connectionString: string, floors: FloorRegistry) {
-    const ssl = /sslmode=disable/.test(connectionString) ? undefined : { rejectUnauthorized: false };
-    this.pool = new pg.Pool({ connectionString, ssl });
+  /**
+   * `connectionString` is the client SILO (config_values/config_audit_log — every method except
+   * registerClient/registryHome). `mgmtConnectionString` is the SEPARATE management-plane Supabase project
+   * that owns client_registry (ADR-001 §3/§13) — a genuinely different database, not just a different pool
+   * on the same one. Passing the silo string for both would make registerClient/registryHome throw
+   * `relation "client_registry" does not exist` (or vice versa for every other method).
+   */
+  constructor(connectionString: string, floors: FloorRegistry, mgmtConnectionString: string) {
+    const ssl = (s: string) => (/sslmode=disable/.test(s) ? undefined : { rejectUnauthorized: false });
+    this.pool = new pg.Pool({ connectionString, ssl: ssl(connectionString) });
+    this.mgmtPool = new pg.Pool({ connectionString: mgmtConnectionString, ssl: ssl(mgmtConnectionString) });
     this.floors = { ...floors };
   }
 
@@ -137,7 +146,7 @@ export class SupabaseRetentionStore implements RetentionStore {
 
   async registerClient(row: RegistryRow): Promise<void> {
     // client_registry lives on the MANAGEMENT deployment (schema §13) — the one valid home of client_slug.
-    await this.pool.query(
+    await this.mgmtPool.query(
       `insert into client_registry (client_slug, client_name, internal_token, region)
        values ($1, $1, '', $2)
        on conflict (client_slug) do update set region = excluded.region`,
@@ -145,7 +154,7 @@ export class SupabaseRetentionStore implements RetentionStore {
     );
   }
   async registryHome(clientSlug: string): Promise<RegistryRow | null> {
-    const res = await this.pool.query<{ client_slug: string; region: string }>(
+    const res = await this.mgmtPool.query<{ client_slug: string; region: string }>(
       `select client_slug, region from client_registry where client_slug = $1`,
       [clientSlug],
     );
@@ -194,15 +203,44 @@ export class SupabaseRetentionStore implements RetentionStore {
     const sanctioned = path !== null && (SANCTIONED_DELETE_PATHS as readonly string[]).includes(path) && authorisedBy !== null;
     const tomb: Tombstone = { memory_id: memoryId, path: sanctioned ? path : null, authorised_by: sanctioned ? authorisedBy : null, at: now };
     // The live tombstone lands in access_audit via the C2 sole-writer (FR-2.MNT.017); recorded here for parity.
+    // The writer is expected to stamp action='hard_delete', target_entity_id=memoryId, path_context=<DeletePath>
+    // — the literal contract tombstones()/unauthorisedTombstones() below read back against.
     return tomb;
   }
+
+  /** Every hard_delete access_audit row, joined against its authorisation record when the path is
+   *  individual_erasure (deletion_requests, on this silo). client_offboarding's authorisation record
+   *  (offboarding_records) lives on the MANAGEMENT plane and has no migration yet (ISSUE-085 era) — until
+   *  it exists, a claimed client_offboarding hard-delete cannot be verified here and is reported
+   *  fail-closed as unauthorised (#2/#3: better to over-flag than silently clear a real violation). */
+  private async liveTombstones(): Promise<Tombstone[]> {
+    const res = await this.pool.query<{ target_entity_id: string | null; path_context: string | null; authorized_by: string | null; created_at: Date }>(
+      `select aa.target_entity_id, aa.path_context,
+              (select dr.authorized_by from deletion_requests dr
+                 where dr.target_user_id = aa.target_entity_id and dr.status = 'executed'
+                 order by dr.executed_at desc limit 1) as authorized_by,
+              aa.created_at
+         from access_audit aa
+        where aa.action = 'hard_delete'
+        order by aa.created_at asc`,
+    );
+    return res.rows.map((r) => {
+      const sanctioned = r.path_context === 'individual_erasure' && r.authorized_by !== null;
+      return {
+        memory_id: r.target_entity_id ?? '',
+        path: sanctioned ? (r.path_context as DeletePath) : null,
+        authorised_by: sanctioned ? r.authorized_by : null,
+        at: Math.floor(r.created_at.getTime() / 1000),
+      };
+    });
+  }
   async tombstones(): Promise<Tombstone[]> {
-    return [];
+    return this.liveTombstones();
   }
   async unauthorisedTombstones(): Promise<Tombstone[]> {
-    // Live: a join of access_audit tombstones LEFT of the deletion_requests/offboarding_records
-    // authorisation records — a tombstone with no matching authorisation is the RET.001 violation.
-    return [];
+    // The RET.001 detector (AC-10.RET.001.3): a tombstone with no DEL/OFF authorisation behind it.
+    const all = await this.liveTombstones();
+    return all.filter((t) => t.path === null || t.authorised_by === null);
   }
 
   async recordLegalReview(_review: LegalReview): Promise<void> {
@@ -218,5 +256,6 @@ export class SupabaseRetentionStore implements RetentionStore {
 
   async end(): Promise<void> {
     await this.pool.end();
+    await this.mgmtPool.end();
   }
 }

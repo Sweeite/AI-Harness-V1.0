@@ -40,12 +40,19 @@ export class SupabaseNotificationStore implements NotificationStore {
   async create(input: NotificationInput, _id: string, _createdAt: string): Promise<NotificationRow> {
     // id + created_at are server-assigned (gen_random_uuid() / now()); the _id/_createdAt args exist only to
     // satisfy the port shared with the deterministic fake — they are deliberately ignored on the live side.
+    // escalation_state/escalated_at are stamped in the SAME insert when the caller is creating an already-
+    // escalated secondary — avoids a follow-up UPDATE whose failure would otherwise leave the secondary
+    // indistinguishable from a fresh, never-escalated primary (a lost-update class of bug).
     const res = await this.pool.query<NotificationRow>(
-      `insert into notifications (type, severity, title, body, recipient, recipient_role, read_state)
-       values ($1, $2, $3, $4, $5, $6, 'unread')
+      `insert into notifications (type, severity, title, body, recipient, recipient_role, read_state,
+                                   escalation_state, escalated_at)
+       values ($1, $2, $3, $4, $5, $6, 'unread', $7, case when $7 is null then null else now() end)
        returning id, type, severity, title, body, recipient, recipient_role, read_state,
                  escalation_state, escalated_at, actioned_at, delivery_state, created_at`,
-      [input.type, input.severity, input.title, input.body, input.recipient ?? null, input.recipient_role ?? null],
+      [
+        input.type, input.severity, input.title, input.body,
+        input.recipient ?? null, input.recipient_role ?? null, input.escalation_state ?? null,
+      ],
     );
     return res.rows[0]!;
   }

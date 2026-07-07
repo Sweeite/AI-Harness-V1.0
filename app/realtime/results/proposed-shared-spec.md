@@ -11,14 +11,20 @@ All six are **LIVE** (change with no code change, no rebuild), stored in `config
 seconds), read at their documented default when unset. Defaults are the component-07 FR-7.RTP.002 values
 (L434–436).
 
+Key names below are the LITERAL `pollIntervalKey` string each surface uses in `app/realtime/src/surfaces.ts`
+`SURFACE_CATALOGUE` (session 72 fix: this table previously drifted from the shipped code — `poll_interval_*
+_seconds` here vs `polling_interval_*_s` in the code — a config write following this doc would silently land
+on a key `loadConfig()` never reads, indistinguishable from "correctly using the default"). If the registry
+ever renames these, update `surfaces.ts` FIRST and this table to match — never the reverse.
+
 | config key | surface | type | default (seconds) | class | AC |
 |---|---|---|---|---|---|
-| `poll_interval_health_seconds`           | health metrics       | int > 0 | 30  | LIVE | AC-7.RTP.002.1/.2 |
-| `poll_interval_event_log_seconds`        | event log            | int > 0 | 60  | LIVE | AC-7.RTP.002.1/.2 |
-| `poll_interval_memory_health_seconds`    | memory health        | int > 0 | 300 | LIVE | AC-7.RTP.002.1/.2 |
-| `poll_interval_self_improvement_seconds` | self-improvement     | int > 0 | 600 | LIVE | AC-7.RTP.002.1/.2 |
-| `poll_interval_cost_tracking_seconds`    | cost tracking        | int > 0 | 300 | LIVE | AC-7.RTP.002.1/.2 |
-| `poll_interval_agent_health_seconds`     | agent health         | int > 0 | 60  | LIVE | AC-7.RTP.002.1/.2 |
+| `polling_interval_health_metrics_s`       | health metrics       | int > 0 | 30  | LIVE | AC-7.RTP.002.1/.2 |
+| `polling_interval_event_log_s`            | event log            | int > 0 | 60  | LIVE | AC-7.RTP.002.1/.2 |
+| `polling_interval_memory_health_s`        | memory health        | int > 0 | 300 | LIVE | AC-7.RTP.002.1/.2 |
+| `polling_interval_self_improvement_s`     | self-improvement     | int > 0 | 600 | LIVE | AC-7.RTP.002.1/.2 |
+| `polling_interval_cost_tracking_s`        | cost tracking        | int > 0 | 300 | LIVE | AC-7.RTP.002.1/.2 |
+| `polling_interval_agent_health_s`         | agent health         | int > 0 | 60  | LIVE | AC-7.RTP.002.1/.2 |
 
 Notes:
 - Key names are the slug the reference model uses (`app/realtime/src/surfaces.ts` `SURFACE_CATALOGUE`). If

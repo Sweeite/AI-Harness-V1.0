@@ -167,7 +167,9 @@ export function evaluateRules(
         severity: "warning",
         title: "Loop missed its scheduled run",
         body: `Loop ${loop.loopId} missed its scheduled run; catch-up is handled by C5 (FR-5.LOP.*), not a C7 re-run.`,
-        entityId: loop.loopId,
+        // A loop is identified by a human-readable name/slug (e.g. "fast"/"loop-daily"), never a uuid — it
+        // cannot go into event_log.entity_ids (uuid[]). The loop name is already carried in `body` above.
+        entityId: null,
       });
     }
   }

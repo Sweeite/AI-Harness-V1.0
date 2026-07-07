@@ -20,7 +20,7 @@ const allSql = [...files.values()].map((f) => f.sql).join("\n");
 const stripComments = (s: string) => s.replace(/--.*$/gm, "");
 const allDdl = stripComments(allSql);
 
-test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010 Stage-3 + 0011-0020 Stage-4 migrations are present and ordered", () => {
+test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010 Stage-3 + 0011-0020 Stage-4 + 0021-0023 Checkpoint-3-review migrations are present and ordered", () => {
   assert.deepEqual(journal.entries.map((e) => e.tag), [
     "0001_baseline",
     "0001b_indexes",
@@ -45,6 +45,9 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0018_trigger_event_types", // ISSUE-037 — 9 trigger event_type values (transactional:false)
     "0019_connector_trigger_state", // ISSUE-037 / OD-190 — 5 trigger runtime-state tables + default-deny RLS
     "0020_connector_trigger_indexes", // ISSUE-037 / OD-190 — CONCURRENTLY indexes (transactional:false)
+    "0021_task_queue_append_only", // Checkpoint-3 review (session 72) — revoke DELETE on task_queue
+    "0022_dynamic_field_values_rls", // Checkpoint-3 review (session 72) — PERM-config.prompts grant + policy
+    "0023_realtime_publication", // Checkpoint-3 review (session 72) — add task_queue/notifications to supabase_realtime
   ]);
   assert.equal(journal.entries.find((e) => e.tag === "0001b_indexes")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0002_rls_scaffold")!.transactional, true);
@@ -59,6 +62,9 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
   assert.equal(journal.entries.find((e) => e.tag === "0018_trigger_event_types")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0019_connector_trigger_state")!.transactional, true);
   assert.equal(journal.entries.find((e) => e.tag === "0020_connector_trigger_indexes")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0021_task_queue_append_only")!.transactional, true);
+  assert.equal(journal.entries.find((e) => e.tag === "0022_dynamic_field_values_rls")!.transactional, true);
+  assert.equal(journal.entries.find((e) => e.tag === "0023_realtime_publication")!.transactional, true);
 });
 
 test("every real migration passes the expand-contract discipline guardrails", () => {
