@@ -28,17 +28,18 @@ next session reads the top entry to know exactly where to resume.
 
 **⑤ Layer-3 cross-component integration (D):** **`app/silo/results/layer3-integration-smoke.sql`** — one live flow threading provision→task_queue→guardrail_log gate→escalation+notification→resolution+access_audit, asserting every cross-table FK / shared enum / shared append-only trigger composes. **ALL LAYER-3 SEAMS PASS** (rolled back). `1660c7c`.
 
-**Net (bug-level tally, corrected):** **52 of 54 sweep bugs fixed** = **2 BLOCKER + 27 MAJOR + 23 MINOR**; **2 HELD** — both are task-queue `escalateStaleApprovals` (a MAJOR at `store.ts:335` + a MINOR at `:336`, same method), held TOGETHER for **migration 0028** (`held-fix-task-queue-awaiting-approval.md`). *(NB: the "23/24" and "19-pkg / 23 MINOR" figures elsewhere in this entry are PACKAGE/agent counts, not bug counts — one commit often carries several bugs, e.g. `auth`=2, `orchestrator`=4; the authoritative bug tally is this line.)* 767+ offline tests still green across 41 pkgs (each fix carries a regression test); 11 live-smokes green (10 authoring + Layer-3); migration 0027 live.
+**Net (bug-level tally):** **ALL 54 sweep bugs fixed** = **2 BLOCKER + 28 MAJOR + 24 MINOR** (0 held). The 2 task-queue findings (MAJOR `store.ts:335` clock + MINOR `:336` boundary) were the last held pair — **RESOLVED via migration 0028** (`awaiting_approval_at`, applied live; fake+adapter key off `coalesce(awaiting_approval_at, created_at)`; R10 live-smoke green), commit `e83579e`. *(NB: the "23/24" and "19-pkg" figures elsewhere in this entry are PACKAGE/agent counts, not bug counts — one commit often carries several bugs, e.g. `auth`=2, `orchestrator`=4; the authoritative bug tally is this line.)* 767+ offline tests green across 41 pkgs (each fix carries a regression test); **12 live-smokes green** (10 authoring + Layer-3 + task-queue 0028); **silo head 0028**.
+
+**✅ task-queue held fix — RESOLVED (operator-present, session 74 cont.):** migration **0028** applied live (`awaiting_approval_at`); both findings fixed (MAJOR clock + MINOR boundary); R10 live-smoke green. `held-fix-task-queue-awaiting-approval.md` marked RESOLVED. Silo head **0028**.
 
 **⏳ OUTSTANDING — all blocked-on-unbuilt-issues (manage at the blocking issue, per operator; each fail-loud/safe meanwhile):**
-1. **task-queue MAJOR** — held for **migration 0028** (`held-fix-task-queue-awaiting-approval.md`). Operator-present session.
 2. **OD-194** (approval-tiers uuid wiring) — blocked on the unbuilt **C6** gate caller.
 3. **M4 rate-limiting `drainDue`** — owed to the unbuilt consumer integration.
 4. **prompt-optimisation / triggers tables** — owned by **ISSUE-049/053**.
 5. **OD-196 hardening** — folded into **ISSUE-056**.
 6. **Deferred hygiene** (non-#3): trigger-infra `setDefaultTriggerEnabled` atomicity (needs writeAudit client-threading refactor); `select *` coupling; rate-limiting type-lie; config-store M8 coalesce.
 
-**Next step:** foundation is in strong shape — everything actionable is done; residuals are all deferred-to-their-owning-issue with fail-loud safety. Stage 5 (gate `022`) can proceed (R1: Checkpoint 4 already closed). Before building on task-queue staleness, apply migration 0028. **Silo head `0027`; next free tag `0028`.** Live infra: `source ~/.ai-harness-secrets.env`; silo `$SILO_DB_URL`; psql `/opt/homebrew/opt/libpq/bin/psql`.
+**Next step:** foundation is in strong shape — **all 54 logic-sweep bugs fixed** + every actionable owed item done; the residuals (OD-194, M4, ISSUE-049/053 tables, OD-196, deferred hygiene) are all blocked-on-unbuilt-issues with fail-loud safety, to be handled at their owning issue. **Stage 5 (gate `022`) can proceed** (R1: Checkpoint 4 already closed). **Silo head `0028`; next free tag `0029`.** Live infra: `source ~/.ai-harness-secrets.env`; silo `$SILO_DB_URL`; psql `/opt/homebrew/opt/libpq/bin/psql`.
 
 ---
 

@@ -1,9 +1,12 @@
-# HELD FIX — task-queue `escalateStaleApprovals` staleness clock (needs migration 0028)
+# ✅ RESOLVED — task-queue `escalateStaleApprovals` staleness clock (migration 0028, session 74)
 
-> **Status:** HELD (session 74). A logic-sweep MAJOR that CANNOT be fixed correctly without a DB schema change.
-> The fix-workflow agent correctly refused to apply a parity-breaking half-fix and documented the full fix here.
-> **Held because:** applying a live migration to the foundation was out of scope for an unattended session.
-> **Apply from a 💻 FULL operator-present session.** This doc is self-contained (Rule 0).
+> **Status:** ✅ RESOLVED (2026-07-08, operator-present). Migration **0028** (`task_queue.awaiting_approval_at`)
+> APPLIED LIVE (silo head 0027→0028); fake + adapter both key the clock off `coalesce(awaiting_approval_at,
+> created_at)` (stamped on entry into awaiting_approval); the sibling MINOR boundary off-by-one (`store.ts:336`,
+> inclusive→strict, fake↔adapter parity) fixed in the same change. Verified: task-queue 9/9 (+1 regression test),
+> silo check green, silo 68/68, R10 **live-smoke green** (0028 assertion). Commit `e83579e`. Simplified vs the
+> original spec below: **no index swap** — the existing `task_queue_status_created` index serves the query at
+> ADR-001 scale; a `coalesce(...)` index is an optional future optimization only. Spec retained below for record.
 
 ## The bug (MAJOR, fail-SAFE)
 `app/task-queue/src/store.ts:335` (`escalateStaleApprovals`) computes

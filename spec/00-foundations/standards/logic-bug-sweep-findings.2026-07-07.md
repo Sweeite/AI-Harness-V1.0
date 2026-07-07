@@ -7,13 +7,13 @@
 > Findings live in the pure logic + in-memory fakes (the reference models the adapters mirror + tests
 > validate against) — a bug in a fake IS a real bug. Source: workflow wf_f3a343b0-306.
 
-## DISPOSITION (session 74 — resolved; this doc is the ground truth, no `git log` walk needed)
-**52 of 54 CONFIRMED fixed + verified; 2 HELD.** Every fix carries a failing-first regression test; full offline
+## DISPOSITION (session 74 — ALL RESOLVED; this doc is the ground truth, no `git log` walk needed)
+**54 of 54 CONFIRMED fixed + verified; 0 held.** Every fix carries a failing-first regression test; full offline
 sweep GREEN (41/41 pkgs). Commits: the 23 per-package `logic-sweep fix: <pkg>` commits (BLOCKER+MAJOR,
-integrated `280639a`) + `7ff4fd4` (all MINORs).
+integrated `280639a`) + `7ff4fd4` (all MINORs) + `e83579e` (the 2 task-queue findings, migration 0028 live).
 - **2 BLOCKER — both FIXED:** config-store `redaction.ts:49` (secret-key false-positive) · trigger-infra `liveness.ts:239` (watermark data-loss).
-- **28 MAJOR — 27 FIXED, 1 HELD:** the held one is **task-queue `escalateStaleApprovals` (`store.ts:335`)** — needs a schema change → **migration 0028**, spec in `held-fix-task-queue-awaiting-approval.md`. All others fixed (auth×2, orchestrator×4, observability×2, trigger-infra×2 incl. the BLOCKER's package, + the rest one each).
-- **24 MINOR — 23 FIXED, 1 HELD:** the held one is **task-queue `escalateStaleApprovals` (`store.ts:336`)** — same method as the held MAJOR, held together for migration 0028.
+- **28 MAJOR — all FIXED:** incl. **task-queue `escalateStaleApprovals` (`store.ts:335`)** — needed a schema change → **migration 0028** (`awaiting_approval_at`) applied live, fake+adapter key off `coalesce(awaiting_approval_at, created_at)`, R10 live-smoke green (`e83579e`). Plus auth×2, orchestrator×4, observability×2, trigger-infra×2, + the rest one each.
+- **24 MINOR — all FIXED:** incl. **task-queue `escalateStaleApprovals` (`store.ts:336`)** — the inclusive-vs-strict boundary off-by-one, fixed alongside the MAJOR (fake now escalates strictly `age > threshold`, matching the adapter SQL + the docstring/summary).
 - **2 UNCERTAIN → ODs:** `service/health.ts:53` → **OD-195 IMPLEMENTED** (probe rejects 4xx). `write-tools/write-gate.ts:177` → **OD-196** (seam-contract comment; hardening owed at ISSUE-056).
 - **Adapter-MINOR (C8) dispositions** (a separate, adapter-layer set) live in `live-adapter-backfill-findings.2026-07-07.md`.
 
