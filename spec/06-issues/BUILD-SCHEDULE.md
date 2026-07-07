@@ -135,18 +135,20 @@ or assign each shared file to exactly one agent).
 
 **Migration-chain lane (durable — Rule 0, don't leave this in chat).** `app/silo/migrations/` + its
 **`_journal.json`** are a single shared chain; **two worktree agents must never each pick the next tag** —
-they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head (session 71 — Checkpoint-4 live apply): `0017_stage4_indexes`**
-(0011–0017 applied to the silo + verified: 16/16 event_type + alert_type value, `rate_limit_deferred`+RLS, `guardrail_log.redacted_at`,
-both new triggers, 3 support_requests policies, and the `0015` audit fn carries BOTH the redaction branch AND the OD-182 escalation branch.
-**⚠️ the `0011` semicolon-in-comment splitter trap was caught LIVE + fixed** — same class as the 0007 session-69 bug; nothing partially applied,
-re-ran clean). **`0018_trigger_event_types`** (ISSUE-037, 9 trigger `event_type` values, `transactional:false`) **AUTHORED + discipline-clean, live-apply
-pending** (Checkpoint-4). **Mgmt-plane chain (hand-applied, no journal): `0003_backup_dr`** (ISSUE-085 — 4 enums + 5 operator-side backup tables) AUTHORED,
-live-apply to the mgmt DB pending. **next free silo tag is `0019`.** *(Stage-4 authored `0011_stage4_event_types` [016 event_type + 1 alert_type value, `transactional:false`; 015/016/034/036/049],
+they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head (session 71 — Checkpoint 4 CLOSED): `0020_connector_trigger_indexes`.
+next free silo tag is `0021`.** **ALL of `0011–0020` are APPLIED LIVE to the silo + verified**, and the **mgmt-plane chain** (hand-applied, no
+journal) is at **`0003_backup_dr`** (ISSUE-085 — 4 enums + 5 operator-side backup tables, APPLIED LIVE to the mgmt DB). Highlights: 16/16 Stage-4
+`event_type` + 1 `alert_type` value (`0011`), 9 trigger `event_type` values (`0018`), `rate_limit_deferred`+RLS (`0012`), `guardrail_log.redacted_at` +
+redaction-tombstone branch (`0015`, carries BOTH the redaction AND the OD-182 escalation branch), the task_graph/agents append-only triggers
+(`0013`/`0016`), the 5 trigger-state tables ([[OD-190]] own-tables rework, `0019`/`0020`). **⚠️ the `0011` semicolon-in-comment splitter trap was caught
+LIVE + fixed** (same class as the 0007 session-69 bug — a `;` inside a comment fragments a `transactional:false` statement; keep comments
+semicolon-free). *(Stage-4 authored `0011_stage4_event_types` [016 event_type + 1 alert_type value, `transactional:false`; 015/016/034/036/049],
 `0012_rate_limit_deferred` [034 persisted 95% queue + default_deny RLS], `0013_task_graph_versions_append_only` [049 append-only-by-version trigger],
 `0014_support_requests_rls` [016 public-insert/view/resolve policies], `0015_guardrail_redacted_at` [077 redacted_at column + redaction-tombstone branch (c),
 [[OD-074]] change-control on the LIVE append-only trigger — preserves the OD-182 escalation branch byte-for-byte], `0016_agents_version_discipline`
-[061 agents version-lineage trigger], `0017_stage4_indexes` [034+016 CONCURRENTLY indexes, `transactional:false`]. **0011–0017 APPLIED LIVE to the silo +
-verified (session 71); the `0011` semicolon-in-comment splitter trap was caught live + fixed (0007-class).** Verify-present (NOT re-authored): 056's escalation-stamp branch [already done by OD-182/0009], the hard-limit no-override
+[061 agents version-lineage trigger], `0017_stage4_indexes` [034+016 CONCURRENTLY indexes, `transactional:false`], `0018_trigger_event_types`
+[037 9 trigger event_type values, `transactional:false`], `0019_connector_trigger_state` + `0020_connector_trigger_indexes` [037/[[OD-190]] — 5 trigger
+runtime-state tables + default-deny RLS + CONCURRENTLY indexes]. **All applied LIVE + verified (session 71).)** Verify-present (NOT re-authored): 056's escalation-stamp branch [already done by OD-182/0009], the hard-limit no-override
 CHECK [baseline L465], all six "new" tables, 051's event_type values. Deferred to the Checkpoint-4/onboarding config pass: 034's 5 rate CFG keys +
 051's 6 loop CFG keys [OD-181 keygroup coupling; packages fail-closed on unregistered]. Open forks: [[OD-188]] (056 Hold live-persistence column) +
 [[OD-189]] (061 awaiting_clarification task_status) — both deferred, no offline blocker.)*

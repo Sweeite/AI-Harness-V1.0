@@ -174,9 +174,9 @@ export class SupabaseRbacStore implements RbacStore {
 
   async seedClearance(row: ClearanceRow): Promise<void> {
     await this.pool.query(
-      `insert into sensitivity_clearances (role_id, user_id, tier, entity_type_scope)
-         values ($1, $2, $3::clearance_tier, $4)`,
-      [row.role_id, row.user_id, row.tier, row.entity_type_scope],
+      `insert into sensitivity_clearances (role_id, user_id, tier, entity_type_scope, granted_at)
+         values ($1, $2, $3::clearance_tier, $4, coalesce($5, now()))`,
+      [row.role_id, row.user_id, row.tier, row.entity_type_scope, row.granted_at ?? null],
     );
   }
   async roleClearances(roleId: string): Promise<ClearanceRow[]> {
@@ -191,10 +191,10 @@ export class SupabaseRbacStore implements RbacStore {
   // ── Clearance grant/revoke/review (ISSUE-019). Revoke = hard DELETE (no revoked_at column, schema.md §2). ─
   async insertClearance(row: ClearanceRow): Promise<ClearanceRow> {
     const { rows } = await this.pool.query<ClearanceRow>(
-      `insert into sensitivity_clearances (role_id, user_id, tier, entity_type_scope, granted_by, last_reviewed_at)
-         values ($1, $2, $3::clearance_tier, $4, $5, $6)
+      `insert into sensitivity_clearances (role_id, user_id, tier, entity_type_scope, granted_by, last_reviewed_at, granted_at)
+         values ($1, $2, $3::clearance_tier, $4, $5, $6, coalesce($7, now()))
          returning id, role_id, user_id, tier, entity_type_scope, granted_by, granted_at, last_reviewed_at`,
-      [row.role_id, row.user_id, row.tier, row.entity_type_scope, row.granted_by ?? null, row.last_reviewed_at ?? null],
+      [row.role_id, row.user_id, row.tier, row.entity_type_scope, row.granted_by ?? null, row.last_reviewed_at ?? null, row.granted_at ?? null],
     );
     return rows[0]!;
   }

@@ -71,7 +71,8 @@ export class SupabaseGuardrailLogStore implements GuardrailLogStore {
   async all(): Promise<GuardrailLogRow[]> {
     const { rows } = await this.pool.query<GuardrailLogRow>(
       `select id, task_id, guardrail_type, description, action_blocked, status, reviewed_by,
-              reviewed_at::text as reviewed_at, escalated_at::text as escalated_at, created_at::text as created_at
+              reviewed_at::text as reviewed_at, escalated_at::text as escalated_at, created_at::text as created_at,
+              redacted_at::text as redacted_at
          from guardrail_log order by created_at`,
     );
     return rows;

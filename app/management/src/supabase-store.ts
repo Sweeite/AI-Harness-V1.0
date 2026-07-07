@@ -21,6 +21,8 @@ import {
   type RotationResult,
   ManagementError,
   ERR_NO_SUCH_CLIENT,
+  ERR_DUPLICATE_SLUG,
+  ERR_TRANSITION_CONFLICT,
 } from './store.ts';
 import { type OperationalSnapshot } from './allowlist.ts';
 import {
@@ -62,14 +64,21 @@ export class SupabaseManagementStore implements ManagementStore {
   }): Promise<ClientRegistryRow> {
     const enc = packToken(encryptToken(input.plaintextToken, this.encKey));
     const tokenId = newTokenId();
-    const { rows } = await this.pool.query(
-      `insert into client_registry
-         (client_slug, client_name, railway_url, internal_token, token_id, token_active, region, status)
-       values ($1, $2, $3, $4, $5, true, coalesce($6, 'ap-southeast-2'), 'initialising')
-       returning *`,
-      [input.client_slug, input.client_name, input.railway_url ?? null, enc, tokenId, input.region ?? null],
-    );
-    return mapRegistry(rows[0]);
+    try {
+      const { rows } = await this.pool.query(
+        `insert into client_registry
+           (client_slug, client_name, railway_url, internal_token, token_id, token_active, region, status)
+         values ($1, $2, $3, $4, $5, true, coalesce($6, 'ap-southeast-2'), 'initialising')
+         returning *`,
+        [input.client_slug, input.client_name, input.railway_url ?? null, enc, tokenId, input.region ?? null],
+      );
+      return mapRegistry(rows[0]);
+    } catch (e) {
+      if ((e as { code?: string }).code === '23505') {
+        throw new ManagementError(ERR_DUPLICATE_SLUG, `client_slug '${input.client_slug}' already registered (UNIQUE)`);
+      }
+      throw e;
+    }
   }
 
   async getClientBySlug(slug: string): Promise<ClientRegistryRow | null> {
@@ -94,10 +103,19 @@ export class SupabaseManagementStore implements ManagementStore {
         : to === 'frozen'
           ? `, offboarding_at = now()`
           : ``;
-    const { rows } = await this.pool.query(
-      `update client_registry set status = $2::client_status ${stamps} where client_slug = $1 returning *`,
-      [slug, to],
+    // Compare-and-swap on the status we validated against — two concurrent transitions racing off the same
+    // starting status must not silently last-write-wins; the loser gets rowCount 0 and a conflict error rather
+    // than a dropped transition (client_registry.status is server-authoritative, OD-162).
+    const { rows, rowCount } = await this.pool.query(
+      `update client_registry set status = $2::client_status ${stamps} where client_slug = $1 and status = $3::client_status returning *`,
+      [slug, to, current.status],
     );
+    if (!rowCount) {
+      throw new ManagementError(
+        ERR_TRANSITION_CONFLICT,
+        `status for '${slug}' changed concurrently since it was read as '${current.status}'; retry the transition`,
+      );
+    }
     return mapRegistry(rows[0]);
   }
 
@@ -140,53 +158,68 @@ export class SupabaseManagementStore implements ManagementStore {
 
   async ingest(input: { slug: string; snapshot: OperationalSnapshot; delivery_id: string; serverNow: number }): Promise<IngestResult> {
     const s = input.snapshot;
-    // Idempotent on (client_slug, delivery_id) via an ingest_deliveries dedup table (proposed migration). A
-    // replayed delivery is a no-op; ON CONFLICT DO NOTHING + a rowCount check tells us if it was fresh.
-    const dedup = await this.pool.query(
-      `insert into ingest_deliveries (client_slug, delivery_id) values ($1, $2) on conflict do nothing`,
-      [input.slug, input.delivery_id],
-    );
-    const replayed = (dedup.rowCount ?? 0) === 0;
-    if (replayed) {
-      const h = await this.getHealth(input.slug);
-      const reg = await this.getClientBySlug(input.slug);
-      if (!h || !reg) throw new ManagementError(ERR_NO_SUCH_CLIENT, `replay for unknown client '${input.slug}'`);
-      return { client_slug: input.slug, core_version: reg.core_version, health: h, replayed: true };
+    // All three writes below (dedup marker, core_version, deployment_health) are one push's worth of state and
+    // must land together — a crash between them must not permanently lose the snapshot while looking, to a
+    // retried delivery, like an ordinary idempotent replay (#1/#3).
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      const dedup = await client.query(
+        `insert into ingest_deliveries (client_slug, delivery_id) values ($1, $2) on conflict do nothing`,
+        [input.slug, input.delivery_id],
+      );
+      const replayed = (dedup.rowCount ?? 0) === 0;
+      if (replayed) {
+        await client.query('commit');
+        const h = await this.getHealth(input.slug);
+        const reg = await this.getClientBySlug(input.slug);
+        if (!h || !reg) throw new ManagementError(ERR_NO_SUCH_CLIENT, `replay for unknown client '${input.slug}'`);
+        return { client_slug: input.slug, core_version: reg.core_version, health: h, replayed: true };
+      }
+      // core_version onto client_registry (never status — server-authoritative).
+      if (s.core_version !== undefined) {
+        await client.query(`update client_registry set core_version = $2 where client_slug = $1`, [input.slug, s.core_version]);
+      }
+      // Upsert deployment_health; last_push_at = now() (server-authoritative, AF-120). Every column preserves
+      // the prior value when the push omits it — including log_write_failing, whose omission must NOT be read
+      // as "failure cleared" (a silent #3 violation: it's the deployment's own log-pipeline health signal).
+      const { rows } = await client.query(
+        `insert into deployment_health
+           (client_slug, health_score, queue_depth, approval_queue_depth, alert_counts, core_version,
+            last_migrated_at, connector_rollup, cost_to_date, plugin_version, backup_health, log_write_failing,
+            last_push_at, updated_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,coalesce($12,false), now(), now())
+         on conflict (client_slug) do update set
+           health_score        = coalesce(excluded.health_score, deployment_health.health_score),
+           queue_depth         = coalesce(excluded.queue_depth, deployment_health.queue_depth),
+           approval_queue_depth= coalesce(excluded.approval_queue_depth, deployment_health.approval_queue_depth),
+           alert_counts        = coalesce(excluded.alert_counts, deployment_health.alert_counts),
+           core_version        = coalesce(excluded.core_version, deployment_health.core_version),
+           last_migrated_at    = coalesce(excluded.last_migrated_at, deployment_health.last_migrated_at),
+           connector_rollup    = coalesce(excluded.connector_rollup, deployment_health.connector_rollup),
+           cost_to_date        = coalesce(excluded.cost_to_date, deployment_health.cost_to_date),
+           plugin_version      = coalesce(excluded.plugin_version, deployment_health.plugin_version),
+           backup_health       = coalesce(excluded.backup_health, deployment_health.backup_health),
+           log_write_failing   = coalesce($12, deployment_health.log_write_failing),
+           last_push_at        = now(),
+           updated_at          = now()
+         returning *`,
+        [
+          input.slug, s.health_score ?? null, s.queue_depth ?? null, s.approval_queue_depth ?? null,
+          s.alert_counts ?? null, s.core_version ?? null, s.last_migrated_at ?? null, s.connector_rollup ?? null,
+          s.cost_to_date ?? null, s.plugin_version ?? null, s.backup_health ?? null, s.log_write_failing ?? null,
+        ],
+      );
+      const regRows = await client.query(`select * from client_registry where client_slug = $1`, [input.slug]);
+      await client.query('commit');
+      const reg = regRows.rows[0] ? mapRegistry(regRows.rows[0]) : null;
+      return { client_slug: input.slug, core_version: reg?.core_version ?? null, health: mapHealth(rows[0]), replayed: false };
+    } catch (e) {
+      await client.query('rollback');
+      throw e;
+    } finally {
+      client.release();
     }
-    // core_version onto client_registry (never status — server-authoritative).
-    if (s.core_version !== undefined) {
-      await this.pool.query(`update client_registry set core_version = $2 where client_slug = $1`, [input.slug, s.core_version]);
-    }
-    // Upsert deployment_health; last_push_at = now() (server-authoritative, AF-120).
-    const { rows } = await this.pool.query(
-      `insert into deployment_health
-         (client_slug, health_score, queue_depth, approval_queue_depth, alert_counts, core_version,
-          last_migrated_at, connector_rollup, cost_to_date, plugin_version, backup_health, log_write_failing,
-          last_push_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,coalesce($12,false), now(), now())
-       on conflict (client_slug) do update set
-         health_score        = coalesce(excluded.health_score, deployment_health.health_score),
-         queue_depth         = coalesce(excluded.queue_depth, deployment_health.queue_depth),
-         approval_queue_depth= coalesce(excluded.approval_queue_depth, deployment_health.approval_queue_depth),
-         alert_counts        = coalesce(excluded.alert_counts, deployment_health.alert_counts),
-         core_version        = coalesce(excluded.core_version, deployment_health.core_version),
-         last_migrated_at    = coalesce(excluded.last_migrated_at, deployment_health.last_migrated_at),
-         connector_rollup    = coalesce(excluded.connector_rollup, deployment_health.connector_rollup),
-         cost_to_date        = coalesce(excluded.cost_to_date, deployment_health.cost_to_date),
-         plugin_version      = coalesce(excluded.plugin_version, deployment_health.plugin_version),
-         backup_health       = coalesce(excluded.backup_health, deployment_health.backup_health),
-         log_write_failing   = excluded.log_write_failing,
-         last_push_at        = now(),
-         updated_at          = now()
-       returning *`,
-      [
-        input.slug, s.health_score ?? null, s.queue_depth ?? null, s.approval_queue_depth ?? null,
-        s.alert_counts ?? null, s.core_version ?? null, s.last_migrated_at ?? null, s.connector_rollup ?? null,
-        s.cost_to_date ?? null, s.plugin_version ?? null, s.backup_health ?? null, s.log_write_failing ?? null,
-      ],
-    );
-    const reg = await this.getClientBySlug(input.slug);
-    return { client_slug: input.slug, core_version: reg?.core_version ?? null, health: mapHealth(rows[0]), replayed: false };
   }
 
   async getHealth(slug: string): Promise<DeploymentHealthRow | null> {

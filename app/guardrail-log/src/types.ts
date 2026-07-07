@@ -59,6 +59,7 @@ export interface GuardrailLogRow {
   reviewed_at: string | null; // ISO-8601
   escalated_at: string | null; // ⊕ net-new, server-owned (schema.md L526)
   created_at: string; // ISO-8601, server-authoritative
+  redacted_at?: string | null; // ⊕ migration 0015, server-owned — set once content has been redacted
 }
 
 /** The caller's intent when a guardrail acts — the writer stamps id/status/created_at server-side. */

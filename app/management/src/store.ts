@@ -95,6 +95,7 @@ export class ManagementError extends Error {
 export const ERR_NO_SUCH_CLIENT = 'no_such_client';
 export const ERR_BAD_TRANSITION = 'bad_status_transition';
 export const ERR_DUPLICATE_SLUG = 'duplicate_slug';
+export const ERR_TRANSITION_CONFLICT = 'transition_conflict';
 
 // ── The port ─────────────────────────────────────────────────────────────────────
 export interface ManagementStore {
