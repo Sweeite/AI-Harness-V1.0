@@ -22,7 +22,9 @@
 
 import {
   Layer1Content,
+  SECTION,
   renderLayer1Content,
+  sectionBody,
   validateLayer1,
   type Layer1Validation,
 } from './core-record.ts';
@@ -104,9 +106,17 @@ export class Layer1IdentityService {
     now: number,
   ): Promise<{ row: PromptLayer; validation: Layer1Validation }> {
     const validation = this.assertSaveable(content);
+    // logic-sweep fix (service.ts editCore): the general content edit is NOT the principles-edit path.
+    // The shared operating-principles block is reserved to the PERM-gated, safety-event-emitting
+    // editPrinciples() (OD-049 / FR-4.PRIN.002 / AC-4.PRIN.002.2). Pin the CURRENT head's principles
+    // section back over the caller-supplied content so a sub-privilege actor (e.g. Admin holding only
+    // PERM-prompt.edit) can NEVER silently reword/weaken the shared block through this path (#2/#3).
+    const rendered = renderLayer1Content(content);
+    const head = await this.deps.store.getVersion(currentVersionId);
+    const pinned = head ? pinPrinciplesSection(rendered, head.content) : rendered;
     const row = await this.deps.store.appendCoreVersion(
       currentVersionId,
-      { content: renderLayer1Content(content), change_reason, created_by: actorId },
+      { content: pinned, change_reason, created_by: actorId },
       now,
     );
     return { row, validation };
@@ -221,16 +231,32 @@ export class PrinciplesFloorBreach extends Error {
  * — so a principles edit changes ONLY the shared block, per-agent content is preserved (FR-4.LYR.002).
  */
 export function splicePrinciplesBlock(content: string, block: PrinciplesBlock): string {
+  return spliceRenderedPrinciplesSection(content, renderPrinciplesBlock(block));
+}
+
+/**
+ * logic-sweep fix (service.ts editCore): pin the principles section of a freshly-rendered Layer-1 content
+ * string to the block already stored on the CURRENT head — so the general content edit path (editCore)
+ * cannot change the shared operating-principles block (only the PERM-gated editPrinciples() may). Returns
+ * `rendered` unchanged if the head has no principles section (defensive; nothing to pin to).
+ */
+function pinPrinciplesSection(rendered: string, headContent: string): string {
+  const headPrinciples = sectionBody(headContent, SECTION.principles);
+  if (headPrinciples === null) return rendered;
+  return spliceRenderedPrinciplesSection(rendered, headPrinciples);
+}
+
+/** Splice an already-rendered principles-section body into the `### OPERATING PRINCIPLES` slot of `content`. */
+function spliceRenderedPrinciplesSection(content: string, renderedPrinciples: string): string {
   const TAG = '### OPERATING PRINCIPLES';
-  const rendered = renderPrinciplesBlock(block);
   const idx = content.indexOf(TAG);
   if (idx < 0) {
     // No principles section yet — append one.
-    return `${content}\n\n${TAG}\n${rendered}`;
+    return `${content}\n\n${TAG}\n${renderedPrinciples}`;
   }
   const before = content.slice(0, idx);
   const rest = content.slice(idx + TAG.length);
   const nextTag = rest.indexOf('\n### ');
   const after = nextTag < 0 ? '' : rest.slice(nextTag);
-  return `${before}${TAG}\n${rendered}${after}`;
+  return `${before}${TAG}\n${renderedPrinciples}${after}`;
 }

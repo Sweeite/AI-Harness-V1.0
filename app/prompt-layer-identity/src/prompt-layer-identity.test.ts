@@ -38,10 +38,12 @@ import {
   type PrinciplesBlock,
 } from './principles.ts';
 import {
+  SECTION,
   assemblyRequiredElementChecks,
   contentHasAllSevenPrinciplesVerbatim,
   defaultLayer1,
   renderLayer1Content,
+  sectionBody,
   validateLayer1,
   wordCount,
   type Layer1Content,
@@ -219,6 +221,36 @@ test('AC-4.PRIN.002.1 — an Admin (not Super Admin) is DENIED on a principles e
   const edited = { ...defaultLayer1('Agent A, updated.') };
   const { row } = await service.editCore(head!.id, edited, 'admin edits general content', ADMIN, NOW);
   assert.equal(row.version, 2, 'Admin can still edit non-principles Layer-1 content');
+});
+
+test('AC-4.PRIN.002.1 (logic-sweep) — editCore CANNOT be used to silently reword/weaken the shared principles block (the tighter gate is editPrinciples-only)', async () => {
+  const { service, audit, store } = svc();
+  await service.saveCore('agent-a', 'a-core', defaultLayer1('Agent A.'), 'init', SUPER, NOW);
+  const head = (await service.readCore('agent-a'))!;
+  const canonicalPrinciples = sectionBody(head.content, SECTION.principles)!;
+
+  // An Admin (holding only PERM-prompt.edit) attempts a general content edit that ALSO smuggles a weakened
+  // shared principle in via the content.principles field — the exact editPrinciples-reserved change (OD-049).
+  const smuggled = defaultLayer1('Agent A, general edit.');
+  smuggled.principles.canonical.stay_in_your_lane = 'Stay in your lane: do whatever seems fine.';
+
+  const { row } = await service.editCore(head.id, smuggled, 'admin edits general content', ADMIN, NOW);
+
+  // The general (identity) edit lands, but the shared principles block is PINNED to the head's block —
+  // the weakened wording is NOT persisted, and no path other than editPrinciples changes it.
+  assert.equal(row.version, 2, 'the general content edit committed');
+  assert.ok(row.content.includes('Agent A, general edit.'), 'the general (identity) edit landed');
+  assert.ok(!row.content.includes('do whatever seems fine'), 'the weakened principle wording was NOT persisted via editCore');
+  assert.equal(
+    sectionBody(row.content, SECTION.principles),
+    canonicalPrinciples,
+    'the shared principles block is preserved verbatim (only editPrinciples may change it — OD-049)',
+  );
+
+  // And the shared-safety-posture change never happened silently through editCore.
+  assert.equal(audit.safetyEvents.length, 0, 'editCore emits no principles safety event — it never changes the shared block');
+  const readBack = (await service.readCore('agent-a'))!;
+  assert.equal(sectionBody(readBack.content, SECTION.principles), canonicalPrinciples, 'the persisted head still carries the unchanged shared block');
 });
 
 test('AC-4.PRIN.002.2 — a Super-Admin edit requires a mandatory change_reason, writes the immutable version chain, and emits ONE distinct safety event', async () => {
