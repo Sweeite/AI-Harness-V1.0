@@ -51,6 +51,7 @@ create table if not exists task_queue (
   requires_approval   boolean     not null default false,
   approved_by         uuid        references profiles(id),          -- recorded on human approve (FR-5.QUE.005)
   approved_at         timestamptz,
+  awaiting_approval_at timestamptz,                                 -- 0028: entry into awaiting_approval (FR-5.QUE.005.2 staleness clock)
   originating_user_id uuid        references profiles(id),          -- ⊕ net-new (no-self-approval + My Queue)
   action_payload      jsonb,                                        -- ⊕ net-new: proposed tool call + params + target
   attempts            int         not null default 0,               -- OD-058 Inngest audit projection (JOB writes)

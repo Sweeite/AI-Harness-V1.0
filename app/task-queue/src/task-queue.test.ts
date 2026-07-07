@@ -291,6 +291,38 @@ test('AC-5.QUE.005.2 — a stale awaiting_approval task escalates on event_log a
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AC-5.QUE.005.2 (regression, 0028) — the staleness clock measures time IN the approval queue (since the task
+// entered awaiting_approval), NOT total task age. A task that sat pending behind other work and only entered
+// awaiting_approval late must NOT escalate prematurely. (The old created_at clock wrongly escalated it.)
+// ─────────────────────────────────────────────────────────────────────────────
+test('AC-5.QUE.005.2 (0028) — staleness is measured from entry into awaiting_approval, not from created_at', async () => {
+  const { sink, store } = fresh({ approvalStalenessThresholdSeconds: DAY });
+  // A gated task ENQUEUED at T0 but that only ENTERS awaiting_approval a full DAY later (it sat pending behind
+  // higher-priority work — modelled by a delayed dequeue). created_at = T0; awaiting_approval_at = T0+DAY.
+  const gated = await store.enqueue({ type: 'human', task_name: 'late-gate', requires_approval: true }, T0);
+  const parked = await store.dequeue(T0 + DAY);
+  assert.equal(parked!.status, 'awaiting_approval');
+  assert.equal(parked!.awaiting_approval_at, new Date((T0 + DAY) * 1000).toISOString(),
+    'awaiting_approval_at is stamped at ENTRY into the queue, not at task creation');
+
+  // TEETH (the bug): at T0+DAY+1 the task's TOTAL age is DAY+1 (> threshold) but its IN-QUEUE wait is only 1s.
+  // The OLD created_at clock would WRONGLY escalate here; the fixed coalesce clock must NOT.
+  const premature = await store.escalateStaleApprovals(T0 + DAY + 1);
+  assert.deepEqual(premature, [], 'must NOT escalate — the task has been awaiting approval for only 1s');
+  assert.equal(sink.events.length, 0, 'no premature approval_queue_stale event');
+
+  // It DOES escalate once it has genuinely been awaiting approval past the threshold (T0+DAY + DAY + 1).
+  const due = await store.escalateStaleApprovals(T0 + DAY + DAY + 1);
+  assert.equal(due.length, 1);
+  assert.equal(due[0]!.id, gated.id);
+  assert.equal(sink.events.length, 1);
+  assert.equal(sink.events[0]!.event_type, 'approval_queue_stale');
+  // The reported wait reflects time-IN-QUEUE (~DAY+1), not total task age (~2*DAY+1).
+  const reported = (sink.events[0]!.payload as { age_seconds: number }).age_seconds;
+  assert.ok(reported <= DAY + 60, `reported wait must be time-in-queue (~${DAY}s), not total age (~${2 * DAY}s); got ${reported}`);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AC-5.QUE.006.1 — full per-attempt error history is recoverable (not collapsed).
 // ─────────────────────────────────────────────────────────────────────────────
 test('AC-5.QUE.006.1 — every attempt error is preserved; history is never collapsed to a single last-error', async () => {

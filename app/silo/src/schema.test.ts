@@ -56,6 +56,7 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0025_agents_version_chain_unique", // session-73 Part-B / B4 — agents_prev_unique partial index (transactional:false)
     "0026_version_chain_lost_update_backstops", // session-73 Part-B — prompt_layers + tools chain/genesis unique indexes (transactional:false)
     "0027_profiles_invite_lifecycle", // OD-192 — profiles.revoked_at + bounced_at (invite lifecycle markers)
+    "0028_task_queue_awaiting_approval_at", // logic-sweep held fix — task_queue.awaiting_approval_at (staleness clock)
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.

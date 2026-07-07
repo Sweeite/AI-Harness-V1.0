@@ -39,7 +39,7 @@ import {
 // path coalesces NULL→'[]' here — one place, so enqueue-return / get / dequeue / transition can't drift.
 // A consumer doing `row.error.map(...)` therefore never crashes on a not-yet-failed task (#1/#3).
 const COLS = `id, type, task_name, payload, status, priority, requires_approval, approved_by, approved_at,
-  originating_user_id, action_payload, attempts, next_retry_at, coalesce(error, '[]'::jsonb) as error, completed_at, created_at`;
+  awaiting_approval_at, originating_user_id, action_payload, attempts, next_retry_at, coalesce(error, '[]'::jsonb) as error, completed_at, created_at`;
 
 export class SupabaseTaskQueue implements TaskQueue {
   private pool: pg.Pool;
@@ -97,8 +97,12 @@ export class SupabaseTaskQueue implements TaskQueue {
         return null;
       }
       const to: TaskStatus = row.requires_approval ? 'awaiting_approval' : 'running';
+      // 0028: stamp awaiting_approval_at when the task parks in awaiting_approval (the FR-5.QUE.005.2 clock).
       const upd = await client.query<TaskQueueRow>(
-        `update task_queue set status = $2 where id = $1 returning ${COLS}`,
+        `update task_queue
+         set status = $2,
+             awaiting_approval_at = case when $2 = 'awaiting_approval' then now() else awaiting_approval_at end
+         where id = $1 returning ${COLS}`,
         [row.id, to],
       );
       await client.query('commit');
@@ -127,7 +131,9 @@ export class SupabaseTaskQueue implements TaskQueue {
       const terminal = to === 'completed' || to === 'failed';
       const upd = await client.query<TaskQueueRow>(
         `update task_queue
-         set status = $2, completed_at = case when $3 then now() else completed_at end
+         set status = $2,
+             completed_at = case when $3 then now() else completed_at end,
+             awaiting_approval_at = case when $2 = 'awaiting_approval' then now() else awaiting_approval_at end
          where id = $1
          returning ${COLS}`,
         [id, to, terminal],
@@ -225,12 +231,16 @@ export class SupabaseTaskQueue implements TaskQueue {
     // AC-5.QUE.005.2: find awaiting_approval rows older than the threshold, EMIT an approval_queue_stale
     // event per row on event_log, and leave them awaiting_approval. Never auto-approve (#2), never drop (#3).
     const threshold = this.config.approvalStalenessThresholdSeconds;
+    // 0028: measure time SINCE the task entered awaiting_approval — coalesce(awaiting_approval_at, created_at),
+    // created_at fallback for pre-0028 rows — not total task age (FR-5.QUE.005.2), else a task that sat pending
+    // behind other work escalates prematurely + misreports the human wait.
     const res = await this.pool.query<TaskQueueRow & { age_seconds: string }>(
-      `select ${COLS}, extract(epoch from (now() - created_at))::bigint as age_seconds
+      `select ${COLS},
+              extract(epoch from (now() - coalesce(awaiting_approval_at, created_at)))::bigint as age_seconds
        from task_queue
        where status = 'awaiting_approval'
-         and created_at < now() - ($1 || ' seconds')::interval
-       order by created_at asc`,
+         and coalesce(awaiting_approval_at, created_at) < now() - ($1 || ' seconds')::interval
+       order by coalesce(awaiting_approval_at, created_at) asc`,
       [String(threshold)],
     );
     for (const row of res.rows) {

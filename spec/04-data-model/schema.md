@@ -646,6 +646,7 @@ create table task_queue (
   requires_approval   boolean not null default false,
   approved_by         uuid references profiles(id),
   approved_at         timestamptz,
+  awaiting_approval_at timestamptz,                        -- 0028: when the task ENTERED awaiting_approval (FR-5.QUE.005.2 staleness clock; coalesce(…, created_at) fallback)
   originating_user_id uuid references profiles(id),       -- ⊕ net-new owed to C5 (no-self-approval + My Queue)
   action_payload      jsonb,                              -- proposed tool call + params + target
   attempts            int not null default 0,             -- Inngest projection (single retry authority)

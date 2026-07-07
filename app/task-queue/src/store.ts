@@ -52,6 +52,7 @@ export interface TaskQueueRow {
   requires_approval: boolean; // default false
   approved_by: string | null; // → profiles(id); recorded on approve
   approved_at: string | null; // iso; recorded on approve
+  awaiting_approval_at: string | null; // iso; set when the task ENTERS awaiting_approval (0028; FR-5.QUE.005.2 staleness clock)
   originating_user_id: string | null; // → profiles(id); net-new
   action_payload: unknown | null; // jsonb; net-new: proposed tool call + params + target
   attempts: number; // int, default 0 (OD-058 Inngest projection)
@@ -220,6 +221,7 @@ export class InMemoryTaskQueue implements TaskQueue {
       requires_approval: task.requires_approval ?? false,
       approved_by: null,
       approved_at: null,
+      awaiting_approval_at: null,
       originating_user_id: task.originating_user_id ?? null,
       action_payload: task.action_payload ?? null,
       attempts: 0,
@@ -268,6 +270,9 @@ export class InMemoryTaskQueue implements TaskQueue {
     if (!isTaskStatus(to)) throw new Error(ERR_UNKNOWN_STATUS(to));
     row.status = to;
     if (to === 'completed' || to === 'failed') row.completed_at = this.iso(now);
+    // 0028: stamp when the task ENTERS awaiting_approval so the staleness clock (escalateStaleApprovals) measures
+    // time-in-approval-queue, not total task age. Re-stamp on every entry (a re-gated task restarts its wait).
+    if (to === 'awaiting_approval') row.awaiting_approval_at = this.iso(now);
   }
 
   async transition(id: string, to: TaskStatus, now: number): Promise<TaskQueueRow> {
@@ -332,8 +337,14 @@ export class InMemoryTaskQueue implements TaskQueue {
     const escalated: TaskQueueRow[] = [];
     for (const row of this.rows.values()) {
       if (row.status !== 'awaiting_approval') continue;
-      const ageSeconds = now - Math.floor(Date.parse(row.created_at) / 1000);
-      if (ageSeconds < threshold) continue;
+      // 0028: measure time SINCE the task entered awaiting_approval (created_at fallback for pre-0028 rows), not
+      // total task age — else a task that sat pending behind other work escalates prematurely (FR-5.QUE.005.2).
+      const clock = row.awaiting_approval_at ?? row.created_at;
+      const ageSeconds = now - Math.floor(Date.parse(clock) / 1000);
+      // logic-sweep MINOR (store.ts:336, off-by-one): escalate strictly OLDER-THAN the threshold (age > t), to
+      // match both the docstring/summary ("> ${threshold}s") AND the adapter's SQL (`clock < now() - interval`,
+      // which is strict) — the fake was inclusive (>=), diverging from the adapter at the exact boundary second.
+      if (ageSeconds <= threshold) continue;
       // AC-5.QUE.005.2: EMIT the escalation (alert + badge seam) and LEAVE the task awaiting_approval.
       // Never auto-approve (#2), never drop (#3). Idempotence of the sink is the sink's concern (ISSUE-011).
       await this.sink.append({

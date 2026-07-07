@@ -32,6 +32,7 @@
     { "tag": "0024_webhook_event_types", "file": "0024_webhook_event_types.sql", "transactional": false },
     { "tag": "0025_agents_version_chain_unique", "file": "0025_agents_version_chain_unique.sql", "transactional": false },
     { "tag": "0026_version_chain_lost_update_backstops", "file": "0026_version_chain_lost_update_backstops.sql", "transactional": false },
-    { "tag": "0027_profiles_invite_lifecycle", "file": "0027_profiles_invite_lifecycle.sql", "transactional": true }
+    { "tag": "0027_profiles_invite_lifecycle", "file": "0027_profiles_invite_lifecycle.sql", "transactional": true },
+    { "tag": "0028_task_queue_awaiting_approval_at", "file": "0028_task_queue_awaiting_approval_at.sql", "transactional": true }
   ]
 }

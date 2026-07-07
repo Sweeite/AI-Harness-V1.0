@@ -159,6 +159,37 @@ begin
    where tc.table_name='task_history' and rc.delete_rule='CASCADE';
   if not found then raise exception 'task_history: FK to task_queue is not ON DELETE CASCADE'; end if;
 
+  -- ── 0028: the staleness clock keys off coalesce(awaiting_approval_at, created_at) = time-IN-QUEUE, not age ──
+  declare
+    v_late  uuid := gen_random_uuid();
+    v_hit   int;
+    v_aa_at timestamptz;
+  begin
+    -- A task CREATED 2 days ago but that only ENTERED awaiting_approval just now (sat pending behind other work).
+    insert into task_queue (id, type, task_name, status, created_at, awaiting_approval_at)
+      values (v_late, 'human', 'late-gate-smoke', 'awaiting_approval', now() - interval '2 days', now());
+    -- (a) awaiting_approval_at reflects the ENTRY time (what the adapter's dequeue/transition UPDATE stamps).
+    select awaiting_approval_at into v_aa_at from task_queue where id=v_late;
+    if v_aa_at is null or v_aa_at < now() - interval '1 hour' then
+      raise exception '0028: awaiting_approval_at not the entry time (got %)', v_aa_at;
+    end if;
+    -- (b) the adapter's escalate query (coalesce clock, 1-day threshold) must NOT flag this just-entered task,
+    --     even though created_at is 2 days old. The OLD created_at clock would have WRONGLY flagged it.
+    select count(*) into v_hit from task_queue
+      where status='awaiting_approval' and id=v_late
+        and coalesce(awaiting_approval_at, created_at) < now() - (86400 || ' seconds')::interval;
+    if v_hit <> 0 then
+      raise exception '0028 REGRESSION: a just-entered awaiting_approval task (created 2d ago) was flagged stale — clock still keys off created_at';
+    end if;
+    -- (c) once its IN-QUEUE wait exceeds the threshold (entered 2 days ago), it IS stale.
+    update task_queue set awaiting_approval_at = now() - interval '2 days' where id=v_late;
+    select count(*) into v_hit from task_queue
+      where status='awaiting_approval' and id=v_late
+        and coalesce(awaiting_approval_at, created_at) < now() - (86400 || ' seconds')::interval;
+    if v_hit <> 1 then raise exception '0028: a task awaiting approval 2d should be stale, got %', v_hit; end if;
+    raise notice '0028 OK: staleness keys off awaiting_approval_at (time-in-queue), not created_at';
+  end;
+
   raise notice 'TASK-QUEUE LIVE SMOKE: ALL ASSERTIONS PASSED';
 end
 $$;
