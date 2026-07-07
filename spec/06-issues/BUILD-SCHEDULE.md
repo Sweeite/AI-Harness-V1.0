@@ -56,6 +56,14 @@ Three properties make the schedule safe. If you hold to the safety contract belo
   at the machine.
 - [ ] **R9 — If a gate fails, stop.** Do not proceed up the spine on a failed gate. Fix it, or if it's
   a design fork, log an OD and resolve it before continuing.
+- [ ] **R10 — A checkpoint does not close on the offline sweep alone; every package with a live adapter
+  (`src/supabase-store.ts`) needs a live-adapter smoke against the real DB before its issue flips `done`.**
+  The Stage-4 review and the Checkpoint-3 retroactive review (sessions 71/72) both found real, shippable
+  BLOCKER/MAJOR bugs (a missing column, a wrong table, an un-run RLS grant, a stale enum assumption) that
+  100%-green offline suites + per-issue adversarial verify + the checkpoint's own DB-invariant capstone all
+  missed — because none of them ever executed the live adapter's actual SQL against the real schema. Follow
+  `spec/00-foundations/standards/live-adapter-hygiene-sweep.md` (Part A is the standing per-stage gate; Part
+  B is the one-time Stage 0–3 backfill this rule retroactively requires).
 
 **The rhythm this produces:** *spine slow, fans fast* — build each stage's batch in parallel, prove
 each piece against its `AC-*`, integration-test at the checkpoint, then climb to the next stage.
@@ -66,7 +74,8 @@ each piece against its `AC-*`, integration-test at the checkpoint, then climb to
 
 - 🟠 **GATE** — the stage's critical-path (spine) issue. Build + test this one first and hardest (R3).
 - 🟢 **BATCH** — build these in parallel, in any order (R5). Each still proves its own `AC-*` (R6).
-- ◇ **CHECKPOINT** — the stage integration test. Must be GREEN before the next stage (R1, R4).
+- ◇ **CHECKPOINT** — the stage integration test. Must be GREEN before the next stage (R1, R4) — including
+  the live-adapter smoke for every package in the stage with a `supabase-store.ts` (R10).
 - 🔴 **high-care** — touches a non-negotiable directly (knowledge integrity / authorization / silent
   failure). Test with extra rigor.
 - 🧑 **you present** — needs credentials / accounts / a funded key / a human decision (R8).

@@ -44,7 +44,7 @@ case "$MODE" in
     echo "💻  BUILD ENV: FULL (your Mac, or phone via Remote Control)."
     echo "    Secrets file present + supabase & railway CLIs installed. psql: $(psql_ok && echo yes || echo 'via /opt/homebrew/opt/libpq/bin/psql')."
     echo "    Live-infra steps OK. Before any live step:  source ~/.ai-harness-secrets.env"
-    echo "    Follow the R1-R9 safety contract (BUILD-SCHEDULE.md) + reconcile trackers first (Rule 0)."
+    echo "    Follow the R1-R10 safety contract (BUILD-SCHEDULE.md) + reconcile trackers first (Rule 0)."
     ;;
   limited)
     echo "⚠️   BUILD ENV: LIMITED (local machine, but secrets file and/or CLIs missing)."

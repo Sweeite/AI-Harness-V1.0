@@ -46,8 +46,10 @@ The big-picture view lives in `spec/00-foundations/system-map.md` (end-to-end ro
 6. `spec/00-foundations/glossary.md` — agreed terms (do not redefine them).
 7. The specific ADR(s) and component file for today's task only.
 8. **If the build has begun** (README shows a `Build` row / SESSION-LOG says so): `spec/06-issues/BUILD-SCHEDULE.md`
-   — the **active stage**, the next **`ready`** issue, and the **safety contract (R1–R9)** that governs a build
-   session. Then open only that issue file + its Context manifest. (See *Build-phase protocol* below.)
+   — the **active stage**, the next **`ready`** issue, and the **safety contract (R1–R10)** that governs a build
+   session. Then open only that issue file + its Context manifest. (See *Build-phase protocol* below.) If the
+   issue you're about to build/close ships a `src/supabase-store.ts`, also read
+   `spec/00-foundations/standards/live-adapter-hygiene-sweep.md` (R10) — offline-green is not enough to flip it `done`.
 
 Do not load the whole spec. Load the minimum set for the task in front of you.
 
@@ -78,8 +80,11 @@ is the followable build order — 11 dependency waves, each with a **gate** (spi
 
 1. Find the **active stage** and the next **`ready`** issue (lowest unblocked; a stage's batch is parallel-safe,
    so any `ready` issue in it is fair game).
-2. Honour the **safety contract (R1–R9)** — above all **R1: never open a stage until the prior checkpoint is
-   GREEN**, and **R2: a red launch-gating spike is a design fork (log an OD), not a bug to code around.**
+2. Honour the **safety contract (R1–R10)** — above all **R1: never open a stage until the prior checkpoint is
+   GREEN**, **R2: a red launch-gating spike is a design fork (log an OD), not a bug to code around**, and
+   **R10: a checkpoint does not close on the offline sweep alone** — every package with a live adapter needs
+   a live-adapter smoke against the real DB (`spec/00-foundations/standards/live-adapter-hygiene-sweep.md`)
+   before its issue flips `done`, not just a green `AC-*` suite.
 3. **Reconcile build status across the trackers *before* you build.** If they disagree, fix the drift first —
    silent drift about what's built is itself a #3 violation.
 
@@ -93,7 +98,8 @@ is the followable build order — 11 dependency waves, each with a **gate** (spi
 
 **Sync ritual — whenever an issue changes state, update every tracker in the *same* commit:**
 - Start an issue → `status: ready → in-progress`.
-- Issue built **and** its `AC-*` pass → `status: → done`; tick its box in `BUILD-SCHEDULE.md`; flip the
+- Issue built **and** its `AC-*` pass — **and, if it ships a `src/supabase-store.ts`, its live-adapter smoke
+  passes too (R10)** — → `status: → done`; tick its box in `BUILD-SCHEDULE.md`; flip the
   newly-unblocked dependents `blocked → ready` (re-check their §7); update the `_backlog.md` roll-up; close the
   GitHub issue with the result; record evidence in the issue file (and flip any `AF` in `feasibility-register.md`).
 - A stage's issues all `done` **and** its checkpoint integration-test green → tick the **checkpoint** box; only
