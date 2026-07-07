@@ -14,6 +14,21 @@
 - **CONFIRMED** — verified this session (live DB read or unambiguous code read).
 - **PLAUSIBLE** — static finding cross-checked against migration DDL; not yet run against the live DB.
 
+## Resolution log — the 4 confirmed BLOCKERs (session 73)
+- **B1 — ✅ FIXED + live-verified.** Migration `0024_webhook_event_types` applied LIVE (head 0023→0024); enum now
+  carries the 4 values; `app/webhook-auth/results/live-smoke.sql` passes rolled-back. Closed OD-179's owed migration.
+- **B4 — ✅ FIXED + live-verified.** Migration `0025_agents_version_chain_unique` applied LIVE (head 0024→0025); the
+  version-chain race now fails loud (unique_violation) instead of silently losing an edit. Adapter graceful-retry is an
+  optional follow-up; the constraint is the load-bearing #1/#3 backstop.
+- **B3 — ⛔ DESIGN FORK → [[OD-191]].** Not a code patch: the queue-view decoration state (tier/floored/routing/soft-
+  countdown) is not persisted on `guardrail_log`, so the live view can't be rebuilt from the DB. Needs a schema-delta
+  decision (fold with OD-188) or defer the C6 surface. **Immediate sub-fix owed:** make `buildQueueView` throw, not
+  return silently-empty.
+- **B5 — ⛔ DESIGN GAP → [[OD-192]].** No `invites` table exists; lifecycle methods delegate to the empty in-memory
+  fake. Needs an operator scope decision (model on `profiles` / dedicated table / out-of-v1). **Immediate sub-fix owed:**
+  the delegate-to-fake methods must stop returning silently-wrong results.
+- **B2, M1–M12, MINORs — still PLAUSIBLE**, owed to the systematic Part-B waves below (not yet live-verified).
+
 ---
 
 ## BLOCKERS (live-path breakage / knowledge loss / silent failure)

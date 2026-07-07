@@ -2479,14 +2479,13 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   The `app/webhook-auth` code + tests cite these values by name; no FR text changes (the FRs already named the `event_log`
   write — this only gives it a typeable value). The TS `EventLogRow.event_type` stays `string` in the fake for assertion
   convenience; the live adapter now emits the enum-valid strings.
-- **Owed (tracked, not silent — #3):** applying this additive enum change to the **live** client silo is a `0002` enum-add
-  migration, owed at the **ISSUE-017 onboarding live run** (the same OD-172 deferral that re-gates the live per-connector
-  webhook confirmation). Until that migration runs, the live adapter's `event_log` writes would fail against the *current*
-  silo — which is fine, because per OD-172 the live path is not exercised until onboarding. ISSUE-081 (migration propagation)
-  is the mechanism that carries the enum-add to each deployment.
-- **Status:** 🟢 RESOLVED (schema source-of-truth updated; live migration owed at onboarding per OD-172). Does **not** block
-  ISSUE-017 `done` — the DoD ACs are all proven offline against the reference model; the enum gap only affected the
-  not-yet-run live adapter, and the source of truth now admits the writes.
+- **~~Owed~~ LANDED (session 73, 2026-07-07):** the additive enum-add migration is **`0024_webhook_event_types`**, applied
+  LIVE to the canary silo (head `0023 → 0024`) by the session-73 hygiene audit (finding **B1**). The earlier "owed at
+  onboarding, fine because the live path isn't exercised" reasoning was the gap the audit closed — the live silo had *never*
+  received the values, so any live webhook write would have thrown. Verified live (rolled back): the enum now carries all
+  four values and the adapter's real `event_log` write paths succeed (`app/webhook-auth/results/live-smoke.sql`). ISSUE-081
+  (migration propagation) still carries `0024` to each future deployment via the normal chain.
+- **Status:** 🟢 RESOLVED + **live-landed** (migration `0024` applied session 73). Does **not** block ISSUE-017 `done`.
 
 - **OD-180** ⚠️ **CHANGE-CONTROL on a locked non-negotiable (NFR-CMP.006 audit-sink immutability) — surfaced by the
   Stage-2 fan-out verification (session 66).** `enforce_audit_append_only()` (`0001_baseline.sql`, verbatim from
@@ -2754,6 +2753,24 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-<!-- Next OD number: OD-191 -->
+## OD-191 — Approval-queue view: tier/floored/routing/soft-countdown are not persisted (the live queue can't be rebuilt from the DB) 🔴 OPEN
+
+- **Surfaced by:** session-73 live hygiene audit, **finding B3**. `app/approval-tiers/src/supabase-store.ts:415-436` (`buildQueueView`) runs the real pending-approvals query, then **discards the rows** (`void rows`) and returns `this.ref.buildQueueView(...)` — the empty in-memory fake — so the operator approval queue is **always empty live**. Root cause is deeper than the discard: the decoration fields the view needs (`tier`, `floored`, `heldForFullReview`, `softDeadline`/countdown, `routedRole`, `reviewerIdentity`) are **not columns on `guardrail_log`** (live-confirmed) — they live only in the fake's in-memory `meta`. The live DB has no home for them, so even a correct adapter cannot reconstruct the full `QueueView`. Kin to **[[OD-188]]** (`held_for_review_at`, already deferred).
+- **Why it matters:** the C6 approval-queue is a #2/#3 surface — a wrong/empty queue hides pending approvals (an un-actioned gate = something that shouldn't run, or a silent stall). It is offline-green only because the single-process fake holds the state in memory.
+- **Options:** (A) **persist the decoration state** — one migration adds `tier` / `floored` / `routed_role` / `reviewer_identity` / `soft_deadline_at` / `held_for_review_at` (OD-188) to `guardrail_log`, written at gate-time, read at view-time; adapter rebuilds the view from live rows. (B) recompute what's recomputable (`overdue` from `created_at`; but `tier`/`floored` need the action+matrix, which aren't persisted either) + accept a partial view — **rejected**, incomplete/misleading (#3). (C) defer the whole live operator-queue-view surface to the Phase-3 C6 UI build.
+- **Recommendation:** 🟡 (A), folded with OD-188 into one "approval-gate decoration persistence" delta (one migration). **Regardless of (A)/(C), the immediate bug — `buildQueueView` returning a silently-empty queue — must be fixed now to FAIL LOUD (throw) rather than silently return empty (#3).**
+- **Status:** 🔴 OPEN — operator: fold into OD-188 as a schema delta now, or defer the C6 surface. See `live-adapter-backfill-findings.2026-07-07.md` (B3).
+
+## OD-192 — Invite lifecycle (revoke / reissue / resend / mark-bounced) has no persistent table 🔴 OPEN
+
+- **Surfaced by:** session-73 live hygiene audit, **finding B5**. `app/invite-seed/src/supabase-store.ts:299-327` — `revokeInvite`/`reissueInvite`/`resendInvite`/`markBounced` delegate to the in-memory fake (never populated by the live `issueInvite`, which writes `profiles`/`user_roles`). Live: **no invite can be revoked/reissued/resent/marked-bounced**, and a provider bounce webhook silently fails to mark the invite undelivered (#3). Confirmed: there is **no `invites` table** in the silo — invite state has no persistent home; `issueInvite` creates a `profiles` row (an invite ≈ a not-yet-activated profile). The genesis seed + activation happy-path works and was smoke-tested; the lifecycle was never live-exercised.
+- **Why it matters:** #1/#3 — a bounced/revoked invite still reads "sent"; admin invite-management is non-functional live.
+- **Options:** (A) **model the lifecycle on the existing `profiles` row** (invite = pending profile): revoke = deactivate the pending profile + audit; reissue/resend = re-mint token + re-send; markBounced = flag + audit. No new table. (B) **add a dedicated `invites` table** (token, email, state, issued_by, issued_at, bounced_at…) + adapter rewrite — cleaner modeling, a schema delta. (C) confirm invite-management lifecycle is **out of v1 scope** (only genesis seed + activation matter) and guard the methods to throw not-implemented.
+- **Recommendation:** 🟡 decide **(A) vs (C) first** — is revoke/reissue/resend/bounce a v1 requirement? If yes → (A) (reuse `profiles`, least churn) unless state doesn't fit, then (B). If no → (C). **Either way the delegate-to-empty-fake behavior must go now** (it returns a silently-wrong result — #3).
+- **Status:** 🔴 OPEN — operator: is invite lifecycle v1? See `live-adapter-backfill-findings.2026-07-07.md` (B5).
+
+---
+
+<!-- Next OD number: OD-193 -->
 
 
