@@ -53,6 +53,16 @@ export class SupabaseTaskHistoryStore implements TaskHistoryStore {
     return res.rows[0] ? res.rows[0].full_output : null;
   }
 
+  async has(taskId: string, stepIndex: number): Promise<boolean> {
+    // Row-exists check (logic-sweep fix, store.ts:252 parity): existence is independent of the jsonb value, so
+    // a retained `null` (jsonb 'null') reads as present. `select 1 ... limit 1` — the DDL row-exists predicate.
+    const res = await this.pool.query(
+      `select 1 from task_history where task_id = $1 and step_index = $2 limit 1`,
+      [taskId, stepIndex],
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+
   async listOriginals(taskId: string): Promise<Array<{ step_index: number; full_output: unknown }>> {
     const res = await this.pool.query<{ step_index: number; full_output: unknown }>(
       `select step_index, full_output from task_history where task_id = $1 order by step_index asc`,

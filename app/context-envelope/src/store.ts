@@ -119,8 +119,14 @@ export interface TaskHistoryStore {
   /** Retain one step's FULL uncompressed output. Idempotent on (task_id, step_index) — the UNIQUE constraint
    * in the DDL makes a re-retain a no-op, never an overwrite with different data (#1). */
   retain(taskId: string, stepIndex: number, fullOutput: unknown): Promise<void>;
-  /** Read back one retained original (resume + audit). null if never retained. */
+  /** Read back one retained original (resume + audit). null if never retained. NOTE: `null` is ALSO a valid
+   * retained value (a no-op/delete/empty step) — a null return is therefore ambiguous. Use `has()` to test
+   * existence; never treat a null value as proof of absence (logic-sweep fix, store.ts:252 / #1). */
   getOriginal(taskId: string, stepIndex: number): Promise<unknown | null>;
+  /** True iff a row exists for (task_id, step_index) — the DDL row-exists check, independent of its value.
+   * Distinguishes "retained null" from "never retained" so compression never misreads a valid null original
+   * as absence (logic-sweep fix). */
+  has(taskId: string, stepIndex: number): Promise<boolean>;
   /** Read back ALL retained originals for a task, ordered by step_index (resume reconstructs the full chain
    * from these, NOT from the compressed working envelope — FR-5.GRP.004 read path). */
   listOriginals(taskId: string): Promise<Array<{ step_index: number; full_output: unknown }>>;
@@ -155,6 +161,11 @@ export class InMemoryTaskHistoryStore implements TaskHistoryStore {
   async getOriginal(taskId: string, stepIndex: number): Promise<unknown | null> {
     const r = this.rows.get(this.key(taskId, stepIndex));
     return r ? structuredClone(r.full_output) : null;
+  }
+
+  async has(taskId: string, stepIndex: number): Promise<boolean> {
+    // Row-exists check — independent of the stored value, so a retained `null` reads as present (not absent).
+    return this.rows.has(this.key(taskId, stepIndex));
   }
 
   async listOriginals(taskId: string): Promise<Array<{ step_index: number; full_output: unknown }>> {
@@ -248,12 +259,14 @@ export class ContextEnvelopeManager {
       if (entry.compressed) continue; // already summarised — its original is already retained.
       // #1 guard: the original MUST be durably retained before we drop it to a summary. It was retained in
       // appendStepOutput, but we re-assert here (defence in depth — compression is never lossy at source).
-      const retained = await this.history.getOriginal(env.task_id, entry.step_index);
-      if (retained === null) {
+      // logic-sweep fix (store.ts:252): gate on ROW EXISTENCE, not on getOriginal(...) === null. `null` is a
+      // valid retained output (a no-op/delete/empty step), so a null VALUE is not proof of absence — using it
+      // as one crashed the whole chain on a legitimately-retained null older step (#1 recoverable, misread as
+      // lost). has() mirrors the DDL row-exists check and distinguishes "retained null" from "never retained".
+      if (!(await this.history.has(env.task_id, entry.step_index))) {
         // fail closed: never summarise an un-retained original (#1/#3). Retain it now, THEN summarise.
         await this.history.retain(env.task_id, entry.step_index, entry.output);
-        const reRetained = await this.history.getOriginal(env.task_id, entry.step_index);
-        if (reRetained === null) throw new Error(ERR_SUMMARISE_WITHOUT_RETAIN);
+        if (!(await this.history.has(env.task_id, entry.step_index))) throw new Error(ERR_SUMMARISE_WITHOUT_RETAIN);
       }
       env.previous_outputs[i] = {
         step_index: entry.step_index,

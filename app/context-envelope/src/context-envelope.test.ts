@@ -200,6 +200,35 @@ test('retain is idempotent (never overwrites a retained original) and bad config
   );
 });
 
+// ── AC-NFR-PERF.008.1 (null-output regression) — a step whose output is a VALID null must not be misread as
+//    "never retained" when it later becomes an older/compressed entry. `null` is a legitimate JSON output
+//    (a no-op step, a delete result, an empty tool response); the retention layer must distinguish "row exists
+//    with value null" from "no row". Before the logic-sweep fix, compressIfOverThreshold gated on
+//    getOriginal(...) === null and crashed the whole chain (ERR_SUMMARISE_WITHOUT_RETAIN) even though the null
+//    original was durably retained and recoverable. ───────────────────────────────────────────────────────
+test('AC-NFR-PERF.008.1 (regression) — a retained null-output older step does not crash compression', async () => {
+  const { history, mgr } = mkManager(1000);
+  let env = mgr.open(seed());
+
+  // step 0 legitimately outputs null (a no-op / empty result) — retained durably as null.
+  env = await mgr.appendStepOutput(env, null);
+  assert.deepEqual(await history.getOriginal('task-0001', 0), null, 'null step 0 IS durably retained (row exists)');
+
+  // step 1 pushes the chain over threshold so step 0 becomes an OLDER entry that compression will visit.
+  // This must NOT throw ERR_SUMMARISE_WITHOUT_RETAIN — the null original was retained and is recoverable.
+  env = await mgr.appendStepOutput(env, { big: 'x'.repeat(8000) });
+
+  // step 0 is compressed in the WORKING envelope (its original was durably kept), the newest stays full.
+  assert.equal(env.previous_outputs[0]!.compressed, true, 'the null older step is summarised, not crashed on');
+  assert.equal(env.previous_outputs[1]!.compressed, false, 'newest entry stays full');
+
+  // #1 GUARD: the null original is still recoverable verbatim from the durable store — nothing lost.
+  assert.deepEqual(await history.getOriginal('task-0001', 0), null, 'null original recoverable after compression');
+  const all = await mgr.reconstructOriginals('task-0001');
+  assert.deepEqual(all.map((r) => r.step_index), [0, 1]);
+  assert.deepEqual(all[0]!.full_output, null, 'reconstructed step 0 is the exact null original');
+});
+
 // ── No-compression path: a short chain under threshold keeps every working entry FULL (economy only kicks in
 //    when needed) — while STILL retaining every original durably. ────────────────────────────────────────
 test('short chain under threshold: no compression, but originals still retained', async () => {
