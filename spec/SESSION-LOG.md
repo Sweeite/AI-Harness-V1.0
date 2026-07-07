@@ -5,6 +5,43 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 74 — 2026-07-07/08 — 🐛 **Adversarial LOGIC-bug sweep (54 found) + full fix pass + owed-OD implementation + smokes + Layer-3. All fixable work landed; residuals are all blocked-on-unbuilt-issues. Nothing pushed (all local).**
+
+**Environment:** 💻 FULL (Mac). Live steps used (rolled-back smokes + migration 0027 apply). Much of this ran **autonomously overnight** (operator asleep) within a stated boundary: no push, no unattended NEW live migration on the foundation, no guessing a design fork (log an OD instead), hold anything uncertain.
+
+**① Tracker reconciliation (item E):** flipped the 6 stale-`blocked` Stage-5 issues (`020`/`052`/`058`/`062`/`065`/`068`) → `ready` (all §7 blockers `done`); only `064` correctly blocked. `35f1755`.
+
+**② Owed-OD implementation (session-73 A-track):**
+- **OD-191** fail-loud sub-fix — `approval-tiers.buildQueueView` now THROWS "decoration persistence owed" (was silently-empty). `5fcbbdf`.
+- **OD-192 FULLY IMPLEMENTED** — invite lifecycle on the `profiles` row. **Migration `0027_profiles_invite_lifecycle`** (`revoked_at`+`bounced_at`, additive) **APPLIED LIVE** (silo head 0026→**0027**). revoke/markBounced (txn+`for update`, idempotent), reissue/resend (gated re-deliver), `loadInviteLive` rejects revoked (#2) + reflects bounced (#3). Live-smoke #I1/#I2/#I3 PASS. Residual: reissue's true server-side token refresh = AF-074. `3a3d193`.
+- **OD-193** doc-only — corrected the misleading "service_role runtime role" comments → "postgres owner (RLS-bypass)" across 15 adapters + **ADR-006 Amendment A1** (change-control). Comments-only, tsc clean. `8e0cfd9`.
+- **OD-194** — assessed: full uuid wiring is BLOCKED on the unbuilt C6 caller (zero callers exist; port carries strings by design). buildQueueView sub-fix done via OD-191; write paths already fail loud (`22P02`). Stays owed.
+
+**③ Adversarial LOGIC-bug sweep (the marquee — `logic-bug-sweep-plan.md`):** 41 finder agents over `app/*/src/*.ts` (excl `supabase-store.ts`) → independent skeptic verify. **95 candidates → 54 CONFIRMED (2 BLOCKER, 28 MAJOR, 24 MINOR), 2 UNCERTAIN, 39 refuted.** Full catalogue: **`spec/00-foundations/standards/logic-bug-sweep-findings.2026-07-07.md`**.
+- **BLOCKER+MAJOR fix-workflow** (24 worktree agents, regression-test-first): **23/24 fixed + integrated** (cherry-pick 3-way merged with the concurrent OD work — nothing lost) + **full offline sweep GREEN (41/41 pkgs)**. `280639a` + 23 per-pkg commits. **1 HELD: task-queue** `escalateStaleApprovals` needs **migration 0028** (`awaiting_approval_at`) + fake/adapter code together — full spec in **`held-fix-task-queue-awaiting-approval.md`** (apply from an operator-present session; no unattended live migration).
+- **MINOR fix-workflow** (19 agents, non-isolated on top of the MAJOR fixes): **23/23 fixed**, full sweep GREEN. `7ff4fd4`.
+- **2 UNCERTAIN → OD-195 + OD-196** (design calls): **OD-195 IMPLEMENTED** (`service/health.ts` probe now rejects 4xx — an invalid service_role key fails the boot gate, #2/#3; +tests). **OD-196 seam-contract comment** added to `write-gate.executeApproved`; the re-read hardening folded into ISSUE-056 (unbuilt caller). `644cdfe`.
+
+**④ Smokes (C7) + adapter MINORs (C8):**
+- **10 authoring-defect live-smokes** fixed → all green vs the live silo (`3c0dc0a`). Caught + reconciled STALE assertions where the schema is now MORE correct (prompt-store M5; **prompt-layer-identity F-1/F-2 — the 0026 indexes now REJECT the duplicate root-core + racing v2; the stale assertions were erroring the smoke, now flipped to assert the guard**).
+- **~30 adapter MINORs triaged** (dispositions appended to the backfill findings doc): **1 fixed** (auth `setProviderConfig` atomicity, live-verified `1bf5498`), 2 already-done, rest by-design / owned-elsewhere (write-tools→OD-196, auth-audit→ISSUE-086) / deferred-hygiene. None a #1/#2/#3-live hazard.
+
+**⑤ Layer-3 cross-component integration (D):** **`app/silo/results/layer3-integration-smoke.sql`** — one live flow threading provision→task_queue→guardrail_log gate→escalation+notification→resolution+access_audit, asserting every cross-table FK / shared enum / shared append-only trigger composes. **ALL LAYER-3 SEAMS PASS** (rolled back). `1660c7c`.
+
+**Net:** every *fixable* thing found is fixed + verified. **53 of 54 sweep bugs fixed** (30 BLOCKER+MAJOR + 23 MINOR); 767+ offline tests still green across 41 pkgs (each fix carries a regression test); 11 live-smokes green (10 authoring + Layer-3); migration 0027 live.
+
+**⏳ OUTSTANDING — all blocked-on-unbuilt-issues (manage at the blocking issue, per operator; each fail-loud/safe meanwhile):**
+1. **task-queue MAJOR** — held for **migration 0028** (`held-fix-task-queue-awaiting-approval.md`). Operator-present session.
+2. **OD-194** (approval-tiers uuid wiring) — blocked on the unbuilt **C6** gate caller.
+3. **M4 rate-limiting `drainDue`** — owed to the unbuilt consumer integration.
+4. **prompt-optimisation / triggers tables** — owned by **ISSUE-049/053**.
+5. **OD-196 hardening** — folded into **ISSUE-056**.
+6. **Deferred hygiene** (non-#3): trigger-infra `setDefaultTriggerEnabled` atomicity (needs writeAudit client-threading refactor); `select *` coupling; rate-limiting type-lie; config-store M8 coalesce.
+
+**Next step:** foundation is in strong shape — everything actionable is done; residuals are all deferred-to-their-owning-issue with fail-loud safety. Stage 5 (gate `022`) can proceed (R1: Checkpoint 4 already closed). Before building on task-queue staleness, apply migration 0028. **Silo head `0027`; next free tag `0028`.** Live infra: `source ~/.ai-harness-secrets.env`; silo `$SILO_DB_URL`; psql `/opt/homebrew/opt/libpq/bin/psql`.
+
+---
+
 ## Session 73 — 2026-07-07 — 🧹 **Whole-repo hygiene + bug check (operator-requested "before I continue").** Full sweep: empirical build health, tracker-consistency audit, live-adapter bug-hunt, migration-hygiene audit. Fixed the safe items live; recorded the adapter findings for Part B (Rule 0); flagged the rest for operator decision. **No build stage opened/closed; Stage 5 status unchanged.**
 
 **Environment:** 💻 FULL (Mac). Read-only live silo reads only (enum + constraint verification); no migration applied.
