@@ -59,7 +59,12 @@ export function recordFailure(state: SoftLockState, cfg: SoftLockConfig, now: nu
   if (isLocked(state, now)) {
     return { next: { ...state }, tripped: false };
   }
-  const consecutive = state.consecutive_failures + 1;
+  // logic-sweep fix (softlock.ts:62): if a PRIOR lock has elapsed, its stale streak (left at threshold by the
+  // trip) is a clean slate now — reset it before counting, so post-unlock the account again tolerates up to
+  // `threshold` consecutive failures instead of re-locking on the first mistype (which also re-stormed the
+  // Super-Admin alert — #3). recordSuccess() was the only other reset; an elapsed lock is one too.
+  const prior = state.locked_until !== null && now >= state.locked_until ? 0 : state.consecutive_failures;
+  const consecutive = prior + 1;
   if (consecutive >= cfg.threshold) {
     const locked_until = now + cfg.minutes * 60;
     return { next: { consecutive_failures: consecutive, locked_until }, tripped: true };

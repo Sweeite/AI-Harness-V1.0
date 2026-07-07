@@ -39,6 +39,10 @@ import {
   gateProtectedSurface,
   passwordStep,
   challengeStep,
+  gate,
+  recordFailure,
+  type SoftLockConfig,
+  type SoftLockState,
 } from './index.ts';
 
 const NOW = 1_760_000_000; // fixed logical epoch seconds
@@ -295,6 +299,43 @@ test('AC-NFR-SEC.010.2 — a human-path session below aal2 querying an aal2-gate
   assert.equal(belowAal2.allowed, false, 'a below-aal2 human-path query is denied the aal2-gated resource');
   const atAal2 = gateProtectedSurface({ two_factor_required: true, session_aal: 'aal2', totp_enrolled: true });
   assert.equal(atAal2.allowed, true, 'an aal2 session reaches the resource');
+});
+
+// ── AC-0.AUTH.009 — the soft-lock streak resets when the lock elapses (post-unlock tolerance) ─────────
+// logic-sweep regression: after account_lockout_minutes the account must again tolerate up to `threshold`
+// consecutive failures — NOT be re-locked on the very first post-expiry mistype. The stale streak (left at
+// threshold by the trip) must reset to a clean slate when the lock has elapsed, or a legit Super-Admin who
+// mistypes once after waiting is re-locked for another full window (permanently one-retry-per-window) AND
+// every post-expiry failure re-fires the Super-Admin alert (an alert storm, not once-per-lock — #3).
+test('AC-0.AUTH.009(teeth) — after the lock elapses, ONE failure does not re-trip; the streak restarts from 0', () => {
+  const cfg: SoftLockConfig = { threshold: 5, minutes: 15 };
+  // 1) Trip the lock with `threshold` clean consecutive failures.
+  let state: SoftLockState = { consecutive_failures: 0, locked_until: null };
+  let last = recordFailure(state, cfg, NOW);
+  for (let i = 2; i <= cfg.threshold; i++) {
+    state = last.next;
+    last = recordFailure(state, cfg, NOW);
+  }
+  assert.equal(last.tripped, true, 'the threshold-crossing failure trips the lock');
+  assert.equal(last.next.locked_until, NOW + cfg.minutes * 60, 'the lock holds for `minutes`');
+  state = last.next;
+  // 2) Advance past the lock window — the gate lets the next attempt through (isLocked false).
+  const afterExpiry = last.next.locked_until! + 1;
+  assert.deepEqual(gate(state, afterExpiry), { allowed: true }, 'the elapsed lock auto-clears — one attempt is allowed');
+  // 3) THE BUG: one post-expiry failure must NOT immediately re-trip. The streak restarts from a clean slate,
+  //    so the count is 1 (not threshold+1) and no fresh lock/alert fires.
+  const firstAfter = recordFailure(state, cfg, afterExpiry);
+  assert.equal(firstAfter.tripped, false, 'ONE post-unlock failure must NOT re-trip the lock');
+  assert.equal(firstAfter.next.consecutive_failures, 1, 'the post-unlock streak restarts from 0, so this is failure #1');
+  assert.equal(firstAfter.next.locked_until, null, 'no fresh lock is set on a single post-unlock failure');
+  // 4) Full post-unlock tolerance: it takes another `threshold` consecutive failures to re-lock.
+  let s: SoftLockState = firstAfter.next;
+  let r = firstAfter;
+  for (let i = 2; i <= cfg.threshold; i++) {
+    s = r.next;
+    r = recordFailure(s, cfg, afterExpiry);
+  }
+  assert.equal(r.tripped, true, 'the account tolerates a fresh `threshold` streak before re-locking');
 });
 
 // ── config-key parity + coherence guard (§8 step 1; keys mirror config-registry.md §auth) ────────────
