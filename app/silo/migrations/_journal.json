@@ -29,6 +29,7 @@
     { "tag": "0021_task_queue_append_only", "file": "0021_task_queue_append_only.sql", "transactional": true },
     { "tag": "0022_dynamic_field_values_rls", "file": "0022_dynamic_field_values_rls.sql", "transactional": true },
     { "tag": "0023_realtime_publication", "file": "0023_realtime_publication.sql", "transactional": true },
-    { "tag": "0024_webhook_event_types", "file": "0024_webhook_event_types.sql", "transactional": false }
+    { "tag": "0024_webhook_event_types", "file": "0024_webhook_event_types.sql", "transactional": false },
+    { "tag": "0025_agents_version_chain_unique", "file": "0025_agents_version_chain_unique.sql", "transactional": false }
   ]
 }
