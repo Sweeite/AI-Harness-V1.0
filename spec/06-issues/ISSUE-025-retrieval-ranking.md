@@ -2,7 +2,7 @@
 id: ISSUE-025
 title: Retrieval + ranking + clearance-before-ranking + answer modes
 epic: C — memory
-status: ready
+status: blocked
 github: "#25"
 ---
 

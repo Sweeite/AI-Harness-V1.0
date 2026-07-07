@@ -11,7 +11,8 @@ export type Rule =
   | "no-destructive-change" // AC-NFR-INF.002.1 — no DROP/RENAME outside a contract migration
   | "new-column-nullable-or-default" // no bare NOT NULL add-column on a populated table
   | "heavy-index-concurrently" // standalone index builds must be CONCURRENTLY
-  | "seed-idempotent"; // every seed INSERT is guarded (on conflict / where not exists)
+  | "seed-idempotent" // every seed INSERT is guarded (on conflict / where not exists)
+  | "no-semicolon-in-comment"; // a `;` inside a `--` comment fragments a statement in the non-txn runner
 
 export interface Finding {
   rule: Rule;
@@ -49,11 +50,32 @@ const HAS_DEFAULT = /\bdefault\b/i;
 const STANDALONE_INDEX = /\bcreate\s+(unique\s+)?index\b/i;
 const CONCURRENTLY = /\bconcurrently\b/i;
 
-export function checkMigration(tag: string, sql: string): Finding[] {
+export function checkMigration(tag: string, sql: string, transactional = true): Finding[] {
   const findings: Finding[] = [];
   const lines = sanitise(sql);
   const isContract = /contract/i.test(tag);
   const isSeed = /seed/i.test(tag);
+
+  // R5 — no `;` inside a `-- comment`, but ONLY for `transactional:false` files. Those are the ones the
+  // runner splits statement-by-statement (pg-driver applyNonTransactional), where a `;` in a comment
+  // fragments a statement → the exact 0007/0011 live-apply break. Transactional files run as one
+  // `client.query(file.sql)`, so a `;` in prose there is harmless (Postgres ignores the comment). The
+  // runner is now comment-aware (sql-split.ts) so this is belt-and-braces, scoped to where it can bite.
+  if (!transactional) {
+    sql.split("\n").forEach((raw, i) => {
+      const c = raw.indexOf("--");
+      if (c !== -1 && raw.indexOf(";", c) !== -1) {
+        findings.push({
+          rule: "no-semicolon-in-comment",
+          tag,
+          line: i + 1,
+          snippet: raw.trim().slice(0, 120),
+          message:
+            "A `;` inside a `--` comment fragments the statement in the non-transactional runner (the 0007/0011 live-apply break) — remove or reword the semicolon out of the comment (migration-discipline.md; sql-split.ts).",
+        });
+      }
+    });
+  }
 
   lines.forEach((line, i) => {
     const lineNo = i + 1;
@@ -165,6 +187,6 @@ function splitStatements(sql: string): Stmt[] {
   return out;
 }
 
-export function checkAll(files: { tag: string; sql: string }[]): Finding[] {
-  return files.flatMap((f) => checkMigration(f.tag, f.sql));
+export function checkAll(files: { tag: string; sql: string; transactional?: boolean }[]): Finding[] {
+  return files.flatMap((f) => checkMigration(f.tag, f.sql, f.transactional ?? true));
 }

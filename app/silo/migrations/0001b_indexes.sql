@@ -74,6 +74,6 @@ create index concurrently task_history_task_step on task_history (task_id, step_
 -- Compliance workflow (C10)
 create index concurrently connector_deletion_flags_state_raised on connector_deletion_flags (state, raised_at);  -- indexes.md L114
 
--- Management plane (indexes.md L122-125) — INTENTIONALLY SKIPPED (out of scope for client silo;
+-- Management plane (indexes.md L122-125) — INTENTIONALLY SKIPPED (out of scope for client silo —
 -- management lineage, migrations.md L50-54 / ISSUE-012): deployment_health_stale,
 -- deployment_health_version, offboarding_client.

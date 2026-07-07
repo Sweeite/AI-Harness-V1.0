@@ -6,6 +6,7 @@ import pg from "pg";
 import type { MigrationFile } from "./journal.ts";
 import type { MigrationDriver } from "./migrate.ts";
 import { MigrationError } from "./plan.ts";
+import { splitExecutableStatements } from "./sql-split.ts";
 
 const TRACKING_DDL = `
 create table if not exists _migrations (
@@ -79,7 +80,9 @@ export class PgDriver implements MigrationDriver {
            end loop;
          end $$;`,
       );
-      for (const stmt of file.sql.split(";").map((s) => s.trim()).filter(Boolean)) {
+      // Quote/comment-aware split — a `;` inside a comment or string never fragments a statement
+      // (the 0007/0011 live-apply build-breaker; see sql-split.ts).
+      for (const stmt of splitExecutableStatements(file.sql)) {
         try {
           await client.query(stmt);
         } catch (err) {

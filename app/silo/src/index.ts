@@ -22,12 +22,12 @@ const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migr
 function runCheck(): (Finding | RlsFinding)[] {
   const journal = loadJournal(MIGRATIONS_DIR);
   const files = loadMigrationFiles(MIGRATIONS_DIR, journal);
-  const corpus = [...files.values()].map((f) => ({ tag: f.tag, sql: f.sql }));
+  const corpus = [...files.values()].map((f) => ({ tag: f.tag, sql: f.sql, transactional: f.transactional }));
   const discipline = checkAll(corpus);
   const rls = checkAllRls(corpus);
   const findings: (Finding | RlsFinding)[] = [...discipline, ...rls];
   if (findings.length === 0) {
-    console.log(`✓ discipline: ${files.size} migration(s) clean (no destructive change, indexes concurrent, seed idempotent).`);
+    console.log(`✓ discipline: ${files.size} migration(s) clean (no destructive change, indexes concurrent, seed idempotent, no semicolon in a non-transactional comment).`);
     console.log(`✓ rls: every table covered by a policy; every policy helper call (select …)-wrapped.`);
   } else {
     console.error(`✗ ${findings.length} finding(s):`);

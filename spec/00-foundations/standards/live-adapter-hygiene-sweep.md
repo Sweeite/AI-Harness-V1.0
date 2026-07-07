@@ -38,6 +38,12 @@ fan-out spends tokens. `psql` lives at `/opt/homebrew/opt/libpq/bin/psql`; DBs a
 Stage 4's 14 packages already have `live-smoke.sql`. The **Stage 0–3 foundation packages do not** — they were
 closed before this gate existed, and they are what Stage 5 builds on top of, so harden them first.
 
+> **Work-list input (2026-07-07 audit, session 73):** a whole-repo hygiene pass pre-found the likely defects
+> Part B will confirm — see `live-adapter-backfill-findings.2026-07-07.md` (5 BLOCKER + 12 MAJOR, 4 already
+> live/code-CONFIRMED incl. **B1 webhook-auth** = every live webhook write throws on a missing enum). Use it as
+> the review seed per wave, but still **live-verify each finding against the real DB before fixing** (most are
+> PLAUSIBLE-not-live-verified). It does not replace the per-package correctness read.
+
 ### Do NOT start until
 - The **Checkpoint-3 adversary fixes are committed + pushed** (that session added migrations `0021–0023`; do
   not overlap an active fixer or you'll collide on the same files and check mid-change code).
