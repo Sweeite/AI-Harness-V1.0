@@ -408,3 +408,36 @@ test('isSecretKey catches EVERY group-N secret (incl. GOOGLE_PUBSUB_SERVICE_ACCO
   assert.ok(!isSecretKey('rate_alert_threshold'));
   assert.ok(!isSecretKey('auth.oauth_enabled')); // a non-smtp auth key is NOT a secret
 });
+
+// logic-sweep regression (redaction.ts:49 BLOCKER): SECRET_KEY_RE false-positived on real NON-secret
+// config_values knobs that merely contain a bare `token`/`key`/`secret`/`password` segment — six §F
+// tools-group knobs (token_refresh_interval_minutes etc.) are LIVE/BOOT-editable ints/bools mapped to
+// PERM-config.tools in KEY_NODE_MAP, NOT secrets. The false-positive made putConfigValue AND appendAudit
+// THROW for these keys (the config-admin write path could not save them at all, and no audit row could be
+// produced). NO key present in KEY_NODE_MAP is ever a secret — a config_values knob by construction.
+test('isSecretKey never false-positives on a real KEY_NODE_MAP config knob (logic-sweep redaction.ts:49)', () => {
+  // The six token_*/*_token_* knobs the sweep pinned as false-positives.
+  const NON_SECRET_TOKEN_KNOBS = [
+    'token_refresh_interval_minutes',
+    'token_refresh_lead_minutes',
+    'token_expiry_alert_days',
+    'slack_token_rotation_enabled',
+    'ghl_access_token_ttl',
+    'ghl_refresh_token_max_idle',
+  ];
+  for (const key of NON_SECRET_TOKEN_KNOBS) {
+    assert.ok(
+      key in KEY_NODE_MAP,
+      `precondition: '${key}' must be a config_values knob in KEY_NODE_MAP`,
+    );
+    assert.ok(
+      !isSecretKey(key),
+      `isSecretKey('${key}') must be false — a config_values knob is never a secret (write/audit would throw)`,
+    );
+  }
+  // Belt-and-braces: EVERY key in the authoritative config_values map must classify non-secret, or its
+  // config-admin write path (putConfigValue) and audit path (appendAudit) break by construction.
+  for (const key of Object.keys(KEY_NODE_MAP)) {
+    assert.ok(!isSecretKey(key), `isSecretKey('${key}') must be false — it is a KEY_NODE_MAP config knob`);
+  }
+});

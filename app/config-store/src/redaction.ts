@@ -13,6 +13,8 @@
 // log detail; a false-negative leaks a credential — the asymmetry is #2). The registry's SECRET class is
 // the primary control; this is the defence-in-depth pre-write scrub.
 
+import { KEY_NODE_MAP } from './keygroup.ts';
+
 export const REDACTED = '[REDACTED]' as const;
 
 // The group-N platform SECRET env-var names (spec/02-config/config-registry.md §N). SECRET keys are
@@ -54,6 +56,12 @@ export function isSecretKey(key: string): boolean {
   const lower = key.toLowerCase();
   if (SMTP_SECRET_KEYS.has(lower)) return true;
   if (lower.startsWith('auth.smtp_')) return true; // any smtp_* under auth. is a group-N secret
+  // logic-sweep fix (redaction.ts:49 BLOCKER): any key in the authoritative config_values map is a knob
+  // BY CONSTRUCTION (never a secret_manifest presence row), so it must NOT be caught by the belt-and-braces
+  // SECRET_KEY_RE. Without this the regex false-positived on six real §F tools knobs that merely contain a
+  // bare `token`/`key` segment (token_refresh_interval_minutes, ghl_access_token_ttl, …), making
+  // putConfigValue/appendAudit throw and the config-admin write path unable to save them at all.
+  if (Object.prototype.hasOwnProperty.call(KEY_NODE_MAP, key)) return false;
   return SECRET_KEY_RE.test(key);
 }
 
