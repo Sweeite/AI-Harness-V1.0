@@ -324,14 +324,18 @@ export class InMemoryRateLimiter implements RateLimiter {
     return r;
   }
 
-  /** Roll the window forward if `now` is past reset_at: a new window resets calls_made to 0 (FR-3.RL.001). */
-  private rollIfExpired(row: RateLimitTrackerRow, now: number): void {
+  /** Roll the window forward if `now` is past reset_at: a new window resets calls_made to 0 (FR-3.RL.001).
+   *  Returns true iff the window was actually rolled (the caller must not apply a prior-window vendor header
+   *  to a freshly-rolled window — see decide()). */
+  private rollIfExpired(row: RateLimitTrackerRow, now: number): boolean {
     if (now * 1000 >= Date.parse(row.reset_at)) {
       row.window_start = this.iso(now);
       row.reset_at = this.iso(now + row.window_duration_seconds);
       row.calls_made = 0;
       row.updated_at = this.iso(now);
+      return true;
     }
+    return false;
   }
 
   async reconcileHeader(
@@ -369,10 +373,14 @@ export class InMemoryRateLimiter implements RateLimiter {
 
   async decide(ctx: CallContext, now: number, opts: DecideOpts = {}): Promise<TierDecision> {
     const row = this.mustGet(ctx.connector, ctx.windowLabel);
-    this.rollIfExpired(row, now);
+    const rolled = this.rollIfExpired(row, now);
 
-    // Reconcile a supplied vendor header FIRST (conservative wins) so the tier math reads the true headroom.
-    if (opts.vendorRemaining !== undefined) {
+    // Reconcile a supplied vendor header (conservative wins) so the tier math reads the true headroom — BUT
+    // logic-sweep fix (store.ts:372): `vendorRemaining` is a header from the PRIOR call, i.e. the prior
+    // window. If we just rolled into a FRESH window, the vendor's own quota window has reset too, so applying
+    // the stale prior-window header would fabricate usage that never happened in the new window (and diverge
+    // from the live pg adapter, whose in-txn roll wipes any prior-window reconciliation). Skip it on a roll.
+    if (opts.vendorRemaining !== undefined && !rolled) {
       await this.reconcileHeader(ctx.connector, ctx.windowLabel, opts.vendorRemaining, now);
     }
 

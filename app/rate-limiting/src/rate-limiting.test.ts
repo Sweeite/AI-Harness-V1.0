@@ -391,3 +391,23 @@ test('window roll: after reset_at the window resets calls_made to 0', async () =
   assert.equal(d.tier, 'proceed');
   assert.equal((await rl.getTracker('ghl', 'ghl_burst_10s'))!.calls_made, 1, 'window rolled: fresh count');
 });
+
+// ── logic-sweep regression: a vendorRemaining header from the PRIOR window must NOT corrupt a freshly-rolled
+// window (store.ts:372 — fake-vs-adapter ordering drift). A stale pre-reset header applied to a post-roll
+// window fabricates usage that never happened; the fresh window must stay empty (parity with the live pg
+// adapter, whose in-txn roll wipes any prior-window reconciliation). ──────────────────────────────────────
+test('vendorRemaining from the prior window is ignored across a roll boundary (fresh window stays empty)', async () => {
+  const { rl } = mk();
+  await rl.ensureWindow('ghl', 'ghl_burst_10s', 100, 10, T0); // reset_at = T0+10
+  for (let i = 0; i < 50; i++) await rl.decide(ctx({ urgency: 'urgent' }), T0); // 50 made in the OLD window
+  assert.equal((await rl.getTracker('ghl', 'ghl_burst_10s'))!.calls_made, 50);
+  // A call AFTER reset with a stale prior-window header (vendor said 30 remaining in the OLD window). The
+  // window rolls to 0; the stale header must NOT be re-applied to the fresh count. Only THIS call counts.
+  const d = await rl.decide(ctx({ urgency: 'urgent' }), T0 + 11, { vendorRemaining: 30 });
+  assert.equal(d.tier, 'proceed', 'fresh empty window → proceed (not throttled by a fabricated 70)');
+  assert.equal(
+    (await rl.getTracker('ghl', 'ghl_burst_10s'))!.calls_made,
+    1,
+    'fresh window: only this call counted — the stale prior-window header did not fabricate usage',
+  );
+});

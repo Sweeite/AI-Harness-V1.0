@@ -152,8 +152,16 @@ export class SupabaseRateLimiter implements RateLimiter {
   async decide(ctx: CallContext, now: number, opts: DecideOpts = {}): Promise<TierDecision> {
     // Atomic source-of-truth check+increment: lock the tracker row FOR UPDATE so concurrent workers can't
     // both read headroom and over-call (FR-3.RL.002 / #3). Roll the window if reset_at has passed.
+    // logic-sweep fix (store.ts:372 parity): `vendorRemaining` is a PRIOR-window header. If the window has
+    // already expired we are about to roll into a FRESH window (the vendor's own quota window has reset too),
+    // so applying the stale prior-window header would fabricate usage that never happened. Skip it on a roll —
+    // matching the InMemoryRateLimiter reference model, so the fake and adapter agree on identical input.
     if (opts.vendorRemaining !== undefined) {
-      await this.reconcileHeader(ctx.connector, ctx.windowLabel, opts.vendorRemaining, now);
+      const cur = await this.getTracker(ctx.connector, ctx.windowLabel);
+      const willRoll = cur !== null && now * 1000 >= Date.parse(cur.reset_at);
+      if (!willRoll) {
+        await this.reconcileHeader(ctx.connector, ctx.windowLabel, opts.vendorRemaining, now);
+      }
     }
     const client = await this.pool.connect();
     try {
