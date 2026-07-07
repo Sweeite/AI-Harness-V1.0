@@ -139,13 +139,34 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
     const now = input.now;
     const expiresAt = this.cappedExpiry(now, input.ttlSeconds);
 
-    // Create the auth.users parent, then mirror it. profiles.id = the returned auth.users.id (FK satisfied).
+    // ATOMIC issuance (mirrors runSeed's transaction discipline — #1/#3). The external auth.createUser is
+    // sequenced BEFORE the txn (its returned id is the profiles FK parent — profiles.id FKs auth.users(id));
+    // the profiles mirror insert AND the invite_issued audit then run inside ONE transaction on a single
+    // checked-out client, so a crash mid-sequence can never commit an auth.users+profiles row with no
+    // invite_issued audit (a #3 silent-failure hole). The email deliver runs AFTER commit — a deliver failure
+    // must NOT roll back a real, issued invite (it is separately recoverable via resend/markBounced and is
+    // surfaced explicitly, never a false "sent"). ACCEPTABLE RESIDUAL: if createUser succeeds but the txn rolls
+    // back, an orphan auth.users row with no profile remains — the idempotent createUser (same id per email)
+    // reconciles it on re-run; we deliberately do NOT delete the auth user here.
     const authUser = await auth.createUser(input.email);
-    const prof = await this.pool.query<{ id: string }>(
-      `insert into profiles (id, email, active) values ($1, $2, false) returning id`,
-      [authUser.id, input.email],
-    );
-    const profileId = prof.rows[0]!.id;
+
+    const client = await this.pool.connect();
+    let profileId: string;
+    try {
+      await client.query('begin');
+      const prof = await client.query<{ id: string }>(
+        `insert into profiles (id, email, active) values ($1, $2, false) returning id`,
+        [authUser.id, input.email],
+      );
+      profileId = prof.rows[0]!.id;
+      await this.writeAudit(client, 'invite_issued', input.issuedBy, 'user', 'issue_invite', null);
+      await client.query('commit');
+    } catch (e) {
+      await client.query('rollback').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
 
     // We model the native token id opaquely; the live admin API returns it. No custom token table (OD-014).
     const inv: Invite = {
@@ -161,7 +182,7 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
       issuedBy: input.issuedBy,
     };
 
-    await this.writeAudit(this.pool, 'invite_issued', input.issuedBy, 'user', 'issue_invite', null);
+    // AFTER commit — a send failure never rolls back the (committed) invite; it surfaces explicitly instead.
     const { sent, reason } = await this.deliver(inv, smtp);
     return { invite: inv, sent, ...(sent ? {} : { sendFailureReason: reason }) };
   }
@@ -244,6 +265,14 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
       // (OAuth-connect, no password, activates on connect); `password_totp` → Option B (gated on totpEnrolled
       // below). No half-provisioned account either way.
       if (inv.accountType === 'external_admin' && input.method !== 'password_totp') {
+        await client.query('rollback');
+        throw new Error(ERR_METHOD_MISMATCH);
+      }
+      // Mirror the reference fake (store.ts): a client_tenant account connects OAuth (no password) — any other
+      // method is a mismatch (OD-020: one method). A native invite is reconstructed as client_tenant by
+      // loadInviteLive, so a password_totp submission on it must reject exactly as the fake does (never set a
+      // password on the OAuth-connect path).
+      if (inv.accountType === 'client_tenant' && input.method !== 'oauth') {
         await client.query('rollback');
         throw new Error(ERR_METHOD_MISMATCH);
       }

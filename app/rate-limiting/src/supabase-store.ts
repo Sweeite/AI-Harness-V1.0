@@ -336,6 +336,30 @@ export class SupabaseRateLimiter implements RateLimiter {
   }
 
   async drainDue(now: number): Promise<DrainOutcome[]> {
+    // ⚠️ OWED — DURABILITY GAP (#1/#3), not a code-around: this method CLAIMS (marks drained_at) + COMMITS,
+    // releases the client, THEN fires the re-drive loop (guard.commitIntent) OUTSIDE any transaction. A crash
+    // between the commit and the loop — or partway through it — leaves rows marked `drained_at != null` whose
+    // deferred call was NEVER re-consulted with the idempotency guard. Nothing re-picks them (pendingDeferred /
+    // drainDue both filter `drained_at is null`), so the deferred call is SILENTLY DROPPED. This is worse than
+    // the reference fake, which is single-process and sets `drained_at` per-row AFTER each commitIntent, so a
+    // crash can only lose the one in-flight row, not the whole due batch.
+    //
+    // Why it is NOT fixed here (deliberately owed, not forgotten):
+    //   • The correct fix is a two-phase CLAIM → FIRE → CONFIRM: (1) claim = flip a `status`/set a `fired_at`
+    //     column (NEW column — schema change), (2) fire = re-consult the guard + perform the caller-side call,
+    //     (3) confirm = the CONSUMER acks success back so the row flips terminal; a re-drive sweeper re-picks
+    //     any row claimed-but-not-confirmed past a lease window (at-least-once, guard makes the retry safe).
+    //   • That needs BOTH a schema change (a `fired_at`/`status` column on rate_limit_deferred) AND the
+    //     consumer-confirm contract — and there is NO production consumer of drainDue yet (only tests call it).
+    //     Inventing either here (a migration or a consumer API) would be a speculative guess, so per the build
+    //     protocol it is logged as owed rather than half-built. NO safe self-contained reorder closes the window
+    //     without changing this method's public API/semantics: moving commitIntent inside the claim txn would
+    //     make an external-facing durable side effect part of the DB txn and diverge from the fake's contract.
+    //
+    // REQUIRED to close: (a) `fired_at`/`status` column migration on rate_limit_deferred; (b) a re-drive
+    // sweeper that re-picks claimed-but-unconfirmed rows past a lease; (c) the consumer-confirm contract that
+    // acks a fired call terminal. Until (a)–(c) land, drainDue is NOT restart-durable against a mid-drain crash.
+    //
     // Claim due rows atomically (FOR UPDATE SKIP LOCKED) so concurrent drainers never double-fire a write.
     const client = await this.pool.connect();
     let due: DeferredCallRow[];
@@ -351,6 +375,8 @@ export class SupabaseRateLimiter implements RateLimiter {
       );
       due = pick.rows;
       // Mark them drained inside the same tx (the write re-fire itself is decided below, outside the lock).
+      // ⚠️ See the OWED durability-gap note at the top of this method: this batch-mark + commit before the
+      // re-fire loop is the exact window where a crash silently drops the deferred call.
       if (due.length > 0) {
         await client.query(
           `update rate_limit_deferred set drained_at = now() where id = any($1::uuid[])`,

@@ -27,6 +27,7 @@ import assert from 'node:assert/strict';
 
 import {
   InMemoryHardLimitGate,
+  SupabaseHardLimitGate,
   classify,
   HARD_LIMITS,
   ERR_HARD_LIMIT_APPROVE_FORBIDDEN,
@@ -34,6 +35,8 @@ import {
   HardLimitSetChangeRejected,
   type ActionAttempt,
   type AlertSink,
+  type GuardrailLogRow,
+  type GuardrailStatus,
   type HardLimitAlert,
   type HardLimitId,
 } from './index.ts';
@@ -330,4 +333,110 @@ test('AC-NFR-SEC.005.1 — a new dangerous capability lands on hard-approval + a
   // TEETH: the routing NEVER produces an auto-allow — there is no 'auto' route in the type at all.
   const r = gate.classifyNewCapability('anything');
   assert.notEqual(r.route as string, 'auto_allow');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// LIVE-ADAPTER PARITY (SupabaseHardLimitGate.setStatus) — the pg adapter's setStatus must match the fake's
+// accept/reject surface EXACTLY. These drive the live setStatus logic against a stub pool (no real DB) so
+// the two FAKE-vs-LIVE divergences are pinned: (a) status='pending' is ACCEPTED like the fake (the fake
+// never rejects it), and (b) an UPDATE that affects zero rows (row vanished) throws not-found rather than
+// handing back `undefined` as a row.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
+// A minimal stub standing in for the private pg.Pool. Routes by SQL prefix; each test supplies the rows.
+interface StubResult { rows: unknown[]; rowCount: number; }
+function stubPool(handlers: {
+  select: () => StubResult;
+  update?: () => StubResult;
+}): { query: (sql: string) => Promise<StubResult> } {
+  return {
+    query: async (sql: string) => {
+      if (/^\s*select/i.test(sql)) return handlers.select();
+      if (/^\s*update/i.test(sql)) {
+        if (!handlers.update) throw new Error('unexpected UPDATE issued');
+        return handlers.update();
+      }
+      throw new Error(`unexpected SQL: ${sql}`);
+    },
+  };
+}
+
+function liveGate(pool: unknown): SupabaseHardLimitGate {
+  const gate = new SupabaseHardLimitGate('postgres://stub/db?sslmode=disable');
+  // swap the real pool for the stub (private field; the adapter only calls .query)
+  (gate as unknown as { pool: unknown }).pool = pool;
+  return gate;
+}
+
+function row(over: Partial<GuardrailLogRow> = {}): GuardrailLogRow {
+  return {
+    id: 'gl-0001',
+    task_id: null,
+    guardrail_type: 'hard_limit',
+    description: 'blocked',
+    action_blocked: true,
+    status: 'pending',
+    created_at: new Date(T0 * 1000).toISOString(),
+    ...over,
+  };
+}
+
+test('live setStatus — status=pending is ACCEPTED (fake parity), returns the row and issues NO update', async () => {
+  const existing = row({ guardrail_type: 'hard_limit', status: 'pending' });
+  let updateIssued = false;
+  const gate = liveGate(
+    stubPool({
+      // first select is the type-guard probe; getRow's select returns the full row.
+      select: () => ({ rows: [existing], rowCount: 1 }),
+      update: () => {
+        updateIssued = true; // the append-only trigger would REJECT an update-to-pending — must not fire
+        return { rows: [], rowCount: 0 };
+      },
+    }),
+  );
+
+  const out = await gate.setStatus('gl-0001', 'pending' as GuardrailStatus);
+  assert.equal(out.status, 'pending');
+  assert.equal(out.id, 'gl-0001');
+  assert.equal(updateIssued, false, 'a pending target must not issue the forward-only UPDATE');
+});
+
+test('live setStatus — a vanished row (UPDATE affects 0 rows) throws not-found, never undefined-as-a-row', async () => {
+  const gate = liveGate(
+    stubPool({
+      select: () => ({ rows: [{ guardrail_type: 'anomaly' }], rowCount: 1 }), // type-guard passes
+      update: () => ({ rows: [], rowCount: 0 }), // row deleted between select and update
+    }),
+  );
+
+  await assert.rejects(
+    () => gate.setStatus('gl-0001', 'rejected' as GuardrailStatus),
+    (e: Error) => /guardrail_log row gl-0001 not found/.test(e.message),
+    'a zero-row UPDATE must throw not-found, not return undefined',
+  );
+});
+
+test('live setStatus — a normal forward transition still returns the updated row', async () => {
+  const updated = row({ guardrail_type: 'anomaly', status: 'rejected' });
+  const gate = liveGate(
+    stubPool({
+      select: () => ({ rows: [{ guardrail_type: 'anomaly' }], rowCount: 1 }),
+      update: () => ({ rows: [updated], rowCount: 1 }),
+    }),
+  );
+
+  const out = await gate.setStatus('gl-0001', 'rejected' as GuardrailStatus);
+  assert.equal(out.status, 'rejected');
+});
+
+test('live setStatus — approve on a hard_limit row is rejected (parity with the fake error)', async () => {
+  const gate = liveGate(
+    stubPool({
+      select: () => ({ rows: [{ guardrail_type: 'hard_limit' }], rowCount: 1 }),
+    }),
+  );
+  await assert.rejects(
+    () => gate.setStatus('gl-0001', 'approved' as GuardrailStatus),
+    (e: Error) => e.message === ERR_HARD_LIMIT_APPROVE_FORBIDDEN,
+  );
 });

@@ -105,6 +105,17 @@ export class SupabaseHardLimitGate implements HardLimitGate {
     if (found.guardrail_type === 'hard_limit' && status === 'approved') {
       throw new Error(ERR_HARD_LIMIT_APPROVE_FORBIDDEN);
     }
+    // The reference fake (store.ts setStatus) ACCEPTS status='pending' — it is never rejected there (only
+    // hard_limit+approved is). But the live append-only trigger permits only a FORWARD
+    // pending→(approved|rejected|modified) transition, so an UPDATE to 'pending' would be rejected by the
+    // DB — a FAKE-vs-LIVE divergence. To match the fake's accept-and-return contract exactly, a 'pending'
+    // target is a no-op that returns the current (already-pending) row rather than issuing the
+    // trigger-violating UPDATE. This keeps the live adapter's accept/reject surface identical to the fake.
+    if (status === 'pending') {
+      const same = await this.getRow(rowId);
+      if (!same) throw new Error(`guardrail_log row ${rowId} not found`);
+      return same;
+    }
     // The append-only trigger permits only a forward pending→(approved|rejected|modified) transition that
     // leaves description/task_id unchanged; the DB CHECK still blocks hard_limit+approved as a backstop.
     const res = await this.pool.query<GuardrailLogRow>(
@@ -113,7 +124,13 @@ export class SupabaseHardLimitGate implements HardLimitGate {
        returning id, task_id, guardrail_type, description, action_blocked, status, created_at`,
       [rowId, status],
     );
-    return res.rows[0]!;
+    // A vanished row (deleted between the select and the update) yields zero rows — never hand back
+    // res.rows[0]! (which is `undefined` masquerading as a GuardrailLogRow). Throw the same not-found the
+    // reference fake raises, matching its contract (store.ts setStatus) rather than corrupting the read (#1/#3).
+    if (res.rowCount === 0 || !res.rows[0]) {
+      throw new Error(`guardrail_log row ${rowId} not found`);
+    }
+    return res.rows[0];
   }
 
   async getRow(rowId: string): Promise<GuardrailLogRow | null> {

@@ -16,6 +16,7 @@ import {
   INVITE_SEED_EVENT_TYPES,
   isInviteSeedEventType,
 } from './store.ts';
+import { SupabaseInviteSeedStore } from './supabase-store.ts';
 import { InMemorySmtpSender, ERR_SMTP_NOT_CONFIGURED } from './smtp.ts';
 import { InMemoryAuthAdmin } from './auth-admin.ts';
 import { LINK_TTL_HARD_CAP_SECONDS, SAFE_NO_ACCESS_VIEW } from './types.ts';
@@ -342,4 +343,107 @@ test('enum-drift — the admitted set is exactly the four invite/seed values owe
     ['account_activated', 'email_send_failed', 'email_send_ok', 'invite_bounced'],
     'the admitted set MUST stay in lockstep with the migration-0011 additive delta (proposed-shared-spec.md)',
   );
+});
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────────────
+// LIVE-ADAPTER regression guards (offline, no live DB) — a recording fake pg pool captures every (sql,params)
+// and the transaction verbs (begin/commit/rollback), tagged with the client that issued them, so we can prove
+// the adapter's ATOMICITY and account-type guards match the reference fake's contract. No live silo; this is
+// the offline mirror of the R10 live-adapter smoke. (Pattern: app/auth CapturingPool.)
+// ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+interface RecordedCall { sql: string; params: unknown[]; client: number }
+
+/** A fake pg pool. Every query is recorded with the id of the connection that issued it (0 = the bare pool;
+ *  1,2,… = a checked-out client), so a test can assert that begin/insert/audit/commit all ran on the SAME
+ *  checked-out client (one transaction). Rows are synthesised from the SQL shape (no live DB). */
+class RecordingPool {
+  readonly calls: RecordedCall[] = [];
+  private clientSeq = 0;
+  /** queued profile rows for `select … from profiles` (FIFO) — drives loadInviteLive in completeSetup. */
+  private profileRows: unknown[][] = [];
+  queueProfile(rows: unknown[]): void { this.profileRows.push(rows); }
+
+  private run(sql: string, params: unknown[], client: number): { rows: unknown[] } {
+    this.calls.push({ sql, params, client });
+    if (/insert into profiles/i.test(sql)) return { rows: [{ id: params[0] }] }; // returning id = the auth id
+    if (/select .* from profiles/i.test(sql)) return { rows: this.profileRows.shift() ?? [] };
+    if (/from user_roles/i.test(sql)) return { rows: [] }; // no role assigned → safe no-access landing
+    return { rows: [] };
+  }
+  async query(sql: string, params: unknown[] = []): Promise<{ rows: unknown[] }> {
+    return this.run(sql, params, 0); // 0 = the bare pool (deliver / writeEvent paths)
+  }
+  async connect(): Promise<{ query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>; release: () => void }> {
+    this.clientSeq += 1;
+    const id = this.clientSeq;
+    return {
+      query: async (sql: string, params: unknown[] = []) => this.run(sql, params, id),
+      release: () => {},
+    };
+  }
+  async end(): Promise<void> {}
+}
+
+function liveStore(): { store: SupabaseInviteSeedStore; pool: RecordingPool } {
+  const pool = new RecordingPool();
+  const store = new SupabaseInviteSeedStore('postgresql://x/y?sslmode=disable');
+  (store as unknown as { pool: RecordingPool }).pool = pool; // swap the real pg pool for the fake
+  return { store, pool };
+}
+
+test('live adapter: issueInvite runs the profiles insert + invite_issued audit inside ONE transaction (atomic, #1/#3)', async () => {
+  const { store, pool } = liveStore();
+  const auth = new InMemoryAuthAdmin();
+  const smtp = new InMemorySmtpSender();
+  await store.issueInvite({ email: 'i@example.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, now: T0 }, auth, smtp);
+
+  const begin = pool.calls.find((c) => /^begin$/i.test(c.sql.trim()));
+  const profileInsert = pool.calls.find((c) => /insert into profiles/i.test(c.sql));
+  const audit = pool.calls.find((c) => /insert into access_audit/i.test(c.sql) && c.params[0] === 'invite_issued');
+  const commit = pool.calls.find((c) => /^commit$/i.test(c.sql.trim()));
+  assert.ok(begin && profileInsert && audit && commit, 'begin, profiles insert, invite_issued audit, and commit all issued');
+
+  // REGRESSION GUARD (owed bug 1): the profiles insert AND the invite_issued audit must run on the SAME
+  // checked-out client, between that client's begin and commit — NOT on the bare pool (client 0). A crash
+  // mid-sequence must never commit a profiles row with no invite_issued audit.
+  const txnClient = begin!.client;
+  assert.notEqual(txnClient, 0, 'the transaction runs on a checked-out client, not the bare pool');
+  assert.equal(profileInsert!.client, txnClient, 'profiles insert is inside the transaction client');
+  assert.equal(audit!.client, txnClient, 'invite_issued audit is inside the SAME transaction client');
+  assert.equal(commit!.client, txnClient, 'commit closes that same transaction');
+
+  // ordering on the transaction client: begin → insert → audit → commit.
+  const seq = pool.calls.filter((c) => c.client === txnClient).map((c) => c.sql.trim().toLowerCase());
+  const iBegin = seq.findIndex((s) => s === 'begin');
+  const iProf = seq.findIndex((s) => /insert into profiles/i.test(s));
+  const iAudit = seq.findIndex((s) => /insert into access_audit/i.test(s));
+  const iCommit = seq.findIndex((s) => s === 'commit');
+  assert.ok(iBegin < iProf && iProf < iAudit && iAudit < iCommit, 'begin → profiles → invite_issued audit → commit, in order');
+});
+
+test('live adapter: completeSetup rejects a client_tenant (native invite) whose method is not oauth — mirrors the fake (owed bug 2)', async () => {
+  const { store, pool } = liveStore();
+  // loadInviteLive selects the profiles mirror row; a native invite is reconstructed as client_tenant. Queue a
+  // pending (active=false) row so the token validates, then submit password_totp — the fake rejects this
+  // (store.ts: client_tenant must be oauth); the live adapter must too.
+  pool.queueProfile([{ id: 'prof-1', email: 'user@client.com', active: false }]);
+  await assert.rejects(
+    () => store.completeSetup({ token: 'native-prof-1', method: 'password_totp', totpEnrolled: true, now: T0 }),
+    (e: Error) => e.message === ERR_METHOD_MISMATCH,
+    'a client_tenant native invite completing with password_totp must be a method mismatch, as in the fake',
+  );
+  // it must have rolled back (never flipped active / logged an activation) — no commit on the txn client.
+  assert.ok(!pool.calls.some((c) => /update profiles set active/i.test(c.sql)), 'no activation write on a rejected method');
+  assert.ok(pool.calls.some((c) => /^rollback$/i.test(c.sql.trim())), 'the transaction rolled back');
+});
+
+// sanity: the SAME live completeSetup still ACCEPTS the matching method (oauth) — the guard is not over-broad.
+test('live adapter: completeSetup accepts a client_tenant native invite with oauth (guard is not over-broad)', async () => {
+  const { store, pool } = liveStore();
+  pool.queueProfile([{ id: 'prof-2', email: 'user@client.com', active: false }]);
+  const act = await store.completeSetup({ token: 'native-prof-2', method: 'oauth', now: T0 });
+  assert.equal(act.activated, true, 'oauth activates the client_tenant account');
+  assert.equal(act.accountType, 'client_tenant');
+  assert.ok(pool.calls.some((c) => /^commit$/i.test(c.sql.trim())), 'the activation transaction committed');
 });

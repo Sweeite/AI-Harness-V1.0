@@ -104,9 +104,10 @@ refuted the whole RLS-permission finding class.
 - **prompt-optimisation:** `prompt_version_attribution` / `task_outcome` / `trigger_delivery` exist in NO migration (owned by ISSUE-049/053) → M12-a BLOCKER (relation-does-not-exist) + M12-b TOCTOU (moot until the table + a unique-on-task_id land). Non-functional live until those issues ship.
 - **triggers:** `isDelivered`/`markDelivered` query `trigger_delivery` (owned by ISSUE-049) → non-functional live until it lands.
 
-### 🟠 Fixable code MAJORs — owed (contained, not fixed this turn)
-- **hard-limits:** `setStatus('pending')` fake-vs-live divergence (the app-guard permits a status the fake rejects) — #2-critical, verify + add the guard.
-- (invite-seed non-atomic + completeSetup guard — see above.)
+### ✅ Owed code MAJORs — FIXED (session 73, fan-out; offline-verified, adversarial tests added)
+- **invite-seed** — non-atomic `issueInvite` now wraps profiles-insert + `invite_issued` audit in ONE txn (auth.createUser before, deliver after commit, orphan-residual documented); `completeSetup` now enforces the fake's `client_tenant`⇒`method='oauth'` guard. 34/34 tests (+4 new).
+- **hard-limits** — `setStatus('pending')` short-circuits to a no-op matching the fake (the append-only trigger would reject the UPDATE); added the missing rowCount not-found guard. 17/17 tests (+4 new). #2-critical, matched fake exactly.
+- **rate-limiting M4 (drainDue)** — assessed: **no safe self-contained fix** (needs a `fired_at`/status column = migration + a re-drive sweeper + the unbuilt consumer's confirm contract). Left a precise ⚠️ OWED comment block at the code site; stays owed to the consumer integration (correct call, not forced).
 
 ### ✅ Clean (only MINORs; session-72-reviewed set holding up)
 task-queue, superadmin-auth, retention, release (mgmt-plane), rbac, management (mgmt-plane), injection-pipeline,
