@@ -235,10 +235,19 @@ Gate everything. Not hands-off.
 - 🟢 BATCH *(session 71 offline fan-out — 11 members `in-progress`: built + adversarially verified + integrated onto main; migrations `0011–0017` authored discipline-clean; **`done` awaits the Checkpoint-4 live apply + the 3 live members)*:
   **Offline-built (`in-progress`):** ~~`015`~~ Invite + seed (31/31; live activation SQL + AF-074 live-owed) · ~~`016`~~ Support-request recovery (20/20) · ~~`034`~~ Rate limiting + tiers (23/23) · ~~`035`~~ Write tools + connector hard limits (7/7; AF-068 🟢 reused) · ~~`036`~~ Tool optimisation (7/7) · ~~`049`~~ Task graphs + idempotency + resume (13/13; AF-112/115 live-owed) · ~~`050`~~ Context envelope + compression (6/6; AF-114/115 live-owed) · ~~`051`~~ Three loops + failure heartbeat (14/14; AF-112 live-owed) · ~~`056`~~ Approval tiers + escalation (26/26; [[OD-188]] Hold live-persist) · ~~`061`~~ Orchestrator + 7-step routing (35/35; [[OD-189]] awaiting_clarification; AF-121/122/126 EVAL) · ~~`077`~~ Log retention/export + mgmt views (38/38; guardrail redaction live via 0015).
   **Live/🧑 — offline-built + adversarially verified (session 71 cont.), now `in-progress`; live-close batches into the Checkpoint-4 operator session:** ~~`033`~~ OAuth token lifecycle 🧑 (25/25; verify caught a stubbed cap-surfacing AC → fixed; AF-089 GHL rotation-race + concrete vendor OAuth live-owed to 039/040/041) · ~~`037`~~ Trigger infra + liveness (28/28; verify caught a fake-`audit`-table drift → fixed to real `access_audit`; per-vendor arms AF-090/084/083 held & live-owed; **migration `0018`** = 9 trigger `event_type` values) · ~~`085`~~ Backup & DR 🔴 (16/16, verify PASS; AF-069 Path B 🟢 reused; live rehearsal run + AF-072 LOAD + AF-069 Path A live-owed; **mgmt migration `0003_backup_dr`** = operator-side backup log, hand-applied to the mgmt DB).
-- ◇ **CHECKPOINT 4:** `019` clearance scoping + every Restricted grant logs who/when/why (#2). Batch:
-  token lifecycle, rate-limit ladder, task graphs resume idempotently, approvals route, orchestrator skeleton.
+- [x] ◇ **CHECKPOINT 4 — ✅ CLOSED (session 71, 2026-07-07).** All 14 batch members `done` (offline ACs proven,
+  290/0 sweep) **+ a full live-adapter review**: a correctness pass + a per-package `results/live-smoke.sql` that
+  replays each adapter's real write path rolled-back against the silo — **14/14 pass live**. The review caught +
+  fixed **3 BLOCKERs** (015 `profiles→auth.users` FK · 056 `access_audit` `actor_type='human'` invalid enum · 037
+  trigger state in the version-locked `tools.config`) **+ 3 MAJORs** (056 swallowed compensation · 061 dropped
+  `__domain` routing tag · 037 non-atomic lost-update) that the offline suites + adversarial verify all missed.
+  Migrations `0011–0020` applied LIVE (head `0020`); **R7 three-non-negotiables re-checked LIVE** (`app/silo/results/stage4-checkpoint-capstone.sql`
+  — #1 task_graph/agents append-only + guardrail redaction; #2 hard-limit no-override + clearance; #3 loud events +
+  escalation stamp). `019` gate live (session 70). **Live-owed residuals (onboarding/connector, tracked — NOT blockers):**
+  AF-089 (033 GHL race) · per-vendor arms AF-090/084/083 (037→039/040/041) · AF-069 Path A + AF-072 LOAD + the standing
+  live rehearsal (085). **Stage 5 (gate `022` + batch) may now open (R1).**
 
-### Stage 5 — Integration & specialists  *(16 in parallel)*
+### Stage 5 — Integration & specialists  *(OPEN since 2026-07-07 — Checkpoint 4 CLOSED; gate `022` + `021`/`038`/`039`/`040`/`041`/`078`/`079`/`083`/`086` now `ready`; `020`/`052`/`058`/`062`/`064`/`065`/`068` still `blocked` on undone deps)*  *(16 in parallel)*
 - 🟠 **GATE — `022` Memory + entity model + sensitivity/visibility tagging**  🔴 — get the entity model wrong and knowledge fragments (#1).
 - 🟢 BATCH: `020` RLS enforcement (visibility/sensitivity/Restricted/aal2 + service_role) 🔴 · `021` User mgmt + RBAC audit · `038` Disconnection + recovery · `039` GHL connector · `040` Google connector · `041` Slack connector · `052` Inngest engine + retry + DLQ · `058` Rate-limit + cost-ladder enforcement · `062` Eight specialists + per-agent hard limits · `064` Execution plans + failure-mode · `065` Agent health / dead-agent · `068` Proactivity modes + autonomy matrix · `078` Ops dashboards · `079` Mobile surface · `083` Client offboarding · `086` Config admin surface
 - ◇ **CHECKPOINT 5:** `022` entity resolution *links, not fragments*; tags apply. `020` RLS enforcement

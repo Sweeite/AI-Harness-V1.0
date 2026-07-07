@@ -2,7 +2,7 @@
 id: ISSUE-051
 title: Three loops + config-extensible + catch-up dedup + failure heartbeat
 epic: F — harness
-status: in-progress
+status: done
 github: "#51"
 ---
 

@@ -2,7 +2,7 @@
 id: ISSUE-021
 title: User management lifecycle + RBAC audit
 epic: B — identity & access
-status: blocked
+status: ready
 github: "#21"
 ---
 

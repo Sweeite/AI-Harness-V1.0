@@ -2,7 +2,7 @@
 id: ISSUE-040
 title: Google connector instance (Gmail / Drive / Calendar)
 epic: D — tool layer
-status: blocked
+status: ready
 github: "#40"
 ---
 

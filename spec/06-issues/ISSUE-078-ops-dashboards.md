@@ -2,7 +2,7 @@
 id: ISSUE-078
 title: Ops dashboards (single-deployment + super-admin fleet console)
 epic: J — observability
-status: blocked
+status: ready
 github: "#78"
 ---
 

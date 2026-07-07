@@ -2,7 +2,7 @@
 id: ISSUE-022
 title: Memory + entity model + sensitivity/visibility tagging
 epic: C — memory
-status: blocked
+status: ready
 github: "#22"
 ---
 

@@ -2,7 +2,7 @@
 id: ISSUE-034
 title: Rate limiting — tracker + 80/95/429 tiers + high-risk halt-escalate
 epic: D — tool layer
-status: in-progress
+status: done
 github: "#34"
 ---
 

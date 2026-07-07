@@ -2,7 +2,7 @@
 id: ISSUE-077
 title: Log retention/export + mgmt-plane views + feedback flywheel
 epic: J — observability
-status: in-progress
+status: done
 github: "#77"
 ---
 

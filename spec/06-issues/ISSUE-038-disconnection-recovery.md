@@ -2,7 +2,7 @@
 id: ISSUE-038
 title: Connector disconnection + recovery
 epic: D — tool layer
-status: blocked
+status: ready
 github: "#38"
 ---
 

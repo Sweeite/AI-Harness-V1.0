@@ -2,7 +2,7 @@
 id: ISSUE-039
 title: GHL connector instance — CRM reads/writes, rotating-refresh token, Ed25519 webhook
 epic: D — tool layer
-status: blocked
+status: ready
 github: "#39"
 ---
 

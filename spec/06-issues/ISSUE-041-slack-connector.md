@@ -2,7 +2,7 @@
 id: ISSUE-041
 title: Slack connector instance — Events API ingest, post-message, xoxb tokens
 epic: D — tool layer
-status: blocked
+status: ready
 github: "#41"
 ---
 

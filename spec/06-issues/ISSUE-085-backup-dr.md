@@ -2,7 +2,7 @@
 id: ISSUE-085
 title: Backup & DR — off-platform dump + restore rehearsal + backup-health push
 epic: K — infra & compliance
-status: in-progress
+status: done
 github: "#85"
 ---
 

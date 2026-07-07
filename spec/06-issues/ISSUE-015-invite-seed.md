@@ -2,7 +2,7 @@
 id: ISSUE-015
 title: Invite + seed bootstrap
 epic: B — identity & access
-status: in-progress
+status: done
 github: "#15"
 ---
 

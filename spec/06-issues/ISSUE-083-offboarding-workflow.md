@@ -2,7 +2,7 @@
 id: ISSUE-083
 title: Client offboarding workflow (export-verified → sign-off → freeze → hard-delete → meta-record)
 epic: K — infra & compliance
-status: blocked
+status: ready
 github: "#83"
 ---
 
