@@ -156,6 +156,19 @@ begin
   end if;
   raise notice 'PASS #G: completeSetup role-redirect join resolves the assigned role name live';
 
+  -- ── #G2 completeSetup redirect for a native invite (client_tenant) with NO role assigned — the join must
+  -- return zero rows (not error), so the adapter's `roleRes.rows[0]?.name ?? null` lands on SAFE_NO_ACCESS_VIEW
+  -- rather than throwing. v_uid (the invitee) has no user_roles row → the redirect read is a clean empty result.
+  -- NB: a SELECT INTO over an empty result leaves the target UNCHANGED in plpgsql, so reset v_name first (else
+  -- it retains 'Super Admin' from #G and this assertion would false-fail).
+  v_name := null;
+  select r.name into v_name from user_roles ur join roles r on r.id = ur.role_id
+    where ur.user_id = v_uid and ur.active = true limit 1;
+  if v_name is not null then
+    raise exception 'FAIL #G2: expected NULL role for an unassigned invitee, got %', v_name;
+  end if;
+  raise notice 'PASS #G2: redirect join returns no row for a role-less invitee (adapter falls back to SAFE_NO_ACCESS_VIEW, no crash)';
+
   -- ── #H append-only invariant — an in-place UPDATE / DELETE on access_audit & event_log must be REJECTED ───
   -- (writeAudit/writeEvent rely on these sinks being immutable — a mutable audit sink is a #1/#3 hole.)
   insert into access_audit (audit_type, actor_identity, actor_type, action, target_type, reason)

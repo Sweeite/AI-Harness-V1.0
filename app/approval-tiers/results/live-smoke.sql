@@ -11,21 +11,48 @@
 -- FKs are satisfied WITHIN the txn (auth.users -> profiles -> task_queue -> guardrail_log) so a FK-missing throw
 -- is never mistaken for real drift.
 --
--- DEFECTS THIS SMOKE ASSERTS FIXED (found in the review, now corrected in supabase-store.ts):
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+-- OPEN BLOCKER THIS SMOKE PROVES LIVE (B2 — Wave B review, session 72+):
+--   guardrail_log.task_id and task_queue.id are BOTH `uuid` (0001_baseline.sql L456/L399; live-confirmed
+--   information_schema.columns). But the adapter binds `action.actionType` — a STRING action NAME like
+--   'send_email' (tiers.ts L53 `actionType: string`) — straight into $1 for:
+--     • tierAndGate()      insert guardrail_log(task_id,...) values($1='send_email',...)      L122-126
+--     • tierAndGate()      update task_queue ... where id = $1='send_email'                    L130-133
+--     • raiseFlag()        insert guardrail_log(task_id,...) values($1='send_email',...)       L224-232
+--     • raiseFlag()        update task_queue set status='flagged' where id=$1='send_email'     L250
+--   Postgres rejects a non-uuid literal for a uuid column with 22P02 invalid_text_representation. So a
+--   required-approval action FAILS at the gate-write (it throws — NOT silently un-gated; but tierAndGate has no
+--   try/catch, so the caller sees a raw 22P02, and the guardrail row is NEVER written). #B2* below binds the
+--   REAL string literal the adapter passes and asserts it is REJECTED live — the faithful replay of the defect.
+--   FIX: resolve action.actionType → a real task_queue.id (uuid) before binding, or make task_id nullable-by-name
+--   via a name→id lookup. Until then every tierAndGate / raiseFlag write path is dead on the live silo.
+--
+--   Sibling of the same class (NEW — B2b): resolve() binds reviewed_by = $3 = `by` (a string reviewer identity
+--   like 'reviewer-x', tests L199/L296), but guardrail_log.reviewed_by is `uuid references profiles(id)`
+--   (L461). #B2b* asserts that string→uuid bind is ALSO rejected live.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+--
+-- REGRESSION GUARDS (paths already corrected in supabase-store.ts — assert they STILL hold with a proper uuid):
 --   • BLOCKER — resolve() used to insert into access_audit with actor_type = 'human', but the actor_type enum is
---     ('user','agent','system') ONLY (0001_baseline.sql L41), so every live resolve threw 22P02. FIXED: the
---     human-reviewer resolution uses 'user' and the timer auto-run uses 'system', and the guardrail_log
---     transition + the access_audit append now run in ONE transaction (atomic — never a transition without its
---     audit). #R2 asserts the corrected 'user' + 'system' inserts SUCCEED, and #R2t asserts the two statements
---     commit together as a unit; #R2x documents that the OLD 'human' literal would still be rejected by the enum.
+--     ('user','agent','system') ONLY (0001_baseline.sql L41; live-confirmed), so every live resolve threw 22P02.
+--     FIXED: reviewer resolution uses 'user', timer auto-run uses 'system', and the guardrail_log transition +
+--     the access_audit append run in ONE transaction. #R2 asserts the corrected literals SUCCEED, #R2t asserts
+--     atomicity, #R2x pins that the OLD 'human' literal is still rejected.
 --   • MAJOR — resolve()'s compensation path delegated to this.ref.resolve(...).catch(()=>null); the ref's
 --     in-memory store never held the live rowId, so it ALWAYS threw->null and compensationQueued/nonCompensable
 --     were ALWAYS []. FIXED in code: the compensation loop now runs directly off opts.appliedEffects via the live
 --     CompensationSink. Not SQL-observable (a JS-layer knowledge-loss) — proven in the code, not here.
---   • MINOR — escalateStaleWaits() used to throw ERR_ESCALATED_AT_NEEDS_DELTA, but 0015 branch (b) lands the
+--   • MINOR — escalateStaleWaits() used to throw ERR_ESCALATED_AT_NEEDS_DELTA, but 0009 branch (b) lands the
 --     escalated_at null->ts stamp. FIXED: escalateStaleWaits now performs the real stamp. #E asserts the stamp
---     SUCCEEDS live (the fixed adapter path). holdForFullReview stays deferred (its held_for_review_at column is
---     absent — OD-188); that is a separate, still-owed delta, not asserted here.
+--     SUCCEEDS live. holdForFullReview stays deferred (held_for_review_at absent — OD-188), asserted in #Eh.
+--
+-- STILL-OPEN (documented, not asserted-fixed): buildQueueView() reads real rows then `void rows` and returns
+--   this.ref.buildQueueView(...) over the ref's EMPTY store → the live queue ALWAYS renders empty (OD-191). This
+--   is a silent #3 (a valid-but-empty QueueView, no error). Not replayable in pure SQL (JS-layer); flagged in the
+--   structured review as B3 — buildQueueView should FAIL LOUD until decoration-persistence lands.
+--
+-- CONNECTS AS: postgres owner, rolbypassrls=t (live-confirmed current_user='postgres') — RLS bypassed on this
+-- path (OD-193). RLS-visibility failures are therefore NOT in scope; only GRANT/CHECK/type/enum failures are.
 
 \set ON_ERROR_STOP on
 begin;
@@ -58,7 +85,60 @@ begin
   raise notice 'PASS setup: auth.users + profiles + task_queue parents inserted';
 
   -- ══════════════════════════════════════════════════════════════════════════════════════════════════════
+  -- #B2* 🔴 OPEN BLOCKER — FAITHFUL DEFECT REPLAY. Bind the EXACT literal the adapter passes: action.actionType,
+  -- a string action NAME (here 'send_email'), into guardrail_log.task_id / task_queue.id — both `uuid`. This is
+  -- the real tierAndGate()/raiseFlag() write path (supabase-store.ts L122-133, L224-232, L250). It MUST be
+  -- rejected live with 22P02 invalid_text_representation. If it ever SUCCEEDS, the columns drifted off uuid and
+  -- the review verdict must be revisited.
+  -- ══════════════════════════════════════════════════════════════════════════════════════════════════════
+  begin
+    -- tierAndGate: insert guardrail_log(task_id='send_email', ...)  ← the adapter's real $1
+    insert into guardrail_log (task_id, guardrail_type, description, action_blocked, status)
+      values ('send_email', 'approval_gate', 'mandatory hard-approval floor', true, 'pending');
+    raise exception 'FAIL #B2*: guardrail_log accepted a NON-uuid task_id (''send_email'') — task_id is no longer uuid; B2 verdict stale';
+  exception
+    when invalid_text_representation then
+      raise notice 'PASS #B2*: guardrail_log.task_id rejects action.actionType (''send_email'') with 22P02 — B2 CONFIRMED (tierAndGate/raiseFlag insert path is dead live) -> %', sqlerrm;
+    when others then
+      if sqlerrm like 'FAIL%' then raise; end if;
+      raise notice 'PASS #B2*: guardrail_log.task_id rejects the string action name -> %', sqlerrm;
+  end;
+
+  begin
+    -- tierAndGate/raiseFlag: update task_queue ... where id='send_email'  ← the adapter's real $1
+    update task_queue set requires_approval = true
+      where id = 'send_email' and status not in ('completed','failed');
+    raise exception 'FAIL #B2*u: task_queue.id compared to a NON-uuid (''send_email'') did not throw — id is no longer uuid; B2 verdict stale';
+  exception
+    when invalid_text_representation then
+      raise notice 'PASS #B2*u: task_queue.id = ''send_email'' rejected with 22P02 — the requires_approval/flagged update path is dead live too -> %', sqlerrm;
+    when others then
+      if sqlerrm like 'FAIL%' then raise; end if;
+      raise notice 'PASS #B2*u: task_queue.id = ''send_email'' rejected -> %', sqlerrm;
+  end;
+
+  -- #B2b* 🔴 NEW BLOCKER (same class) — resolve() binds reviewed_by = $3 = `by`, a string reviewer identity
+  -- ('reviewer-x' in tests L199/L296), but guardrail_log.reviewed_by is uuid references profiles(id) (L461).
+  -- Assert the string→uuid bind is rejected on a legal forward transition.
+  begin
+    -- need a real pending row to attempt the transition on
+    insert into guardrail_log (task_id, guardrail_type, description, action_blocked, status)
+      values (v_task, 'approval_gate', 'reviewed_by uuid-bind probe', true, 'pending');
+    update guardrail_log set status = 'approved', reviewed_by = 'reviewer-x', reviewed_at = now()
+      where task_id = v_task and description = 'reviewed_by uuid-bind probe' and status = 'pending';
+    raise exception 'FAIL #B2b*: guardrail_log.reviewed_by accepted a NON-uuid identity (''reviewer-x'') — reviewed_by is no longer uuid; verdict stale';
+  exception
+    when invalid_text_representation then
+      raise notice 'PASS #B2b*: guardrail_log.reviewed_by rejects the string reviewer identity (''reviewer-x'') with 22P02 — resolve()''s reviewed_by=$3 bind is dead live -> %', sqlerrm;
+    when others then
+      if sqlerrm like 'FAIL%' then raise; end if;
+      raise notice 'PASS #B2b*: guardrail_log.reviewed_by rejects the string identity -> %', sqlerrm;
+  end;
+
+  -- ══════════════════════════════════════════════════════════════════════════════════════════════════════
   -- #1 tierAndGate() — supabase-store.ts L106-118
+  -- (REGRESSION GUARD: the SAME statements with a REAL uuid task_id succeed — proves the ONLY defect is the
+  --  string→uuid bind above, not the column list / enum literal / guard clause.)
   --   insert into guardrail_log (task_id, guardrail_type, description, action_blocked, status)
   --     values ($1,'approval_gate',$2,true,'pending') returning id
   --   update task_queue set requires_approval = true where id=$1 and status not in ('completed','failed')
@@ -261,7 +341,7 @@ begin
   -- #E 🟢 MINOR FIX — escalateStaleWaits() escalated_at stamp — supabase-store.ts (FIXED):
   --   update guardrail_log set escalated_at = now()
   --     where status='pending' and escalated_at is null and guardrail_type <> 'hard_limit' and created_at <= $1
-  -- 0015 branch (b) (kin 0010/OD-182) PERMITS this null->ts stamp on a still-pending row (status/description/
+  -- 0009/0010 branch (b) (OD-182) PERMITS this null->ts stamp on a still-pending row (status/description/
   -- task_id/guardrail_type/reviewers unchanged). The adapter no longer throws ERR_ESCALATED_AT_NEEDS_DELTA —
   -- it performs the real stamp. Assert the stamp SUCCEEDS and the row STAYS pending (escalate, never auto-resolve).
   -- ══════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -273,7 +353,7 @@ begin
     update guardrail_log set escalated_at = now()
       where id = v_stale and status = 'pending' and escalated_at is null and guardrail_type <> 'hard_limit';
     if (select escalated_at from guardrail_log where id = v_stale) is null then
-      raise exception 'FAIL #E: escalated_at not persisted — 0015 branch (b) did not accept the stamp';
+      raise exception 'FAIL #E: escalated_at not persisted — 0009/0010 branch (b) did not accept the stamp';
     end if;
     if (select status from guardrail_log where id = v_stale) <> 'pending' then
       raise exception 'FAIL #E: escalation changed status — a wait-point must escalate, never auto-resolve (#3)';
@@ -281,7 +361,7 @@ begin
     raise notice 'PASS #E: FIXED — escalated_at null->ts stamped LIVE (0015 branch b); row STAYS pending (escalated, not auto-resolved). Adapter performs the real stamp, no longer throws.';
   exception when others then
     if sqlerrm like 'FAIL%' then raise; end if;
-    raise exception 'FAIL #E: escalated_at stamp threw live -> % (0015 branch (b) delta missing — the adapter fix cannot run)', sqlerrm;
+    raise exception 'FAIL #E: escalated_at stamp threw live -> % (0009/0010 branch (b) delta missing — the adapter fix cannot run)', sqlerrm;
   end;
 
   -- #Eh DOCUMENTARY — holdForFullReview stays DEFERRED (OD-188): its held_for_review_at column is absent from

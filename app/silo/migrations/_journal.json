@@ -30,6 +30,7 @@
     { "tag": "0022_dynamic_field_values_rls", "file": "0022_dynamic_field_values_rls.sql", "transactional": true },
     { "tag": "0023_realtime_publication", "file": "0023_realtime_publication.sql", "transactional": true },
     { "tag": "0024_webhook_event_types", "file": "0024_webhook_event_types.sql", "transactional": false },
-    { "tag": "0025_agents_version_chain_unique", "file": "0025_agents_version_chain_unique.sql", "transactional": false }
+    { "tag": "0025_agents_version_chain_unique", "file": "0025_agents_version_chain_unique.sql", "transactional": false },
+    { "tag": "0026_version_chain_lost_update_backstops", "file": "0026_version_chain_lost_update_backstops.sql", "transactional": false }
   ]
 }
