@@ -17,6 +17,7 @@ import {
   type EventLogRow,
   type GuardrailLogRow,
   type TaskTerminalRow,
+  type NotificationInput,
 } from "./types.ts";
 import {
   AppendOnlyViolation,
@@ -27,6 +28,7 @@ import {
   InMemoryHealthBitChannel,
   InMemoryNotificationStore,
   InMemoryTaskQueueStore,
+  type NotificationStore,
 } from "./store.ts";
 import { EmptySummary, EventWriter, resolveCost } from "./event-writer.ts";
 import { redactPayload, redactSummary, containsCredential, containsSecretValue } from "./redact.ts";
@@ -298,6 +300,24 @@ test("AC-7.LOG.005.1 — a payload with a token/secret is redacted before write;
   assert.equal(containsCredential({ note: "just a normal note" }), false);
 });
 
+test("AC-7.LOG.005.1 (logic-sweep) — an opaque bearer token mid-string / under an innocent key is redacted", () => {
+  // Regression for the ^-anchored bearer pattern: an opaque (non-JWT) bearer token that is NOT at the start
+  // of the string and sits under a non-secret-named key was slipping through un-redacted (a live-credential
+  // leak = #2 / FR-7.LOG.005). Split via concatenation so the contiguous literal never appears in source.
+  const opaque = "bearer tok0pAqUeSeCret" + "Valueeeeeeeeeeeeeeeeeeeeeeeeeeeeee999";
+  // (a) free-text summary: the bearer run mid-sentence must be scrubbed.
+  const summary = "Authenticated the connector with " + opaque;
+  assert.equal(
+    redactSummary(summary),
+    "Authenticated the connector with [REDACTED]",
+    "an opaque bearer token mid-summary must be redacted",
+  );
+  assert.equal(containsSecretValue(summary), true, "the mid-string bearer token must be flagged as a secret value");
+  // (b) payload string under an innocent key: still scrubbed (value-shape, not key-name).
+  const red = redactPayload({ note: summary }) as Record<string, unknown>;
+  assert.equal(red.note, "[REDACTED]", "an opaque bearer token under an innocent key must be redacted");
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // FR-7.LOG.006 — retention + redaction-tombstone
 // ─────────────────────────────────────────────────────────────────────────────
@@ -451,6 +471,58 @@ test("AC-7.ALR.008.2 / AC-NFR-OBS.004.2 — a stalled engine raises a critical a
   assert.equal(notes[0]!.read_state, "unread"); // unread-until-actioned
   // The mgmt-plane push carries the stalled condition (fully-down silo still surfaces on the grid).
   assert.equal(w.health.snapshot().alert_engine_stalled, true);
+});
+
+test("AC-7.ALR.008.2 (logic-sweep) — a failed notification write does NOT latch; a later tick re-attempts the raise", async () => {
+  // Regression: the watchdog flipped the latch + health bit BEFORE awaiting notifications.create(). If create()
+  // rejected (real SupabaseNotificationStore INSERT can — DB down / constraint / connection loss), the latch
+  // was already set, so the next stalled tick early-returned and NEVER retried — the top-level critical alert
+  // was silently lost while the health bit lied that a raise had happened (#3, FR-7.ALR.008).
+  const heartbeat = new AlertEngineHeartbeat();
+  const health = new InMemoryHealthBitChannel();
+  let nowMs = 1_800_000_000_000;
+  let idSeq = 0;
+  let failNextCreate = true;
+  const created: NotificationInput[] = [];
+  const flakyNotifications: NotificationStore = {
+    async create(input, _id, _createdAt) {
+      if (failNextCreate) {
+        failNextCreate = false;
+        throw new Error("simulated DB write failure (connection lost)");
+      }
+      created.push(input);
+      return {
+        id: _id, type: input.type, severity: input.severity, title: input.title, body: input.body,
+        recipient: input.recipient ?? null, recipient_role: input.recipient_role ?? null,
+        read_state: "unread", escalation_state: null, escalated_at: null, actioned_at: null,
+        delivery_state: null, created_at: _createdAt,
+      };
+    },
+    async all() {
+      return [];
+    },
+  };
+  const watchdog = new AlertEngineWatchdog({
+    heartbeat,
+    notifications: flakyNotifications,
+    health,
+    stallAfterMs: DEFAULT_OBSERVABILITY_CONFIG.alert_engine_stall_after_ms,
+    now: () => nowMs,
+    newId: () => `notif-${++idSeq}`,
+  });
+
+  // First tick: engine never beat → stalled. The notification write fails.
+  await assert.rejects(() => watchdog.evaluate(), /simulated DB write failure/);
+  // The failed raise must NOT have latched — otherwise the alert is lost forever.
+  assert.equal(watchdog.isLatched(), false, "a failed notification write must not latch the stall");
+  assert.equal(health.snapshot().alert_engine_stalled, true, "the health bit surfaces the stall even when the write fails");
+
+  // Second tick: still stalled, create() now succeeds → the alert IS durably raised (not silently lost).
+  const v = await watchdog.evaluate();
+  assert.equal(v.stalled, true);
+  assert.ok(v.raised, "the still-stalled engine re-attempts the raise on the next tick");
+  assert.equal(created.length, 1, "the critical alert is durably persisted once the write succeeds");
+  assert.equal(watchdog.isLatched(), true, "now the durable raise has happened, the latch holds");
 });
 
 test("AF-118 (watchdog self-liveness) — a never-started engine is itself a stall, and the watchdog does not re-spam", async () => {

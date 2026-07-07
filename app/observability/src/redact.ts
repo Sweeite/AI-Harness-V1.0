@@ -36,7 +36,10 @@ const SECRET_KEY_PATTERNS: readonly RegExp[] = [
  * bearer tokens, JWTs, common vendor key prefixes, long high-entropy hex/base64 blobs.
  */
 const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
-  /^bearer\s+\S+/i,
+  // logic-sweep fix (redact.ts MAJOR): word-boundary, not start-anchor. `^bearer` missed an opaque bearer
+  // token mid-string / in a free-text summary (`\bbearer` matches it wherever it appears) — a #2 leak of a
+  // live credential to the log. Every other value-pattern already uses \b; this now matches them.
+  /\bbearer\s+\S+/i,
   /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]+/, // JWT
   /\b(sk|pk|rk|xoxb|xoxp|ghp|gho|ghs|AKIA)[-_][A-Za-z0-9]{16,}/, // vendor key prefixes
   /\bxox[bpasr]-[A-Za-z0-9-]{10,}/, // Slack tokens

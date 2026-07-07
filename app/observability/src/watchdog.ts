@@ -80,7 +80,9 @@ export class AlertEngineWatchdog {
     if (this.stalledLatched) {
       return { stalled: true, sinceLastBeatMs: since };
     }
-    this.stalledLatched = true;
+    // The health bit surfaces the stall on the mgmt-plane push regardless of the durable write — it must
+    // reflect the observed condition even if the notification INSERT later fails (a fully-down silo must
+    // still show on the grid). It is idempotent, so re-setting it on a retry tick is harmless.
     this.deps.health.set("alert_engine_stalled", true);
 
     const raised: NotificationInput = {
@@ -94,7 +96,13 @@ export class AlertEngineWatchdog {
             `${this.deps.stallAfterMs} ms threshold); the independent watchdog raised a critical alert.`,
       recipient_role: "super_admin", // routed to Super Admin; also carried on the mgmt-plane push
     };
+    // logic-sweep fix (watchdog.ts MAJOR): persist BEFORE latching. Latching before awaiting create() meant a
+    // rejected INSERT (real SupabaseNotificationStore write — DB down / constraint / connection loss) left the
+    // latch set, so the next stalled tick early-returned and the critical alert was silently lost forever (#3).
+    // If create() rejects, the exception propagates with stalledLatched still false, so the next tick re-attempts
+    // the durable raise. Only once the row is durably persisted do we latch to suppress duplicates.
     await this.deps.notifications.create(raised, this.deps.newId(), new Date(now).toISOString());
+    this.stalledLatched = true;
     return { stalled: true, sinceLastBeatMs: since, raised };
   }
 
