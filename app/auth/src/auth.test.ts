@@ -427,6 +427,11 @@ class CapturingPool {
     this.calls.push({ sql, params });
     return { rows: this.queued.shift() ?? [] };
   }
+  /** Transaction-aware checkout: the client shares this pool's capture buffer + queued rows, so begin/commit
+   *  and the wrapped upserts are all recorded in `calls` (setProviderConfig runs its two upserts in a txn). */
+  async connect(): Promise<{ query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>; release: () => void }> {
+    return { query: (sql: string, params: unknown[] = []) => this.query(sql, params), release: () => {} };
+  }
   async end(): Promise<void> {}
 }
 

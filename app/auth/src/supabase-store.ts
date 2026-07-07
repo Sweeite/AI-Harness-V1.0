@@ -100,20 +100,33 @@ export class SupabaseAuthStore implements AuthStore {
     // The REAL DDL is config_values(key text primary key, value jsonb) — 0001_baseline.sql L626-631,
     // schema.md §12 — NOT config_key/config_value. Use key/value + `on conflict (key)`. value is jsonb, so
     // the ::jsonb cast makes a mismatched literal fail LOUD (never a silent coerce — #3).
-    // Upsert both when provided; a single round-trip per key keeps the audit path (ISSUE-086) intact.
-    if (next.oauth_enabled !== undefined) {
-      await this.pool.query(
-        `insert into config_values (key, value) values ('auth.oauth_enabled', $1::jsonb)
-         on conflict (key) do update set value = excluded.value`,
-        [JSON.stringify(next.oauth_enabled)],
-      );
-    }
-    if (next.oauth_provider !== undefined) {
-      await this.pool.query(
-        `insert into config_values (key, value) values ('auth.oauth_provider', $1::jsonb)
-         on conflict (key) do update set value = excluded.value`,
-        [JSON.stringify(next.oauth_provider)],
-      );
+    // logic-sweep fix (adapter MINOR, #1): the two upserts run in ONE transaction — when a caller sets BOTH
+    // oauth_enabled AND oauth_provider, a crash between two autocommit upserts previously left the OAuth config
+    // half-applied (enabled flipped, provider stale). BEGIN/COMMIT makes the pair all-or-nothing. (The audit
+    // row for this edit remains ISSUE-086's config-admin write path, not this adapter's — see that issue.)
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      if (next.oauth_enabled !== undefined) {
+        await client.query(
+          `insert into config_values (key, value) values ('auth.oauth_enabled', $1::jsonb)
+           on conflict (key) do update set value = excluded.value`,
+          [JSON.stringify(next.oauth_enabled)],
+        );
+      }
+      if (next.oauth_provider !== undefined) {
+        await client.query(
+          `insert into config_values (key, value) values ('auth.oauth_provider', $1::jsonb)
+           on conflict (key) do update set value = excluded.value`,
+          [JSON.stringify(next.oauth_provider)],
+        );
+      }
+      await client.query('commit');
+    } catch (e) {
+      await client.query('rollback').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
     }
     return this.getProviderConfig();
   }
