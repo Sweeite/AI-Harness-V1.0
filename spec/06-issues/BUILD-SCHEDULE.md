@@ -135,14 +135,16 @@ or assign each shared file to exactly one agent).
 
 **Migration-chain lane (durable — Rule 0, don't leave this in chat).** `app/silo/migrations/` + its
 **`_journal.json`** are a single shared chain; **two worktree agents must never each pick the next tag** —
-they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head (session 69): `0010_guardrail_escalation_nullfix`.
-AUTHORED head (Stage-4 offline integration, session 71 — discipline-gate clean, NOT yet applied live): `0017_stage4_indexes`;
-next free tag is `0018`.** *(Stage-4 authored `0011_stage4_event_types` [016 event_type + 1 alert_type value, `transactional:false`; 015/016/034/036/049],
+they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head (session 71 — Checkpoint-4 live apply): `0017_stage4_indexes`**
+(0011–0017 applied to the silo + verified: 16/16 event_type + alert_type value, `rate_limit_deferred`+RLS, `guardrail_log.redacted_at`,
+both new triggers, 3 support_requests policies, and the `0015` audit fn carries BOTH the redaction branch AND the OD-182 escalation branch.
+**⚠️ the `0011` semicolon-in-comment splitter trap was caught LIVE + fixed** — same class as the 0007 session-69 bug; nothing partially applied,
+re-ran clean). **next free tag is `0018`.** *(Stage-4 authored `0011_stage4_event_types` [016 event_type + 1 alert_type value, `transactional:false`; 015/016/034/036/049],
 `0012_rate_limit_deferred` [034 persisted 95% queue + default_deny RLS], `0013_task_graph_versions_append_only` [049 append-only-by-version trigger],
 `0014_support_requests_rls` [016 public-insert/view/resolve policies], `0015_guardrail_redacted_at` [077 redacted_at column + redaction-tombstone branch (c),
 [[OD-074]] change-control on the LIVE append-only trigger — preserves the OD-182 escalation branch byte-for-byte], `0016_agents_version_discipline`
-[061 agents version-lineage trigger], `0017_stage4_indexes` [034+016 CONCURRENTLY indexes, `transactional:false`]. **The live apply of 0011–0017 is
-Checkpoint-4, operator-present.** Verify-present (NOT re-authored): 056's escalation-stamp branch [already done by OD-182/0009], the hard-limit no-override
+[061 agents version-lineage trigger], `0017_stage4_indexes` [034+016 CONCURRENTLY indexes, `transactional:false`]. **0011–0017 APPLIED LIVE to the silo +
+verified (session 71); the `0011` semicolon-in-comment splitter trap was caught live + fixed (0007-class).** Verify-present (NOT re-authored): 056's escalation-stamp branch [already done by OD-182/0009], the hard-limit no-override
 CHECK [baseline L465], all six "new" tables, 051's event_type values. Deferred to the Checkpoint-4/onboarding config pass: 034's 5 rate CFG keys +
 051's 6 loop CFG keys [OD-181 keygroup coupling; packages fail-closed on unregistered]. Open forks: [[OD-188]] (056 Hold live-persistence column) +
 [[OD-189]] (061 awaiting_clarification task_status) — both deferred, no offline blocker.)*

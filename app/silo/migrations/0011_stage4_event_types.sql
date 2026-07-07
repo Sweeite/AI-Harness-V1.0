@@ -6,7 +6,7 @@
 -- path would throw on its audit write -- a #3 silent-failure and, for a lost activation, a #1. Same class
 -- as OD-170 (authz_revoked_midtask / rls_harness_divergence) and the 0007 Stage-3 additions.
 --
--- transactional:false -- ALTER TYPE ADD VALUE runs under autocommit (cannot run inside a txn block); each
+-- transactional:false -- ALTER TYPE ADD VALUE runs under autocommit (cannot run inside a txn block). Each
 -- statement commits independently and IF NOT EXISTS makes it idempotent + the migration resumable. The
 -- non-transactional runner splits on the semicolon, so this header (and every comment) stays semicolon-free
 -- (the session-69 live lesson -- a comment semicolon fragmented 0007).
