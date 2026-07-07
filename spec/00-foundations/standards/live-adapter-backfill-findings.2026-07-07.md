@@ -83,8 +83,42 @@ live-adapter review + a committed `results/live-smoke.sql` (all 5 run rolled-bac
 
 **Wave A net:** 2 MAJORs fixed live (M10, M11), 1 MAJOR owed to integration (M4), 1 systemic OD (OD-193), 2 refuted, 2 downgraded. Live-smokes committed for all 5.
 
+## Part-B sweep — full remaining set (2026-07-07, 22 packages, all reviewed + smokes authored)
+All 22 remaining adapters reviewed against live schema + a `results/live-smoke.sql` authored for each (12 pass
+live; 10 have authoring-defect smokes — syntax/missing-parent-row, NOT adapter bugs — owed a polish pass).
+**Meta-fact (OD-193): every silo adapter connects as `postgres` owner (BYPASSRLS), not `service_role`** —
+refuted the whole RLS-permission finding class.
+
+### ✅ FIXED + live-verified this session
+- **Version-chain lost-update class → migration `0026`** (applied live, head 0025→0026; fork now fails loud):
+  connector-runtime **M6** (`tools`), prompt-store **M5** + createLayer genesis, prompt-layer-context lost-update,
+  prompt-layer-identity appendCoreVersion + createCore genesis — **6 findings, one migration** (`prompt_layers_prev_unique`
+  + `prompt_layers_root_unique` + `tools_prev_unique`).
+- realtime — **verified OK**: 0023 publication holds live (`task_queue`+`notifications` in `supabase_realtime`).
+
+### 🔴 Design / integration gaps — need decisions (NOT hacked)
+- **approval-tiers → [[OD-194]] (+ [[OD-191]]):** non-functional live — B2 + resolve() bind string action-name / reviewer-identity into uuid/FK columns (every write `22P02`); B3 queue-view silently empty. String-keyed adapter vs uuid schema; name→id resolution never wired.
+- **invite-seed → [[OD-192]]:** revoke/reissue/resend/markBounced delegate to the empty fake; no invites table (native Supabase token, OD-014). **+ 2 new MAJORs (owed, contained):** `issueInvite` is a non-atomic multi-write (auth.users + profiles + audit); live `completeSetup` drops the fake's `client_tenant`⇒`method='oauth'` guard.
+
+### ⏳ Owed to OTHER issues (missing tables — disclosed session 72, not new bugs)
+- **prompt-optimisation:** `prompt_version_attribution` / `task_outcome` / `trigger_delivery` exist in NO migration (owned by ISSUE-049/053) → M12-a BLOCKER (relation-does-not-exist) + M12-b TOCTOU (moot until the table + a unique-on-task_id land). Non-functional live until those issues ship.
+- **triggers:** `isDelivered`/`markDelivered` query `trigger_delivery` (owned by ISSUE-049) → non-functional live until it lands.
+
+### 🟠 Fixable code MAJORs — owed (contained, not fixed this turn)
+- **hard-limits:** `setStatus('pending')` fake-vs-live divergence (the app-guard permits a status the fake rejects) — #2-critical, verify + add the guard.
+- (invite-seed non-atomic + completeSetup guard — see above.)
+
+### ✅ Clean (only MINORs; session-72-reviewed set holding up)
+task-queue, superadmin-auth, retention, release (mgmt-plane), rbac, management (mgmt-plane), injection-pipeline,
+guardrail-log, cost-meter, auth, anomaly-checks, alerting — ~30 MINORs total across all 22 (stale service_role
+comments per OD-193, non-transactional audit-after-write edges, missing-id silent no-ops, `select *` coupling).
+
+### Owed polish
+10 authored `live-smoke.sql` files have authoring defects (syntax `:`/`max(uuid)`, missing parent-row setup) →
+need a fixup pass so every package's smoke runs green. The 12 passing smokes are validated.
+
 ## Coverage
-26 of 36 live adapters inspected this pass. **NOT re-inspected** (relied on session-72 verdicts): rbac, realtime, alerting, cost-meter, guardrail-log, management, retention, task-queue, anomaly-checks, prompt-layer-context, prompt-layer-identity, token-lifecycle, backup-dr. Part B must still cover these per its wave plan.
+**All 36 live adapters now reviewed** (14 Stage-4 + webhook-auth + orchestrator + Wave A's 5 + this sweep's 22). **NOT re-inspected** (relied on session-72 verdicts): rbac, realtime, alerting, cost-meter, guardrail-log, management, retention, task-queue, anomaly-checks, prompt-layer-context, prompt-layer-identity, token-lifecycle, backup-dr. Part B must still cover these per its wave plan.
 
 ## Recommended handling
 These are the confirmation that the R10 Part-B backfill is **not cosmetic** — at least 4 shippable BLOCKER-class

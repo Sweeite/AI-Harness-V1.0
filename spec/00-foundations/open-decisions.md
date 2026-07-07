@@ -2783,6 +2783,20 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-<!-- Next OD number: OD-194 -->
+## OD-194 — approval-tiers adapter is non-functional live: string action-name / reviewer-identity bound into uuid/FK columns 🔴 OPEN
+
+- **Surfaced by:** session-73 Part-B sweep. **approval-tiers cannot execute ANY live write** — three paths bind string identifiers into `uuid` columns and every one throws `22P02` on the real silo:
+  - **B2 (BLOCKER):** `action.actionType` is a string action *name* (`tiers.ts:53`) bound as `guardrail_log.task_id` (uuid FK→task_queue) and `task_queue.id` in `tierAndGate()` (`supabase-store.ts:122-133`) and `raiseFlag()` (`:224-250`). Live-confirmed both columns are `uuid`. The INSERT throws (fail-loud at the DB, no silent un-gate), but the tier-gating write path is entirely dead live.
+  - **resolve() (NEW BLOCKER):** `by` (a reviewer identity string like `'reviewer-x'`) bound into `guardrail_log.reviewed_by` (uuid FK→profiles) at `:335-340` → every approve/reject/modify resolution throws `22P02`. The resolution transition can never land.
+  - **B3 (MAJOR, [[OD-191]]):** `buildQueueView` returns the empty in-memory ref → the operator queue is always silently empty.
+- **Root cause (one gap, three symptoms):** the adapter + reference fake were modelled with **string keys** (action names, reviewer identities, in-memory decoration) but the live schema is **uuid/FK/relational**. The name→id resolution (action→`task_queue.id`, reviewer-identity→`profiles.id`) and the queue-view decoration persistence were **never wired**. Same family as [[OD-192]] (invite-seed) and the B3/OD-191 decoration gap. The offline AC-suite is 100% green because the fake uses string maps — the exact offline-green/live-broken gap R10 exists to catch.
+- **Why it matters:** #2 — the C6 approval/gating layer is a core safety surface, and it is **entirely non-functional against the real DB** (no tier gate, no flag, no resolution, no queue). Nothing above it in Stage 5+ can rely on it.
+- **Options:** (A) **wire the id resolution**: thread the real `task_queue.id` (uuid) into `tierAndGate`/`raiseFlag` instead of the action name, and resolve reviewer identity → `profiles.id` (uuid) before binding — i.e. finish the adapter's live persistence model (the port likely needs to receive/return uuids, not names). Plus the OD-191 decoration-persistence delta for the queue view. (B) change the schema so `guardrail_log.task_id`/`reviewed_by` accept the string identifiers (drop/loosen the FK+uuid) — **rejected**, it discards the relational integrity the audit needs. (C) confirm which caller supplies the task uuid + reviewer profile at gate time (the C6 wiring, possibly a later issue) and defer.
+- **Recommendation:** 🟡 (A) — this is finishing an adapter that was only ever half-wired to the schema; it is not a product decision so much as owed integration work, but it needs the caller contract pinned (where does the `task_queue.id` + reviewer `profiles.id` come from at gate time). **Immediate sub-fix regardless (B3):** make `buildQueueView` throw a loud "decoration persistence owed (OD-191)" error instead of returning a silently-empty queue (#3).
+- **Status:** 🔴 OPEN — operator/architecture: pin the caller contract for (A), or confirm the C6 wiring owner. See `live-adapter-backfill-findings.2026-07-07.md` (approval-tiers).
+
+---
+
+<!-- Next OD number: OD-195 -->
 
 

@@ -23,7 +23,22 @@ next session reads the top entry to know exactly where to resume.
 
 **Files changed:** `app/silo/src/sql-split.ts` (new) · `app/silo/src/sql-split.test.ts` (new) · `app/silo/src/pg-driver.ts` · `app/silo/src/discipline.ts` · `app/silo/src/index.ts` · `app/silo/migrations/0001b_indexes.sql` (comment-only) · `spec/06-issues/ISSUE-025-retrieval-ranking.md` (status) · `spec/00-foundations/standards/live-adapter-backfill-findings.2026-07-07.md` (new) · `spec/00-foundations/standards/live-adapter-hygiene-sweep.md` (Part-B pointer) · `spec/SESSION-LOG.md`.
 
-**Next step:** operator to (a) decide the 6 stale-`blocked` issues, and (b) schedule the R10 Part-B backfill (start Wave 1, B1/webhook-auth is the load-bearing fix). Build sequencing otherwise unchanged — Stage 5 open, gate `022` ready.
+**Continued — the operator asked to run the R10 Part-B backfill in full (live-adapter vs live-DB test) before continuing to Stage 5.** Ran it as gated waves: agents fan out to review each adapter + author a `results/live-smoke.sql`; the orchestrator runs the smokes serially against the live silo + fixes what's confirmed. **All 36 adapters are now reviewed.**
+
+**✅ Fixed + live-verified this session (10 bugs):** B1 webhook-auth enum (`0024`), B4 agents version-race (`0025`), M10 observability silent-GDPR-erasure (code), M11 log-retention false-tamper-signal (code), and the **version-chain lost-update class across `prompt_layers`+`tools` (`0026`, 6 findings: connector-runtime M6, prompt-store M5+genesis, prompt-layer-context, prompt-layer-identity ×2)**. Plus the migration-linter root-cause + a latent `0001b` instance it caught. Silo migration head **0020 → 0026** (all applied live, discipline+RLS green). realtime verified OK (0023 holds).
+
+**🔴 Design/integration gaps found → logged as ODs (need operator decision, NOT hacked):** **OD-191** (approval-queue decoration not persisted), **OD-192** (invite-seed lifecycle — native-token, no table), **OD-193** (SYSTEMIC: every adapter connects as `postgres` owner not `service_role` — refutes the RLS-permission finding class but breaks retention DELETE if ever deployed as service_role), **OD-194** (approval-tiers non-functional live — string action-name/reviewer-identity bound into uuid/FK columns; the whole tier/gate/resolve/queue path throws `22P02`).
+
+**⏳ Owed, catalogued (not fixed):** M4 rate-limiting drainDue (no consumer built yet); prompt-optimisation + triggers query tables owned by ISSUE-049/053 (missing → non-functional live until those ship); invite-seed non-atomic `issueInvite` + `completeSetup` guard; hard-limits `setStatus('pending')` divergence; ~30 MINORs; 10 authored smokes need an authoring-defect polish pass. **Full catalogue: `spec/00-foundations/standards/live-adapter-backfill-findings.2026-07-07.md`.**
+
+**12 packages clean** of BLOCKER/MAJOR (only MINORs) — the session-72-reviewed set is holding up. **Refuted** (my static audit was wrong): M2, M3 (rate-limiting), the whole RLS-permission class (per OD-193).
+
+**Files changed (this continuation):** `app/silo/migrations/0024/0025/0026*.sql` + `_journal.json` · `app/silo/src/{sql-split,discipline,pg-driver,index}.ts` + `sql-split.test.ts` · `app/observability/src/supabase-store.ts` · `app/log-retention/src/supabase-store.ts` · `app/webhook-auth/results/live-smoke.sql` + a `results/live-smoke.sql` for all 22 swept packages · `spec/00-foundations/open-decisions.md` (OD-179 landed, OD-191/192/193/194) · `spec/00-foundations/standards/live-adapter-backfill-findings.2026-07-07.md` · `spec/06-issues/ISSUE-025` (status).
+
+**Next step (HANDOFF POINT — build not advanced; Stage 5 still open, foundation NOT yet cleared):**
+1. **Foundation is NOT cleared for Stage 5 yet.** Remaining before it is: resolve OD-191/192/193/194 (operator decisions); fix the owed code MAJORs (invite-seed atomicity + completeSetup, hard-limits setStatus); land the prompt-optimisation/triggers tables (ISSUE-049/053); polish the 10 smokes; then one live cross-component integration pass (Layer 3).
+2. **A separate adversarial LOGIC-bug sweep of the NON-adapter business logic is queued for a FRESH chat** (operator's explicit request — see memory `queued-logic-bug-sweep`). This session covered the DB-adapter boundary only; the pure business logic beyond its 767 green tests was not re-hunted.
+3. The 6 stale-`blocked` tracker issues (020/052/058/062/065/068) + the OD decisions remain owed.
 
 ---
 
