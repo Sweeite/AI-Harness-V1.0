@@ -57,6 +57,11 @@ import { type AuthAdmin } from './auth-admin.ts';
  *  all boots must use the SAME key so pg_advisory_xact_lock serializes them. */
 const SEED_ADVISORY_LOCK_KEY = 715015; // arbitrary fixed key ("issue 015")
 
+/** [[OD-192]] fail-loud message for the not-yet-wired live invite-lifecycle methods (see revokeInvite et al.). */
+export const ERR_INVITE_LIFECYCLE_OWED = (method: string): string =>
+  `invite-seed ${method}: live invite-lifecycle persistence owed (OD-192) — not implemented against the live ` +
+  `\`profiles\` model yet; fails loud rather than returning a silently-wrong in-memory result (#3).`;
+
 export class SupabaseInviteSeedStore implements InviteSeedStore {
   private pool: pg.Pool;
   // The pure/DB-free parts (redirect resolution, TTL cap, method-mismatch rules) are identical to the
@@ -325,34 +330,33 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
     }
   }
 
-  async revokeInvite(token: string, issuerCanInvite: boolean, now: number): Promise<Invite> {
-    if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED);
-    const inv = await this.ref.revokeInvite(token, issuerCanInvite, now);
-    if (inv.state === 'revoked') {
-      await this.writeAudit(this.pool, 'invite_revoked', 'issuer', 'user', 'revoke_invite', 'admin pre-use revoke');
-    }
-    return inv;
+  // ── Invite lifecycle (revoke / reissue / resend / mark-bounced) — FAIL LOUD ([[OD-192]] immediate sub-fix) ──
+  // These 4 methods previously delegated to `this.ref` (the InMemoryInviteSeedStore), which the LIVE `issueInvite`
+  // never populates (it writes `profiles`/`user_roles`, not the fake's in-memory map). So live they returned a
+  // silently-WRONG result: a revoke/reissue/resend appeared to succeed against empty in-memory state, and a
+  // provider bounce webhook silently failed to mark the invite undelivered — a bounced/revoked invite still read
+  // "sent" (#1/#3). OD-192 (operator-resolved) DIRECTION is to model the lifecycle on the existing pending-
+  // `profiles` row (Option A, no new table), but the `profiles` table has only `active boolean` — there is no
+  // column to distinguish pending vs revoked vs bounced state, so the full impl needs an invite-state modeling
+  // decision (likely a small additive migration) + a live-adapter smoke (R10). Until that lands, these MUST fail
+  // loud rather than return a silently-wrong result. See OD-192 / live-adapter-backfill-findings.2026-07-07.md B5.
+  async revokeInvite(_token: string, issuerCanInvite: boolean, _now: number): Promise<Invite> {
+    if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED); // fail closed first (#2)
+    throw new Error(ERR_INVITE_LIFECYCLE_OWED('revokeInvite'));
   }
 
-  async reissueInvite(token: string, issuerCanInvite: boolean, smtp: SmtpSender, now: number): Promise<IssueOutcome> {
+  async reissueInvite(_token: string, issuerCanInvite: boolean, _smtp: SmtpSender, _now: number): Promise<IssueOutcome> {
     if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED);
-    const out = await this.ref.reissueInvite(token, issuerCanInvite, smtp, now);
-    await this.writeAudit(this.pool, 'invite_expired', out.invite.issuedBy ?? 'service_role', out.invite.issuedBy ? 'user' : 'system', 'reissue_invite', 'expired → re-issued');
-    return out;
+    throw new Error(ERR_INVITE_LIFECYCLE_OWED('reissueInvite'));
   }
 
-  async resendInvite(token: string, issuerCanInvite: boolean, smtp: SmtpSender, now: number): Promise<IssueOutcome> {
+  async resendInvite(_token: string, issuerCanInvite: boolean, _smtp: SmtpSender, _now: number): Promise<IssueOutcome> {
     if (!issuerCanInvite) throw new Error(ERR_INVITE_DENIED);
-    const out = await this.ref.resendInvite(token, issuerCanInvite, smtp, now);
-    await this.writeAudit(this.pool, 'invite_resent', out.invite.issuedBy ?? 'service_role', out.invite.issuedBy ? 'user' : 'system', 'resend_invite', 'one-click resend');
-    return out;
+    throw new Error(ERR_INVITE_LIFECYCLE_OWED('resendInvite'));
   }
 
-  async markBounced(token: string, now: number): Promise<Invite> {
-    const inv = await this.ref.markBounced(token, now);
-    await this.writeEvent(this.pool, 'invite_bounced', `setup email to ${inv.email} BOUNCED — invite marked undelivered, issuer re-alerted`);
-    await this.writeAudit(this.pool, 'invite_bounced', inv.issuedBy ?? 'service_role', inv.issuedBy ? 'user' : 'system', 'mark_bounced', 'provider bounce webhook');
-    return inv;
+  async markBounced(_token: string, _now: number): Promise<Invite> {
+    throw new Error(ERR_INVITE_LIFECYCLE_OWED('markBounced'));
   }
 
   async runSeed(superAdminEmail: string | undefined, auth: AuthAdmin, smtp: SmtpSender, now: number): Promise<SeedOutcome> {

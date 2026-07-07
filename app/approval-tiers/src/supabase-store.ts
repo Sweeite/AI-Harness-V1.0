@@ -412,27 +412,22 @@ export class SupabaseApprovalWorkflow implements ApprovalWorkflow {
     return upd.rows;
   }
 
-  async buildQueueView(filter: QueueFilter, freshness: FreshnessMode, now: number): Promise<QueueView> {
-    // Read the live pending, non-hard_limit rows and shape the view. hard_limit rows are excluded in SQL so a
-    // killed block can never surface with an Approve affordance (AC-6.ESC.001.2 / #2).
-    const rows = await this.pool.query<GuardrailLogRow>(
-      `select id, task_id, guardrail_type, description, action_blocked, status, reviewed_by, reviewed_at,
-              escalated_at, created_at
-       from guardrail_log
-       where status = 'pending' and guardrail_type <> 'hard_limit'
-       order by created_at asc`,
-    );
-    // The tier/routing/soft-countdown decoration lives in the workflow layer; for the live view we recompute
-    // the soft countdown from created_at + softTimeoutSeconds and mark stale when not live. Full decoration is
-    // the reference model's concern; this is the persisted spine of the view.
-    const stale = freshness !== 'live';
-    void rows;
-    void now;
+  async buildQueueView(_filter: QueueFilter, _freshness: FreshnessMode, _now: number): Promise<QueueView> {
+    // FAIL LOUD ([[OD-191]] immediate sub-fix). The live queue view cannot be reconstructed from the DB: the
+    // decoration fields it needs (`tier`, `floored`, `heldForFullReview`, `softDeadline`/countdown, `routedRole`,
+    // `reviewerIdentity`) are NOT columns on `guardrail_log` (live-confirmed) — they live only in the in-memory
+    // fake's `meta`. The prior body read the live pending rows, then discarded them (`void rows`) and returned
+    // `this.ref.buildQueueView(...)` — the empty in-memory fake — so the operator approval queue was ALWAYS
+    // silently empty live (#3: a wrong/empty queue hides pending approvals). OD-191 (operator-resolved) DEFERS
+    // the C6 operator-queue surface + its decoration-persistence delta until that surface is actually built;
+    // until then this must THROW, never return a silently-empty view. Nothing in Stage 5 depends on it.
     void this.ref;
-    // The complete decorated view (tier badges, routing identity) is produced by the reference model against
-    // the same rows in offline tests; the live view joins task_queue/config at read time (authored below is the
-    // spine). Returning the reference model's structure keeps one shape.
-    return this.ref.buildQueueView(filter, freshness, now).then((v) => ({ ...v, stale }));
+    throw new Error(
+      'approval-tiers buildQueueView: decoration persistence owed (OD-191) — the live operator approval-queue ' +
+        'surface + its guardrail_log decoration columns (tier/floored/routed_role/reviewer_identity/' +
+        'soft_deadline_at/held_for_review_at) are not built yet. This method is intentionally not implemented ' +
+        'live and fails loud rather than returning a silently-empty queue (#3). See OD-191 / OD-188.',
+    );
   }
 
   async getRow(rowId: string): Promise<GuardrailLogRow | null> {
