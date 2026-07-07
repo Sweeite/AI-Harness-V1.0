@@ -28,7 +28,7 @@ next session reads the top entry to know exactly where to resume.
 
 **⑤ Layer-3 cross-component integration (D):** **`app/silo/results/layer3-integration-smoke.sql`** — one live flow threading provision→task_queue→guardrail_log gate→escalation+notification→resolution+access_audit, asserting every cross-table FK / shared enum / shared append-only trigger composes. **ALL LAYER-3 SEAMS PASS** (rolled back). `1660c7c`.
 
-**Net:** every *fixable* thing found is fixed + verified. **53 of 54 sweep bugs fixed** (30 BLOCKER+MAJOR + 23 MINOR); 767+ offline tests still green across 41 pkgs (each fix carries a regression test); 11 live-smokes green (10 authoring + Layer-3); migration 0027 live.
+**Net (bug-level tally, corrected):** **52 of 54 sweep bugs fixed** = **2 BLOCKER + 27 MAJOR + 23 MINOR**; **2 HELD** — both are task-queue `escalateStaleApprovals` (a MAJOR at `store.ts:335` + a MINOR at `:336`, same method), held TOGETHER for **migration 0028** (`held-fix-task-queue-awaiting-approval.md`). *(NB: the "23/24" and "19-pkg / 23 MINOR" figures elsewhere in this entry are PACKAGE/agent counts, not bug counts — one commit often carries several bugs, e.g. `auth`=2, `orchestrator`=4; the authoritative bug tally is this line.)* 767+ offline tests still green across 41 pkgs (each fix carries a regression test); 11 live-smokes green (10 authoring + Layer-3); migration 0027 live.
 
 **⏳ OUTSTANDING — all blocked-on-unbuilt-issues (manage at the blocking issue, per operator; each fail-loud/safe meanwhile):**
 1. **task-queue MAJOR** — held for **migration 0028** (`held-fix-task-queue-awaiting-approval.md`). Operator-present session.
