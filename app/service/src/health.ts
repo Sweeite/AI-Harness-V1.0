@@ -49,8 +49,12 @@ export async function probeSupabase(
     const res = await fetchImpl(`${url.replace(/\/$/, "")}/rest/v1/`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
     });
-    // PostgREST returns 200 on the root with a valid key; any HTTP response proves reachability.
-    return res.status < 500;
+    // OD-195: a 2xx/3xx proves the client Supabase is reachable AND the service_role key is accepted. A 4xx —
+    // notably 401/403 from a PRESENT-but-INVALID key (rotated / typo / wrong project) or a 404 — must FAIL the
+    // gate: `missingSecrets` checks presence, not validity, so without this a half-configured silo (key set but
+    // wrong) would deploy green and route production traffic to a DB layer it cannot read/write (#2/#3). The
+    // R10 live smoke remains the deeper read/write-validity proof; this boot gate rejects the loud auth-failure.
+    return res.status >= 200 && res.status < 400;
   } catch {
     return false;
   }

@@ -56,3 +56,24 @@ test("a 5xx from Supabase counts as unreachable", async () => {
   const fiveHundred = (async () => ({ status: 503 })) as unknown as typeof fetch;
   assert.equal(await probeSupabase(fullEnv(), fiveHundred), false);
 });
+
+// OD-195: a present-but-INVALID service_role key (rotated/typo/wrong project) makes PostgREST answer 401/403.
+// That must FAIL the health gate — otherwise a half-configured silo deploys green and takes production traffic
+// against a DB layer it cannot read/write (#2/#3). A 404 (wrong URL path) likewise fails.
+test("a 401/403 (invalid service_role key) ⇒ probeSupabase false ⇒ checkHealth NOT ok (OD-195)", async () => {
+  for (const status of [401, 403, 404]) {
+    const badKey = (async () => ({ status })) as unknown as typeof fetch;
+    assert.equal(await probeSupabase(fullEnv(), badKey), false, `status ${status} must be unreachable`);
+    const h = await checkHealth(fullEnv(), badKey);
+    assert.equal(h.ok, false, `status ${status} must make checkHealth not ok`);
+    assert.equal(h.supabaseReachable, false, `status ${status} must report supabaseReachable false`);
+  }
+});
+
+// A 3xx (e.g. a redirect on the PostgREST root) still counts as reachable — the host answered below the auth wall.
+test("a 2xx/3xx from Supabase counts as reachable (OD-195 boundary)", async () => {
+  for (const status of [200, 204, 301, 302]) {
+    const ok = (async () => ({ status })) as unknown as typeof fetch;
+    assert.equal(await probeSupabase(fullEnv(), ok), true, `status ${status} must be reachable`);
+  }
+});

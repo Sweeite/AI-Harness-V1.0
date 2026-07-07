@@ -165,6 +165,17 @@ export class WriteGate {
    * executes; a `rejected`/`modified` decision NEVER performs the external effect (fail-closed — a
    * non-approval is a non-execution). The hard-limit gate is re-run at execution time so a change of intent
    * between propose and approve cannot slip a hard-limited effect through (#2 — the gate is not cached).
+   *
+   * ⚠️ SEAM CONTRACT ([[OD-196]] — no-self-approval defense-in-depth). The `decision` passed here MUST be a
+   * decision PRODUCED BY the approval queue's `decide()` — the single place the no-self-approval invariant is
+   * enforced (`SelfApprovalRejected` when `decidedBy === AGENT_PROPOSER_ACTOR`, hard-limit #6 / AC-6.APR.005.3).
+   * `executeApproved` deliberately trusts that upstream decision and does NOT independently re-fetch the
+   * proposal or re-authorise `decidedBy` — it is DOWNSTREAM of an already-validated decision. A caller must
+   * therefore never hand-forge an `{status:'approved', decidedBy:AGENT_PROPOSER_ACTOR}` object and call this
+   * directly, bypassing `decide()`; doing so would self-approve + execute the agent's own queued write (#2/#6).
+   * The real caller (ISSUE-056's approval-queue surface) is UNBUILT; when it is built, fold the belt-and-
+   * suspenders hardening (take a proposalId, re-read the stored proposal, require pending + a distinct-human
+   * approver before executing) into that wiring — OD-196 Option A, deferred here because no live caller exists.
    */
   async executeApproved(
     tool: ToolRow,
