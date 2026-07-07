@@ -136,6 +136,7 @@ export const ORC_EVENT_TYPES = [
   'routing_planned',
   'routing_low_confidence',
   'routing_clarification_escalated',
+  'routing_chain_trimmed',
   'routing_outcome',
   'routing_unroutable',
   'routing_crash_recovered',
@@ -292,11 +293,29 @@ export class OrchestratorEngine {
       now,
     );
 
-    // Confidence = top score, penalised for ambiguity + near-ties (ORC.002.2/ORC.004 tie lowers confidence).
-    const confidence = this.confidenceOf(scores, classification);
+    // Confidence = top score, penalised for ambiguity + near-ties (ORC.002.2/ORC.004 tie lowers confidence) AND
+    // for an over-depth chain that must be trimmed (PLAN.003 — the truncation surfaces as a confidence drop).
+    const confidence = this.confidenceOf(scores, classification, cfg);
+    const overDepth = scores.length > cfg.chainDepthLimit;
 
     // ── Step 5: build plan (ORC.005) ─────────────────────────────────────────────────────────────
     const plan = this.buildPlan(task, classification, scores, cfg);
+
+    // logic-sweep fix (routing.ts:506): PLAN.003 — a chain that exceeds chain_depth_limit is trimmed AND the
+    // truncation is SURFACED (cost signal logged), never silently sliced (#3). The confidence penalty above drops
+    // the task to the clarification path below; here we log the depth-limit hit so the drop is explained.
+    if (overDepth) {
+      await this.safeAppend(
+        {
+          task_id: task.task_id,
+          event_type: 'routing_chain_trimmed',
+          entity_ids: [task.task_id],
+          summary: `Plan chain depth ${scores.length} exceeds chain_depth_limit ${cfg.chainDepthLimit} — trimmed to ${plan.steps.length} step(s) and confidence lowered so the task drops to clarification (never silently truncated, PLAN.003).`,
+          payload: { candidate_count: scores.length, chain_depth_limit: cfg.chainDepthLimit, trimmed_to: plan.steps.length },
+        },
+        now,
+      );
+    }
 
     // ── Step 6: confidence-check (ORC.006 / OD-077) ──────────────────────────────────────────────
     if (confidence < cfg.confidenceThreshold) {
@@ -460,13 +479,17 @@ export class OrchestratorEngine {
     };
   }
 
-  private confidenceOf(scores: CandidateScore[], c: Classification): number {
+  private confidenceOf(scores: CandidateScore[], c: Classification, cfg: RoutingConfig): number {
     if (scores.length === 0) return 0;
     let conf = scores[0]!.total;
     // ambiguous classification lowers confidence (ORC.002.2)
     if (c.ambiguous) conf *= 0.6;
     // a near-tie between the top two lowers confidence (ORC.004 tie/near-tie branch)
     if (scores.length >= 2 && scores[0]!.total - scores[1]!.total < 0.05) conf *= 0.9;
+    // logic-sweep fix (routing.ts:506): PLAN.003 — a chain that would exceed chain_depth_limit is trimmed; the
+    // trim must LOWER confidence so the task drops to clarification rather than being silently truncated (#3). We
+    // force it below any valid threshold (weights sum to 1, so a top score ≤ 1 and confidenceThreshold ≤ 1).
+    if (scores.length > cfg.chainDepthLimit) conf = 0;
     return conf;
   }
 
@@ -494,6 +517,9 @@ export class OrchestratorEngine {
     // representative chain from the ranked candidates (research-first when info-gathering, SPC.002 note), capped
     // at chain_depth_limit (PLAN.003). The concrete taxonomy/deps semantics land in ISSUE-064; here every step
     // is MARKED (never left without a failure mode — the #2/#3-honest default is halt_escalate).
+    // PLAN.003 — cap the chain at chain_depth_limit. The trim is NOT silent: when scores.length exceeds the limit,
+    // confidenceOf() forces confidence to 0 so route() drops the task to clarification and logs a routing_chain_trimmed
+    // cost signal (logic-sweep fix, routing.ts:506) — the over-limit branch below no longer no-ops.
     const ranked = scores.slice(0, Math.max(1, cfg.chainDepthLimit));
     const steps: PlanStep[] = ranked.map((s, i) => ({
       index: i,
@@ -503,10 +529,6 @@ export class OrchestratorEngine {
       parallel_eligible: cfg.parallelExecutionEnabled && i > 0, // only opt-in parallel, and never the first step
       failure_mode: 'halt_escalate',
     }));
-    if (scores.length > cfg.chainDepthLimit) {
-      // PLAN.003 — a chain that would exceed the limit is trimmed (already sliced) and confidence lowered elsewhere.
-      // (The trim is visible in the step count vs candidate count; the caller's confidence penalty is applied above.)
-    }
     return {
       task_type_name: task.task_name,
       parallel: steps.some((s) => s.parallel_eligible),

@@ -102,13 +102,17 @@ export class InMemorySecondarySink implements SecondarySink {
 export interface QueueTask extends TaskInput {
   status: 'pending' | 'routing' | 'awaiting_clarification';
   created_at_s: number;
+  /** When the clarification was RAISED (state-entry into awaiting_clarification), NOT queue-push time. The
+   * staleness window (OD-077) is a human-RESPONSE window measured from here — a long queue wait must not eat it
+   * (logic-sweep fix, fakes.ts:135). Null until the task enters awaiting_clarification. */
+  clarification_raised_at_s: number | null;
 }
 export class InMemoryQueueGate implements QueueGate {
   readonly tasks: QueueTask[] = [];
   constructor(private readonly clarificationWindowSeconds = 24 * 3600) {}
 
   push(task: TaskInput, createdAtSeconds: number): void {
-    this.tasks.push({ ...task, status: 'pending', created_at_s: createdAtSeconds });
+    this.tasks.push({ ...task, status: 'pending', created_at_s: createdAtSeconds, clarification_raised_at_s: null });
   }
   private find(id: string): QueueTask | undefined {
     return this.tasks.find((t) => t.task_id === id);
@@ -124,15 +128,22 @@ export class InMemoryQueueGate implements QueueGate {
     const t = this.find(taskId);
     if (t) t.status = 'pending'; // idempotent re-route: never dequeued-but-unplanned
   }
-  async setAwaitingClarification(taskId: string, _now: number): Promise<void> {
+  async setAwaitingClarification(taskId: string, now: number): Promise<void> {
     const t = this.find(taskId);
-    if (t) t.status = 'awaiting_clarification';
+    if (t) {
+      t.status = 'awaiting_clarification';
+      // logic-sweep fix (fakes.ts:135): stamp WHEN the clarification was raised so the staleness window runs from
+      // state-entry, not queue-push. A task that waited in the queue must still get its full response window (OD-077).
+      t.clarification_raised_at_s = now;
+    }
   }
   async escalateStaleClarifications(now: number): Promise<string[]> {
     const out: string[] = [];
     for (const t of this.tasks) {
       if (t.status !== 'awaiting_clarification') continue;
-      if (now - t.created_at_s < this.clarificationWindowSeconds) continue;
+      // measure the human-response window from the RAISE time, not created_at_s (queue-push) — see fakes.ts:135 fix.
+      const raisedAt = t.clarification_raised_at_s ?? t.created_at_s;
+      if (now - raisedAt < this.clarificationWindowSeconds) continue;
       out.push(t.task_id); // NB: status intentionally UNCHANGED — never auto-proceeds (OD-077)
     }
     return out;

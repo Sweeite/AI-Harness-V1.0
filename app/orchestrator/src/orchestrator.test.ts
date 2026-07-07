@@ -8,8 +8,10 @@ import {
   AgentsPermissionDenied,
   ERR_EMPTY_CHANGE_REASON,
   ERR_EMPTY_DESCRIPTION,
+  ERR_SOLE_AGENT_DISABLE,
   InMemoryAgentRegistry,
   InMemoryDenialAuditSink,
+  ORCHESTRATOR_NAME,
   PERM_AGENTS_EDIT_CAPABILITY,
   PERM_AGENTS_EDIT_DESCRIPTION,
   type AgentsPerm,
@@ -622,6 +624,93 @@ test('AC-8.ORC.008.2 — the orchestrator scope is stored narrower than a broad 
   assert.ok(!orch.memory_scope.tiers.includes('episodic'));
   assert.ok(!orch.memory_scope.tiers.includes('procedural'));
   assert.ok(mem.memory_scope.tiers.includes('episodic')); // the broad agent DOES have it — the scope is real
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// logic-sweep regressions (2026-07-07 sweep)
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+// seed.ts:129 / registry.candidates — the seeded orchestrator must NEVER be a routing candidate for
+// itself (ORC.001.1 "plans and delegates only — performs no domain work itself"). It is parked under
+// domain 'ops' for the candidacy index, so candidates('ops') on the SEEDED roster must EXCLUDE it.
+test('logic-sweep — the seeded orchestrator is not a routing candidate for its own parked domain (ORC.001.1)', async () => {
+  const reg = new InMemoryAgentRegistry();
+  await seedRoster(reg, NOW);
+  const cands = await reg.candidates('ops');
+  const names = cands.map((c) => c.name);
+  assert.ok(names.includes('ops'), 'the ops specialist should be a candidate');
+  assert.ok(!names.includes(ORCHESTRATOR_NAME), 'the orchestrator must never be a routing candidate for itself (ORC.001.1)');
+  // and it must not leak in as a secondary chain step on a multi-ops plan either
+  const { engine, queue } = buildEngine(reg, { 't-ops': cls('ops', 'multi') });
+  queue.push({ task_id: 't-ops', task_name: 'ops multi', payload: {} }, NOW);
+  const res = await engine.route(NOW + 1);
+  if (res!.plan) {
+    assert.ok(
+      !res!.plan.steps.some((s) => s.agent_name === ORCHESTRATOR_NAME),
+      'the orchestrator must not be delegated a plan step (ORC.001.1)',
+    );
+  }
+});
+
+// fakes.ts:135 — the clarification-staleness window must run from when the clarification was RAISED
+// (state-entry), not from queue-push time (created_at_s). A task that waited in the queue before
+// entering awaiting_clarification must still get its FULL response window (OD-077 / AC-5.QUE.005.2).
+test('logic-sweep — clarification staleness is measured from raise-time, not queue-push time (OD-077)', async () => {
+  const reg = new InMemoryAgentRegistry();
+  await reg.insert(newAgent({ name: 'ops', domain: 'ops', description: 'o' }), 'sys', NOW);
+  const window = 3600;
+  const queue = new InMemoryQueueGate(window);
+  const { engine } = buildEngine(reg, { 't-wait': cls('ops', 'single', { ambiguous: true }) }, undefined, queue);
+  // pushed long ago; only routed to awaiting_clarification now (a long queue wait precedes the raise).
+  queue.push({ task_id: 't-wait', task_name: 'waited', payload: {} }, NOW);
+  const raisedAt = NOW + 10 * window; // clarification raised well after push
+  await engine.route(raisedAt);
+  // just after the raise, still well inside the window → must NOT escalate (the human gets the full window).
+  assert.deepEqual(await engine.escalateStaleClarifications(raisedAt + 10), []);
+  // past the window measured from the RAISE → escalates.
+  assert.deepEqual(await engine.escalateStaleClarifications(raisedAt + window + 10), ['t-wait']);
+});
+
+// routing.ts:506 — PLAN.003: a plan chain that exceeds chain_depth_limit must be trimmed AND the
+// truncation surfaced (confidence lowered so the task drops to clarification) — never a silent slice.
+test('logic-sweep — an over-limit plan chain lowers confidence to clarification, never silently truncated (PLAN.003)', async () => {
+  const reg = new InMemoryAgentRegistry();
+  const limit = 2;
+  // insert MORE ops candidates than the chain-depth limit
+  for (const n of ['opsA', 'opsB', 'opsC', 'opsD']) {
+    await reg.insert(newAgent({ name: n, domain: 'ops', description: n }), 'sys', NOW);
+  }
+  const cfg: RoutingConfig = { ...DEFAULT_ROUTING_CONFIG, chainDepthLimit: limit };
+  const { engine, queue, plans, envelope, events } = buildEngine(reg, { 't-deep': cls('ops', 'multi') }, () => cfg);
+  queue.push({ task_id: 't-deep', task_name: 'deep chain', payload: {} }, NOW);
+  const res = await engine.route(NOW + 1);
+  // the over-limit chain must NOT be silently planned-and-persisted: it drops to clarification.
+  assert.equal(res!.outcome, 'clarification', 'an over-limit chain must surface, not silently truncate (PLAN.003)');
+  assert.equal(res!.plan, null);
+  assert.equal(plans.versions.size, 0, 'a truncated chain must not be persisted silently');
+  assert.equal(envelope.plans.get('t-deep'), undefined);
+  assert.equal(events.byType('routing_low_confidence').length, 1);
+});
+
+// registry.ts:364 — editCapability({ enabled:false }) is an equally-valid disable path; disabling the
+// SOLE enabled agent for a domain through it must NOT silently drop the domain's last candidate. Since
+// editCapability has no warning channel, it fails LOUD (REG.005.3 / #3), steering callers to disable().
+test('logic-sweep — editCapability cannot silently disable the sole enabled agent for a domain (REG.005.3)', async () => {
+  const reg = new InMemoryAgentRegistry();
+  const only = await reg.insert(newAgent({ name: 'comms', domain: 'comms', description: 'drafts comms' }), 'sys', NOW);
+  await assert.rejects(
+    () => reg.editCapability(only.id, { enabled: false, change_reason: 'retire via edit' }, 'sys', NOW + 1),
+    (e: Error) => e.message === ERR_SOLE_AGENT_DISABLE('comms'),
+  );
+  // the agent stays enabled (the silent disable was refused), so the domain keeps its candidate.
+  assert.equal((await reg.get(only.id))!.enabled, true);
+  assert.equal((await reg.candidates('comms')).length, 1);
+  // a NON-sole editCapability disable is still allowed (a second same-domain agent exists).
+  const reg2 = new InMemoryAgentRegistry();
+  const a = await reg2.insert(newAgent({ name: 'commsA', domain: 'comms', description: 'a' }), 'sys', NOW);
+  await reg2.insert(newAgent({ name: 'commsB', domain: 'comms', description: 'b' }), 'sys', NOW);
+  const disabled = await reg2.editCapability(a.id, { enabled: false, change_reason: 'one of two' }, 'sys', NOW + 1);
+  assert.equal(disabled.enabled, false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────

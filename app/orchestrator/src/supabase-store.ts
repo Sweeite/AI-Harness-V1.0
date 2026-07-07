@@ -24,6 +24,8 @@ import {
   ERR_EMPTY_DESCRIPTION,
   ERR_EMPTY_MEMORY_SCOPE,
   ERR_NO_SUCH_AGENT,
+  ERR_SOLE_AGENT_DISABLE,
+  ORCHESTRATOR_NAME,
   PERM_AGENTS_EDIT_CAPABILITY,
   PERM_AGENTS_EDIT_DESCRIPTION,
   type AgentDomain,
@@ -133,9 +135,13 @@ export class SupabaseAgentRegistry implements AgentRegistry {
 
   async candidates(domain?: AgentDomain): Promise<AgentRow[]> {
     // Enabled current-version rows. "Current version" = a row that is not itself a previous_version of another.
+    // logic-sweep fix (seed.ts:129 parity): exclude the orchestrator from routing candidacy. It is parked under a
+    // specialist domain for its scope/Layer-1 but plans+delegates only (ORC.001.1) — the fake filters it in
+    // candidates(); the live adapter must match or the orchestrator could route/plan domain work to itself.
     const res = await this.pool.query<RawAgent>(
       `select ${AGENT_COLS} from agents a
         where a.enabled = true
+          and a.name <> '${ORCHESTRATOR_NAME}'
           and not exists (select 1 from agents b where b.previous_version_id = a.id)
           ${domain ? "and a.memory_scope->>'__domain' = $1" : ''}
         order by a.name`,
@@ -205,6 +211,20 @@ export class SupabaseAgentRegistry implements AgentRegistry {
     if (!edit.change_reason?.trim()) throw new Error(ERR_EMPTY_CHANGE_REASON);
     if (edit.memory_scope === null) throw new Error(ERR_EMPTY_MEMORY_SCOPE);
     const cur = await this.currentRaw(id);
+    // logic-sweep fix (registry.ts:364 parity): editCapability({enabled:false}) must not SILENTLY disable a domain's
+    // sole enabled agent (the operator toggle routes through this path, surface-09). It has no warning channel, so it
+    // fails LOUD — refuse the silent disable and steer the caller to disable(), which surfaces the REG.005.3 warning
+    // (#3). Mirror the reference model + disable()'s own sole-agent check (exclude the agent's OWN chain by root).
+    if (edit.enabled === false && cur.enabled) {
+      const domain = domainOf(cur.memory_scope);
+      if (domain !== undefined) {
+        const curRoot = await this.rootId(cur.id);
+        const cands = await this.candidates(domain);
+        const roots = await Promise.all(cands.map((r) => this.rootId(r.id)));
+        const others = cands.filter((r, i) => roots[i] !== curRoot && r.enabled);
+        if (others.length === 0) throw new Error(ERR_SOLE_AGENT_DISABLE(domain));
+      }
+    }
     const patch: Partial<AgentRow> = {};
     if (edit.memory_scope !== undefined) patch.memory_scope = edit.memory_scope;
     if (edit.tools_allowed !== undefined) patch.tools_allowed = edit.tools_allowed;

@@ -15,6 +15,7 @@ import {
   CAP_AUTONOMOUS_SEND,
   CAP_TRANSACTION,
   InMemoryAgentRegistry,
+  ORCHESTRATOR_NAME,
   type AgentDomain,
   type AgentRow,
   type MemoryScope,
@@ -125,8 +126,11 @@ export function canonicalRoster(): { orchestrator: RosterEntry; specialists: Ros
     },
   ];
   const orchestrator: RosterEntry = {
-    role: 'orchestrator',
-    domain: 'ops', // the orchestrator serves no client domain; parked under ops for the candidacy index (it is never a routing candidate for itself)
+    role: ORCHESTRATOR_NAME,
+    // the orchestrator serves no client domain; parked under ops for the scope/Layer-1 index. It is NEVER a routing
+    // candidate for itself — that promise is now enforced in code by registry.candidates() (name===ORCHESTRATOR_NAME
+    // is filtered out), not just this comment (logic-sweep fix, seed.ts:129 / ORC.001.1).
+    domain: 'ops',
     description:
       'The single routing brain: classifies each task and builds an execution plan delegating to specialists. Plans and delegates only — performs no domain work itself.',
     memory_scope: ORCHESTRATOR_SCOPE,

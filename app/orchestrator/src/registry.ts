@@ -34,6 +34,12 @@ export const AGENT_DOMAINS = [
 ] as const;
 export type AgentDomain = (typeof AGENT_DOMAINS)[number];
 
+/** The reserved `name` of the single routing brain. It is seeded as a scoped registry row parked under a
+ * specialist domain (ORC.008 / seed.ts) so it has a Layer-1 + scope like any agent, but it PLANS and DELEGATES
+ * only — it performs no domain work itself (ORC.001.1). candidates() therefore never returns it: the seed
+ * comment's promise ("never a routing candidate for itself") is enforced in code here. */
+export const ORCHESTRATOR_NAME = 'orchestrator' as const;
+
 // ── §9 agents row — the full column set, exactly per schema.md §9 / 0001_baseline.sql. ──────────────
 // NO system_prompt (→ prompt_layers, OD-075), NO model (complexity-routed), NO client_slug (ADR-001 §3).
 export interface AgentRow {
@@ -300,6 +306,10 @@ export class InMemoryAgentRegistry implements AgentRegistry {
       const row = this.rows.get(currentId);
       if (!row) continue;
       if (!row.enabled) continue; // REG.005: disabled rows are NEVER candidates (but persist)
+      // logic-sweep fix (seed.ts:129): the orchestrator is parked under a specialist domain for its scope/Layer-1,
+      // but it plans+delegates only — it must never be a routing candidate for itself (ORC.001.1). Enforce the
+      // seed comment's promise in code so it can't leak into candidates(domain) or a multi-step plan chain.
+      if (row.name === ORCHESTRATOR_NAME) continue;
       if (domain !== undefined && this.domainOf.get(root) !== domain) continue;
       out.push(cloneRow(row));
     }
@@ -356,6 +366,17 @@ export class InMemoryAgentRegistry implements AgentRegistry {
     }
     if (edit.memory_scope === null) throw new Error(ERR_EMPTY_MEMORY_SCOPE);
     const cur = this.mustCurrent(id);
+    // logic-sweep fix (registry.ts:364): editCapability({enabled:false}) is an equally-valid disable path (the
+    // operator UI toggle routes through it, surface-09) — it must NOT silently drop a domain's last routing
+    // candidate. editCapability has no warning channel (returns AgentRow only), so where disable() would surface a
+    // sole-agent WARNING, editCapability fails LOUD instead: it refuses the silent disable and steers the caller to
+    // disable(), which surfaces the REG.005.3 warning (#3 never-silent). A non-sole disable is unaffected.
+    if (edit.enabled === false && cur.enabled) {
+      const root = this.rootOf.get(cur.id)!;
+      const domain = this.domainOf.get(root)!;
+      const enabledSameDomain = (await this.candidates(domain)).filter((r) => this.rootOf.get(r.id) !== root && r.enabled);
+      if (enabledSameDomain.length === 0) throw new Error(ERR_SOLE_AGENT_DISABLE(domain));
+    }
     return this.appendVersion(
       cur.id,
       (d) => {
