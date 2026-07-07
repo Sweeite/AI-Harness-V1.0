@@ -343,6 +343,30 @@ test('AC-NFR-DR.009.2 — a still-open purge flag is logged loud (never silently
   assert.equal((await store.getPurgeFlag('pf-3'))?.status, 'open');
 });
 
+// ── AC-NFR-DR.009.2 (regression: silent-empty scan) ──────────────────────────────
+// logic-sweep fix: an all-zeros driver result (examined=0/residue=0/cleared=0) is what a
+// silently-empty scan produces (wrong client_slug/target_ref, an empty query that did not
+// throw). It must NOT be reported CLEARED — nothing was proven purged off-platform, so
+// erased Personal data could still survive in a pre-erasure snapshot (#1 keystone / #3).
+test('AC-NFR-DR.009.2 — an all-zeros (examined=0) driver result is STILL OPEN, never a phantom clear', async () => {
+  const store = new InMemoryBackupDrStore();
+  await store.registerSilo({ client_slug: 'acme', destination: goodDest, now: NOW });
+  const flag: PurgeFlag = { flag_id: 'pf-4', client_slug: 'acme', target_ref: 'user-3', raised_at: iso(NOW), erasure_effective_at: iso(NOW) };
+  await receivePurgeFlag(store, flag);
+
+  // A driver that examined NOTHING (silent-empty scan) — 0/0/0. This is indistinguishable from
+  // a matched-no-rows misconfiguration, so it must fail OPEN, not confirm a clearance.
+  const emptyDriver: PurgeDriver = {
+    async purgeFromPreErasureSnapshots(): Promise<PurgeDriverResult> {
+      return { pre_erasure_snapshots_examined: 0, snapshots_with_residue: 0, snapshots_cleared: 0, detail: 'no rows matched' };
+    },
+  };
+  const outcome = await actionPurgeFlag(store, emptyDriver, flag, NOW + 60);
+  assert.equal(outcome.status, 'still_open'); // NOT 'cleared' — nothing was examined/proven purged
+  assert.equal(outcome.logged, true);
+  assert.equal((await store.getPurgeFlag('pf-4'))?.status, 'open'); // flag stays OPEN
+});
+
 // ── AC-7.MGM.005.1 ───────────────────────────────────────────────────────────────
 test('AC-7.MGM.005.1 — backup-health is visible sourced from the Management API; no business data crosses', () => {
   // The payload the mgmt-plane push carries in deployment_health.backup_health is operational-metadata only.

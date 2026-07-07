@@ -107,7 +107,14 @@ export async function actionPurgeFlag(
     };
   }
 
-  const fullyCleared = result.snapshots_cleared === result.snapshots_with_residue;
+  // logic-sweep fix: a bare `snapshots_cleared === snapshots_with_residue` treats an all-zeros
+  // result (examined=0/residue=0/cleared=0) as CLEARED (0===0) — but that is exactly what a
+  // silently-empty scan produces (wrong client_slug/target_ref, an empty query that did not throw).
+  // Require the driver to have actually examined a snapshot before trusting a clearance, else the
+  // flag stays OPEN + logged (never confirm off-platform erasure that was never proven — #1/#3).
+  const fullyCleared =
+    result.pre_erasure_snapshots_examined > 0 &&
+    result.snapshots_cleared === result.snapshots_with_residue;
   if (fullyCleared) {
     await store.markPurgeCleared(flag.flag_id, new Date(serverNow * 1000).toISOString(), 'off-platform-purge-leg');
     return {
