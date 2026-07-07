@@ -326,6 +326,22 @@ test('AC-6.ESC.001.2 — a hard_limit hit is killed + logged; never in the queue
   await assert.rejects(() => wf.resolve(out.rowIds[0]!, 'approve', 'reviewer', {}, T0 + 1), (e: Error) => e.message === ERR_HARD_LIMIT_NO_AFFORDANCE);
 });
 
+test('AC-6.ESC.001.2 — a killed hard_limit is NEVER escalated to a human (no resolution path → no nagging)', async () => {
+  // logic-sweep regression: escalateStaleWaits must skip hard_limit rows exactly like buildQueueView does. A
+  // killed-not-held block has NO human-resolution path (resolve throws ERR_HARD_LIMIT_NO_AFFORDANCE), so a
+  // stale hard_limit row must never be surfaced to a reviewer as an un-actioned wait (#2, AC-6.ESC.001.2).
+  const { wf, tasks, notify } = newWorkflow();
+  seedTask(tasks, 'kill_stale', { status: 'running', originating_user_id: 'agent' });
+  const hit: GuardrailHit = { guardrailType: 'hard_limit', action: { actionType: 'kill_stale', originatingUserId: 'agent' }, description: 'external send blocked' };
+  await wf.raiseFlag([hit], [{ role: 'account_manager', identity: 'am-1', available: true }], RULES, T0);
+  // Well past the escalation window: the killed hard_limit row must NOT be picked up by the sweep.
+  const esc = await wf.escalateStaleWaits(T0 + DEFAULT_APPROVAL_CONFIG.escalationTimeoutSeconds + 1);
+  assert.equal(esc.find((r) => r.guardrail_type === 'hard_limit'), undefined);
+  assert.equal(esc.length, 0);
+  // No escalation notification fired for it — it is never nagged to a human.
+  assert.equal(notify.emitted.filter((n) => n.kind === 'stale_wait_escalation').length, 0);
+});
+
 test('AC-6.ESC.001.3 — multi-fire: most-restrictive governs (hard_limit dominates); each hit logs its own row', async () => {
   const { wf, tasks } = newWorkflow();
   seedTask(tasks, 'multi_task', { status: 'running', originating_user_id: 'agent' });

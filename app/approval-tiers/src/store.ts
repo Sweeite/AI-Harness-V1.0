@@ -697,6 +697,11 @@ export class InMemoryApprovalWorkflow implements ApprovalWorkflow {
     for (const [id, m] of this.meta) {
       const row = this.rows.get(id);
       if (!row || row.status !== 'pending') continue;
+      // logic-sweep fix (AC-6.ESC.001.2 / #2): a killed hard_limit row stays pending-and-blocked with NO
+      // human-resolution path (resolve() throws ERR_HARD_LIMIT_NO_AFFORDANCE), so it must NEVER be escalated as
+      // an un-actioned wait — mirror buildQueueView's exclusion and the live adapter's `guardrail_type <>
+      // 'hard_limit'` SQL guard, or it gets nagged to a reviewer forever.
+      if (row.guardrail_type === 'hard_limit') continue;
       // AC-6.ESC.004.3 / AC-NFR-OBS.007.1: BOTH wait kinds are covered — flagged AND awaiting_approval.
       const ageSeconds = now - Math.floor(Date.parse(row.created_at) / 1000);
       if (ageSeconds < threshold) continue;
