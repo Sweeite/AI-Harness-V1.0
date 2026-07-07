@@ -2771,6 +2771,18 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-<!-- Next OD number: OD-193 -->
+## OD-193 — Runtime DB connection role for silo adapters: `postgres` owner vs `service_role` (undecided; code + canary disagree) 🔴 OPEN
+
+- **Surfaced by:** session-73 Part-B **Wave A** (rate-limiting/support-recovery/config-store/observability/log-retention). Every silo live adapter builds `new pg.Pool({ connectionString: SILO_DB_URL })`, and the canary `SILO_DB_URL` live-connects as **`postgres`** (the DB owner, `rolbypassrls=t`) — confirmed by `select current_user` across all five. But **every adapter's design comments assert it "connects as `service_role`."** The two roles are NOT equivalent:
+  - **RLS:** both bypass RLS (`service_role` and the owner both have `rolbypassrls`), so RLS enforcement is moot on the adapter path either way — this **refutes the whole M1/#2 "permission denied under authenticated" finding class** for these adapters.
+  - **GRANTs differ:** `0001c_rls.sql` does `revoke delete on config_audit_log / event_log / … from … service_role`, but the `postgres` owner still holds DELETE. So config-store `runRetention` + observability/log-retention `prune()` work on the canary **only because the real role is `postgres`**. Point a deployment at a `service_role` connection string (as the docs claim it is) and the retention DELETEs throw `permission denied` **despite** the `set local app.retention_prune='on'` GUC → retention silently stops pruning — the exact #3 [[OD-180]] was built to prevent. The ISSUE-010 capstone masks it (its negative DELETE test accepts *permission-denied OR append-only*, so it passes under either role).
+- **Why it matters:** #2 (running as the superuser-owner is more privileged than intended — least-privilege) **and** #3 (a role swap silently breaks retention). The foundation's live behaviour depends on an **undecided, undocumented** connection-role choice that every adapter shares.
+- **Options:** (A) **ratify `postgres`/owner as the adapter runtime role** — update ADR-006 + all adapter comments to say owner (RLS-bypass; RLS is defence-in-depth for a separate authenticated/PostgREST path only); retention works as-is. (B) **`service_role` is the intended runtime role** — reconcile the grants (`grant delete on {config_audit_log, event_log, guardrail_log, …} to service_role` in a new migration, re-tightening the GUC as the real control per OD-180), fix the canary/provisioning connection string, and re-run every retention/prune smoke under `service_role`. (C) **two pools** — `service_role` for normal writes + a dedicated elevated pool for the sanctioned retention job.
+- **Recommendation:** 🟡 decide **(A) vs (B)**. Provisioning currently wires `postgres`; if that is the real production wiring, (A) + fixing the misleading comments is least-churn and already works. If security wants least-privilege, (B) owes a grant-reconciliation migration + a `service_role` connection **before go-live**, and the retention/prune smokes must be re-run under `service_role`.
+- **Status:** 🔴 OPEN — operator/architecture decision. Symptoms: config-store retention-DELETE MAJOR + misleading "service_role" comments across all silo adapters. See `live-adapter-backfill-findings.2026-07-07.md` (Wave A).
+
+---
+
+<!-- Next OD number: OD-194 -->
 
 

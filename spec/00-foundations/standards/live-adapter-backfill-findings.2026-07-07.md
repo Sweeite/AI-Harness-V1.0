@@ -66,6 +66,23 @@
 - hard-limits `setStatus` (L110-116) — `res.rows[0]!` no rowCount guard → `undefined` as a row. #3
 - observability / log-retention / guardrail-log — `select *` coupling + prune FK-ordering coverage gap. #1
 
+## Part-B sweep — Wave A results (2026-07-07, 5 packages, live-verified)
+Packages: rate-limiting, support-recovery, config-store, observability, log-retention. Each got an independent
+live-adapter review + a committed `results/live-smoke.sql` (all 5 run rolled-back against the live silo).
+
+- **M2 (rate-limiting Date.parse) — ❌ REFUTED.** `Date.parse(Date)` coerces to a valid epoch, not NaN; the window rolls. (Optional: fix the `string` type-lie on timestamptz fields.)
+- **M3 (rate-limiting reconcile lock) — ❌ REFUTED → MINOR.** `decide()`'s own `SELECT … FOR UPDATE` re-reads under the lock, so no over-call. Only artifact is a redundant connection.
+- **M4 (rate-limiting drainDue) — ✅ CONFIRMED MAJOR, ⏳ OWED to consumer integration.** Marks rows `drained_at` + commits before the caller fires → crash between = silent drop (#1/#3). **No production consumer exists yet** (only tests call `drainDue`), so the correct two-phase claim→fire→confirm fix (a `fired_at`/status distinction + a re-drive sweeper) belongs with that integration. Recorded, not hacked in isolation. Mitigation: narrow crash window; the idempotency guard prevents double-fire on any re-drive.
+- **M1 (support-recovery RLS) — ❌ REFUTED → MINOR.** Adapter connects as `postgres` (BYPASSRLS), not authenticated → the INSERT succeeds. But the header comment falsely claims "authenticated JWT" — a latent trap (fix the comment). Rolled into OD-193.
+- **M8 (config-store coalesce) — ✅ CONFIRMED → MINOR.** Real null-clobber of last-editor, but parity with the fake + audit trail intact in `config_audit_log`. Optional `coalesce` fix.
+- **M10 (observability redactTombstone) — ✅ CONFIRMED MAJOR → FIXED.** Silent success on a missing-id GDPR erasure. Fixed: rowCount check + re-read distinguishes not-found (throw) from already-redacted (idempotent), mirroring the fake. Tests 27/27.
+- **M11 (log-retention rewriteContent) — ✅ CONFIRMED MAJOR → FIXED.** False tamper signal on a 0-row update. Fixed: rowCount check → distinct "REWRITE of a nonexistent row" (matches fake), never the in-place-REWRITE tamper message on a missing id. Tests 38/38.
+- **NEW MAJOR (config-store retention DELETE role) → [[OD-193]].** Retention `DELETE` on `config_audit_log` works only because the adapter connects as `postgres`; `service_role` had DELETE revoked (0001c) → a role swap silently stops retention. Symptom of the systemic connection-role question.
+- **SYSTEMIC → [[OD-193]]:** all silo adapters connect as `postgres` (owner, BYPASSRLS), NOT `service_role` as their comments claim. Refutes the #2/RLS finding class; raises a least-privilege + retention-grant decision.
+- MINORs (event-after-commit audit gap, config run-log cost sentinel, observability rollback-masks-error, log-retention redactTombstone missing-id) — noted, not fixed this wave.
+
+**Wave A net:** 2 MAJORs fixed live (M10, M11), 1 MAJOR owed to integration (M4), 1 systemic OD (OD-193), 2 refuted, 2 downgraded. Live-smokes committed for all 5.
+
 ## Coverage
 26 of 36 live adapters inspected this pass. **NOT re-inspected** (relied on session-72 verdicts): rbac, realtime, alerting, cost-meter, guardrail-log, management, retention, task-queue, anomaly-checks, prompt-layer-context, prompt-layer-identity, token-lifecycle, backup-dr. Part B must still cover these per its wave plan.
 

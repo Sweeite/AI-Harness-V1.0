@@ -21,6 +21,11 @@
 --   SupabaseGuardrailLogStore.prune()       -> set local app.retention_prune='on'; delete from guardrail_log where id=$1
 --   SupabaseGuardrailLogStore.rewriteContent() -> update guardrail_log set description=$2 where id=$1  (MUST raise)
 --
+-- CONFIRMED FINDING M11 (assertion 10b): rewriteContent()'s unconditional post-UPDATE throw is a FALSE
+-- tamper report whenever the id does not exist — the 0-row UPDATE never fires the BEFORE-UPDATE trigger.
+-- Assertion 10b proves the underlying substrate fact (a 0-row UPDATE does not raise); the misleading throw
+-- itself is in the JS and must be fixed there (guard on row_count / rowCount before claiming a REWRITE).
+--
 -- FK note: event_log.task_id and guardrail_log.task_id/reviewed_by are all NULLABLE FKs, so fixtures leave them
 -- null — no parent task_queue/profiles row is required and no FK-missing throw can masquerade as drift.
 
@@ -178,6 +183,32 @@ begin
   exception when others then
     if sqlerrm like 'FAIL%' then raise; end if;
     raise notice 'PASS guardrail_log.rewriteContent: covert content REWRITE rejected -> %', sqlerrm;
+  end;
+
+  -- (10b) M11 SUBSTRATE FACT (confirmed finding) — rewriteContent() against a NON-EXISTENT id.
+  --   The adapter (supabase-store.ts L138-139) runs `update guardrail_log set description=$2 where id=$1`
+  --   then UNCONDITIONALLY throws AppendOnlyViolation("...in-place content REWRITE"), on the theory that
+  --   "the trigger already fired and raised". But t_append_only is a BEFORE UPDATE ... FOR EACH ROW trigger:
+  --   it fires ONCE PER MATCHED ROW. On a non-existent id the UPDATE matches 0 rows, the trigger NEVER fires,
+  --   NO exception is raised, and the JS falls through to the unconditional throw -> it reports a substrate
+  --   tamper-rejection that never happened (misleading audit signal, #3). This block proves the substrate
+  --   half: a 0-row UPDATE completes WITHOUT raising, so the adapter's "unreachable if the trigger fired"
+  --   assumption is false whenever the row is absent.
+  declare
+    v_ct int;
+  begin
+    update guardrail_log set description = 'ghost' where id = gen_random_uuid();  -- id certain to not exist
+    get diagnostics v_ct = row_count;
+    if v_ct <> 0 then
+      raise exception 'FAIL M11: expected a 0-row UPDATE on a non-existent id, got % rows', v_ct;
+    end if;
+    raise notice 'PASS M11 (substrate): UPDATE on a non-existent id affected 0 rows and DID NOT raise -> the '
+                 'adapter''s unconditional post-UPDATE throw is a FALSE tamper report on any missing id (#3)';
+  exception
+    when others then
+      if sqlerrm like 'FAIL%' then raise; end if;
+      -- A raise here would mean the trigger DID fire on 0 rows (it must not) — surface it as a failure.
+      raise exception 'FAIL M11: a 0-row UPDATE unexpectedly raised (%). The BEFORE-UPDATE trigger must not fire on 0 matched rows.', sqlerrm;
   end;
 
   -- (11) GUARDED REJECT — a naked DELETE (no retention-prune flag) must raise.

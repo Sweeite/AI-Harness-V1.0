@@ -132,14 +132,21 @@ export class SupabaseGuardrailLogStore implements GuardrailLogStore {
   }
 
   async rewriteContent(id: string, description: string): Promise<void> {
-    // There is NO legal in-place content rewrite — the trigger rejects it. Authored ONLY so the seam is real;
-    // a live call here always raises the append-only violation at the substrate.
+    // There is NO legal in-place content rewrite — the BEFORE-UPDATE trigger rejects it. Authored ONLY so the
+    // seam is real. Distinguish the two 0-vs-1-row outcomes so we never fabricate a tamper signal (finding M11):
+    let res: { rowCount: number | null };
     try {
-      await this.pool.query(`update guardrail_log set description = $2 where id = $1`, [id, description]);
-      throw new AppendOnlyViolation("guardrail_log", "in-place content REWRITE"); // unreachable if the trigger fired
+      res = await this.pool.query(`update guardrail_log set description = $2 where id = $1`, [id, description]);
     } catch (e) {
+      // An EXISTING row trips the per-row BEFORE-UPDATE append-only trigger → RESTRICT_VIOLATION. That is the
+      // real, correct rejection of a live-audit content rewrite.
       if ((e as { code?: string }).code === RESTRICT_VIOLATION) throw new AppendOnlyViolation("guardrail_log", "in-place content REWRITE");
       throw e;
     }
+    // No exception → the UPDATE matched 0 rows, so the per-row trigger never fired. This is a missing/wrong id,
+    // NOT an attempted tamper — report it as such (mirrors the fake's distinct message), don't cry "REWRITE".
+    if (res.rowCount === 0) throw new AppendOnlyViolation("guardrail_log", "REWRITE of a nonexistent row");
+    // rowCount>0 with no trigger exception = the trigger unexpectedly permitted a content rewrite (can't-happen).
+    throw new AppendOnlyViolation("guardrail_log", "in-place content REWRITE");
   }
 }

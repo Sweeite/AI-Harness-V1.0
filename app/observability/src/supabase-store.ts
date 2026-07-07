@@ -78,12 +78,23 @@ export class SupabaseEventLogStore implements EventLogStore {
 
   async redactTombstone(id: string, redactedAt: string): Promise<void> {
     // The ONE whitelisted UPDATE (null→non-null redacted_at) the t_append_only trigger permits.
-    await this.pool.query(
+    const res = await this.pool.query(
       `update event_log
           set summary = '[redacted]', entity_ids = null, payload = null, redacted_at = $2
         where id = $1 and redacted_at is null`,
       [id, redactedAt],
     );
+    // A 0-row update is ambiguous: either the id does not exist (a lost compliance-erasure that MUST be loud —
+    // #3, finding M10) or the row is already redacted (a legitimate one-way idempotent no-op). Distinguish by
+    // re-reading, matching InMemoryEventLogStore.redactTombstone — never resolve silently on a missing id.
+    if (res.rowCount === 0) {
+      const check = await this.pool.query<{ redacted_at: string | null }>(
+        `select redacted_at from event_log where id = $1`,
+        [id],
+      );
+      if (check.rowCount === 0) throw new Error(`event_log row ${id} not found for redaction`);
+      // else: row exists and is already redacted — idempotent no-op (the intended one-way behaviour).
+    }
   }
 
   async prune(id: string): Promise<void> {
