@@ -29,17 +29,20 @@ function sanitise(sql: string): string[] {
   // Blank out dollar-quoted blocks ($$ ... $$) — function bodies aren't schema changes.
   let inDollar = false;
   return lines.map((l) => {
-    const hasMarker = /\$\$/.test(l);
-    if (inDollar) {
-      const out = "";
-      if (hasMarker) inDollar = false;
-      return out;
+    // logic-sweep fix (discipline.ts:33 sanitise): tokenise the line on `$$` markers and keep the
+    // OUTSIDE-block segments — a closing `$$` that shares a line with a trailing statement (e.g.
+    // `end $$; alter table t drop column c;`) must not blank the whole line, or that real statement
+    // is swallowed before any scanner sees it. Split on `$$`, blank inside-block segments (odd when
+    // starting outside a block), keep outside-block segments, and carry inDollar by marker parity.
+    const segments = l.split("$$");
+    if (segments.length === 1) return l; // no marker on this line
+    let out = "";
+    for (let s = 0; s < segments.length; s++) {
+      if (!inDollar) out += segments[s]!; // outside the block — keep real SQL
+      // else inside the block — drop it (function bodies aren't schema changes)
+      if (s < segments.length - 1) inDollar = !inDollar; // crossed a `$$` marker
     }
-    if (hasMarker && (l.match(/\$\$/g) ?? []).length === 1) {
-      inDollar = true;
-      return l.replace(/\$\$.*$/, "");
-    }
-    return l;
+    return out;
   });
 }
 

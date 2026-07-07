@@ -57,3 +57,22 @@ test("a DROP mentioned only in a comment or a plpgsql string is NOT flagged", ()
   const sql = `-- we never drop table foo here\ncreate or replace function g() returns trigger language plpgsql as $$\nbegin raise exception 'drop table not allowed'; end $$;`;
   assert.deepEqual(checkMigration("0010_fn", sql), []);
 });
+
+test("a real statement AFTER a multi-line $$ body's closing marker is still scanned (logic-sweep)", () => {
+  // The closing `$$` shares its physical line with a trailing DROP — the closer must not blank the whole line.
+  const sql = `create or replace function h() returns trigger language plpgsql as $$\nbegin return new; end\n$$; alter table conversations drop column legacy_col;`;
+  const f = checkMigration("0011_fn", sql);
+  assert.ok(f.some((x) => x.rule === "no-destructive-change"), "trailing DROP after end $$; must be flagged");
+});
+
+test("a bare NOT-NULL add after a closing $$ on the same line is still flagged (logic-sweep)", () => {
+  const sql = `create function f() language plpgsql as $$\nbegin end\n$$; alter table t add column c text not null;`;
+  const f = checkMigration("0012_fn", sql);
+  assert.ok(f.some((x) => x.rule === "new-column-nullable-or-default"), "trailing NOT-NULL add after end $$; must be flagged");
+});
+
+test("a non-concurrent index after a closing $$ on the same line is still flagged (logic-sweep)", () => {
+  const sql = `create function f() language plpgsql as $$\nbegin end\n$$; create index foo_idx on foo (name);`;
+  const f = checkMigration("0013_fn", sql);
+  assert.ok(f.some((x) => x.rule === "heavy-index-concurrently"), "trailing index after end $$; must be flagged");
+});
