@@ -78,7 +78,15 @@ export function effectivePollSeconds(surface: SurfaceId, cfg: RealtimeConfigSour
     throw new Error(`surface '${surface}' is not a polled surface — it has no poll cadence`);
   }
   const fromConfig = cfg.pollIntervalSeconds(surface);
-  return fromConfig ?? spec.defaultPollSeconds;
+  if (fromConfig === undefined) return spec.defaultPollSeconds;
+  // logic-sweep fix (realtime/effectivePollSeconds): range-check the config cadence the same way the sibling
+  // effectiveThresholdPercent does — a non-positive/non-integer cadence must NOT be returned verbatim. A
+  // cadence of 0 or negative is a busy-loop-or-freeze, the exact #3 (never a silent freeze) the contract
+  // forbids; config_values is untrusted input and is validated at the resolver, not silently coerced.
+  if (!Number.isInteger(fromConfig) || fromConfig < 1) {
+    throw new Error(`poll cadence for surface '${surface}' must be a positive integer (seconds), got ${fromConfig}`);
+  }
+  return fromConfig;
 }
 
 /** Resolve the headroom threshold percent (1–100): config value if set, else default 80. */

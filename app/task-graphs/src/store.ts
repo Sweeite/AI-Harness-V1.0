@@ -351,7 +351,13 @@ export class InMemoryGraphStore implements GraphStore {
       throw new Error(ERR_EMPTY_CHANGE_REASON);
     }
     validateSteps(v.steps); // FR-5.GRP.001 — a graph is only ever versioned if it is a valid DAG.
-    const prior = await this.getCurrent(v.task_type_name);
+    // logic-sweep fix (task-graphs store.ts:354): read the prior version SYNCHRONOUSLY over this.rows with
+    // NO await between the read and the this.rows.push below. The old `await this.getCurrent(...)` yielded to
+    // the microtask queue (getCurrent is async but has no internal await), so two concurrent putVersion() calls
+    // for the same type both observed the same prior and each appended version = prior+1 → a DUPLICATE version,
+    // violating the unique(task_type_name, version) invariant this fake claims to mirror. The live DB path
+    // (supabase-store.ts) holds a `for update` row lock, so this was a fake-only fidelity gap.
+    const prior = this.currentSync(v.task_type_name);
     const row: TaskGraphVersionRow = {
       id: this.nextId(),
       task_type_name: v.task_type_name,
@@ -366,12 +372,19 @@ export class InMemoryGraphStore implements GraphStore {
     return this.clone(row);
   }
 
-  async getCurrent(taskTypeName: string): Promise<TaskGraphVersionRow | null> {
+  // Synchronous highest-version scan — the read half of putVersion, kept sync so no microtask boundary can
+  // interleave two concurrent edits between read and append (see logic-sweep fix above).
+  private currentSync(taskTypeName: string): TaskGraphVersionRow | null {
     let best: TaskGraphVersionRow | null = null;
     for (const r of this.rows) {
       if (r.task_type_name !== taskTypeName) continue;
       if (!best || r.version > best.version) best = r;
     }
+    return best;
+  }
+
+  async getCurrent(taskTypeName: string): Promise<TaskGraphVersionRow | null> {
+    const best = this.currentSync(taskTypeName);
     return best ? this.clone(best) : null;
   }
 

@@ -114,6 +114,13 @@ export class LearningLoop {
    *  refused (AC-6.OPT.001.1 / FR-6.OPT.002 — never silent auto-change). A `signal`-impact tune is allowed. */
   applyIfPermitted(id: string): { applied: boolean; reason: string } {
     const c = this.mustGet(id);
+    // logic-sweep fix: a candidate an admin explicitly REJECTED must never apply — for ANY impact. The
+    // signal branch below short-circuited before any state check, so a rejected signal candidate still
+    // auto-applied, silently overriding the admin's decision (a #2 violation; reject()'s own doc says a
+    // rejected candidate is "actioned"). State-gate rejection first, then fall through to the impact rules.
+    if (c.state === "rejected") {
+      return { applied: false, reason: "candidate was rejected by an admin — not applied" };
+    }
     if (c.impact === "gate" && c.state !== "confirmed") {
       throw new SilentAutoChangeForbidden(c.subject);
     }

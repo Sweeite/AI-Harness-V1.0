@@ -148,6 +148,24 @@ test('AC-4.CID.004.1 — the hard-limit statement references the canonical set; 
   );
 });
 
+test('AC-4.CID.004.1 — a legitimately REWORDED hard-limit statement (prohibition synonyms + inflected nouns) is accepted (logic-sweep core-record.ts:128)', () => {
+  const base = defaultLayer1('You are the finance agent.');
+  // FR-4.CID.004 permits rewording — only the REFERENCE to the canonical set is required. This statement
+  // names ≥2 canonical limits with synonym verbs ('refrain from'/'prohibited') and a natural inflection
+  // ('crossing client deployments'); it must be accepted, not hard-blocked.
+  const reworded: Layer1Content = {
+    ...base,
+    hardLimitStatement:
+      'The agent will refrain from sending external email and from crossing client deployments; these are prohibited.',
+  };
+  assert.equal(
+    validateLayer1(reworded).findings.find((f) => f.element === 'hard_limit_statement')!.present,
+    true,
+    'a reworded statement naming ≥2 canonical limits with synonyms/inflections is a valid reference to the set',
+  );
+  assert.equal(validateLayer1(reworded).saveAllowed, true, 'the reworded (valid) hard-limit statement must not hard-block the save');
+});
+
 test('AC-4.CID.005.1 — the uncertainty/conflict behaviour is stated AND references the operating principles', () => {
   const base = defaultLayer1('You are the ops agent.');
   assert.equal(validateLayer1(base).findings.find((f) => f.element === 'uncertainty_handling')!.present, true);
@@ -168,6 +186,21 @@ test('AC-4.CID.006.1 — the answer-mode instruction names all three modes AND t
   // TEETH: all three modes but NO never-dead-end rule fails.
   const noDeadEnd: Layer1Content = { ...base, answerModeSignalling: 'Tag every output Cited, Inferred, or Unknown.' };
   assert.equal(validateLayer1(noDeadEnd).findings.find((f) => f.element === 'answer_mode_signalling')!.present, false, 'omitting the never-dead-end rule fails');
+});
+
+test('AC-4.CID.006.1 — mode names hidden inside other words do NOT count as naming the three pills (logic-sweep core-record.ts:143)', () => {
+  const base = defaultLayer1('You are the research agent.');
+  // TEETH: a substring-only match is a false positive — 'cited' inside 'solicited', plus the ordinary words
+  // 'inferred'/'unknown' and a bare 'redirect', must NOT register the Cited/Inferred/Unknown instruction.
+  const substringDecoy: Layer1Content = {
+    ...base,
+    answerModeSignalling: 'We solicited feedback, inferred trends, and flagged unknown gaps — redirect to a human.',
+  };
+  assert.equal(
+    validateLayer1(substringDecoy).findings.find((f) => f.element === 'answer_mode_signalling')!.present,
+    false,
+    'mode tokens must be named as words (word-boundary), not matched as substrings inside other words',
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────

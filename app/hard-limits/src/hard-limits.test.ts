@@ -31,6 +31,7 @@ import {
   classify,
   HARD_LIMITS,
   ERR_HARD_LIMIT_APPROVE_FORBIDDEN,
+  ERR_GUARDRAIL_NON_FORWARD_TRANSITION,
   AgentDefinitionRejected,
   HardLimitSetChangeRejected,
   type ActionAttempt,
@@ -203,6 +204,70 @@ test('AC-6.HRD.003.2 — marking a hard_limit event approved is rejected everywh
   // And there is no back door: rejected/modified may be set on other types, but a hard_limit row cannot be
   // approved even after another transition attempt.
   await assert.rejects(() => gate.setStatus(out.logRowId!, 'approved'));
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// logic-sweep fix (limits.ts:136) — a non-autonomous approve with UNKNOWN provenance fails CLOSED.
+// The non-autonomous approve_queued_action branch must only allow when distinctness is PROVEN (both actors
+// present and different); a missing actor (or a self-match) blocks, never permits while asserting a
+// 'distinct authorized human' it never verified. Mirrors every other unknown-provenance branch in limits.ts.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+test('logic-sweep — non-autonomous approve with unknown/absent actor provenance fails CLOSED', () => {
+  // approvedBy omitted → provenance unknown → must block (was: allowed as a 'distinct authorized human').
+  const missingApprover = classify({ kind: 'approve_queued_action', autonomous: false, queuedBy: 'alice' });
+  assert.equal(missingApprover.blocked, true, 'unknown approver must not be allowed as a distinct human');
+  assert.equal(missingApprover.limit, 'self_approve');
+
+  // both actors omitted → still unknown → block.
+  const bothMissing = classify({ kind: 'approve_queued_action', autonomous: false });
+  assert.equal(bothMissing.blocked, true, 'no provenance at all must fail closed');
+  assert.equal(bothMissing.limit, 'self_approve');
+
+  // queuer omitted → unknown → block.
+  const missingQueuer = classify({ kind: 'approve_queued_action', autonomous: false, approvedBy: 'bob' });
+  assert.equal(missingQueuer.blocked, true, 'unknown queuer must fail closed too');
+
+  // a self-match (alice queued AND approved) → block (unchanged behaviour).
+  const selfMatch = classify({ kind: 'approve_queued_action', autonomous: false, queuedBy: 'alice', approvedBy: 'alice' });
+  assert.equal(selfMatch.blocked, true, 'a human approving their OWN queued action is a self-approval');
+  assert.equal(selfMatch.limit, 'self_approve');
+
+  // TEETH: a genuinely distinct, fully-provenanced human approval is STILL allowed (not a tautological block).
+  const distinct = classify({ kind: 'approve_queued_action', autonomous: false, queuedBy: 'alice', approvedBy: 'bob' });
+  assert.equal(distinct.blocked, false, 'a proven distinct-human approval is permitted');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// logic-sweep fix (store.ts:247) — the fake setStatus is forward-only, matching the live append-only trigger.
+// The reference model must reject the same non-forward transitions the live silo rejects (pending → resolution
+// only), so a caller test green against the fake cannot pass a backward move the live DB would refuse.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+test('logic-sweep — fake setStatus rejects backward transitions (forward-only parity with the live trigger)', async () => {
+  const { sink } = recordingSink();
+  const gate = new InMemoryHardLimitGate();
+  // Enforce a hit to mint a row, then resolve a NON-hard_limit surrogate. We use enforce for a hard_limit row
+  // but need a non-hard_limit row to exercise rejected→pending, so drive an anomaly-typed row via a fresh gate.
+  const out = await gate.enforce(SEVEN_HITS.record_delete, sink, T0);
+  const id = out.logRowId!;
+
+  // A hard_limit row is pending; a forward move to 'rejected' is allowed.
+  const rejected = await gate.setStatus(id, 'rejected');
+  assert.equal(rejected.status, 'rejected');
+
+  // Now the row is 'rejected' (non-pending). A backward move rejected→pending must FAIL LOUD, not silently
+  // rewrite to pending (which the live append-only trigger would reject).
+  await assert.rejects(
+    () => gate.setStatus(id, 'modified'),
+    (e: Error) => e.message === ERR_GUARDRAIL_NON_FORWARD_TRANSITION,
+    'a second (non-pending → resolution) transition must be rejected as non-forward',
+  );
+
+  // A 'pending' target on an already-resolved row is a no-op that returns the current row (mirrors the live
+  // adapter's pending branch) — it must NOT rewrite the row back to pending.
+  const noop = await gate.setStatus(id, 'pending');
+  assert.equal(noop.status, 'rejected', 'a pending target is a no-op; it must not resurrect a resolved row to pending');
+  const after = await gate.getRow(id);
+  assert.equal(after!.status, 'rejected', 'the stored row stays rejected after a pending no-op');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────

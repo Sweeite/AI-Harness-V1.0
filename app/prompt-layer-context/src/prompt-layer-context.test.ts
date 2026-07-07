@@ -286,6 +286,29 @@ test('AC-4.TSK.002.1 — instantiateTemplate never hands back an INCOMPLETE Laye
   assert.equal(validateLayer4(good).complete, true);
 });
 
+test('AC-4.TSK.002.1 — a supplied parameter VALUE that itself contains braces is NOT mistaken for an unfilled slot leak', () => {
+  // logic-sweep [MINOR] context.ts:264 — the belt-and-braces leak guard re-scanned the FILLED bodies with
+  // /\{[a-zA-Z_][a-zA-Z0-9_]*\}/ and could not tell an unfilled slot from operator-supplied brace content
+  // in a parameter value. Every slot IS supplied here, so this is a legitimate, complete instantiation.
+  const template: TaskTemplate = {
+    instruction: 'Use theme {t}.',
+    output_format: 'A {t} styled report.',
+    constraints: [],
+  };
+  const layer4 = instantiateTemplate(template, { t: '{dark}' });
+  assert.equal(layer4.instruction, 'Use theme {dark}.');
+  assert.equal(layer4.output_format, 'A {dark} styled report.');
+
+  // A genuinely-unfilled slot (a template body carrying a `{slot}` that fill left behind) must STILL throw.
+  // Simulate via a param value that re-introduces a DIFFERENT slot name that no fill pass will touch: the
+  // guard must not police that (it is a value, not a slot), so this stays a legitimate instantiation too.
+  const withJson = instantiateTemplate(
+    { instruction: 'Emit {payload}', output_format: 'json {payload}', constraints: [] },
+    { payload: '{"k": "v"}' },
+  );
+  assert.equal(withJson.instruction, 'Emit {"k": "v"}');
+});
+
 test('AC-4.TSK.003.1 — a task-template edit follows version-on-change + mandatory change_reason + non-destructive rollback', async () => {
   const store = new InMemoryContentStore();
 

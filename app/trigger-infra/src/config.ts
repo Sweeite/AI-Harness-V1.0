@@ -105,7 +105,9 @@ export function matchesCondition(cond: TriggerCondition, ev: NormalizedEvent): b
       return actual !== undefined && actual !== cond.value;
     case 'in': {
       if (actual === undefined) return false;
-      const set = (cond.value ?? '').split(',').map((s) => s.trim());
+      // logic-sweep fix: filter empty segments to match save-time validateRule (L84), else a stray
+      // comma (',vip') would let an empty-string field spuriously match ('' ∈ ['','vip']) — #2 fire-on-wrong-event.
+      const set = (cond.value ?? '').split(',').map((s) => s.trim()).filter((s) => s !== '');
       return set.includes(actual);
     }
     default: {

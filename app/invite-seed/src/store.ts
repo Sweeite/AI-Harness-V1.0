@@ -149,8 +149,10 @@ export interface IssueOutcome {
  *  a concurrent boot won). Never throws on a lost race — a lost race is a clean no-op (FR-0.SEED.003). */
 export interface SeedOutcome {
   created: boolean;
-  /** the seeded Super Admin profile id (present whether created here or already-present). */
-  superAdminProfileId: string;
+  /** the seeded Super Admin profile id — present when created here or already-present. ABSENT on a lost_race:
+   *  a losing concurrent boot runs before the winner has written the user_roles row, so the real id is not yet
+   *  resolvable; we omit it rather than fabricate a bogus non-id ('unknown') that a caller might trust (#1). */
+  superAdminProfileId?: string;
   /** 'created' | 'already_present' | 'lost_race' — the three no-second-admin outcomes. */
   reason: 'created' | 'already_present' | 'lost_race';
   /** the send result of the one-time setup link (only attempted on the winning creation). */
@@ -435,10 +437,21 @@ export class InMemoryInviteSeedStore implements InviteSeedStore {
     // revokeInvite's used-invite no-op.
     if (old.state === 'used') throw new Error(ERR_TOKEN_INVALID);
     // A fresh ≤24h link for the SAME invitee/profile (FR-0.INV.006.2). The old token is retired.
+    const wasRevoked = old.state === 'revoked';
     if (old.state === 'pending') old.state = 'expired';
     const fresh = this.mintInvite(old.email, old.accountType, old.origin, old.issuedBy, now, undefined, old.profileId);
+    // logic-sweep fix: derive the audit label from the PRIOR state so the append-only access_audit reflects the
+    // real reason the link was reissued (#1). A deliberately revoked source invite must not be mislabelled as
+    // 'invite_expired'/'expired → re-issued' — that corrupts the audit account of an intentional revoke.
     this.writeAudit(
-      { audit_type: 'invite_expired', actor_identity: old.issuedBy ?? 'service_role', actor_type: old.issuedBy ? 'user' : 'system', action: 'reissue_invite', target_type: 'invite', reason: 'expired → re-issued' },
+      {
+        audit_type: wasRevoked ? 'invite_revoked' : 'invite_expired',
+        actor_identity: old.issuedBy ?? 'service_role',
+        actor_type: old.issuedBy ? 'user' : 'system',
+        action: 'reissue_invite',
+        target_type: 'invite',
+        reason: wasRevoked ? 'revoked → re-issued' : 'expired → re-issued',
+      },
       now,
     );
     const { sent, reason } = await this.deliver(fresh, smtp, now);
@@ -496,7 +509,10 @@ export class InMemoryInviteSeedStore implements InviteSeedStore {
         { audit_type: 'seed_skipped', actor_identity: 'service_role', actor_type: 'system', action: 'seed_lost_race', target_type: 'user', reason: 'atomic guard held by concurrent boot' },
         now,
       );
-      return { created: false, superAdminProfileId: existing ?? 'unknown', reason: 'lost_race' };
+      // logic-sweep fix: do NOT fabricate a bogus 'unknown' id. The winner hasn't written user_roles yet, so
+      // `existing` is legitimately null here; omit the field (contract now optional on lost_race) rather than
+      // hand a caller a non-id it might trust (#1). The winning run returns the real id.
+      return { created: false, reason: 'lost_race', ...(existing ? { superAdminProfileId: existing } : {}) };
     }
 
     this.seedLockHeld = true;

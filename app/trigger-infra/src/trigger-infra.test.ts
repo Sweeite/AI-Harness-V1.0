@@ -151,6 +151,11 @@ test('FR-3.TRIG.002 — condition ops incl. missing-field safety (no throw, no f
   assert.equal(matchesCondition({ field: 'tag', op: 'exists' }, withTag), true);
   assert.equal(matchesCondition({ field: 'tag', op: 'exists' }, noTag), false);
   assert.equal(matchesCondition({ field: 'tag', op: 'in', value: 'a,vip,b' }, withTag), true);
+  // logic-sweep regression: a stray comma in the 'in' set (',vip') passes save-time validateRule
+  // (which filters empty segments) but must NOT let an empty-string field spuriously match at runtime.
+  const emptyTag = { ...base, fields: { tag: '' } };
+  assert.equal(validateRule('ghl', 'ContactCreate', [{ field: 'tag', op: 'in', value: ',vip' }], 'task').ok, true);
+  assert.equal(matchesCondition({ field: 'tag', op: 'in', value: ',vip' }, emptyTag), false); // empty segment must not match ''
 });
 
 // ── FR-3.TRIG.003 ────────────────────────────────────────────────────────────────────────────────────

@@ -487,6 +487,11 @@ export class InMemoryApprovalWorkflow implements ApprovalWorkflow {
     const row = this.rows.get(rowId);
     if (!row) throw new Error(`guardrail_log row ${rowId} not found`);
     const m = this.meta.get(rowId)!;
+    // logic-sweep fix (state-machine-hole): a hold may only be placed on a still-pending item. Without this a
+    // soft row that has already auto-run (autoRunElapsedSoft leaves m.tier='soft'/floored=false) or been
+    // rejected would pass the tier guard below and get silently re-annotated + meta-flipped on a terminal row —
+    // a forward-only/append-only violation the rest of the module (resolve, autoRunElapsedSoft) already forbids.
+    if (row.status !== 'pending') throw new Error(ERR_RESOLVE_NOT_PENDING(row.status));
     // AC-6.APR.003.3: one-directional. Only a soft (reversible, non-floored) item may be held-and-promoted.
     if (m.tier !== 'soft' || m.floored) throw new Error(ERR_HOLD_ONLY_SOFT);
     m.heldForFullReview = true;
@@ -705,6 +710,15 @@ export class InMemoryApprovalWorkflow implements ApprovalWorkflow {
       // AC-6.ESC.004.3 / AC-NFR-OBS.007.1: BOTH wait kinds are covered — flagged AND awaiting_approval.
       const ageSeconds = now - Math.floor(Date.parse(row.created_at) / 1000);
       if (ageSeconds < threshold) continue;
+      // logic-sweep fix (off-by-one): re-escalation is gated on time since the LAST escalation, not just on
+      // created_at. Without this every subsequent sweep re-fired once the item first crossed the threshold —
+      // spamming notifications and widening to Super-Admin within one sweep interval instead of after a genuine
+      // second escalation window. The escalate-don't-abandon contract (component-07-observability.md L219) fires
+      // the repeat escalation only "at the end of an escalation window" — a full window must elapse each time.
+      if (row.escalated_at !== null) {
+        const sinceLast = now - Math.floor(Date.parse(row.escalated_at) / 1000);
+        if (sinceLast < threshold) continue;
+      }
 
       m.escalations += 1;
       // AC-6.ESC.004.1: set escalated_at + emit; NEVER auto-resolve, NEVER drop. Status stays pending.

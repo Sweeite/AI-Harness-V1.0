@@ -299,7 +299,10 @@ export class AlertEngine {
       event_type: EVENT_TYPE_FOR[row.type],
       entity_ids: null,
       summary: `Alert escalated: no ack within ${windowMs} ms → secondary alert to ${nextRecipient}.`,
-      payload: { primary: notificationId, secondary: secondary.id, step: nextStep },
+      // logic-sweep fix: audit the step ACTUALLY fired (fireStep), not the pre-scan nextStep. When a leading
+      // chain entry is unresolvable the scan advances fireStep past it; recording nextStep understated the
+      // reached step and contradicted the value persisted on the row/secondary (escalation-off-by-one finding).
+      payload: { primary: notificationId, secondary: secondary.id, step: fireStep },
       duration_ms: null,
       cost_tokens: null,
       cost_unknown: false,
@@ -307,7 +310,9 @@ export class AlertEngine {
       redacted_at: null,
       created_at: this.iso(nowMs),
     });
-    return { ...secondary, escalation_state: `step:${nextStep}` };
+    // logic-sweep fix: return the step ACTUALLY fired (fireStep), matching what was persisted on line 289 and
+    // stamped on the primary — not the pre-scan nextStep, which contradicts the row when a leading entry is skipped.
+    return { ...secondary, escalation_state: `step:${fireStep}` };
   }
 
   // ── internals ──────────────────────────────────────────────────────────────────────────────────────

@@ -5,7 +5,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -183,6 +184,41 @@ test('AC-4.STO.001.1 — the prompt_layers schema carries the listed fields and 
     assert.match(plBlock, new RegExp(`\\b${col}\\b`), `prompt_layers should declare ${col}`);
   }
   assert.doesNotMatch(plBlock, /client_slug/, 'prompt_layers must NOT carry client_slug (OD-096 / FR-10.ISO.001)');
+});
+
+test('logic-sweep — the version-trigger gate rejects a migration whose BEFORE trigger drops DELETE coverage (#1 knowledge-loss)', () => {
+  // Regression for the logic-sweep finding (prompt-store/index.ts:120): the old `(update|delete)`
+  // alternation passed a trigger firing on UPDATE only, even though DELETE is the sole role-independent
+  // knowledge-loss guard (`revoke delete` is bypassed for service_role). Feed runCheck a mutated 0004
+  // whose trigger event clause is `before insert or update` (DELETE removed) and assert the gate fires.
+  const dir = mkdtempSync(join(tmpdir(), 'prompt-store-check-'));
+  for (const f of ['0001_baseline.sql', '0002_rls_default_deny.sql', '0004_prompt_version_discipline.sql']) {
+    try {
+      copyFileSync(join(SILO_MIGRATIONS, f), join(dir, f));
+    } catch {
+      // 0002 is not read by runCheck; a missing optional file is fine.
+    }
+  }
+  const disc = readFileSync(join(SILO_MIGRATIONS, '0004_prompt_version_discipline.sql'), 'utf8');
+  const regressed = disc.replace(
+    /before\s+insert\s+or\s+update\s+or\s+delete\s+on\s+public\.prompt_layers/i,
+    'before insert or update on public.prompt_layers',
+  );
+  assert.notEqual(regressed, disc, 'the mutation should have altered the trigger event clause');
+  writeFileSync(join(dir, '0004_prompt_version_discipline.sql'), regressed);
+
+  const findings = runCheck(dir);
+  assert.ok(
+    findings.some((f) => f.gate === 'version-trigger'),
+    `expected a version-trigger finding on a DELETE-uncovered trigger; got ${JSON.stringify(findings)}`,
+  );
+
+  // Control: the un-mutated corpus still passes the gate (no false positive on the real 0004).
+  assert.deepEqual(
+    runCheck(SILO_MIGRATIONS).filter((f) => f.gate === 'version-trigger'),
+    [],
+    'the shipped 0004 (insert or update or delete) must still pass the version-trigger gate',
+  );
 });
 
 test('AC-4.STO.002.1 — a Layer-1 read comes only from prompt_layers layer=core; nothing reads agents.system_prompt', async () => {

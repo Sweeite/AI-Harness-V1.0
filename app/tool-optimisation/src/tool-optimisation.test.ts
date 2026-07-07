@@ -223,6 +223,29 @@ test('AC-3.OPT.003.1 batch-capable connector groups reads within the documented 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────
+// AC-3.OPT.003.1 (logic-sweep) — a degenerate batchable cap (limit < 1) FAILS LOUD on every
+// boundary function, matching planBatches. A limit:0 batchable connector violates the documented
+// contract (limit = max reads per batch); accepting it silently → clampBatch returns accepted=[]
+// (no progress) and assertWithinLimit rubber-stamps an empty batch — a silent degenerate result
+// (#3: never fail silently). All three siblings must reject it consistently.
+// ─────────────────────────────────────────────────────────────────────────────────────
+test('AC-3.OPT.003.1 a degenerate batchable cap (limit < 1) is rejected loud, not accepted silently', () => {
+  // planBatches already fails loud — establishes the contract the siblings must match.
+  assert.throws(() => planBatches(10, { batchable: true, limit: 0 }), /limit ≥ 1/);
+
+  // assertWithinLimit must NOT silently accept a batch against a limit:0 batchable cap.
+  assert.throws(() => assertWithinLimit(0, { batchable: true, limit: 0 }), OverLimitBatchError);
+  assert.throws(() => assertWithinLimit(5, { batchable: true, limit: 0 }), OverLimitBatchError);
+  assert.throws(() => assertWithinLimit(5, { batchable: true, limit: -3 }), OverLimitBatchError);
+  assert.throws(() => assertWithinLimit(5, { batchable: true, limit: 2.5 }), OverLimitBatchError);
+
+  // clampBatch must NOT silently return accepted=[] / no progress against a limit:0 batchable cap.
+  const reads = Array.from({ length: 130 }, (_, i) => `r${i}`);
+  assert.throws(() => clampBatch(reads, { batchable: true, limit: 0 }), OverLimitBatchError);
+  assert.throws(() => clampBatch(reads, { batchable: true, limit: -1 }), OverLimitBatchError);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────
 // AC-3.OPT.004.1 — missing tool → doable part completes; no hard fail; no silent partial.
 // ─────────────────────────────────────────────────────────────────────────────────────
 test('AC-3.OPT.004.1 a missing tool completes the doable part and flags the gap (no hard fail, no silent partial)', async () => {

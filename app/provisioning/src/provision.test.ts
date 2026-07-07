@@ -82,6 +82,28 @@ test("AC-10.PRV.001.3 — a missing secret fails loud, and NO half-silo is left 
   assert.equal(await infra.getDeploymentStatus("acme"), "none", "no deploy on failure");
 });
 
+test("re-provision of a silo the lifecycle has moved past `initialising` fails loud, not `✅ provisioned`", async () => {
+  // logic-sweep fix (provision.ts Step 7): an operator re-runs provision on a silo an admin has
+  // since set to a terminal lifecycle status (`frozen`/`offboarding`/`active`, owned by ISSUE-012).
+  // Every mutating step is idempotent + skips, so Step 7 is the only guard — it must NOT report
+  // success on an abnormal status (#3 false-success).
+  for (const terminal of ["frozen", "offboarding", "active"] as const) {
+    const infra = new DryRunInfra();
+    await provision(cfg, fullSecrets(), infra); // silo now exists at `initialising`, deployed
+    // admin moves the silo on in its lifecycle (ISSUE-012), out of band from provisioning.
+    infra.rows.get("acme")!.status = terminal;
+
+    await assert.rejects(
+      () => provision(cfg, fullSecrets(), infra),
+      (e: unknown) =>
+        e instanceof ProvisioningError &&
+        e.step === "verify" &&
+        new RegExp(terminal).test(e.message),
+      `re-provision on a ${terminal} silo must fail the verify gate, not resolve success`,
+    );
+  }
+});
+
 test("partial failure then re-run converges (deploy step dies once, next run finishes)", async () => {
   const infra = new DryRunInfra();
   infra.failOnce = "triggerFirstDeploy";

@@ -166,7 +166,11 @@ export class SupabaseRetentionStore implements RetentionStore {
     // table) proven by the index.ts lint offline; at runtime an attempt to write client identity into a
     // client silo is a bug we still reject loudly rather than let the DB silently ignore a bad column.
     for (const col of Object.keys(row)) {
-      if (col === 'client_slug' || col === 'client_id' || col === 'tenant_id' || col === 'tenant') {
+      // logic-sweep fix (parity with store.ts:209): case-fold the key — Postgres folds unquoted
+      // identifiers to lowercase, so `Client_Slug` denotes the forbidden `client_slug` column. Mirror
+      // the DDL lint's `i`-flag (index.ts IDENTITY_COLUMNS); case-sensitive equality was a false-negative.
+      const folded = col.toLowerCase();
+      if (folded === 'client_slug' || folded === 'client_id' || folded === 'tenant_id' || folded === 'tenant') {
         throw new RetentionError(
           ERR_CLIENT_SLUG,
           `application table '${table}' may not carry client-identity column '${col}' (FR-10.ISO.001 / ADR-001 §3)`,

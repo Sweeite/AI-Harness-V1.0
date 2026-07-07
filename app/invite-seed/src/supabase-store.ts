@@ -524,7 +524,9 @@ export class SupabaseInviteSeedStore implements InviteSeedStore {
       const msg = (e as Error).message;
       if (/duplicate key|unique/i.test(msg)) {
         await this.writeAudit(this.pool, 'seed_skipped', 'service_role', 'system', 'seed_lost_race', 'unique(user_id) backstop fired').catch(() => {});
-        return { created: false, superAdminProfileId: 'unknown', reason: 'lost_race' };
+        // logic-sweep fix (parity with the fake): omit superAdminProfileId on lost_race — the contract makes it
+        // optional — rather than fabricating a bogus 'unknown' id a caller might trust (#1). The winner returns it.
+        return { created: false, reason: 'lost_race' };
       }
       throw e;
     } finally {

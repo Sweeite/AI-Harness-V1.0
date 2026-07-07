@@ -132,19 +132,31 @@ export function hasHardLimitStatement(statement: string): boolean {
   // "follow the rules" is not a reference). Kept as a floor so rewording is allowed but emptiness/vagueness
   // is caught (FR-4.CID.004 "referencing the canonical set").
   const named = CANONICAL_HARD_LIMITS.filter((lim) => {
-    // match on the salient verb+object of each canonical limit, tolerant of rewording
-    const key = lim.replace(/^never\s+/, '').split(/[\s/]+/).slice(0, 2).join(' ');
-    return hay.includes(key);
+    // match on the salient verb+object of each canonical limit, tolerant of rewording.
+    // logic-sweep fix (core-record.ts:128): match each token on a word-STEM boundary rather than a raw
+    // substring of the joined 2-word key, so natural inflections ('crossing client', 'transacting') still
+    // count — 'cross client' as a substring did not match 'crossing client deployments'. FR-4.CID.004
+    // permits rewording; only the reference to the canonical set is required.
+    const tokens = lim.replace(/^never\s+/, '').split(/[\s/]+/).slice(0, 2);
+    return tokens.every((tok) => new RegExp(`\\b${tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(hay));
   }).length;
-  return named >= 2 && /\b(hard limit|never|must not|forbidden|canonical)\b/.test(hay);
+  // logic-sweep fix (core-record.ts:128): accept prohibition synonyms (do not / must not / prohibited /
+  // forbidden / shall not / refrain / prohibit) so a reworded statement is not falsely rejected.
+  return named >= 2 && /\b(hard limit|never|must not|do not|shall not|prohibit|prohibited|forbidden|refrain|canonical)\b/.test(hay);
 }
 
 /** (f) FR-4.CID.006 — names all three modes (Cited/Inferred/Unknown) AND the never-dead-end rule. */
 export function hasAnswerModeInstruction(instruction: string): boolean {
   if (!nonEmpty(instruction)) return false;
   const hay = instruction.toLowerCase();
-  const allModes = ANSWER_MODES.every((m) => hay.includes(m.toLowerCase()));
-  const neverDeadEnd = /(never dead-?end|redirect|redirects productively|do not dead-?end|never present inference as fact)/.test(hay);
+  // logic-sweep fix (core-record.ts:143): match each mode pill on a WORD boundary, not includes() — a raw
+  // substring test false-positives ('cited' inside 'solicited', 'inferred'/'unknown' as ordinary words), so
+  // a string that never names the three pills was reported present, defeating the completeness flag.
+  const allModes = ANSWER_MODES.every((m) => new RegExp(`\\b${m.toLowerCase()}\\b`).test(hay));
+  // logic-sweep fix (core-record.ts:143): require a real never-dead-end rule, not a bare 'redirect' word
+  // (which co-occurs incidentally); 'redirect' only counts when tied to the productive/never-dead-end intent.
+  const neverDeadEnd =
+    /(never dead-?end|do not dead-?end|redirect(?:s)? productively|redirect productively|never present inference as fact)/.test(hay);
   return allModes && neverDeadEnd;
 }
 

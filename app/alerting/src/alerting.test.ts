@@ -706,6 +706,42 @@ test("AC-7.ALR.005.1 — when the routed-role holder != chain[0], the first esca
   assert.equal(third!.recipient, "u-oncall-2");
 });
 
+// AC-7.ALR.005.1 (returned-DTO / audit step fidelity) — when a leading chain entry does NOT resolve, the
+// forward-scan skips it and fires a LATER step. The returned notification's escalation_state AND the audit
+// event_log payload must report the step ACTUALLY fired (= the value persisted), never the pre-scan index.
+// logic-sweep fix regression: the old code returned/audited `step:nextStep` (pre-scan), understating the
+// reached step and contradicting the row persisted for the same escalation.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+test("AC-7.ALR.005.1 — a skipped leading chain entry: returned + audited step match the actually-fired (persisted) step", async () => {
+  // routed role `admin` → primary u-admin. chain[0] is a role-shaped dead string nobody holds; the first
+  // resolvable entry is chain[1]=u-oncall-2, so the escalation fires at step 1 (chain[0] skipped).
+  const cfg = healthyConfig({
+    alert_routing_rules: { task_failure_spike: { role: "admin", channels: [] } },
+    escalation_contacts: { admin: ["dead-role" /* unresolvable */, "u-oncall-2"] },
+  });
+  const { engine, notifications, eventLog, clock } = makeEngine(cfg);
+  const sig = emptySignals();
+  sig.taskFailureTimestamps = [T0, T0, T0];
+  const { notification } = await engine.deliver(evaluateRules(sig, THRESHOLDS, T0)[0]!);
+  assert.equal(notification.recipient, "u-admin");
+  const WINDOW = 900_000;
+  clock.advance(WINDOW + 1);
+  const secondary = await engine.runEscalation(notification.id, WINDOW);
+  assert.ok(secondary);
+  // it fired the skipped-past step 1 recipient...
+  assert.equal(secondary!.recipient, "u-oncall-2");
+  // teeth 1: the RETURNED DTO's escalation_state is step:1 (the fired step), NOT step:0 (the pre-scan index).
+  assert.equal(secondary!.escalation_state, "step:1");
+  assert.notEqual(secondary!.escalation_state, "step:0");
+  // teeth 2: the returned DTO agrees with the row actually PERSISTED for the same secondary.
+  const persisted = await notifications.get(secondary!.id);
+  assert.equal(secondary!.escalation_state, persisted!.escalation_state);
+  // teeth 3: the audit event_log payload records the fired step (1), not the pre-scan index (0).
+  const auditRow = (await eventLog.all()).find((l) => (l.payload as { secondary?: string })?.secondary === secondary!.id);
+  assert.ok(auditRow);
+  assert.equal((auditRow!.payload as { step?: number }).step, 1);
+});
+
 // ── extra unit teeth on the quiet-window wrap math (supports .009.2 / .008.2) ────────────────────────
 test("quiet-window wrap math — a window crossing midnight suppresses on both sides", () => {
   const q = { enabled: true, start_min: 1320 /* 22:00 */, end_min: 360 /* 06:00 */ };

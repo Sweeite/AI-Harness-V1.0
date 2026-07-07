@@ -69,7 +69,9 @@ export function redact(value: unknown, knownTokens: readonly string[] = []): unk
       if (keyIsSecret || looksLikeToken(v) || known.has(v)) return REDACTED;
       return v;
     }
-    if (Array.isArray(v)) return v.map((x) => walk(x, false));
+    // logic-sweep fix: propagate the secret-key context into array elements (was hard-reset to false),
+    // so a prefix-less token in an array under a secret-named key is still scrubbed by the key-name rule.
+    if (Array.isArray(v)) return v.map((x) => walk(x, keyIsSecret));
     if (v && typeof v === 'object') {
       const out: Record<string, unknown> = {};
       for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
@@ -94,7 +96,9 @@ export function findTokenLeaks(value: unknown, knownTokens: readonly string[] = 
       return;
     }
     if (Array.isArray(v)) {
-      v.forEach((x, i) => walk(x, `${path}[${i}]`, false));
+      // logic-sweep fix: propagate keyIsSecret into elements (twin of the redact fix) so the leak-guard
+      // does not silently pass a prefix-less token wrapped in an array under a secret-named key (#3).
+      v.forEach((x, i) => walk(x, `${path}[${i}]`, keyIsSecret));
       return;
     }
     if (v && typeof v === 'object') {

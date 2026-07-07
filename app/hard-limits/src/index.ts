@@ -23,6 +23,7 @@ import {
 } from './limits.ts';
 import {
   AgentDefinitionRejected,
+  ERR_GUARDRAIL_NON_FORWARD_TRANSITION,
   ERR_HARD_LIMIT_APPROVE_FORBIDDEN,
   HardLimitSetChangeRejected,
   InMemoryHardLimitGate,
@@ -55,6 +56,7 @@ export {
   AgentDefinitionRejected,
   HardLimitSetChangeRejected,
   ERR_HARD_LIMIT_APPROVE_FORBIDDEN,
+  ERR_GUARDRAIL_NON_FORWARD_TRANSITION,
   type HardLimitGate,
   type AlertSink,
   type HardLimitAlert,

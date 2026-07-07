@@ -60,6 +60,19 @@ export interface SuperAdminAuthStore {
   getSoftLock(dimension: 'account' | 'mfa', account: string): Promise<SoftLockState>;
   /** Persist an updated soft-lock state for an account in a given dimension. */
   setSoftLock(dimension: 'account' | 'mfa', account: string, state: SoftLockState): Promise<void>;
+  /**
+   * logic-sweep fix (login.ts:61): atomic read-modify-write of a soft-lock counter. `apply` is the pure
+   * transition (recordFailure) run against the CURRENT stored state, and the returned `next` is persisted —
+   * all in one uninterrupted step, so two concurrent failed attempts on the same account can never both read
+   * the same snapshot, each compute the same next, and clobber each other (the lost-update that let an
+   * attacker land more than `threshold` guesses before the lock trips — weakening the #2 defense). Returns
+   * whatever the transition returns (the FailureResult), so the caller still learns the trip edge.
+   */
+  updateSoftLock<R extends { next: SoftLockState }>(
+    dimension: 'account' | 'mfa',
+    account: string,
+    apply: (current: SoftLockState) => R,
+  ): Promise<R>;
 }
 
 // ───────────────────────────────────────────────────────────────────────────────────
@@ -107,5 +120,19 @@ export class InMemorySuperAdminAuthStore implements SuperAdminAuthStore {
 
   async setSoftLock(dimension: 'account' | 'mfa', account: string, state: SoftLockState): Promise<void> {
     this.softLocks.set(this.key(dimension, account), { ...state });
+  }
+
+  async updateSoftLock<R extends { next: SoftLockState }>(
+    dimension: 'account' | 'mfa',
+    account: string,
+    apply: (current: SoftLockState) => R,
+  ): Promise<R> {
+    // logic-sweep fix (login.ts:61): read → transition → write happen with NO `await` between them, so the
+    // whole read-modify-write is uninterruptible on the single-threaded event loop — no interleaving window.
+    const key = this.key(dimension, account);
+    const current = this.softLocks.get(key) ?? { consecutive_failures: 0, locked_until: null };
+    const result = apply({ ...current });
+    this.softLocks.set(key, { ...result.next });
+    return result;
   }
 }

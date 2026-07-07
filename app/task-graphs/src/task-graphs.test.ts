@@ -172,6 +172,25 @@ test('AC-5.GRP.002.1 — editing a graph creates a NEW version (prior retained) 
   assert.equal((await graphs.listVersions('triage')).length, 2, 'rejected saves do not append');
 });
 
+// ── logic-sweep regression (store.ts:354) — concurrent edits must NOT produce duplicate versions. ────────
+// Two putVersion() calls for the same type fired without awaiting between them used to both observe the same
+// prior (the old `await this.getCurrent(...)` yielded to the microtask queue), each computing prior+1 → a
+// DUPLICATE version, violating unique(task_type_name, version). The DB path holds a `for update` row lock; the
+// in-memory reference model must uphold the same invariant so a concurrency test proves the DDL contract.
+test('logic-sweep: concurrent putVersion for the same type yields distinct monotone versions (no dup)', async () => {
+  const graphs = new InMemoryGraphStore();
+  await graphs.putVersion({ task_type_name: 'concur', steps: linearSteps(2), change_reason: 'init' }, NOW);
+
+  // fire two edits concurrently — no await between them — then settle both.
+  const pA = graphs.putVersion({ task_type_name: 'concur', steps: linearSteps(3), change_reason: 'edit A' }, NOW + 1);
+  const pB = graphs.putVersion({ task_type_name: 'concur', steps: linearSteps(4), change_reason: 'edit B' }, NOW + 2);
+  await Promise.all([pA, pB]);
+
+  const versions = (await graphs.listVersions('concur')).map((r) => r.version);
+  assert.deepEqual(versions, [1, 2, 3], 'three versions, strictly monotone — no duplicate version');
+  assert.equal(new Set(versions).size, versions.length, 'unique(task_type_name, version) upheld under concurrency');
+});
+
 // ── AC-5.GRP.003.1 — stable per-task/per-step key; a retried completed step dedups (no re-fire). ────────
 test('AC-5.GRP.003.1 — stable idempotency keys; a retried completed step is a no-op (dedup)', async () => {
   // stability: same inputs → same key across calls.

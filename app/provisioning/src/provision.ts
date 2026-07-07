@@ -179,10 +179,18 @@ export async function provision(
 
   // ── Step 7: confirm status reached `initialising` (loud if the seed silently didn't land) ──
   const finalStatus = await infra.getDeploymentStatus(cfg.clientSlug);
-  if (finalStatus === "none") {
+  // logic-sweep fix (Step 7 verify): assert the expected terminal status EXPLICITLY, not just
+  // `!== "none"`. The seed leaves a fresh silo at `initialising`; the lifecycle transitions
+  // (initialising→active/frozen/offboarding) are owned out-of-band by ISSUE-012. If provision is
+  // re-run on a silo an admin has since moved past `initialising`, every mutating step skips
+  // idempotently, so this is the only guard — a loose `=== "none"` check would report
+  // `✅ provisioned` on a frozen/offboarding/active silo (a #3 false-success on an abnormal state).
+  if (finalStatus !== "initialising") {
     throw new ProvisioningError(
       "verify",
-      "deploy triggered but status never reached `initialising` — seed did not complete; not marking ready",
+      finalStatus === "none"
+        ? "deploy triggered but status never reached `initialising` — seed did not complete; not marking ready"
+        : `silo status is \`${finalStatus}\`, not \`initialising\` — this silo has moved past provisioning in its lifecycle (ISSUE-012); refusing to report success on a re-provision`,
     );
   }
 

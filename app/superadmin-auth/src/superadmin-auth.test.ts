@@ -338,6 +338,34 @@ test('AC-0.AUTH.009(teeth) — after the lock elapses, ONE failure does not re-t
   assert.equal(r.tripped, true, 'the account tolerates a fresh `threshold` streak before re-locking');
 });
 
+// ── AC-NFR-SEC.009.1(teeth) — the per-account counter survives CONCURRENT same-account failures ──────
+// logic-sweep regression (login.ts:61): the soft-lock update was a non-atomic read-modify-write
+// (getSoftLock → recordFailure → setSoftLock straddling awaits). Two concurrent failed attempts on the
+// same account both read the same snapshot and the second setSoftLock overwrote the first — one failure
+// silently lost, letting parallel credential-stuffing (the exact multi-IP threat AF-077 closes) climb the
+// counter slower than the true failure count and out-run the threshold before the lock trips. The store now
+// increments atomically; every concurrent failure must be counted, so the lock trips at exactly `threshold`.
+test('AC-NFR-SEC.009.1(teeth) — concurrent same-account failures each count (no lost update out-runs the threshold)', async () => {
+  const store = new InMemorySuperAdminAuthStore();
+  const account = externalAdmin();
+  const N = CFG.account_lockout_threshold; // fire exactly `threshold` failed attempts, all at once
+  // Fire them WITHOUT awaiting between each — the read-modify-write cycles interleave (the lost-update window).
+  const results = await Promise.all(
+    Array.from({ length: N }, (_, i) => grantPassword(store, account, `parallel-guess-${i}`)),
+  );
+  // Every attempt was a genuine failure (no session), so all `threshold` increments must land.
+  assert.ok(results.every((r) => !r.ok), 'no parallel guess ever succeeds');
+  const state = await store.getSoftLock('account', account.user_id);
+  assert.equal(
+    state.consecutive_failures, N,
+    'all concurrent failures are counted — none is silently lost (pre-fix this under-counts, e.g. 1)',
+  );
+  // Because the full `threshold` was reached, the lock must have tripped — the attack is halted, not out-run.
+  assert.notEqual(state.locked_until, null, 'the account is locked once the threshold is genuinely reached');
+  // And the trip fired the Super-Admin alert exactly as the sequential path would (never a silent under-count).
+  assert.ok(store.alerts.some((a) => a.kind === 'account_lockout'), 'the concurrent-failure trip still alerts (#3)');
+});
+
 // ── config-key parity + coherence guard (§8 step 1; keys mirror config-registry.md §auth) ────────────
 test('config — the seven auth.* keys are present with registry defaults and validate as coherent', () => {
   const keys = Object.keys(DEFAULT_SUPERADMIN_AUTH_CONFIG).sort();

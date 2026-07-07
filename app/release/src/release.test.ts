@@ -67,6 +67,23 @@ test("AC-10.DEP.001.2 — the real CI workflow gates merges via the test suite a
   assert.match(withDeploy.reason, /never deploy/);
 });
 
+test("AC-10.DEP.001.2 (logic-sweep) — a NON-Railway deployer in raw workflow text is caught by the scanner, not waved through", () => {
+  // Regression for the DEPLOYER_INDICATORS whitelist blind spot: a workflow that genuinely deploys via a
+  // mechanism the six Railway/npm patterns don't name (flyctl / vercel / netlify / a deploy-action / a raw
+  // `deploy` verb) must still derive a "deploy" kind and fail the invariant — else Actions could deploy
+  // undetected (#2 "do something it shouldn't").
+  for (const raw of [
+    "steps:\n  - run: flyctl deploy --app x\n  - run: npm test",
+    "steps:\n  - run: vercel --prod\n  - run: npm test",
+    "steps:\n  - run: netlify deploy --prod\n  - run: npm test",
+    "steps:\n  - uses: some-org/deploy-action@v1\n  - run: npm test",
+  ]) {
+    const kinds = deriveJobKindsFromWorkflow(raw);
+    assert.ok(kinds.includes("deploy"), `scanner must flag a deploy step in: ${raw}`);
+    assert.equal(assertActionsGatesNeverDeploys(kinds).ok, false, `a deploying workflow must fail: ${raw}`);
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // FR-10.DEP.002 — the four-gate canary→fleet promotion
 // ─────────────────────────────────────────────────────────────────────────────

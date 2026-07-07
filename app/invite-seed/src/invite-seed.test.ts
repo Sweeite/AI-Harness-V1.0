@@ -200,6 +200,31 @@ test('AC-0.INV.006.2 — re-issuing a USED invite is refused (no re-setup of an 
   );
 });
 
+test('AC-0.INV.006.2 — re-issuing a REVOKED invite audits the real prior state (not mislabeled as expired)', async () => {
+  // logic-sweep regression: reissue must derive the audit label from old.state. A deliberately revoked source
+  // must be audited as a revoked→re-issued reissue, never as 'invite_expired'/'expired → re-issued' — that would
+  // corrupt the append-only access_audit's account of an intentional revoke (#1).
+  const { store, auth, smtp } = fresh();
+  const out = await store.issueInvite({ email: 'u@client.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, now: T0 }, auth, smtp);
+  await store.revokeInvite(out.invite.token, true, T0 + 10);
+  const re = await store.reissueInvite(out.invite.token, true, smtp, T0 + 20);
+  assert.ok(re.sent, 'fresh link delivered for the revoked-source reissue');
+  const reissueAudit = store.auditLog().find((a) => a.action === 'reissue_invite');
+  assert.ok(reissueAudit, 'the reissue is audited');
+  assert.equal(reissueAudit?.reason, 'revoked → re-issued', 'audit reason reflects the revoked prior state');
+  assert.notEqual(reissueAudit?.audit_type, 'invite_expired', 'a revoked-source reissue is NOT mislabeled invite_expired');
+});
+
+test('AC-0.INV.006.2 — re-issuing an EXPIRED invite still audits expired→re-issued', async () => {
+  const { store, auth, smtp } = fresh();
+  const out = await store.issueInvite({ email: 'u@client.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, now: T0 }, auth, smtp);
+  const past = T0 + LINK_TTL_HARD_CAP_SECONDS + 1;
+  await store.reissueInvite(out.invite.token, true, smtp, past);
+  const reissueAudit = store.auditLog().find((a) => a.action === 'reissue_invite');
+  assert.equal(reissueAudit?.audit_type, 'invite_expired', 'expired-source reissue keeps the invite_expired label');
+  assert.equal(reissueAudit?.reason, 'expired → re-issued', 'expired-source reissue keeps its reason');
+});
+
 test('AC-0.INV.006 — one-click resend of a still-pending invite is audit-logged', async () => {
   const { store, auth, smtp } = fresh();
   const out = await store.issueInvite({ email: 'u@client.com', accountType: 'client_tenant', issuedBy: 'admin-1', canInvite: true, now: T0 }, auth, smtp);
@@ -231,6 +256,9 @@ test('AC-0.SEED.001.1 — seed creates exactly one Super Admin from SUPER_ADMIN_
   assert.equal(out.reason, 'created');
   const admins = [...store.userRoles.values()].filter((r) => r === 'Super Admin').length;
   assert.equal(admins, 1, 'exactly one Super Admin');
+  // logic-sweep fix (store.ts:494): superAdminProfileId is now optional (absent only on lost_race) — a created
+  // outcome must still surface the real id. Narrow it before use so the type reflects the created-path contract.
+  assert.ok(out.superAdminProfileId, 'a created seed surfaces the real Super Admin id');
   assert.equal(store.profiles.get(out.superAdminProfileId)?.email, 'boss@corp.com');
 });
 
@@ -302,6 +330,15 @@ test('AC-0.SEED.003.3 — two concurrent first-boot seed runs mint exactly one S
   assert.equal(created, 1, 'exactly one run wins the atomic guard');
   assert.equal(admins, 1, 'exactly one Super Admin exists — the others are clean no-ops (not a second admin)');
   assert.ok(results.some((r) => r.reason === 'lost_race' || r.reason === 'already_present'), 'losers no-op cleanly');
+  // logic-sweep regression: a lost_race loser must NOT fabricate a bogus 'unknown' superAdminProfileId — the
+  // winner hasn't written the role row yet, so the real id isn't resolvable; the field is omitted, never garbage (#1).
+  for (const r of results.filter((r) => r.reason === 'lost_race')) {
+    assert.notEqual(r.superAdminProfileId, 'unknown', 'lost_race never returns the fabricated non-id "unknown"');
+    assert.equal(r.superAdminProfileId, undefined, 'lost_race omits superAdminProfileId (contract: optional here)');
+  }
+  // the winner still surfaces the real id.
+  const winner = results.find((r) => r.created);
+  assert.ok(winner?.superAdminProfileId, 'the winning run returns the real Super Admin id');
 });
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────────────

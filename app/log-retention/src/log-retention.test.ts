@@ -209,6 +209,23 @@ test("AC-7.LOG.007.2 — guardrail_log retention honours the security/audit floo
   assert.deepEqual(res.pruned, ["old"]);
 });
 
+test("AC-NFR-OBS.010.2 (parity) — event_log floor-protected rows are surfaced in skipped_referenced + the logged skipped_count (same as guardrail_log)", async () => {
+  // logic-sweep regression: runEventLogRetention previously kept a window-expired-but-floor-protected row via a
+  // bare `continue` without recording it, so the operator auditing the event_log prune run could not see the
+  // floor protected it — while runGuardrailLogRetention (AC-7.LOG.007.2) DOES record it. Assert parity.
+  // window=30d, floor=90d → effective 90d; a row aged 60d is window-expired (60>30) but floor-protected (60<90).
+  const cfg: RetentionConfig = { ...DEFAULT_RETENTION_CONFIG, event_log_retention_days: 30, event_log_retention_floor_days: 90 };
+  const insideFloor = eventRow("floor", NOW().getTime() - 60 * DAY); // window-expired, floor-protected
+  const wayOld = eventRow("old", NOW().getTime() - 400 * DAY); // past both window and floor → prunable
+  const store = new InMemoryEventLogStore([insideFloor, wayOld]);
+  const writer = new InMemoryEventWriteSink();
+  const res = await runEventLogRetention({ store, config: cfg, now: NOW, isReferenced: () => false, writer });
+  assert.deepEqual(res.pruned, ["old"]);
+  assert.ok(res.skipped_referenced.includes("floor"), "a floor-protected event_log row was not surfaced in skipped_referenced");
+  // the run summary the operator audits must count the floor-retained row too (parity with guardrail_log)
+  assert.equal(writer.written[0]!.payload.skipped_count, 1);
+});
+
 test("AC-7.LOG.007.3 — tamper-evidence: a covert post-hoc content rewrite is detectable (append-only + integrity check)", async () => {
   const row = guardrailRow("g", T0);
   const store = new InMemoryGuardrailLogStore([row]);

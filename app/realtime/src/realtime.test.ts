@@ -142,6 +142,32 @@ test('AC-7.RTP.002.2 — a config edit changes the effective cadence with no cod
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AC-7.RTP.002.1 (guard) — a non-positive / non-integer config cadence is REJECTED at the resolver, not
+// returned verbatim as an effective cadence. A cadence of 0/negative is a busy-loop-or-freeze (#3: never a
+// silent freeze) — the resolver range-checks its config input exactly as effectiveThresholdPercent does.
+// ─────────────────────────────────────────────────────────────────────────────
+test('AC-7.RTP.002.1 (guard) — a non-positive or non-integer poll cadence from config is rejected, never returned verbatim', () => {
+  const cfg = new InMemoryRealtimeConfig();
+
+  // A config_values row (or an operator edit) of 0 must NOT become the effective cadence — 0 is a silent
+  // freeze / busy loop, exactly the #3 the contract forbids.
+  cfg.setPollInterval('cost_tracking', 0);
+  assert.throws(() => effectivePollSeconds('cost_tracking', cfg), /positive|cadence/);
+
+  // Negative is likewise rejected.
+  cfg.setPollInterval('cost_tracking', -5);
+  assert.throws(() => effectivePollSeconds('cost_tracking', cfg), /positive|cadence/);
+
+  // A non-integer (fractional) cadence is rejected too (a cadence is whole seconds, like the threshold guard).
+  cfg.setPollInterval('cost_tracking', 30.5);
+  assert.throws(() => effectivePollSeconds('cost_tracking', cfg), /integer|positive|cadence/);
+
+  // A valid positive integer still resolves fine (the guard does not reject legitimate edits).
+  cfg.setPollInterval('cost_tracking', 45);
+  assert.equal(effectivePollSeconds('cost_tracking', cfg), 45);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AC-7.RTP.003.1 — beyond the budget a new tab still receives updates via polling (never a silent freeze)
 // ─────────────────────────────────────────────────────────────────────────────
 test('AC-7.RTP.003.1 — past the budget a new subscription degrades to polling (still updating), not a silent freeze', () => {

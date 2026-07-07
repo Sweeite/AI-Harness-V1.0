@@ -134,10 +134,14 @@ export function classify(attempt: ActionAttempt): HardLimitDecision {
       // ⑥ self-approval. The AI approving a queued action is ALWAYS a hard-limit hit when autonomous.
       //   Even a human approving their OWN queued action is a self-approval and blocked here.
       if (!auto) {
-        const selfApprove =
-          attempt.queuedBy != null && attempt.approvedBy != null && attempt.queuedBy === attempt.approvedBy;
-        if (selfApprove) return block('self_approve', attempt);
-        return allow('queued action approved by a distinct authorized human');
+        // logic-sweep fix (limits.ts:136): fail CLOSED like every other unknown-provenance branch in this
+        // file (send L108, share L125, ingest L147). Only allow when distinctness is PROVEN — both actors
+        // present AND different. Missing actors (provenance unknown) or a self-match block, rather than
+        // permit while falsely asserting a 'distinct authorized human' we never verified (#2/#3).
+        const distinctProven =
+          attempt.queuedBy != null && attempt.approvedBy != null && attempt.queuedBy !== attempt.approvedBy;
+        if (distinctProven) return allow('queued action approved by a distinct authorized human');
+        return block('self_approve', attempt);
       }
       return block('self_approve', attempt);
     }

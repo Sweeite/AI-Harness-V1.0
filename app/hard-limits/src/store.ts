@@ -60,6 +60,14 @@ export const ERR_HARD_LIMIT_APPROVE_FORBIDDEN =
   "guardrail_log: a 'hard_limit' event can never be marked 'approved' " +
   '(no-override; schema check not(hard_limit and approved) / FR-6.HRD.003 / AC-6.HRD.003.2)';
 
+// logic-sweep fix (store.ts:247 InMemoryHardLimitGate.setStatus): the reference fake must reject the same
+// non-forward transitions the live append-only trigger rejects, so a caller test that passes against the
+// fake cannot pass a backward move the live silo would refuse (schema.md §7: a status UPDATE is permitted
+// only when old.status='pending' and new.status in (approved,rejected,modified)). Fail LOUD, not silently.
+export const ERR_GUARDRAIL_NON_FORWARD_TRANSITION =
+  'guardrail_log: only a forward transition from a pending row is permitted ' +
+  '(append-only; schema.md §7 enforce_audit_append_only — pending → {approved,rejected,modified})';
+
 // ── the outcome of enforcing the gate on one attempt ──────────────────────────────────────────────────
 export interface EnforcementOutcome {
   decision: HardLimitDecision;
@@ -246,6 +254,18 @@ export class InMemoryHardLimitGate implements HardLimitGate {
     // of role/config — there is deliberately no parameter by which a caller could authorise it.
     if (row.guardrail_type === 'hard_limit' && status === 'approved') {
       throw new Error(ERR_HARD_LIMIT_APPROVE_FORBIDDEN);
+    }
+    // logic-sweep fix (store.ts:247): the live guardrail_log is append-only / forward-only (schema.md §7
+    // enforce_audit_append_only permits a status UPDATE only when old.status='pending' and new.status in
+    // (approved,rejected,modified)). The fake is the reference model — it must reject the SAME non-forward
+    // moves, else a caller test green against the fake could fail against the live silo. A 'pending' target
+    // is a no-op that returns the current row (mirrors supabase-store.setStatus's pending branch); every
+    // other move out of a non-pending row is a backward/repeat transition the live trigger rejects.
+    if (status === 'pending') {
+      return row; // no-op — matches the live adapter's accept-and-return-current contract for pending
+    }
+    if (row.status !== 'pending') {
+      throw new Error(ERR_GUARDRAIL_NON_FORWARD_TRANSITION);
     }
     const next: GuardrailLogRow = { ...row, status };
     this.rows.set(rowId, next);

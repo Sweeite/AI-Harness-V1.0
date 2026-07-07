@@ -320,6 +320,23 @@ test('AC-NFR-SEC.003.2 — a payload carrying credential material is redacted pr
   assert.ok(store.noCredentialMaterial());
 });
 
+// logic-sweep regression (redaction.ts:67 MINOR): the high-entropy catch-all required uppercase AND
+// lowercase AND digit at once, so SINGLE-CASE credentials (a lowercase-hex API key, an all-caps base32
+// OAuth/TOTP token) slipped through the value scrub and landed in the audit row raw, under a benign key
+// name that isSecretKey does NOT catch. Both store.ts and supabase-store.ts route through the same
+// redactCredentialMaterial → looksLikeCredential, so this one helper fix covers both adapters.
+test('redaction scrubs SINGLE-CASE high-entropy credential blobs (logic-sweep redaction.ts:67)', () => {
+  const lowerHex = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4'; // 48-char lowercase hex
+  const upperBase32 = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP7654321ABCDEFGHI'; // all-caps base32-ish, 47 chars
+  // Precondition: neither matches a recognised token PREFIX and both live under a NON-secret-shaped key,
+  // so the value heuristic is the only thing that can catch them.
+  const scrubbed = redactCredentialMaterial({ blob: lowerHex, other: upperBase32, ok: 'plain' }) as any;
+  assert.equal(scrubbed.blob, REDACTED, 'a lowercase-hex credential must be redacted');
+  assert.equal(scrubbed.other, REDACTED, 'an all-caps base32 credential must be redacted');
+  assert.equal(scrubbed.ok, 'plain', 'a short benign value is untouched');
+  assert.ok(!containsCredentialMaterial(scrubbed), 'no single-case credential survives the scrub');
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Supporting invariants (not a numbered AC, but load-bearing for the ones above)
 // ─────────────────────────────────────────────────────────────────────────────

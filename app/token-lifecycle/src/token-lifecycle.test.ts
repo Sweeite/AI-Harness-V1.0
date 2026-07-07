@@ -119,6 +119,27 @@ test('AC-NFR-SEC.003.2 — the defensive redactor scrubs token material from an 
   assert.ok(cleanJson.includes('hello world'), 'non-secret data is preserved');
 });
 
+// logic-sweep regression: a prefix-less token (GHL JWT / opaque bearer) that sits in an ARRAY under a
+// secret-named key must still be scrubbed by the key-name rule. Previously redact/findTokenLeaks reset
+// keyIsSecret=false when descending into arrays, so the key-name rule never reached array elements and a
+// real token reached the log plane with the CI leak-guard reporting clean (#2 + #3).
+test('AC-NFR-SEC.003.2 — array under a secret-named key is scrubbed even for prefix-less tokens', () => {
+  const ghlJwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaGwifQ.SIG'; // no TOKEN_PREFIX, not a knownToken
+  const payload = {
+    access_token: [ghlJwt],
+    authorization: ['Bearer ghl-opaque-1234'],
+    scopes: ['contacts.readonly', 'contacts.write'], // non-secret array under a non-secret key: preserved
+  };
+  // The leak-guard must SEE the leak before redaction (previously it silently returned []).
+  assert.ok(findTokenLeaks(payload).length > 0, 'array-wrapped tokens under a secret key must register as leaks');
+  const cleaned = redact(payload);
+  assert.deepEqual(findTokenLeaks(cleaned), [], 'redacted payload must contain no token material');
+  const cleanJson = JSON.stringify(cleaned);
+  assert.ok(!cleanJson.includes(ghlJwt), 'the GHL JWT must not survive redaction');
+  assert.ok(!cleanJson.includes('ghl-opaque-1234'), 'the opaque bearer must not survive redaction');
+  assert.ok(cleanJson.includes('contacts.readonly'), 'non-secret array data is preserved');
+});
+
 test('AC-3.TOK.001.1 — the store never yields a token except via the runtime read path (fake models encrypted-at-rest boundary)', async () => {
   // The reference model exposes the token only through getCredential (the runtime call-time decrypt);
   // there is no other accessor. The redaction boundary is the only surfacing path (asserted above).

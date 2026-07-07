@@ -52,6 +52,7 @@ import {
   DEFAULT_APPROVAL_CONFIG,
   ERR_HARD_LIMIT_NO_AFFORDANCE,
   ERR_HOLD_ONLY_SOFT,
+  ERR_RESOLVE_NOT_PENDING,
   ERR_SELF_APPROVAL,
   InMemoryApprovalWorkflow,
   InMemoryTaskSeam,
@@ -217,6 +218,32 @@ test('AC-6.APR.003.3 — Hold-for-full-review cancels the auto-run timer + promo
   seedTask(tasks, 'floored_task');
   const floored = await wf.tierAndGate({ actionType: 'floored_task', flooredCategories: ['external_comm'] }, EMPTY, T0);
   await assert.rejects(() => wf.holdForFullReview(floored.guardrailLogId!, 'reviewer-y', T0 + 5), (e: Error) => e.message === ERR_HOLD_ONLY_SOFT);
+});
+
+test('AC-6.APR.003.3 (logic-sweep) — Hold-for-full-review refuses a terminal-state row (already auto-run / rejected)', async () => {
+  const { wf, tasks } = newWorkflow();
+  // (a) a soft item that has already AUTO-RUN is terminal ('approved') and must not be re-held.
+  seedTask(tasks, 'auto_run_soft');
+  const disp = await wf.tierAndGate({ actionType: 'auto_run_soft', riskLevel: 'medium', reversible: true }, EMPTY, T0);
+  const ran = await wf.autoRunElapsedSoft(T0 + DEFAULT_APPROVAL_CONFIG.softTimeoutSeconds + 1);
+  assert.equal(ran.length, 1); // it auto-ran → row.status === 'approved'
+  await assert.rejects(
+    () => wf.holdForFullReview(disp.guardrailLogId!, 'reviewer-y', T0 + DEFAULT_APPROVAL_CONFIG.softTimeoutSeconds + 2),
+    (e: Error) => e.message === ERR_RESOLVE_NOT_PENDING('approved'),
+  );
+  // The terminal row is not silently re-annotated: no 'HELD' note leaked onto an already-approved row.
+  const untouched = await wf.getRow(disp.guardrailLogId!);
+  assert.equal(untouched!.status, 'approved');
+  assert.doesNotMatch(untouched!.description, /HELD for full review/);
+
+  // (b) a soft item that was REJECTED is likewise terminal and must not be re-held.
+  seedTask(tasks, 'rejected_soft', { originating_user_id: 'agent' });
+  const disp2 = await wf.tierAndGate({ actionType: 'rejected_soft', riskLevel: 'medium', reversible: true }, EMPTY, T0);
+  await wf.resolve(disp2.guardrailLogId!, 'reject', 'reviewer-z', {}, T0 + 1);
+  await assert.rejects(
+    () => wf.holdForFullReview(disp2.guardrailLogId!, 'reviewer-y', T0 + 2),
+    (e: Error) => e.message === ERR_RESOLVE_NOT_PENDING('rejected'),
+  );
 });
 
 test('AC-6.APR.004.1 — a low-risk action executes immediately; the tier decision is retained for OPT.001', async () => {
@@ -463,10 +490,28 @@ test('AC-6.ESC.004.2 — repeated timeouts WIDEN the escalation (to Super-Admin)
 
   const base = T0 + cfg.escalationTimeoutSeconds + 1;
   await wf.escalateStaleWaits(base); // escalation #1 — routed reviewer role
-  await wf.escalateStaleWaits(base + 1); // escalation #2 — widens to Super-Admin
+  // logic-sweep: successive escalations must be a FULL window apart (escalate-don't-abandon cadence), so the
+  // widen fires only after a genuine second window elapses — not on an immediate re-sweep.
+  await wf.escalateStaleWaits(base + cfg.escalationTimeoutSeconds + 1); // escalation #2 — widens to Super-Admin
   const last = notify.emitted[notify.emitted.length - 1]!;
   assert.equal(last.reviewer_role, 'Super-Admin');
   assert.match(last.summary, /WIDENED to Super-Admin/);
+});
+
+test('AC-6.ESC.004.2 (logic-sweep) — a re-sweep within the escalation window does NOT re-fire (no spam / no premature widen)', async () => {
+  const cfg: ApprovalConfig = { ...DEFAULT_APPROVAL_CONFIG, widenAfterEscalations: 2 };
+  const { wf, tasks, notify } = newWorkflow({ config: cfg });
+  seedTask(tasks, 'nospam_task', { status: 'running', originating_user_id: 'agent' });
+  await wf.raiseFlag([{ guardrailType: 'anomaly', action: { actionType: 'nospam_task', originatingUserId: 'agent', routingContext: 'crm' }, description: 'flag' }], [{ role: 'account_manager', identity: 'am-1', available: true }], RULES, T0);
+
+  const base = T0 + cfg.escalationTimeoutSeconds + 1;
+  assert.equal((await wf.escalateStaleWaits(base)).length, 1); // escalation #1
+  // A second sweep one second later must NOT re-escalate — the window has not elapsed since the last escalation.
+  assert.equal((await wf.escalateStaleWaits(base + 1)).length, 0);
+  // Exactly ONE escalation notification fired (the initial raiseFlag routing note aside); no spam, no premature widen.
+  const escalations = notify.emitted.filter((n) => n.kind === 'stale_wait_escalation');
+  assert.equal(escalations.length, 1);
+  assert.notEqual(escalations[0]!.reviewer_role, 'Super-Admin');
 });
 
 test('AC-6.ESC.004.3 — the escalate rule covers BOTH flagged AND awaiting_approval wait-points', async () => {

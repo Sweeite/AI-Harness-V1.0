@@ -259,12 +259,15 @@ export function instantiateTemplate(
     constraints: template.constraints.map(fill),
     parameters: { ...params },
   };
-  // Belt-and-braces: no raw slot marker may survive anywhere (guards a regex/logic gap). Use a fresh
-  // NON-global matcher so there is no shared `lastIndex` state to reset (SLOT_RE is global).
-  const leakRe = /\{[a-zA-Z_][a-zA-Z0-9_]*\}/;
-  const leak = [filled.instruction, filled.output_format, ...filled.constraints].find((b) => leakRe.test(b));
-  if (leak !== undefined) {
-    throw new Error(`unfilled slot leaked into an instantiated Layer 4 — refusing to produce a half-filled prompt: ${leak}`);
+  // Belt-and-braces: no raw TEMPLATE slot may survive a fill pass (guards a regex/logic gap in `fill`).
+  // logic-sweep fix (context.ts:264): scan the ORIGINAL template bodies with the slot matcher (the same
+  // source `templateSlots`/`required` derive from) — every such slot was already proven present in `params`
+  // above, so any slot the fill pass fails to substitute is a genuine leak. The previous guard re-scanned
+  // the POST-FILL bodies, where a `{word}` coming from an operator-supplied PARAMETER VALUE (e.g. a theme
+  // name or a JSON snippet) is indistinguishable from an unfilled slot, and was falsely rejected.
+  const surviving = bodies.flatMap((b) => templateSlots(b)).find((name) => !(name in params));
+  if (surviving !== undefined) {
+    throw new Error(`unfilled slot leaked into an instantiated Layer 4 — refusing to produce a half-filled prompt: {${surviving}}`);
   }
   // logic-sweep fix (context.ts:254): the all-slots-filled gate accepts an EMPTY-string slot value (''
   // is not null), so a template can instantiate with a blank instruction/output_format and slip past —

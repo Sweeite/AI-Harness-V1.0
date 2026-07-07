@@ -117,8 +117,17 @@ export function runCheck(migrationsDir: string = SILO_MIGRATIONS): Finding[] {
   if (disc === null) {
     findings.push({ gate: 'migration-present', message: '0004_prompt_version_discipline.sql not found — this slice must ship it' });
   } else {
-    if (!/create\s+(?:or\s+replace\s+)?trigger[\s\S]*?before[\s\S]*?(update|delete)[\s\S]*?on\s+(?:public\.)?prompt_layers/is.test(disc)) {
-      findings.push({ gate: 'version-trigger', message: '0004 must install a BEFORE UPDATE OR DELETE trigger on prompt_layers (append-only-by-version)' });
+    // logic-sweep fix (findings 2026-07-07 → prompt-store/index.ts:120): the old regex used an
+    // `(update|delete)` alternation, so a trigger firing on UPDATE only (DELETE guard dropped) still
+    // passed — yet DELETE is the load-bearing #1 (knowledge-loss) guard (the `revoke delete` is bypassed
+    // for service_role, so this trigger is the sole role-independent DELETE guard). Match the trigger's
+    // BEFORE-event clause and require BOTH update AND delete to be present in it.
+    const trig = disc.match(
+      /create\s+(?:or\s+replace\s+)?trigger[\s\S]*?before([\s\S]*?)on\s+(?:public\.)?prompt_layers/i,
+    );
+    const eventClause = trig?.[1] ?? '';
+    if (!trig || !/\bupdate\b/i.test(eventClause) || !/\bdelete\b/i.test(eventClause)) {
+      findings.push({ gate: 'version-trigger', message: '0004 must install a BEFORE trigger on prompt_layers covering BOTH UPDATE and DELETE (append-only-by-version; DELETE is the sole role-independent knowledge-loss guard)' });
     }
     if (!/create\s+policy\b[\s\S]*?on\s+(?:public\.)?prompt_layers/is.test(disc)) {
       findings.push({ gate: 'rls-policy', message: '0004 must add an RLS policy on prompt_layers (PERM-prompt.edit read/write gate, composing on the 0002 default-deny floor)' });

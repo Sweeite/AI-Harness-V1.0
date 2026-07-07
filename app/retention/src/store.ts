@@ -206,7 +206,12 @@ export class InMemoryRetentionStore implements RetentionStore {
     // column. Inside a client silo there is exactly one client, so there is nothing to filter against
     // (ADR-001 §3); a client_slug here is an isolation-model contradiction, rejected.
     for (const col of Object.keys(row)) {
-      if (col === 'client_slug' || col === 'client_id' || col === 'tenant_id' || col === 'tenant') {
+      // logic-sweep fix (store.ts:209): case-fold the key before the identity check — Postgres folds
+      // unquoted identifiers to lowercase, so `Client_Slug`/`CLIENT_SLUG` denotes the forbidden
+      // `client_slug` column. Mirror the DDL lint's `i`-flag (index.ts IDENTITY_COLUMNS) — case-sensitive
+      // equality was a #2 isolation-model false-negative that admitted off-case identity columns.
+      const folded = col.toLowerCase();
+      if (folded === 'client_slug' || folded === 'client_id' || folded === 'tenant_id' || folded === 'tenant') {
         throw new RetentionError(
           ERR_CLIENT_SLUG,
           `application table '${table}' may not carry client-identity column '${col}' (FR-10.ISO.001 / ADR-001 §3) — identity lives only in the management-plane client_registry`,

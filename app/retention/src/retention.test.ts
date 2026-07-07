@@ -251,6 +251,25 @@ test('AC-10.ISO.001.2 / AC-NFR-SEC.001.2 — identity lives only in the registry
   );
 });
 
+test('AC-10.ISO.001.2 (case-fold) — an off-case identity column is rejected (logic-sweep store.ts:209)', async () => {
+  const s = await fresh();
+  // Postgres folds unquoted identifiers to lowercase, so `Client_Slug`/`CLIENT_SLUG` at the app layer
+  // targets the SAME forbidden `client_slug` column. The guard must reject them like the case-insensitive
+  // DDL lint (index.ts IDENTITY_COLUMNS) does — not accept them via case-sensitive equality.
+  await assert.rejects(
+    () => s.writeAppRow('memories', { id: 'm3', Client_Slug: 'acme' }),
+    (e: unknown) => e instanceof RetentionError && e.reason === ERR_CLIENT_SLUG,
+  );
+  await assert.rejects(
+    () => s.writeAppRow('memories', { id: 'm4', CLIENT_SLUG: 'acme' }),
+    (e: unknown) => e instanceof RetentionError && e.reason === ERR_CLIENT_SLUG,
+  );
+  await assert.rejects(
+    () => s.writeAppRow('guardrail_log', { id: 'g2', Tenant_Id: 'acme' }),
+    (e: unknown) => e instanceof RetentionError && e.reason === ERR_CLIENT_SLUG,
+  );
+});
+
 test('AC-10.ISO.001.3 — OD-096 clerical reconciliation note present (column not created)', async () => {
   // The reconciliation is realised in the schema "Global rules" note (schema.md) that the baseline mirrors.
   // Prove the note-presence check the verification layer relies on: the baseline documents the confinement

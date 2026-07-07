@@ -576,3 +576,23 @@ test("AC-6.OPT.002.1 — signal thresholds auto-tune; a gate-altering baseline s
   loop.confirm("gate-1", "admin-2", "2026-07-05T01:00:00.000Z");
   assert.equal(loop.applyIfPermitted("gate-1").applied, true, "…and applies once an admin confirms");
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// logic-sweep regression — a signal candidate an admin REJECTED must NOT auto-apply (state-machine hole)
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+test("logic-sweep — a REJECTED signal candidate does not auto-apply (admin rejection is honoured)", () => {
+  const loop = new LearningLoop();
+  loop.surface({
+    id: "sig-rej",
+    kind: "anomaly_baseline",
+    subject: "score_sensitivity",
+    impact: classifyThresholdChange(false), // signal
+    proposal: "tighten sensitivity",
+    at: "2026-07-05T00:00:00.000Z",
+  });
+  // The admin explicitly rejects the signal candidate — it is actioned; the tune must NOT apply.
+  loop.reject("sig-rej", "admin-9", "2026-07-05T01:00:00.000Z");
+  const result = loop.applyIfPermitted("sig-rej");
+  assert.equal(result.applied, false, "a rejected signal candidate must not auto-apply (#2)");
+  assert.equal(loop.get("sig-rej")!.state, "rejected", "the rejection stands — apply did not change it");
+});

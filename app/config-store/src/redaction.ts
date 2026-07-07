@@ -71,8 +71,14 @@ const TOKEN_VALUE_RE = /\b(sk-[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|Bear
 
 function looksLikeCredential(value: string): boolean {
   if (TOKEN_VALUE_RE.test(value)) return true;
-  // A bare high-entropy blob (>=32 chars, no spaces, mixed case+digits) — conservative catch-all.
-  if (value.length >= 32 && !/\s/.test(value) && /[A-Z]/.test(value) && /[a-z]/.test(value) && /[0-9]/.test(value)) {
+  // A bare high-entropy blob (>=32 chars, no spaces) — conservative catch-all.
+  // logic-sweep fix (redaction.ts:67 MINOR): the old form required uppercase AND lowercase AND digit
+  // simultaneously, so single-case credentials slipped through — a 64-char lowercase hex API key or an
+  // all-caps base32 OAuth/TOTP token has only two of the three classes and was written to the audit row
+  // raw. The asymmetry is #2 (a false-negative leaks a credential; a false-positive loses a bit of log
+  // detail), so the catch-all now fires on any letter+digit blob regardless of letter case — a length-32+
+  // space-free run that mixes at least one letter with at least one digit is treated as credential-shaped.
+  if (value.length >= 32 && !/\s/.test(value) && /[A-Za-z]/.test(value) && /[0-9]/.test(value)) {
     return true;
   }
   return false;

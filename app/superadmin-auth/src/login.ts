@@ -72,8 +72,11 @@ export async function passwordStep(args: {
   const grant = attemptPasswordGrant({ policy, captcha, email, password, account, leakedLookup });
   if (!grant.ok) {
     // Record the failure against the per-account soft-lock; trip + alert on the threshold-crossing edge.
-    const fr = recordFailure(state, lockCfg, now);
-    await store.setSoftLock('account', accountKey, fr.next);
+    // logic-sweep fix (login.ts:61): the increment is done ATOMICALLY by the store (read→recordFailure→write
+    // with no interleaving window) against the FRESH stored state — NOT the `state` snapshot read for the
+    // gate above — so two concurrent same-account failures can no longer both read cf=N and clobber to cf=N+1
+    // (the lost update that let a distributed stuffing attack under-count and out-run the threshold — #2).
+    const fr = await store.updateSoftLock('account', accountKey, (current) => recordFailure(current, lockCfg, now));
     await store.logEvent(
       { event_type: 'sign_in_failure', user_id: account?.user_id ?? null, summary: `password grant failed: ${grant.reason}`, detail: { email, reason: grant.reason, consecutive_failures: fr.next.consecutive_failures } },
       now,
@@ -126,8 +129,9 @@ export async function challengeStep(args: {
   // 2. Verify the code (correct current code → aal2; wrong/skipped/no-factor → no session).
   const res = challengeTotp(factor, code, now);
   if (!res.ok) {
-    const fr = recordFailure(state, lockCfg, now);
-    await store.setSoftLock('mfa', user_id, fr.next);
+    // logic-sweep fix (login.ts:61): atomic read-modify-write of the MFA counter (mirrors passwordStep) so two
+    // concurrent wrong-code submissions on the same user can't lose an increment and out-run the 2FA lock.
+    const fr = await store.updateSoftLock('mfa', user_id, (current) => recordFailure(current, lockCfg, now));
     await store.logEvent(
       { event_type: 'sign_in_failure', user_id, summary: `2FA challenge failed: ${res.reason}`, detail: { reason: res.reason, consecutive_failures: fr.next.consecutive_failures } },
       now,

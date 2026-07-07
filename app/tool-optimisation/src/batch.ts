@@ -20,6 +20,19 @@ export interface BatchCapability {
 
 export class OverLimitBatchError extends Error {}
 
+/**
+ * The batchable-cap invariant: a batchable connector MUST declare an integer limit ≥ 1
+ * (limit = max reads per batch). Enforced consistently by planBatches, assertWithinLimit, and
+ * clampBatch so a degenerate cap fails loud on every boundary, never a silent degenerate result (#3).
+ */
+function assertValidLimit(limit: number): void {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new OverLimitBatchError(
+      `a batchable connector must declare an integer limit ≥ 1, got ${limit}`,
+    );
+  }
+}
+
 export type BatchPlan =
   | { mode: 'batched'; groups: number[][]; limit: number } // each group = indices of reads to send together
   | { mode: 'individual'; count: number }; // no batching → one call per read (defers to rate tiers)
@@ -62,6 +75,10 @@ export function assertWithinLimit(batchSize: number, cap: BatchCapability): void
       `connector does not support batching — issue individual calls, do not batch (FR-3.OPT.003)`,
     );
   }
+  // logic-sweep fix: a batchable cap MUST declare an integer limit ≥ 1 (same contract planBatches
+  // enforces, L40). Without this, {batchable:true, limit:0} rubber-stamps an empty/degenerate batch
+  // as "within limit" — a silent degenerate accept (#3: never fail silently).
+  assertValidLimit(cap.limit);
   if (batchSize > cap.limit) {
     throw new OverLimitBatchError(
       `batch of ${batchSize} exceeds the connector's documented limit ${cap.limit} — rejected (AC-3.OPT.003.1)`,
@@ -76,6 +93,10 @@ export function assertWithinLimit(batchSize: number, cap: BatchCapability): void
  */
 export function clampBatch<T>(reads: T[], cap: BatchCapability): { accepted: T[]; overflow: T[] } {
   if (!cap.batchable) throw new OverLimitBatchError('connector does not support batching (FR-3.OPT.003)');
+  // logic-sweep fix: reject a degenerate limit < 1 loud (same contract as planBatches L40). Otherwise
+  // {batchable:true, limit:0} silently returns accepted=[] / overflow=all — no progress, a caller loop
+  // stalls forever without ever erroring (#3: never fail silently).
+  assertValidLimit(cap.limit);
   if (reads.length <= cap.limit) return { accepted: reads, overflow: [] };
   return { accepted: reads.slice(0, cap.limit), overflow: reads.slice(cap.limit) };
 }

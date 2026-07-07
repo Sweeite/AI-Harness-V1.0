@@ -61,7 +61,16 @@ export async function runEventLogRetention(
 
   for (const row of await store.all()) {
     const createdMs = Date.parse(row.created_at);
-    if (Number.isNaN(createdMs) || createdMs >= cutoffMs) continue; // inside the effective (≥floor) window — keep
+    if (Number.isNaN(createdMs) || createdMs >= cutoffMs) {
+      // logic-sweep fix (retention.ts:73 runEventLogRetention): surface floor-protected rows in `skipped` so
+      // the run summary/result records WHY they were retained — mirrors runGuardrailLogRetention (below). A row
+      // window-expired but floor-protected lands here (the cutoff was clamped up to the floor); without this it
+      // was silently kept and omitted from skipped_referenced + the logged skipped_count, diverging from the
+      // guardrail sink's skipped semantics for the identical situation.
+      const windowCutoffMs = now().getTime() - window * DAY_MS;
+      if (!Number.isNaN(createdMs) && createdMs < windowCutoffMs) skipped.push(row.id); // retained by the floor
+      continue;
+    }
     if (isReferenced(row)) {
       skipped.push(row.id); // never prune a referenced row (AC-7.LOG.006.1)
       continue;

@@ -86,6 +86,22 @@ export class SupabaseSuperAdminAuthStore implements SuperAdminAuthStore {
     this.softLocks.set(this.key(dimension, account), { ...state });
   }
 
+  async updateSoftLock<R extends { next: SoftLockState }>(
+    dimension: 'account' | 'mfa',
+    account: string,
+    apply: (current: SoftLockState) => R,
+  ): Promise<R> {
+    // logic-sweep fix (login.ts:61): parity with the fake — the counter is the same process-local Map here,
+    // so the same atomic read → transition → write (no `await` between) closes the lost-update window. Note:
+    // this makes the read-modify-write atomic within ONE process; a future durable/multi-process lock store
+    // would still need a DB-level compare-and-increment (its own OD — see this file's header).
+    const key = this.key(dimension, account);
+    const current = this.softLocks.get(key) ?? { consecutive_failures: 0, locked_until: null };
+    const result = apply({ ...current });
+    this.softLocks.set(key, { ...result.next });
+    return result;
+  }
+
   async end(): Promise<void> {
     await this.pool.end();
   }
