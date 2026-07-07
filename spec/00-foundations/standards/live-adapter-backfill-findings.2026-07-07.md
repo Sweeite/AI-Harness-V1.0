@@ -126,3 +126,19 @@ These are the confirmation that the R10 Part-B backfill is **not cosmetic** — 
 bugs sit in already-`done` Stage 0–3 adapters. Run Part B as written (operator-gated waves, live-verify each
 finding before fixing). B1 is the highest priority (100% silent live webhook failure behind a green offline suite).
 Nothing here was fixed this session — all fixes belong in the gated backfill so each is live-verified.
+
+---
+
+## Adapter-MINOR dispositions (session 74 — C8 triage)
+The "~30 MINORs" were triaged; most were already resolved or are correctly owned elsewhere. Dispositions:
+- **auth `setProviderConfig` (non-transactional 2 upserts, #1)** — ✅ FIXED (commit) — wrapped in one txn; live-smoke 0 errors.
+- **auth `setProviderConfig` missing `config_audit_log` row** — DEFERRED to ISSUE-086 (the config-admin write path owns the audit, per the adapter's own comment). Not this adapter's concern.
+- **hard-limits `setStatus` missing rowCount guard (#3)** — ✅ already FIXED session 73 (rowCount not-found guard added).
+- **trigger-infra `setDefaultTriggerEnabled` (UPDATE then writeAudit non-transactional, #3)** — DEFERRED: `writeAudit` uses `this.pool` internally; making it atomic needs threading a client through `writeAudit` (used in 2 sites) — an invasive refactor best done deliberately + live-verified, not rushed. Low probability (writeAudit rarely fails post-UPDATE); documented owed.
+- **write-tools `decision.decidedBy` string→`reviewed_by uuid` (#3)** — already fail-LOUD (throws on non-uuid, not silent); tied to [[OD-196]] (deferred to ISSUE-056's real caller).
+- **invite-seed `deliver()` event_log outside the issueInvite txn (#1)** — BY DESIGN: deliver runs AFTER commit intentionally (a send failure must NOT roll back a real issued invite; it surfaces explicitly). Not a bug.
+- **observability / log-retention / guardrail-log `select *` coupling (#1)** — DEFERRED (robustness/coupling, not a live bug): explicit-column lists are a hygiene improvement; low risk, no live symptom. Owed to a focused adapter-hygiene pass.
+- **rate-limiting `Date`-field `string` type-lie / redundant reconcile connection; config-store M8 coalesce null-clobber** — cosmetic/optional (parity with the fake; audit trail intact). DEFERRED, non-#3.
+- **support-recovery false "authenticated JWT" comment (M1)** — ✅ handled by [[OD-193]] doc sweep.
+
+Net: 1 fixed (auth atomicity), 2 already-done, rest correctly by-design / owned-elsewhere / deferred-hygiene. None is a #1/#2/#3-live hazard left open.
