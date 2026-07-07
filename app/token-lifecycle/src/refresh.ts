@@ -171,6 +171,15 @@ export class RefreshEngine {
         ? await this.deps.persistRetry.run(doPersist, graceDeadline, this.deps.clock)
         : await doPersist();
     } catch (e) {
+      // logic-sweep fix (refresh.ts:172 wrong-branch): this degrade-loud path is ONLY correct after a
+      // real rotation, where the old refresh token is now dead vendor-side and the rotated one was never
+      // saved (AC-3.TOK.005.2 — the #1 trap). For a NON-rotating connector (Google) nothing rotated: the
+      // old access+refresh tokens are still fully valid vendor-side, so a persist blip (deadlock/conn
+      // drop) is a plain transient failure — a retry would succeed. Escalating it to a terminal degrade +
+      // rotate_persist_lost re-auth would needlessly halt work from a recoverable error. So only degrade
+      // when `rotated`; otherwise re-throw the transient (same idiom as the transient vendor failure
+      // above — the caller decides, we do not swallow).
+      if (!rotated) throw e;
       // Persist could not complete within the grace window after a vendor rotation → the rotated token
       // is stranded server-side-dead + never saved. Degrade LOUDLY (AC-3.TOK.005.2) — the #1 trap.
       this.deps.log({ kind: 'refresh.rotate_persist_lost', connector, detail: 'grace window elapsed before persist' });

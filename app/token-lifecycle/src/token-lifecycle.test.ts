@@ -254,6 +254,36 @@ test('rotate-persist optimistic-concurrency guard rejects a stale flight (loser 
   assert.equal(row!.refresh_token, 'r1', "the winner's token survived; the loser did not clobber it");
 });
 
+test('logic-sweep — a NON-rotating connector persist blip is TRANSIENT (re-throws), NOT a rotate-persist-lost degrade', async () => {
+  // Regression for the wrong-branch bug in doRefresh: for a non-rotating connector (Google) nothing
+  // rotated, so a transient persist failure (deadlock/connection blip) leaves the old access+refresh
+  // tokens fully valid vendor-side — a retry would succeed. It must therefore surface as a transient,
+  // retryable throw (like a transient vendor failure), NOT fall into the rotate-persist-lost catch that
+  // degrades the connector + returns 'degraded-persist-lost' (which the layer escalates to a human
+  // re-auth + task pause for reason 'rotate_persist_lost' — needless work-halt from a recoverable error).
+  const store = new InMemoryCredentialStore();
+  const clock = makeClock();
+  store.seed({ connector: 'google', access_token: 'ya29.old', refresh_token: '1//keep-me', expires_at: iso(T0 + 60), scopes: ['gmail.readonly'], state: 'active' }, T0);
+  const vendor = scriptedVendor([{ access_token: 'ya29.new', refresh_token: null, expires_in: 3600, scopes: ['gmail.readonly'] }]);
+  const log = collectLog();
+  // A store whose rotatePersist throws a transient blip (no rotation happened — Google doesn't rotate).
+  const blip = new Error('deadlock detected');
+  const flakyStore = Object.assign(Object.create(Object.getPrototypeOf(store)), store, {
+    rotatePersist: async (): Promise<never> => {
+      throw blip;
+    },
+  });
+  const engine = new RefreshEngine({ store: flakyStore, vendor, clock: clock.now, log: log.log, persistRetry: immediatePersistRetry });
+
+  // CORRECT behaviour: the transient blip propagates to the caller (retryable), it is NOT swallowed
+  // into a terminal degrade.
+  await assert.rejects(engine.refresh('google', GOOGLE_TOKEN_PARAMS), /deadlock detected/);
+  // The connector was NOT degraded (nothing rotated; a retry can still succeed).
+  const row = await store.getCredential('google');
+  assert.equal(row!.state, 'active', 'a non-rotating persist blip must NOT degrade the connector');
+  assert.ok(!log.events.some((e) => e.kind === 'refresh.rotate_persist_lost'), 'a non-rotating blip is not a rotate-persist-lost event');
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // FR-3.TOK.007/008/009 — per-connector params drive the SAME engine (no per-connector code branch)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
