@@ -266,5 +266,16 @@ export function instantiateTemplate(
   if (leak !== undefined) {
     throw new Error(`unfilled slot leaked into an instantiated Layer 4 — refusing to produce a half-filled prompt: ${leak}`);
   }
+  // logic-sweep fix (context.ts:254): the all-slots-filled gate accepts an EMPTY-string slot value (''
+  // is not null), so a template can instantiate with a blank instruction/output_format and slip past —
+  // producing a Layer 4 that validateLayer4 flags incomplete. instantiateTemplate advertises a COMPLETE
+  // Layer 4 (FR-4.TSK.001), so validate the assembled result and fail LOUD rather than hand back an
+  // incomplete one with no explicit output format (the 'assume prose' silent gap #3, AC-4.TSK.001.1).
+  const validation = validateLayer4(filled);
+  if (!validation.complete) {
+    throw new Error(
+      `task template instantiation produced an INCOMPLETE Layer 4 — refusing to return it: ${validation.problems.join('; ')}`,
+    );
+  }
   return filled;
 }

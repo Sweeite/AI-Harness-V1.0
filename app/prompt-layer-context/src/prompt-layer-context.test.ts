@@ -253,6 +253,39 @@ test('AC-4.TSK.002.1 — a task template with parameter slots instantiates to a 
   assert.equal(ok2.instruction, 'Reconcile the April ledger for Beta.');
 });
 
+test('AC-4.TSK.002.1 — instantiateTemplate never hands back an INCOMPLETE Layer 4 (empty output format is a LOUD failure, not silent)', () => {
+  // logic-sweep [MAJOR] context.ts:254 — instantiateTemplate promised a COMPLETE Layer 4 but only
+  // enforced that every slot HAS a supplied value; it never checked the value was non-empty nor validated
+  // the assembled result. An empty-string param ('' is not null) passed the all-slots-filled gate and
+  // produced a Layer 4 that validateLayer4 flags incomplete — exactly the 'assume prose' silent gap (#3)
+  // FR-4.TSK.001/AC-4.TSK.001.1 exists to prevent.
+
+  // (a) An empty-string slot value for the output-format slot must NOT yield a silent, incomplete Layer 4.
+  assert.throws(
+    () =>
+      instantiateTemplate(
+        { instruction: 'Do {x}', output_format: '{fmt}', constraints: [] },
+        { x: 'go', fmt: '' },
+      ),
+    /output format/i,
+    'an empty output_format slot value must be rejected LOUD, never returned as a complete Layer 4',
+  );
+
+  // (b) A template authored with a blank output_format (no slots at all) is likewise incomplete and rejected.
+  assert.throws(
+    () => instantiateTemplate({ instruction: 'Do the thing.', output_format: '', constraints: [] }, {}),
+    /output format/i,
+    'a blank output_format must be rejected — a Layer 4 with no explicit output format is incomplete',
+  );
+
+  // (c) Whatever instantiateTemplate DOES return is always a complete Layer 4 by validateLayer4 (its own sibling rule).
+  const good = instantiateTemplate(
+    { instruction: 'Do {x}', output_format: 'A {x} report.', constraints: [] },
+    { x: 'go' },
+  );
+  assert.equal(validateLayer4(good).complete, true);
+});
+
 test('AC-4.TSK.003.1 — a task-template edit follows version-on-change + mandatory change_reason + non-destructive rollback', async () => {
   const store = new InMemoryContentStore();
 
