@@ -258,6 +258,45 @@ test('AC-0.WHK.008.1 — verified webhook replayed within window → dropped, no
   assert.equal(store.eventLog.filter((e) => e.event_type === 'webhook_replay_dropped').length, 1);
 });
 
+// ── logic-sweep regression (ghl.ts:70) — two DISTINCT signed events with empty-string ids must NOT
+//    collide as replays. `??` only coalesces null/undefined, so a body with `id: ""` used to yield
+//    eventId "" for every such event → replay key `ghl::` collapses → the second genuinely-new
+//    signed event is silently dropped (a #1 knowledge-loss). Each empty-id body must instead fall
+//    back to its per-body signature-derived id so distinct bodies get distinct keys.
+test('logic-sweep — two distinct signed GHL events with empty-string id do NOT collide as replays', async () => {
+  const store = new InMemoryWebhookStore();
+  const pair = generateEd25519Pair();
+  store.seedSecret({
+    connector: 'ghl',
+    secret_kind: SECRET_KIND.ghl_ed25519_public_key,
+    secret_value: pair.publicKeyPem,
+    secret_version: 1,
+    active: true,
+    rotated_at: null,
+  });
+  // Two genuinely-distinct events, both carrying an empty-string id (as GHL may emit — `id` is not a
+  // documented dedup field; deliveryId/webhookId are). Distinct bodies → distinct signatures.
+  const bodyA = Buffer.from(JSON.stringify({ id: '', type: 'ContactCreate' }), 'utf8');
+  const bodyB = Buffer.from(JSON.stringify({ id: '', type: 'OpportunityCreate' }), 'utf8');
+  const sigA = signEd25519(pair.privateKey, ghlSigningInput(bodyA));
+  const sigB = signEd25519(pair.privateKey, ghlSigningInput(bodyB));
+  const reqA: InboundRequest = { raw: bodyA, headers: { 'x-ghl-signature': sigA }, sourceIp: '203.0.113.7' };
+  const reqB: InboundRequest = { raw: bodyB, headers: { 'x-ghl-signature': sigB }, sourceIp: '203.0.113.7' };
+
+  const first = await verifyWebhook('ghl', reqA, deps(store));
+  assert.equal(first.status, 200);
+  const second = await verifyWebhook('ghl', reqB, deps(store));
+  assert.equal(second.status, 200);
+  // Event B is a new event, NOT a replay of A — it must not be dropped.
+  assert.doesNotMatch(second.note ?? '', /dropped \(replay\)/, 'distinct empty-id event B must not be treated as a replay');
+  assert.equal(
+    store.eventLog.filter((e) => e.event_type === 'webhook_verified').length,
+    2,
+    'both distinct empty-id events accepted — neither silently lost',
+  );
+  assert.equal(store.eventLog.filter((e) => e.event_type === 'webhook_replay_dropped').length, 0);
+});
+
 // ── AC-0.WHK.008.2 — verified flood over accept_rate_limit → throttled ──────────────
 test('AC-0.WHK.008.2 — verified webhooks over accept_rate_limit → source throttled', async () => {
   const { store, secret, body } = slackSetup();

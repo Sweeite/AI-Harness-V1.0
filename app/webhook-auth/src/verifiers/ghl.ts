@@ -66,7 +66,14 @@ export function verifyGhl(ingress: Ingress, activeKeys: ActiveSecret[], now: num
   const verified = activeKeys.some((k) => verifyEd25519(k.value, signingInput, ghlSig));
   if (!verified) return { ok: false, reason: 'Ed25519 signature verification failed against all active keys' };
 
-  const parsed = ingress.parsed() as { id?: string; eventId?: string; event_id?: string } | undefined;
-  const eventId = parsed?.id ?? parsed?.eventId ?? parsed?.event_id ?? `ghl-${ghlSig.slice(0, 16)}`;
+  // logic-sweep fix (ghl.ts wrong-default): `??` only coalesces null/undefined, so an empty-string id
+  // (`id: ""`) or a numeric id used to pass through and collapse the replay key to `ghl::` — two
+  // DISTINCT signed events would then collide and the second be silently dropped as a replay (#1
+  // knowledge-loss). `id` is not even a documented GHL dedup field. Pick the first NON-EMPTY STRING
+  // id; otherwise fall back to the per-body signature-derived id (unique per body).
+  const parsed = ingress.parsed() as { id?: unknown; eventId?: unknown; event_id?: unknown } | undefined;
+  const firstNonEmptyString = (...vals: unknown[]): string | undefined =>
+    vals.find((v): v is string => typeof v === 'string' && v.length > 0);
+  const eventId = firstNonEmptyString(parsed?.id, parsed?.eventId, parsed?.event_id) ?? `ghl-${ghlSig.slice(0, 16)}`;
   return { ok: true, eventId };
 }
