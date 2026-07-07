@@ -97,6 +97,29 @@ test('AC-3.OPT.001.1 below-threshold confidence asks instead of calling, and log
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────
+// AC-3.OPT.001.1 (regression) — a NON-FINITE confidence must fail CLOSED (ask), never fall
+// through to CALL. The gate owns the fail-closed guarantee (confidence-gate.ts L32-34): an
+// unknown/malformed LLM score is the canonical "we don't know how confident we are" case, and
+// #2 (never do something it shouldn't) means it must ASK, not silently invoke an external tool.
+// ─────────────────────────────────────────────────────────────────────────────────────
+test('AC-3.OPT.001.1 a non-finite confidence fails closed (asks), never calls', async () => {
+  const sink = new InMemoryOptEventSink();
+  const cand = readTool('search_email');
+
+  // NaN score (e.g. an upstream scoring failure): NaN < threshold is false, so a bare comparison
+  // would fall through to CALL. It must ASK instead, and the avoided-call must be logged (#3).
+  const nan = await confidenceGate({ candidate: cand, confidence: NaN }, DEFAULT_OPT_CONFIG, sink);
+  assert.equal(nan.kind, 'ask', 'a NaN confidence must ASK, never call under an unknown score (#2)');
+  assert.equal(sink.of('tool_selection_ask').length, 1, 'the non-finite ask must be logged (#3)');
+
+  // A non-finite THRESHOLD (malformed config) must also fail closed rather than call.
+  const badCfg = { ...DEFAULT_OPT_CONFIG, tool_selection_confidence_threshold: NaN };
+  const badThreshold = await confidenceGate({ candidate: cand, confidence: 0.9 }, badCfg, sink);
+  assert.equal(badThreshold.kind, 'ask', 'a non-finite threshold must ASK, never call');
+  assert.equal(sink.of('tool_selection_ask').length, 2);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────
 // AC-3.OPT.002.1 — a repeated identical read is served from cache; NO second connector call.
 // ─────────────────────────────────────────────────────────────────────────────────────
 test('AC-3.OPT.002.1 a repeated identical read is served from cache with no second connector call', async () => {

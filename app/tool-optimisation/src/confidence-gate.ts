@@ -58,8 +58,17 @@ export async function confidenceGate(
   }
 
   // Below threshold → ask, never call a possibly-wrong tool (FR-3.OPT.001 happy path). Logged (#3).
-  if (confidence < threshold) {
-    const reason = `confidence ${confidence.toFixed(2)} below threshold ${threshold}`;
+  //
+  // logic-sweep fix (confidence-gate.ts:61): validate the score/threshold are FINITE first and fail
+  // closed. A bare `confidence < threshold` lets a non-finite score sneak through — `NaN < 0.7` and
+  // `0.9 < NaN` are both false — falling through to CALL under an unknown confidence. A non-finite
+  // score is the canonical "we don't actually know how confident we are" case (the runtime LLM match
+  // score can arrive NaN/undefined from an upstream scoring failure), so it must ASK, upholding this
+  // file's fail-closed bias and #2 (never do something it shouldn't) / #3 (never fail silently).
+  if (!Number.isFinite(confidence) || !Number.isFinite(threshold) || confidence < threshold) {
+    const reason = Number.isFinite(confidence) && Number.isFinite(threshold)
+      ? `confidence ${confidence.toFixed(2)} below threshold ${threshold}`
+      : `confidence or threshold not a finite score (confidence=${confidence}, threshold=${threshold}) — asking`;
     await emitAsk(sink, reason, confidence, taskId, candidate.name);
     return { kind: 'ask', reason, confidence };
   }
