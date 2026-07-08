@@ -81,7 +81,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 
 | ID | Title | FR groups | Blocked-by |
 |---|---|---|---|
-| ISSUE-022 ✅ **done** | Memory + entity model + sensitivity/visibility tagging — **DONE (session 75, 2026-07-08):** `app/memory/` (port+fake+live adapter) — deterministic entity resolution (ambiguity flagged, never guessed), Internal-Org singleton, orthogonal visibility×sensitivity tags. Delta migrations `0029` (Internal-Org partial-unique guard) + `0030` (entity_types seed) applied LIVE (head 0030). 18/18 offline (17 AC + AF-082 EVAL: false-merge=0) + R10 live-smoke green (caught 1 fake-vs-DB divergence). AF-082 🟡 (seed-EVAL proven; at-scale = fast-follow). GitHub #22 close owed. | C2 MEM, ENT, TAG | 008, 019 |
+| ISSUE-022 ✅ **done** | Memory + entity model + sensitivity/visibility tagging — **DONE (session 75, 2026-07-08):** `app/memory/` (port+fake+live adapter) — deterministic entity resolution (ambiguity flagged, never guessed), Internal-Org singleton, orthogonal visibility×sensitivity tags. Delta migrations `0029` (Internal-Org partial-unique guard) + `0030` (entity_types seed) applied LIVE (head 0030). 18/18 offline (17 AC + AF-082 EVAL: false-merge=0) + R10 live-smoke green (caught 1 fake-vs-DB divergence). AF-082 🟡 (seed-EVAL proven; at-scale = fast-follow). Committed `ab6e415`; GitHub #22 CLOSED. | C2 MEM, ENT, TAG | 008, 019 |
 | ISSUE-023 | Embeddings + HNSW vector search | C2 VEC | 022, 002(spike) |
 | ISSUE-024 | Memory write / sole-writer path (contradiction, confidence, validate-commit) | C2 WRT | 022, 020 |
 | ISSUE-025 | Retrieval + ranking + clearance-before-ranking + answer modes | C2 RET | 023, 020 |
