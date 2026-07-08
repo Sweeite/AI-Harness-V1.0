@@ -1,0 +1,21 @@
+{
+  "name": "@harness/offboarding",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-083 (C10 OFF) — the five-step, fail-closed client-offboarding state machine on the MANAGEMENT plane: Super-Admin trigger (FR-10.OFF.001) → verified-complete export + row-count/checksum reconciliation (fail-closed, NFR-CMP.009) + encrypted time-limited delivery + client sign-off (FR-10.OFF.002/003) → retention-freeze with the cross-project deployment_settings.frozen_at write + freeze_pending on an unconfirmed write (FR-10.OFF.004, OD-162) → atomic-or-escalate hard-delete + deprovision, internal_token-revoked-first, two-person authorised (NFR-SEC.015), partial → deletion_failed with no auto-rollback (FR-10.OFF.005) → the compliance meta-record, escalate-if-unwritten (FR-10.OFF.006). A torn-down client is provably, airtight-ly gone with knowledge exported intact first, no partial-silent deprovision, no silent completion without evidence. Port + in-memory reference fake; supabase-store.ts is the live MANAGEMENT-plane pg adapter over offboarding_records (migration 0004, hand-applied). The live external ops — client-silo export/reconcile (AF-133), the cross-project freeze write (AF-135), the Supabase/Railway/connector deprovision (AF-132) — are INJECTED SEAMS run at onboarding (Stage-3/4 precedent); this slice owns the policy + the fail-closed machine + the persistence, all offline-provable. check = offline non-drift gate over the mgmt migration corpus (client_registry + client_status + the 0004 workflow_state enum + the two-person-auth CHECK).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

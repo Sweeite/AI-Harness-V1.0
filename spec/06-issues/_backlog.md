@@ -183,7 +183,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-080 | Release model — auto-deploy + canary/release-train gate + rollback-by-redeploy + version-skew alert | C10 DEP | 007 |
 | ISSUE-081 | Schema-migration propagation + per-deployment failure isolation | C10 MIG | 008, 080 |
 | ISSUE-082 | Individual right-to-erasure workflow (two-person auth, verify-before-done) | C10 DEL | 029, 021 |
-| ISSUE-083 | Client offboarding workflow (export-verified → sign-off → freeze → hard-delete → meta-record) | C10 OFF | 012, 085 |
+| ISSUE-083 🔨 **in-progress** (S79, live-close pending) | Offboarding — `app/offboarding/` built + adversarially verified + fixed (28/28 + `check` + typecheck); mgmt-plane migration `0004_offboarding_records` authored (hand-applied), NOT applied; live export/freeze/deprovision are injected seams (AF-132/133/135, onboarding). Verify caught 2 MAJOR + 2 MINOR + 2 self-caught live BLOCKERs — all fixed. R10 mgmt-adapter smoke + `0004` apply = morning pass. | C10 OFF | 012, 085 |
 | ISSUE-084 | Retention configs + isolation (client_slug deleted) + residency + legal-review gate | C10 RET, ISO, LEG | 008, 010 |
 | ISSUE-085 | Backup & DR — hourly off-platform dump + restore rehearsal + backup-health push | ADR-008, NFR-DR | 012, 004(spike) |
 

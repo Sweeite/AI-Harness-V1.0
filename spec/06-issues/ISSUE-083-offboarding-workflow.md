@@ -2,9 +2,11 @@
 id: ISSUE-083
 title: Client offboarding workflow (export-verified → sign-off → freeze → hard-delete → meta-record)
 epic: K — infra & compliance
-status: ready
+status: in-progress
 github: "#83"
 ---
+
+> **Build status (Session 79, offline overnight):** `app/offboarding/` built + adversarially verified + fixed — **28/28 offline tests + typecheck + `check` green**. The five-step, fail-closed MANAGEMENT-plane state machine (trigger → export-verified + delivered + acknowledged → freeze → hard-delete+deprovision → meta-record) with all gates: RBAC (Super-Admin only), export verification (fail-closed on indeterminate/short/empty), sign-off hard gate, two-person auth (NFR-SEC.015, three distinct identities), internal_token-revoked-first, atomic-or-escalate with `deletion_failed` (no auto-rollback), escalate-if-meta-unwritten. Port + InMemory fake + supabase-store.ts (live mgmt adapter). The live external ops — client-silo export/reconcile (**AF-133**), the cross-project freeze write (**AF-135**), the Supabase/Railway/connector deprovision (**AF-132**) — are INJECTED SEAMS run at onboarding (Stage-3/4 precedent), NOT stubbed-as-done. **Migration `0004_offboarding_records` (mgmt plane, hand-applied) authored, NOT applied** (mgmt head was `0003`). Adversarial verify (independent zero-context agent) caught **2 MAJOR + 2 MINOR**, all fixed regression-test-first: ① a partial-but-all-ok deprovision set could report `completed` → completeness now enforced against the full `DEPROVISION_SEQUENCE` (incl. backup_purge); ② deletion was reachable from `freeze_pending` → now gated on a CONFIRMED freeze (an unconfirmed freeze means the client may still be writing post-export — #1); + a fake-vs-live authorizeDeletion distinctness parity fix + AC-coverage. **I also self-caught 2 live-only BLOCKERs pre-verify:** the freeze wrote `client_registry.status=frozen` before the cross-project write confirmed (mgmt status must never outrun the client — AC-10.OFF.004.5), and the `0004` two-person CHECK used `is distinct from` (which `NULL IS DISTINCT FROM NULL`=FALSE would reject the Step-1 all-null insert) → switched to NULL-permissive `<>`. `status: in-progress` (live-close pending: apply `0004` to the mgmt DB + run the R10 mgmt-adapter smoke = operator's morning pass; AF-132/133/135 remain onboarding residuals).
 
 # ISSUE-083 — Client offboarding workflow (export-verified → sign-off → freeze → hard-delete → meta-record)
 
