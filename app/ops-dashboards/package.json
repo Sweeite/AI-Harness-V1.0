@@ -1,0 +1,21 @@
+{
+  "name": "@harness/ops-dashboards",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-078 — the two operator dashboards that RENDER C7/C10 signals (never produce them). surface-05 (Operations dashboard) = nine polled, individually role-scoped panels, each honest about its own freshness and forbidden from a false-healthy view (NFR-OBS.011); surface-06 (Super-Admin fleet console, management deployment) = the fleet health grid + sections B–H rendered from the push-fed management store ONLY (never a client pull, AC-7.MGM.003.1), with frozen-≠-dead + stale/unreachable rendering (#2/#3), and the guarded offboarding wizard whose hard-delete requires a distinct second approver (AC-10.DEL.006.2). Owns: the panel/section catalog + its producing-FR mapping (AC-7.VIEW.001.1), the per-panel/section + per-action RBAC gating (absent-not-empty, AC-7.VIEW.002.1), the poll-cadence-from-config resolver (AC-7.RTP.002.1), the false-healthy panel-state machine (AC-7.RTP.004.2 / NFR-OBS.011), the fleet-card render over the C10 liveness signal, and the offboarding wizard gates. Port + in-memory fake (OpsDashboardStore — the access_audit write every export/sensitive view performs); supabase-store.ts is the live pg adapter. `check` is a no-DB non-drift guard: every PERM node the catalog gates on must exist in PERMISSION_NODES.md (a gate on a non-existent node is a build-time #3 defect) and every panel/section must map to a producing FR. No net-new app table; no migration.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@harness/mobile-surface",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-079 (surface-12) — the mobile surface: the narrow-viewport re-rendering + web-push client for the six UI-MOBILE-* sub-surfaces (Home/Approvals/Activity/Chat/Command-menu/Alerts). NOT the producing logic (C7 ALR/RTP/VIEW, C6 APR/ESC, C9 CMD/SUG are owned by ISSUE-075/076/056/072/070). This package owns: (1) the one net-new binding — push_subscriptions registration + the FR-7.VIEW.003 push routing (hard-limit/critical immediate + non-suppressible; pending/stale at config frequency), a failed registration reads 'push not enabled' never a false 'on' (#3); (2) the honest Live/Reconnecting/Polling connection state + the two-Realtime cap (Approvals=task_queue, Alerts=notifications; every other surface polls — FR-7.RTP.001/004); (3) never-false-healthy rendering — a stale/errored tile/feed/queue reads '—'/'can't confirm' never '0'/'✓'/'Live', and re-fetches before re-enabling actions on reconnect (NFR-OBS.011); (4) the no-back-door command dispatch gate — mobile/quick-tap/`/slug` run the identical node-gate + C6 pipeline, destructive-confirm-after-gate, audit fail-closed (NFR-SEC.013, FR-9.CMD.002/003/004/005, FR-9.MODE.003); (5) the approval-on-mobile path (Approve/Reject/hold-for-review; Modify degrades to desktop — FR-6.APR.003/ESC.003), Restricted reveal (FR-1.RST.003); (6) the answer-mode pill (unresolved reads 'mode unknown' — FR-4.CID.006/AC-7.VIEW.002.2); (7) the out-of-scope-on-mobile degradation notices (OD-152); (8) alert non-suppressibility + the two protective banners + Slack-independent durability (FR-7.ALR.002/006/008/009). Port + in-memory reference fake; supabase-store.ts is the live pg adapter. index.ts `check` is a no-DB non-drift guard (the two Realtime surfaces ≡ the 0023 supabase_realtime publication; the pill values ≡ the answer_mode enum; the non-suppressible alert types ⊆ the alert_type enum).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

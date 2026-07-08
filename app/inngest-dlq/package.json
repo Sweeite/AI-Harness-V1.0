@@ -1,0 +1,22 @@
+{
+  "name": "@harness/inngest-dlq",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-052 (C5 JOB — FR-5.JOB.001-007 + NFR-INF.011/014). Inngest as the harness EXECUTION ENGINE: every task type is an Inngest step function; step-level retry with configurable per-job-type exponential backoff; unique-event-id de-duplication so a re-delivered event never double-executes; the OD-058 SINGLE retry/DLQ authority (Inngest owns retry+DLQ; task_queue.attempts/next_retry_at/status/error is a READ-ONLY audit projection synced FROM Inngest's reported lifecycle — the task_queue path NEVER schedules its own retry, the exactly-one-retry-loop invariant #2); fan-out to parallel child jobs with LOUD partial-failure detection + reconcile/retry-as-a-unit under idempotency (never silently partial, #1/#3); and a human-only dead-letter queue (exceed retry count -> DLQ with full error history + final reason, never auto-retried, explicit human requeue/discard) that emits its OWN escalating liveness heartbeat on event_log when an entry sits past a configurable age (an unattended DLQ is a loud condition, #3). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter (task_queue projection UPDATE + event_log INSERT) authored to the baseline DDL — NOT run live. Consumes ISSUE-049 idempotency keys + executes its graphs; writes the ISSUE-048 task_queue projection columns (does not own the schema). AF-018 (Inngest no-time-limit / step-retry / DLQ — VERIFIED, per-step cap <= 2h) enforced as a build-time guard; AF-063 (per-key concurrency serialization) + AF-112 (idempotent retry) underwrite the fan-out/idempotent-retry legs (live posture owed).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@harness/task-queue": "file:../task-queue",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

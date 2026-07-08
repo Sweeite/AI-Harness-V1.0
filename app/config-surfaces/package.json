@@ -1,0 +1,21 @@
+{
+  "name": "@harness/config-surfaces",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-086 — the two CONFIG SURFACES on top of the ISSUE-010 config-store backbone. UI-config-admin (surface-01): the single privileged screen that renders/validates/WRITES every registry knob across 11 sections, appending the who/when/old→new audit row on each per-section Save; edit-class behaviour (LIVE/BOOT/REBUILD/SECRET), locked/hard-limit floors, per-section + entry PERM gating, all five load states. UI-config-audit-log (surface-01b): the read/review counterpart — key-prefix-scoped Config-Change Timeline, Change Detail (old→new diff + tamper-evidence), complete-or-loud Compliance Export, plus the two always-loud alert banners (alert-engine-stalled AC-7.ALR.008.2, alert-delivery-misconfigured AC-7.ALR.009.1). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter over config_values / secret_manifest / config_audit_log (owned by ISSUE-010). `check` is a no-DB registry non-drift + PERM-node-existence guard.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

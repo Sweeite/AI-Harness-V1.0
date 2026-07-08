@@ -1,0 +1,21 @@
+{
+  "name": "@harness/user-mgmt",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-021 — the post-invite user-authorization LIFECYCLE + the RBAC/access AUDIT spine (C1 USR + AUD). The five lifecycle actions on an existing user's authorization (assign/change role, deactivate/reactivate, reset 2FA, view activity, grant/revoke clearance), each PERM-gated and each writing an immutable access_audit record via the single audit spine. The audit-completeness surface spans BOTH the human path AND the service_role/agent path (AF-081 — no DB backstop on the agent path, so coverage is harness discipline): every Personal/Restricted read/write/injection appends an access_audit row. Reactivation must NOT auto-restore above-Standard clearances or Restricted grants (AC-1.USR.002.2). Reason-capture on sensitive mutations (NFR-SEC.016). The last-Super-Admin guard (FR-1.ROLE.005) is homed in ISSUE-018/@harness/rbac and invoked here via the atomic store methods. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to schema.md §2; index.ts `check` is a no-DB non-drift guard (actor_type + sensitivity_tier constants ≡ the live 0001 baseline enums). Storage/retention/export of the audit trail is the C7/ISSUE-077 seam (FR-1.AUD.003). No new migration — the tables/trigger land in ISSUE-008/018/019.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@harness/agent-health",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-065 — the C8 agent-health metric PRODUCER: per-agent success/failure-rate + last-run aggregation (FR-8.HLTH.001), specialisation-drift scoring + flag (FR-8.HLTH.002), dead-agent / low-quality detection + flag (FR-8.HLTH.003, quality = success/failure + answer-mode pill + approval/rejection per OD-078), and the producer liveness heartbeat + stale-never-green reader (FR-8.HLTH.004 / NFR-OBS.005). The whole slice is flag-never-auto-correct (OD-078 / NFR-OBS.015): it writes agent_health_metrics and reads agents (memory_scope/enabled) read-only — it NEVER disables or auto-corrects an agent. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the schema.md §9 agent_health_metrics DDL (already in the 0001 baseline). C7 (ISSUE-067/078) renders; C9 (ISSUE-073) suggests; a human decides. `check` = a no-DB guard that the three CFG defaults (drift_threshold/dead_agent_threshold/polling_interval_health_metrics_s) never silently drift from config-registry.md.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

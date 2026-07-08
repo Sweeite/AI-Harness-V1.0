@@ -1,0 +1,21 @@
+{
+  "name": "@harness/specialists",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-062 (C8 SPC) — the eight canonical specialist agents' behavioural contracts + the load-bearing REJECT-AT-WRITE hard-limit invariants on agents.tools_allowed. Consumes the ISSUE-061 seed roster (descriptions/memory_scope are authored there, not here — Rule 0 one source of truth) and asserts the SPC.* invariants ON TOP of it: Research read-only/first-in-chain (SPC.002); Comms drafts-only, never autonomous send (SPC.003); Finance read-heavy, never transacts, finance-scoped Confidential (SPC.004); Memory Agent is the SOLE memory-writer (SPC.005, ADR-004); Insight slow-loop/read-all/not-on-demand (SPC.006). The load-bearing deliverable is the three per-agent NEGATIVE invariants enforced at the registry save path (AC-8.SPC.003.3/.004.3/.005.2 + AC-NFR-SEC.004.2): a code-level DENY (not an audited capability change) when a tools_allowed edit would grant the Comms Agent an autonomous-send tool, the Finance Agent a transaction-initiating tool, or memory-write capability to any non-Memory agent — the discriminator is NOT a stored column (all three are category='write'), so a version-controlled tool-class predicate resolves ids by identity via C3 (FR-3.ACT.007 memory-write / FR-3.ACT.004 send / FR-3.ACT.002 transaction). Guarded fires REGARDLESS of caller role (a negative invariant on the data, independent of OD-080). Part of the AF-068 red-team battery (GREEN 2026-07-04, ISSUE-003). Port + in-memory reference fake; supabase-store.ts is the live pg adapter (joins tools for the class predicate). check = offline non-drift gate over the baseline agents/tools shapes the guard relies on.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -303,6 +303,38 @@ Gate everything. Not hands-off.
 
 ---
 
+## Frontend track (parallel lane — [[OD-197]], added session 77)
+
+**Why a separate track.** The 11 dependency waves above are the **backend** build order. The plan specced all 13
+surfaces (`spec/03-surfaces/`) and locked the UI stack (Next.js + Tailwind + shadcn/ui) but **never scheduled the app
+that renders them** — every `app/*` package built so far is headless. [[OD-197]] resolves this: the frontend is a
+**second lane that grows alongside the backend**, not a big-bang at the end (which would leave the system
+untestable-by-a-human for months). A pile of headless packages can't be clicked; screens are how the operator tests it.
+
+**The track's own dependency rule (mirrors R1).** The render layer is *orthogonal* to the backend waves: **a surface's
+React render only needs (a) the substrate `087` `done`, and (b) its own backend signal `done`.** It does NOT wait for
+later stages. So screens land as their backends land.
+
+- 🟠 **SUBSTRATE GATE — [[ISSUE-087]]** (the UI analog of `008`): two Next.js apps (`web/client` + `web/admin`, ADR-001 §7),
+  auth session, the **RBAC-driven app shell** reusing `can()`'s nodes (absent-not-empty), the data-access seam to the
+  `app/*` packages, the shared **honest-state** primitives (NFR-OBS.011 — never render a false-healthy view) + a11y
+  baseline, local dev harness. **Blocked-by `007`/`013`/`018` — all `done`, so `087` is `ready` now.** Build it serial + first (R3): nothing renders without it.
+- 🟢 **WALKING SKELETON** (right after `087`): the first clickable, testable path — **auth (surface-00) → Ops dashboard
+  (surface-05) on real data → User Management (surface-02)**. Their backends (`013`/`078`-logic/`021`-logic + `011`/`075`/`076`/`077`)
+  are built or landing in Stage 5. This is the "see it" milestone the operator asked for. *(A clickable surface-05
+  prototype was shared session 77 as the design proof.)*
+- 🟢 **PER-SURFACE RENDER** (each gated on its own backend signal `done`): surface-01/01b (`086`), surface-03 (`026`),
+  surface-04 (`056`), surface-06 (`078`), surface-07/08 + notif centre (`073`), surface-09 (`067`), surface-10 (`072`),
+  surface-11 (`031`), surface-12 mobile (`079`). **Owed (Rule 0, [[OD-197]]):** a `to-issues` pass reframes each surface
+  issue to carry a **render** sub-deliverable (or mints render issues) once `087` lands. Until then, Stage-5 surface
+  members (`021`/`078`/`079`/`086`) close as **logic-done, render-pending**, not full screens.
+
+> **Fan-out note.** The substrate is serial (gate). Per-surface renders are batch-safe *once their backend is done* —
+> same collision rule as the backend batches (shared design-system/token files serialized; each surface's screen is a
+> disjoint path). *(Cost: the frontend is real net-new work the 86-issue backlog under-scoped — say it out loud.)*
+
+---
+
 ## What "test" means at each level (R6)
 
 - **Per-issue (build-time):** the issue's §4 Definition of done — its `AC-*` IDs (text read in the FR),

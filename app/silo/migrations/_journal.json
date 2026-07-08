@@ -37,6 +37,7 @@
     { "tag": "0029_entities_internal_org_singleton", "file": "0029_entities_internal_org_singleton.sql", "transactional": false },
     { "tag": "0030_entity_types_config_seed", "file": "0030_entity_types_config_seed.sql", "transactional": true },
     { "tag": "0031_rls_enforcement", "file": "0031_rls_enforcement.sql", "transactional": true },
-    { "tag": "0032_profiles_authenticated_grant", "file": "0032_profiles_authenticated_grant.sql", "transactional": true }
+    { "tag": "0032_profiles_authenticated_grant", "file": "0032_profiles_authenticated_grant.sql", "transactional": true },
+    { "tag": "0033_push_subscriptions_owner_rls", "file": "0033_push_subscriptions_owner_rls.sql", "transactional": true }
   ]
 }

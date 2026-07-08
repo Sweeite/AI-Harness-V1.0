@@ -1,0 +1,21 @@
+{
+  "name": "@harness/proactivity-modes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-068 (C9 MODE) — the proactive-autonomy POLICY layer. Stamps every proactive item with exactly one mode ∈ {Suggest, Prepare, Act} MAPPED FROM the C6 approval tier (auto→Act, soft→Prepare, hard→Suggest/Prepare-to-hard-queue), never from a second risk classifier; indeterminate → Suggest, never Act (FR-9.MODE.001/002). Enforces the operator-configurable action-autonomy matrix + its non-negotiable floor: floored sub-types (existing-client/SoR comms, financial, Confidential/Restricted) are code-fixed at hard-approval and never Act; low-risk-external is configurable between Suggest and Prepare only; NO sub-type can reach Act (OD-161 — Act is not a reachable matrix value); sub-type-ambiguous → floored; the floor caps the mode regardless of matrix or default (AC-9.MODE.004.5). Routes every proactive action through the IDENTICAL C6 guardrail pipeline (no proactive bypass, fail-closed on guardrail error — FR-9.MODE.003 / NFR-SEC.013 / FR-6.FMM.001). Matrix writes gated by PERM-guardrail.edit_autonomy (Super-Admin only); denied edits logged. Pure policy in modes.ts; ProactivityStore port + InMemory reference fake in store.ts; supabase-store.ts is the live pg adapter; index.ts `check` is the no-DB non-drift guard (proactive_mode enum == PROACTIVITY_MODES; no matrix path reaches Act).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

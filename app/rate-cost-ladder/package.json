@@ -1,0 +1,21 @@
+{
+  "name": "@harness/rate-cost-ladder",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-058 — the C6 rate-limit guardrail + cost-ladder ENFORCEMENT half (policy + decision only; C7 meters, C6 decides, C5 executes — OD-062/OD-068). (1) The five configurable-never-unlimited rate caps (FR-6.RTL.001) with the config validator that rejects unlimited/zero-guard AND enforces a per-cap meaningful-finite ceiling (an absurd-but-finite value is functionally unguarded), plus the ownership split (counter mechanism lives with its home owner — memory→C2, concurrency/retries→C5, tool/comms→C3; the consistent breach response is C6's, FR-6.RTL.002) and the soft→throttle→hard-stop breach ladder that halts-and-escalates any irreversible/billed action at cap (never auto-retry, FR-6.RTL.003; consumes C3's ISSUE-034 halt-escalate hook). (2) The cost-ladder decision node (FR-6.RTL.004 / NFR-COST.001-004/007): it takes C7's per-rung cost signal and emits the disposition — soft (alert only) → throttle (defer/queue non-critical: proactive loops + low-priority) → hard-kill (stop new consequential spend, flag) — with the inviolable guards that a cost rung NEVER overrides/relaxes a hard limit (FR-6.HRD.*, #2) and NEVER fires silently (every rung transition + every cap breach writes a guardrail_log row of type rate_limit, #3). C6 emits a disposition; C5 executes it — this package never itself throttles/kills a run (AC-NFR-COST.004). Port + in-memory GuardrailLogSink fake reference model; supabase-store.ts is the live pg adapter that inserts the rate_limit-class guardrail_log rows. The guardrail_log table + enums are landed by ISSUE-060 (C6 LOG); this slice is a producer. AF-001 (cost viability) is GREEN (2026-07-03) so the 50/200/75/100 ladder defaults are anchored to measured reality.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
