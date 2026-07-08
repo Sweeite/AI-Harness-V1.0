@@ -1,0 +1,21 @@
+{
+  "name": "@harness/disconnection-recovery",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-038 (C3 DSC) — the connector disconnection + recovery lifecycle: detect + classify system-wide vs individual (FR-3.DSC.001); surface a non-dismissible admin modal / standard-user banner with reconnect authority (DSC.002); auto-resume the tasks a disconnection paused on reconnect, re-checking authorization (FR-1.RLS.007) at the consequential side-effect boundary and persisting the paused set across a runtime restart (DSC.003); escalate an unresolved disconnection past a persisted window to Super Admin (DSC.004, NFR-OBS.007 escalate-don't-abandon); emit the connector health-panel data with NO token material (DSC.005); and raise expiry/degraded/undeliverable-surfaced alerts (DSC.006). A connector failure is always seen, never silently drops a task, and always resolves or escalates. Port + in-memory reference fake; supabase-store.ts is the live pg adapter over the 0034/0035 durable substrate (connector_disconnection_state + paused-set). check = offline non-drift gate over the DDL shapes the adapter depends on. The paused-task status representation in C5 is deferred to OD-200 (task_queue has no `paused` status); this slice owns the durable paused-SET + drives resume through an injected re-check seam.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

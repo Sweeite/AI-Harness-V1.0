@@ -103,7 +103,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-035 | Write tools + seven hard limits at connector | C3 ACT | 032, 055 |
 | ISSUE-036 | Tool optimisation (confidence-gate, cache, batch, degrade) | C3 OPT | 032 |
 | ISSUE-037 | Trigger infra + liveness (watch re-arm, event-gap) | C3 TRIG | 032, 017 |
-| ISSUE-038 | Disconnection + recovery (states, auto-resume, escalation) | C3 DSC | 033 |
+| ISSUE-038 🔨 **in-progress** (S79, live-close pending) | Disconnection + recovery — `app/disconnection-recovery/` built + adversarially verified + fixed (23/23 + `check` + typecheck); migrations `0034`/`0035`/`0036` authored discipline+RLS-clean, NOT applied; [[OD-200]] logged. R10 live smoke + live migrations = morning pass. | C3 DSC | 033 |
 | ISSUE-039 | GHL connector instance | C3 OBS.001 (+GHL TOK/TRIG) | 033, 034, 037 |
 | ISSUE-040 | Google connector instance (Gmail/Drive/Calendar) | C3 OBS.002 | 033, 034, 037 |
 | ISSUE-041 | Slack connector instance | C3 OBS.003 | 033, 034, 037 |

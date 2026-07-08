@@ -38,6 +38,9 @@
     { "tag": "0030_entity_types_config_seed", "file": "0030_entity_types_config_seed.sql", "transactional": true },
     { "tag": "0031_rls_enforcement", "file": "0031_rls_enforcement.sql", "transactional": true },
     { "tag": "0032_profiles_authenticated_grant", "file": "0032_profiles_authenticated_grant.sql", "transactional": true },
-    { "tag": "0033_push_subscriptions_owner_rls", "file": "0033_push_subscriptions_owner_rls.sql", "transactional": true }
+    { "tag": "0033_push_subscriptions_owner_rls", "file": "0033_push_subscriptions_owner_rls.sql", "transactional": true },
+    { "tag": "0034_connector_disconnection_state", "file": "0034_connector_disconnection_state.sql", "transactional": true },
+    { "tag": "0035_connector_disconnection_open_index", "file": "0035_connector_disconnection_open_index.sql", "transactional": false },
+    { "tag": "0036_connector_disconnection_event_types", "file": "0036_connector_disconnection_event_types.sql", "transactional": false }
   ]
 }

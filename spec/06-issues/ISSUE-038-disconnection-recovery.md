@@ -2,9 +2,11 @@
 id: ISSUE-038
 title: Connector disconnection + recovery
 epic: D — tool layer
-status: ready
+status: in-progress
 github: "#38"
 ---
+
+> **Build status (Session 79, offline overnight):** `app/disconnection-recovery/` built + adversarially verified + fixed — **23/23 offline tests + typecheck + `check` green**; migrations `0034`/`0035`/`0036` authored **discipline-gate + RLS-lint clean, NOT yet applied** (silo head was 0033; these are 0034–0036). `status: in-progress` (logic-built, **live-close pending** per R10 — the R10 live-adapter smoke + the live migrations are the operator's morning pass). Adversarial verify (independent zero-context agent) caught **3 MAJOR + 4 MINOR** — all fixed regression-test-first: ① a resume-halted (revoked-authz) task now **halts AND escalates** (loud Super-Admin escalation, not a bare log — AC-3.DSC.003.2); ② a live `event_log`/`access_audit` sink (`SupabaseDisconnectionSinks`) now ships so the #3 audit trail is real + smokeable (with migration `0036` adding the 4 canonical `event_type` values a live write needs — the fake-passes-offline/live-throws class); ③ an **individual** lapse no longer false-degrades the shared per-connector credential; + staleness-false-healthy, an identity-derived surfacing footgun, a live health-panel read, and CFG defaults. Surfaced **[[OD-200]]** (task_queue has no `paused` status — a C5 coupling fork; the DSC slice owns the durable paused-SET fail-safe meanwhile). **Morning live close:** apply 0034/0035/0036 → run the R10 smoke → flip `done`.
 
 # ISSUE-038 — Connector disconnection + recovery
 
