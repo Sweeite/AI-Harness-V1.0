@@ -149,7 +149,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-061 | Orchestrator + 7-step routing + agents registry | C8 ORC, REG | 042, 048 |
 | ISSUE-062 ✅ **done** (S77) | Eight specialist definitions + per-agent hard limits (Comms never-sends, Finance never-transacts, Memory sole-writer) | C8 SPC | 061, 043 |
 | ISSUE-063 | Per-agent memory scoping (retrieval filter) | C8 SCO | 062, 025 |
-| ISSUE-064 | Execution plans + per-step failure-mode assignment | C8 PLAN | 061, 052 |
+| ISSUE-064 🔨 **in-progress** (S79, live-close pending) | Execution plans — `app/execution-plans/` built + adversarially verified + fixed (19/19 + `check` + typecheck); no store migration (verify-present in 0001), migration `0037` adds plan event_types; [[OD-201]] logged (step_failure_mode drift, owed to 061). R10 adapter smoke + `0037` apply = morning pass. | C8 PLAN | 061, 052 |
 | ISSUE-065 ✅ **done** (S77) | Agent health / drift / dead-agent (flag-never-auto-correct) + producer heartbeat | C8 HLTH | 061, 011 |
 | ISSUE-066 | Orchestrator learning + scope-aware result cache + cost-routing | C8 LRN, COST | 061, 074 |
 | ISSUE-067 | Agent builder surface | surface-09 (renders C8 REG/SPC/PLAN/HLTH) | 062, 064, 065 |

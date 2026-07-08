@@ -1,0 +1,21 @@
+{
+  "name": "@harness/execution-plans",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-064 (C8 PLAN) — the execution-plan assignment/structure/version discipline layer ON TOP of ISSUE-061's plan structure. Owns the canonical, DB-aligned step_failure_mode taxonomy (retry/skip_and_continue/halt_and_escalate) and reconciles the orchestrator's shorthand (halt_escalate/skip) onto it (OD-201). FR-8.PLAN.001: assign exactly one canonical failure mode to EVERY step at build time (never at failure time); C5 reads the pre-assigned mode. FR-8.PLAN.002: unassigned → halt_and_escalate safe default (never silently continue) + the unattended-halt re-escalation reusing the AC-5.QUE.005.2 staleness guarantee. FR-8.PLAN.003: build-time chain_depth_limit gate — over-limit is rejected → low-confidence clarification, NEVER silently truncated mid-chain. FR-8.PLAN.004: version→outcome attribution + HUMAN-DECIDED, authority-gated (OD-080, fail-closed), audited, never-automatic rollback that appends (never deletes — OOS-030). No migration: execution_plans + step_failure_mode already ship in the 0001 baseline (verify-present, like ISSUE-022). Port + in-memory reference fake; supabase-store.ts is the live pg adapter over execution_plans + event_log. check = offline non-drift gate over the execution_plans shape + the canonical enum values. AF-126 (version→outcome 'measurably improves' EVAL) is a build-time EVAL tracked in the feasibility register — the plumbing ships + is test-covered independent of that claim.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
