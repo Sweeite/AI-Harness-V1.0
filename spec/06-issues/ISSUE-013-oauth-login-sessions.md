@@ -76,3 +76,14 @@ Deliver the OAuth login path (the only sign-in path for client-tenant users) and
 - **Unit / integration** (per `spec/05-non-functional/test-strategy.md`): OAuth provider branching + identity-hardening rejections (AC-0.AUTH.001/002/004); provider-toggle takes effect without deploy (AC-0.AUTH.003.1); access-TTL expiry forces refresh (AC-0.SESS.002.1); refresh rotation invalidates the prior token + reuse-detection revokes the session (AC-0.SESS.003.1); inactivity bound refuses refresh (AC-0.SESS.004.1); cookie-not-localStorage + HttpOnly-or-fallback (AC-0.SESS.005.1); mid-task service_role continuation on benign expiry (AC-0.SESS.006.1); expiry → re-auth with preserved state (AC-0.SESS.007.1); `getUser()` denies a server-side-logged-out token (AC-0.SESS.008.1).
 - **Feasibility gate:** AF-073 must be GREEN (or its fallback applied) before AC-0.SESS.005.1 is marked `Verified`.
 - **AC → Verified path:** each listed AC-* moves to `Verified` when its test layer passes on CI atop the ISSUE-009 RLS baseline; the slice is `done` only when every AC in §4 is `Verified` and AF-073 is resolved.
+
+## Post-build fix — profiles `authenticated` grant (session 76, 2026-07-08)
+
+The ISSUE-020 live capstone surfaced that `0006_profiles_owner_rls` authored the `profiles_owner_read`
+(SELECT) + `profiles_owner_update` (UPDATE) policies but never GRANTed the table-level privilege back after
+`0001c`'s blanket revoke — so both self-row policies were **dead** (permission-denied before RLS; fail-CLOSED,
+no leak, but the dashboard self-profile read broke). Fixed by **migration `0032_profiles_authenticated_grant`**
+(applied LIVE): `grant select` + a **column-scoped `grant update (name)`** so a user can edit their display
+name but a write to `active` (self-reactivation) or `email` (auth.users mirror) fails loud — closing a latent
+#2 hole. Live-verified via `information_schema` (table SELECT + column UPDATE=`name` only); silo `schema.test.ts`
+asserts the grant shape. Status stays `done` (a bug-fix to the shipped slice, not a decision change).

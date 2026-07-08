@@ -60,6 +60,7 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0029_entities_internal_org_singleton", // ISSUE-022 — entities Internal-Org partial-unique singleton guard (transactional:false)
     "0030_entity_types_config_seed", // ISSUE-022 — entity_types config_values seed (CFG-entity_types)
     "0031_rls_enforcement", // ISSUE-020 — user_visibility helper + memories/entities clearance predicate + universal aal2
+    "0032_profiles_authenticated_grant", // ISSUE-013 fix — the missing profiles SELECT + column-scoped UPDATE(name) grant
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.
@@ -89,6 +90,15 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
   assert.equal(journal.entries.find((e) => e.tag === "0030_entity_types_config_seed")!.transactional, true);
   // ISSUE-020: 0031 is a transactional DDL migration (helper + policies, no CONCURRENTLY / no enum-add).
   assert.equal(journal.entries.find((e) => e.tag === "0031_rls_enforcement")!.transactional, true);
+  assert.equal(journal.entries.find((e) => e.tag === "0032_profiles_authenticated_grant")!.transactional, true);
+});
+
+test("0032 (ISSUE-013 fix): profiles gets the missing authenticated SELECT + column-scoped UPDATE(name) grant", () => {
+  const sql = sqlOf("0032_profiles_authenticated_grant");
+  assert.match(sql, /grant select on public\.profiles to authenticated/i);
+  // UPDATE is column-scoped to `name` only — never `active` (self-reactivation #2) or `email` (auth mirror).
+  assert.match(sql, /grant update \(name\) on public\.profiles to authenticated/i);
+  assert.doesNotMatch(sql.replace(/--.*$/gm, ""), /grant update on public\.profiles/i); // not a blanket UPDATE
 });
 
 test("0031 (ISSUE-020): the fifth helper user_visibility + roles.visibility_tiers role-attribute source (OD-168)", () => {
