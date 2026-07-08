@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import {
   checkInitPlanWrapping,
   checkCoverage,
+  checkAal2Coverage,
   checkAllRls,
   stripSelectSubqueries,
   parseCreatedTables,
@@ -190,4 +191,42 @@ test("assertRlsCoverageLive returns clean when the catalog is fully covered", as
   const fake: QueryableClient = { async query() { return { rows: [] }; } };
   const res = await assertRlsCoverageLive(fake);
   assert.deepEqual(res, { rlsDisabled: [], noPolicy: [] });
+});
+
+// ── LINT 4 — aal2 coverage (FR-1.RLS.005 / AC-1.RLS.005.1 / AF-076): ISSUE-020's CI teeth ──
+
+test("checkAal2Coverage flags an authenticated GRANT policy that omits the aal2 clause", () => {
+  const files = [{ tag: "x", sql: `create policy memories_read on public.memories as permissive for select to authenticated using ((select public.user_visibility(auth.uid())) is not null);` }];
+  const f = checkAal2Coverage(files);
+  assert.equal(f.length, 1);
+  assert.equal(f[0]!.rule, "aal2-missing");
+  assert.match(f[0]!.message, /memories_read/);
+});
+
+test("checkAal2Coverage passes a policy that gates on user_aal", () => {
+  const files = [{ tag: "x", sql: `create policy memories_read on public.memories as permissive for select to authenticated using ((select public.user_aal()) = 'aal2' and visibility = 'global');` }];
+  assert.deepEqual(checkAal2Coverage(files), []);
+});
+
+test("checkAal2Coverage is create+alter aware — a later ALTER that adds aal2 clears a create that lacked it (the 0031 retrofit shape)", () => {
+  const files = [
+    { tag: "0006", sql: `create policy profiles_owner_read on public.profiles as permissive for select to authenticated using ((select auth.uid()) = id);` },
+    { tag: "0031", sql: `alter policy profiles_owner_read on public.profiles using ((select auth.uid()) = id and (select public.user_aal()) = 'aal2');` },
+  ];
+  assert.deepEqual(checkAal2Coverage(files), []);
+});
+
+test("checkAal2Coverage exempts the pure default-deny floor and the support_requests pre-auth intake", () => {
+  const files = [
+    { tag: "0002", sql: `create policy default_deny on public.memories as permissive for all to authenticated using (false) with check (false);` },
+    { tag: "0014", sql: `create policy support_requests_public_insert on public.support_requests as permissive for insert to authenticated with check (status = 'pending' and assigned_to is null);` },
+  ];
+  assert.deepEqual(checkAal2Coverage(files), []);
+});
+
+test("checkAal2Coverage flags a policy that only mentions aal2 in a stripped comment (executable text must carry it)", () => {
+  // The lint strips `-- …` comments, so a comment cannot satisfy the clause — prevents a false-clean.
+  const files = [{ tag: "x", sql: `create policy roles_read on public.roles as permissive for select to authenticated using (true); -- user_aal enforced elsewhere` }];
+  const f = checkAal2Coverage(files);
+  assert.equal(f.length, 1);
 });

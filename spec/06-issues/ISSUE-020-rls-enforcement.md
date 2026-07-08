@@ -2,7 +2,7 @@
 id: ISSUE-020
 title: RLS enforcement — visibility/sensitivity/Restricted/aal2 + service_role path + mid-task revocation
 epic: B — identity & access
-status: ready
+status: done
 github: "#20"
 ---
 
@@ -81,3 +81,28 @@ Author the *enforcing* RLS on top of the ISSUE-009 scaffold — the data-driven 
 - **Integration (agent path):** a `service_role` task whose originating user is deactivated / has a relied-on clearance revoked mid-run halts+quarantines before the next consequential side effect, and a benign expiry continues — AC-1.RLS.007.1/.2/.3, AC-NFR-SEC.012.1/.2; fail-closed scope resolution — AC-NFR-SEC.011.1.
 - **Divergence:** a deliberately-mismatched harness/RLS pairing emits the divergence event — AC-1.RLS.008.1.
 - **Spike gate:** AF-068 GREEN (ISSUE-003 red-team) is a precondition to shipping FR-1.RLS.007; AF-067 latency budget (ISSUE-002) holds for the FR-1.RLS.002/003 predicates on the hot path. The AC→`Verified` path for each RLS AC runs once its spike gate is GREEN.
+
+## 10. Build evidence (✅ DONE — Session 76, 2026-07-08, 💻 FULL)
+
+**Slice built:** the *enforcing* RLS on top of the ISSUE-009 scaffold — the DB-side row-access predicates + the universal aal2 baseline (silo migration **0031**, applied LIVE, head `0030`→`0031`) **and** the harness-side authorization rules the service_role path needs (new package **`app/rls-enforcement/`**), which RLS cannot enforce (ADR-006 part 6).
+
+**① Migration `0031_rls_enforcement` (transactional, applied LIVE):**
+- **`user_visibility(uid)`** — the fifth helper, DISTINCT from `user_perms` (OD-168). Its source is a NEW additive **`roles.visibility_tiers`** role-attribute column (OD-168's sanctioned "small role-attribute" — keeps visibility OUT of ISSUE-018's PERM-node catalog, per §5), seeded from the design-doc L509-615 Memory-Access matrix (Global = all six · Team = all but Standard User · Private = SA+Admin). Same `SECURITY DEFINER STABLE set search_path=''` discipline as the four 0002 helpers, `(select …)`-wrapped (AF-067).
+- **`memories_clearance_read`** — the marquee predicate: `aal2 ∧ user_visibility ⊇ [visibility] ∧ (sensitivity∉{confidential,personal} ∨ entity-type-scoped clearance) ∧ (sensitivity≠restricted ∨ live per-individual grant)`. NO `client_slug` clause (AC-1.RLS.003.2 — isolation is physical).
+- **`entities_internal_org_read`** — Internal-Org rows walled behind a Confidential clearance; client-facing entities readable by any aal2 human.
+- **RBAC-self read policies** (roles / role_permissions / user_roles / sensitivity_clearances / restricted_grants / access_audit) per rls-policies.md, each aal2-gated; **+ `grant select … to authenticated`** on every opened table (0001c revoked base grants — a policy filters rows but the privilege must exist first, exactly as 0003/0004/0022 do).
+- **aal2 RETROFIT** — a non-destructive `ALTER POLICY` adds the `user_aal()='aal2'` conjunct to the four grant policies authored before the universal-aal2 rule (profiles ×2, prompt_edit, config_prompts_edit, config_values_read). A live tail assertion + the CI text-lint (below) prove no `authenticated` GRANT policy omits aal2 (support_requests pre-auth intake exempted). Realizes FR-1.RLS.005 / AC-1.RLS.005.1 / AF-076.
+
+**② `src/rls-lint.ts` extended:** `user_visibility` added to the guarded-call set; a new **`checkAal2Coverage`** lint (create+alter aware, last-write-wins) is the CI teeth for FR-1.RLS.005 — wired into `checkAllRls` (`npm run check`). 6 new unit tests.
+
+**③ `app/rls-enforcement/` (new package — port + fake + live adapter):** **`recheck.ts`** (FR-1.RLS.007 mid-task authorization re-check — binds originating_user_id, re-evaluates active-status + relied-on clearances/grants at each boundary, halts+quarantines before the next *consequential* side effect on deactivation/revocation, continues on benign expiry because the rule keys only on authz DATA not session liveness — expiry ≠ revocation; fail-closed on unknown user); **`divergence.ts`** (FR-1.RLS.008 — harness-permitted-but-RLS-zero-rows → `rls_harness_divergence` event, never silent); `store.ts` (port + `InMemoryRlsEnforcementStore`); `supabase-store.ts` (live adapter); `index.ts` (`check`: the two event_type constants are non-drift-guarded against the live 0001 enum).
+
+**④ Tests — offline GREEN:** silo **76/76** (4 new 0031 assertions + 6 aal2-lint tests); rls-enforcement **12/12** (one per AC-1.RLS.007.1/.2/.3 + NFR-SEC.012.1/.2 + fail-closed + AC-1.RLS.008.1) + `check`. Typecheck clean both packages.
+
+**⑤ R10 live-adapter capstone (`app/silo/results/issue-020-rls-enforcement-capstone.sql`, rolled back) — ALL ASSERTIONS PASSED** against the real silo as a genuine `authenticated` session: user_visibility resolves {global,team}≠private · **aal1 session sees 0 rows** (AC-1.RLS.005.1) · under-cleared user sees only the global/standard row, confidential/private/restricted all hidden (AC-1.RLS.003.1) · a confidential/finance clearance grant is **instant** on the next query (AC-1.RLS.006.1) · an hr-scoped clearance does NOT reveal a finance-typed row (entity-type scope, FR-1.CLR.004) · a live Restricted grant reveals then a revoke hides the restricted row (FR-1.RLS.003) · Internal-Org wall holds · service_role bypasses (ADR-006 part 6) · the rls-enforcement adapter's loadOriginatingAuthz reads + event_log/access_audit appends succeed. **The capstone caught + fixed two real bugs pre-commit** — the `= any((select …))` subquery-vs-array operator error, and a clause-A logic bug that made every `restricted` row unreadable (a `restricted` sensitivity is not a `clearance_tier`, so it must pass the clearance clause and be gated by the grant instead). Exactly the class R10 exists to catch.
+
+**⑥ Feasibility:** AF-067 (initPlan latency) + AF-068 (containment red-team) were already 🟢 PASS (ISSUE-002/003) and gate this ship. **AF-076** (complete aal2 coverage) + **AF-079** (RLS coverage) + **AF-080** (harness/RLS divergence) are now realized in code (the aal2 lint + tail assertion; the divergence signal) — DOCS→shipped. AC-NFR-SEC.011.1/.2 remain **boundary-only** here (the fail-closed `memory_scope` filter is authored in ISSUE-025/C8, per §4); full AF-068-battery re-test of the shipped enforcement is the cross-C5/C6/C8 release gate.
+
+**Tracker reconcile (Rule 0):** `020` frontmatter `ready → done`; **`024` flipped `blocked → ready`** (its co-blockers `022`+`020` are both `done`); BUILD-SCHEDULE `020` ticked; `_backlog` roll-up; feasibility AF-076/079/080 notes; README; traceability; GitHub #20 closed. **Checkpoint 5 stays OPEN** — `022`✅ + `020`✅ are two of its three closing conditions; the batch (`021`/`038`/connectors/`052`/`058`/`062`/`064`/`065`/`068`/`078`/`079`/`083`/`086`) must still prove as a group.
+
+**Found (out of 020's scope — flagged):** `profiles` has NO `authenticated` SELECT grant (0006/ISSUE-013 never granted it), so `profiles_owner_read` is currently dead (permission-denied) — fail-CLOSED (denies, no leak), but a real latent gap in the ISSUE-013 slice. Not fixed here (profiles is ISSUE-013's table); flagged for that issue.

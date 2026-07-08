@@ -2,7 +2,7 @@
 id: ISSUE-024
 title: Memory write / sole-writer path
 epic: C — memory
-status: blocked
+status: ready
 github: "#24"
 ---
 

@@ -59,6 +59,7 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0028_task_queue_awaiting_approval_at", // logic-sweep held fix — task_queue.awaiting_approval_at (staleness clock)
     "0029_entities_internal_org_singleton", // ISSUE-022 — entities Internal-Org partial-unique singleton guard (transactional:false)
     "0030_entity_types_config_seed", // ISSUE-022 — entity_types config_values seed (CFG-entity_types)
+    "0031_rls_enforcement", // ISSUE-020 — user_visibility helper + memories/entities clearance predicate + universal aal2
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.
@@ -86,6 +87,49 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
   // ISSUE-022: 0029 is transactional:false (CREATE UNIQUE INDEX CONCURRENTLY); 0030 is a transactional seed.
   assert.equal(journal.entries.find((e) => e.tag === "0029_entities_internal_org_singleton")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0030_entity_types_config_seed")!.transactional, true);
+  // ISSUE-020: 0031 is a transactional DDL migration (helper + policies, no CONCURRENTLY / no enum-add).
+  assert.equal(journal.entries.find((e) => e.tag === "0031_rls_enforcement")!.transactional, true);
+});
+
+test("0031 (ISSUE-020): the fifth helper user_visibility + roles.visibility_tiers role-attribute source (OD-168)", () => {
+  const sql = sqlOf("0031_rls_enforcement");
+  // The visibility resolver is a DISTINCT helper (OD-168), same SECURITY DEFINER STABLE search_path='' discipline.
+  assert.match(sql, /create or replace function public\.user_visibility\(uid uuid\)/i);
+  assert.match(sql, /returns public\.visibility_tier\[\]/i);
+  assert.match(sql, /security definer/i);
+  assert.match(sql, /set search_path = ''/i);
+  // Its source is a NEW additive role-attribute column, NOT a can()-gate PERM node (ISSUE-020 §5).
+  assert.match(sql, /add column if not exists visibility_tiers public\.visibility_tier\[\]/i);
+  // Seeded per the design-doc L509-615 Memory-Access matrix: Global all six · Team all but Standard User · Private SA+Admin.
+  assert.match(sql, /visibility_tiers = '\{global,team,private\}'.*where name in \('Super Admin','Admin'\)/i);
+  assert.match(sql, /visibility_tiers = '\{global\}'.*where name = 'Standard User'/i);
+});
+
+test("0031 (ISSUE-020): the memories clearance predicate — visibility ∩ sensitivity ∩ Restricted, aal2, NO client_slug (AC-1.RLS.003.1/.2/.005.1)", () => {
+  const sql = sqlOf("0031_rls_enforcement");
+  assert.match(sql, /create policy memories_clearance_read on public\.memories/i);
+  // aal2 baseline (FR-1.RLS.005), visibility tier held, entity-type-scoped clearance, live Restricted grant.
+  assert.match(sql, /\(select public\.user_aal\(\)\) = 'aal2'/i);
+  assert.match(sql, /\(select public\.user_visibility\(auth\.uid\(\)\)\) @> array\[visibility\]/i);
+  assert.match(sql, /user_clearances\(auth\.uid\(\)\)/i);
+  assert.match(sql, /user_restricted\(auth\.uid\(\)\)/i);
+  // AC-1.RLS.003.2 — isolation is physical: NO client_slug / cross-deployment predicate in the SQL
+  // (comment-stripped so this checks executable policy text, not the prose that names the excluded clause).
+  const executable = sql.replace(/--.*$/gm, "");
+  assert.doesNotMatch(executable, /client_slug/i);
+  // entities Internal-Org wall.
+  assert.match(sql, /create policy entities_internal_org_read on public\.entities/i);
+  assert.match(sql, /not is_internal_org/i);
+});
+
+test("0031 (ISSUE-020): universal aal2 retrofit onto the pre-existing grant policies (FR-1.RLS.005)", () => {
+  const sql = sqlOf("0031_rls_enforcement");
+  // Non-destructive ALTER POLICY (no drop) adds the aal2 conjunct to each policy that predates the rule.
+  for (const name of ["profiles_owner_read", "profiles_owner_update", "prompt_edit", "config_prompts_edit", "config_values_read"]) {
+    assert.match(sql, new RegExp(`alter policy ${name} on`, "i"), `${name} must be aal2-retrofitted`);
+  }
+  // The tail assertion is the live #2/#3 gate that no authenticated GRANT policy omits user_aal.
+  assert.match(sql, /aal2 coverage gap/i);
 });
 
 test("every real migration passes the expand-contract discipline guardrails", () => {

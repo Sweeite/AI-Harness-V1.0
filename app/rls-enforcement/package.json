@@ -1,0 +1,21 @@
+{
+  "name": "@harness/rls-enforcement",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-020 — the HARNESS half of RLS enforcement (the agent/service_role path, which BYPASSES RLS by design — ADR-006 part 6). Two rules the DB cannot enforce: (1) FR-1.RLS.007 mid-task authorization re-check — a service_role task carries its originating user's identity; at each step/injection boundary the harness re-evaluates that the user is still active and still holds the clearances/Restricted grants the task relies on, and halts+quarantines before the next CONSEQUENTIAL side effect on deactivation/revocation (a benign session-expiry continues — expiry ≠ revocation, C0 FR-0.SESS.006); (2) FR-1.RLS.008 divergence signal — a read the harness believed permitted that RLS returns as zero rows is logged as an rls_harness_divergence event, never silently returned as 'no data'. Port + in-memory fake reference model; supabase-store.ts is the live pg adapter. The abort/quarantine MECHANISM is C5/C6/C8 (OD-010); this package owns the authorization RULE + the event writes. The DB-side predicates + helpers are silo migration 0031.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

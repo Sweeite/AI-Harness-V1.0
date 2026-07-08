@@ -5,6 +5,36 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 76 — 2026-07-08 — 🔒 **Stage-5 BATCH `020` (RLS ENFORCEMENT) BUILT + live-verified — the #2-critical enforcing RLS on top of the 009 scaffold: visibility∩sensitivity∩Restricted∩aal2 + the harness mid-task authz re-check + the RLS/harness divergence signal.**
+
+**Environment:** 💻 FULL (Mac). Live steps used (migration `0031` applied LIVE, head `0030`→`0031`; R10 live capstone rolled back). Serial build (the gate `022` was built alone last session; `020` is the first batch member, chosen because it's Checkpoint 5's second named closing pillar + the hardest/#2-critical of the batch — R3).
+
+**Blockers/spikes verified GREEN first (R5):** `009`/`019`/`003`/`002` all `done`; **AF-067 🟢** (initPlan latency) + **AF-068 🟢** (containment red-team) both PASS — cleared to ship the RLS.002/003 predicates + the RLS.007 mid-task gate.
+
+**① Migration `0031_rls_enforcement` (transactional, applied LIVE):**
+- **`user_visibility(uid)`** — the fifth helper, DISTINCT from `user_perms` (OD-168). The genuinely-underspecified piece OD-168 left as a "Phase-4 build artifact" — resolved as a **`roles.visibility_tiers` role-attribute** (OD-168's sanctioned "small role-attribute" option, which keeps visibility OUT of ISSUE-018's PERM-node catalog per §5), seeded from the design-doc L509-615 Memory-Access matrix (Global=all six · Team=all but Standard User · Private=SA+Admin). Same `SECURITY DEFINER STABLE set search_path=''` + `(select …)`-wrap discipline (AF-067).
+- **`memories_clearance_read`** — the marquee: `aal2 ∧ user_visibility ⊇ [visibility] ∧ (sensitivity∉{confidential,personal} ∨ entity-type-scoped clearance) ∧ (sensitivity≠restricted ∨ live per-individual grant)`. NO `client_slug` (AC-1.RLS.003.2). `entities_internal_org_read` — Internal-Org walled behind a Confidential clearance.
+- **RBAC-self read policies** (roles/role_permissions/user_roles/sensitivity_clearances/restricted_grants/access_audit) per rls-policies.md, aal2-gated, **+ `grant select … to authenticated`** (0001c revoked base grants — a policy filters rows but the privilege must exist first; the missing grant was the first live-capstone failure).
+- **Universal aal2 retrofit** — non-destructive `ALTER POLICY` adds the aal2 conjunct to the four grant policies that predate the rule (profiles ×2, prompt_edit, config_prompts_edit, config_values_read). A live tail assertion + the new CI lint prove no `authenticated` GRANT policy omits aal2.
+
+**② `src/rls-lint.ts`:** `user_visibility` added to the guarded-call set; new **`checkAal2Coverage`** lint (create+alter aware, last-write-wins so the ALTER retrofit reads as covered) wired into `checkAllRls`. 6 new unit tests.
+
+**③ `app/rls-enforcement/` (NEW package — the harness half, which RLS can't enforce, ADR-006 part 6):** `recheck.ts` (FR-1.RLS.007 mid-task authz re-check — binds originating_user_id, re-evaluates active + relied-on clearances/grants at each boundary, **halt+quarantine before the next consequential side effect** on deactivation/revocation, **continue on benign expiry** because the rule keys only on authz DATA not session liveness = expiry≠revocation, **fail-closed** on unknown user); `divergence.ts` (FR-1.RLS.008 — harness-permitted-but-RLS-zero-rows → `rls_harness_divergence`, never silent); `store.ts` (port + InMemory fake); `supabase-store.ts` (live adapter); `index.ts` (`check`: the two event_type constants non-drift-guarded vs the live 0001 enum).
+
+**④ Tests — offline GREEN:** silo **76/76**, rls-enforcement **12/12** (one per AC-1.RLS.007.1/.2/.3 + NFR-SEC.012.1/.2 + fail-closed + AC-1.RLS.008.1) + both `check`s; typecheck clean.
+
+**⑤ R10 live capstone (`app/silo/results/issue-020-rls-enforcement-capstone.sql`, rolled back) — ALL PASS** vs the real silo as a genuine `authenticated` session: aal1→**0 rows** (AC-1.RLS.005.1) · under-cleared→only global/standard (AC-1.RLS.003.1) · confidential/finance grant **instant** on next query (AC-1.RLS.006.1) · hr-scoped clearance does NOT reveal a finance row (entity-type scope) · Restricted grant reveals / revoke hides (FR-1.RLS.003) · Internal-Org wall · service_role bypass · the rls-enforcement adapter reads+appends. **The capstone caught+fixed 2 real bugs pre-commit** — the `= any((select …))` subquery-vs-array operator error, and a clause-A logic bug that made every `restricted` row unreadable (restricted isn't a `clearance_tier`, so it must pass the clearance clause and be gated by the grant). Exactly the class R10 exists to catch.
+
+**⑥ Feasibility:** **AF-076** (aal2 coverage) → 🟡 (RLS half 🟢; app-layer enrollment gate owed to C0/ISSUE-014); **AF-080** (harness/RLS divergence) → 🟢 (part b built); AF-079 🟢 holds. AF-067/068 gated the ship (already 🟢). AC-NFR-SEC.011.1/.2 remain **boundary-only** (the fail-closed `memory_scope` filter is ISSUE-025/C8).
+
+**Tracker reconcile (Rule 0):** `020` frontmatter `ready → done` (+ §10 evidence); **`024` flipped `blocked → ready`** (co-blockers `022`+`020` both `done`); BUILD-SCHEDULE `020` ticked; `_backlog` roll-up; feasibility AF-076/080; README status; traceability `test` column wired for the 5 RLS FR rows; GitHub #20 CLOSED.
+
+**Found (out of scope — flagged, not fixed):** `profiles` has NO `authenticated` SELECT grant (0006/ISSUE-013 never granted it) → `profiles_owner_read` is currently dead (permission-denied). Fail-CLOSED (denies, no leak) but a real latent gap in the ISSUE-013 slice; flagged for that issue (a task chip was spawned).
+
+**Next step:** **Checkpoint 5 stays OPEN.** Two of its three closing conditions are met (`022`✅ entity resolution links-not-fragments + `020`✅ RLS end-to-end incl. the service_role mid-task revocation path). The remaining Stage-5 batch must still prove as a group: `021` (user mgmt + RBAC audit) · `038` (disconnection) · `039`/`040`/`041` (GHL/Google/Slack connectors — each needs a research dossier gate first) · `052` (Inngest) · `058` (rate-limit) · `062` (specialists) · `064` (exec plans — was blocked on `052`) · `065` (agent health) · `068` (proactivity) · `078`/`079` (ops/mobile surfaces) · `083` (offboarding) · `086` (config admin). Then Checkpoint 5's integration test → only then may Stage 6 open (R1). **Silo head `0031`; next free tag `0032`.** Committed to `main` (not pushed — operator pushes/deploys). Live infra: `source ~/.ai-harness-secrets.env`; silo `$SILO_DB_URL`; psql `/opt/homebrew/opt/libpq/bin/psql`.
+
+---
+
 ## Session 75 — 2026-07-08 — 🧠 **Stage-5 GATE `022` BUILT + live-verified — Memory + entity model + sensitivity/visibility tagging. The #1-critical entity foundation: knowledge LINKS, not fragments.**
 
 **Environment:** 💻 FULL (Mac). Live steps used (migrations `0029`+`0030` applied live; R10 memory live-smoke, rolled back). Serial + hardest-first build (R3 — the gate is built alone; the 16-issue Stage-5 batch fans out only after this gate + Checkpoint 5).

@@ -35,6 +35,7 @@
     { "tag": "0027_profiles_invite_lifecycle", "file": "0027_profiles_invite_lifecycle.sql", "transactional": true },
     { "tag": "0028_task_queue_awaiting_approval_at", "file": "0028_task_queue_awaiting_approval_at.sql", "transactional": true },
     { "tag": "0029_entities_internal_org_singleton", "file": "0029_entities_internal_org_singleton.sql", "transactional": false },
-    { "tag": "0030_entity_types_config_seed", "file": "0030_entity_types_config_seed.sql", "transactional": true }
+    { "tag": "0030_entity_types_config_seed", "file": "0030_entity_types_config_seed.sql", "transactional": true },
+    { "tag": "0031_rls_enforcement", "file": "0031_rls_enforcement.sql", "transactional": true }
   ]
 }
