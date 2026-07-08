@@ -2852,7 +2852,20 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-<!-- Next OD number: OD-199 -->
+## OD-199 — How does Checkpoint 5 close over onboarding-gated connectors + render-pending surfaces? 🟡 OPEN (framed for the Checkpoint-5-close session; surfaced by the Session-78 handoff self-sufficiency test)
+
+- **Surfaced by:** the pre-handoff self-sufficiency test (Session 78) — a zero-context agent tasked to "close Checkpoint 5" could resume the immediate builds (`038`→`064`→`083`) with **no guessing**, but found the *checkpoint-closing decision itself* is not written down crisply. Logged here so the close session opens with it framed (Rule 0), not rediscovering it.
+- **The question (two coupled parts):**
+  - **(a) Connectors `039`/`040`/`041`.** Their §9 wants live vendor sandbox/payload + build-time AFs GREEN, but **OD-172** defers live per-vendor confirmation to **onboarding**, and the operator has **no GHL account**. Can Checkpoint 5 close with these built **offline-only** (tool-row registration + param wiring + webhook-auth reused from ISSUE-017) and their live arm tracked as an onboarding residual? Or must the connectors' live arms land first?
+  - **(b) Surfaces `078`/`079`/`086`.** These are `in-progress` (**logic-done, render-pending** per [[OD-197]]). R4 says every stage issue passes its `AC-*`; nothing maps "logic-done/render-pending" to a checkpoint-passable state. Does Checkpoint 5 tick with these three at `in-progress` (their **render** is Frontend-track work, now unblocked by `087`), or must their render land first? **NB the coupled blocker:** [[OD-198]] ③ (the producer-RLS gap) must be reconciled before `078`/`079` can be called *live-verified* regardless (see those issues' §7, now annotated).
+- **Precedent (the load-bearing prior art):** Stage 3 closed with `013`/`014`/`033` `done` and their **live vendor/OAuth arms owed to onboarding** (OD-172/OD-175); Stage 4 closed the same way (per-vendor arms AF-090/084/083 tracked, not blocking). So "close `done`, live arm owed to onboarding" is an established, operator-blessed pattern — but it was never explicitly extended to *the connector issues* or to *R4/checkpoint closure*, which is the gap.
+- **Options:** (A) **Extend the Stage-3/4 precedent:** connectors close on their offline AC + logic (live vendor arm = onboarding residual, OD-172); surfaces close as `done` on their logic AC + R10 smoke with render tracked as Frontend-track render issues (OD-197) and OD-198 ③ reconciled — then the Checkpoint-5 integration test proves the *group* and the checkpoint ticks. (B) **Hold the checkpoint** until connectors' live arms + the three surfaces' render all land (rejected-leaning: leaves Stage 6 blocked for months on onboarding-gated vendor infra the operator can't even exercise yet). (C) split: connectors per (A), surfaces held.
+- **Recommendation:** 🟢-leaning **(A)** — it's the exact precedent, keeps the #1/#2/#3 guarantees (everything ships fail-safe + the live arm is *tracked, not silent*), and unblocks Stage 6 on work that's genuinely done. But this is a **scope call the operator should ratify** at the close session, so it stays 🟡 OPEN, framed, decided there.
+- **Status:** 🟡 OPEN — a framing OD for the Checkpoint-5-close session. Decide (a)+(b) explicitly before ticking the checkpoint; whichever way, write the rule here so R4/checkpoint-close is unambiguous going forward. Does not block building `038`/`064`/`083` (all fully specced, no vendor gate).
+
+---
+
+<!-- Next OD number: OD-200 -->
 
 
 
