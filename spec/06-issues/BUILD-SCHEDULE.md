@@ -316,10 +316,15 @@ untestable-by-a-human for months). A pile of headless packages can't be clicked;
 React render only needs (a) the substrate `087` `done`, and (b) its own backend signal `done`.** It does NOT wait for
 later stages. So screens land as their backends land.
 
-- [ ] 🟠 **SUBSTRATE GATE — [[ISSUE-087]]** (`ready`; GitHub #87) (the UI analog of `008`): two Next.js apps (`web/client` + `web/admin`, ADR-001 §7),
-  auth session, the **RBAC-driven app shell** reusing `can()`'s nodes (absent-not-empty), the data-access seam to the
-  `app/*` packages, the shared **honest-state** primitives (NFR-OBS.011 — never render a false-healthy view) + a11y
-  baseline, local dev harness. **Blocked-by `007`/`013`/`018` — all `done`, so `087` is `ready` now.** Build it serial + first (R3): nothing renders without it.
+- [x] 🟢 **SUBSTRATE GATE — [[ISSUE-087]] — DONE (Session 78, 2026-07-08)** (the UI analog of `008`): `web/` npm workspace =
+  `web/shared` (skin-swappable design system: tokens-as-CSS-vars + semantic components + the RBAC-nav gate + honest-state
+  logic + the data-access seam; **11/11** offline tests green reusing the real `@harness/rbac`) + `web/rbac-bridge` (the one
+  seam into `app/rbac`) + **two Next.js apps `web/client` (:3100) + `web/admin` (:3200)** (ADR-001 §7) — both boot + typecheck
+  clean. Verified live: auth gate (unauth→login), RBAC nav absent-not-empty (SA=13 / Standard=1 / Admin-fleet=0, UI≡`can()`),
+  aal2 step-up (no leak), honest-state never-false-healthy, the seam rendering **55** live nodes, a11y landmarks, light+dark
+  (a pure token swap = OD-197 reskin-not-rebuild), screenshots both themes. **Residual:** the real `@supabase/ssr` session
+  path is wired but live-auth-verified in ISSUE-013 (OD-175) / deploy in 080/081 — the substrate ships no new live DB adapter,
+  so **R10 is N/A**. GitHub #87 → CLOSED.
 - 🟢 **WALKING SKELETON** (right after `087`): the first clickable, testable path — **auth (surface-00) → Ops dashboard
   (surface-05) on real data → User Management (surface-02)**. Their backends (`013`/`078`-logic/`021`-logic + `011`/`075`/`076`/`077`)
   are built or landing in Stage 5. This is the "see it" milestone the operator asked for. *(A clickable surface-05

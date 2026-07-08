@@ -1,0 +1,28 @@
+{
+  "name": "@harness/web-admin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-087 — the separate super-admin management-plane Next.js App-Router app (ADR-001 §7: its own deployment, its own Supabase). Mounts the @harness/web-shared shell with the ADMIN_NAV (Management Plane PERM-fleet.* nodes). This is the only app where cross-deployment / client_slug-scoped views are valid.",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3200",
+    "build": "next build",
+    "start": "next start --port 3200",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@harness/rbac-bridge": "*",
+    "@harness/web-shared": "*",
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "next": "^16.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}

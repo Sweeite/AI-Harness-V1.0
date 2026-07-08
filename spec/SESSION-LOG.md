@@ -5,6 +5,34 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 78 — 2026-07-08 — 🖥️ **FRONTEND SUBSTRATE `ISSUE-087` BUILT + live-verified → `done` — the Frontend track ([[OD-197]]) is OPEN. The first time the system is a clickable, human-testable app: two Next.js apps + a skin-swappable design system, with the RBAC nav gate proven to agree with `can()` and the honest-state never-false-healthy discipline made visible.**
+
+**Environment:** 💻 FULL (Mac). No live-infra step needed — the substrate boots against a seeded-dev cookie session (offline "see it" path). No new migration; silo head stays `0033`. Serial build (R3 — the substrate is the Frontend-track gate; nothing renders without it).
+
+**What was built — the `web/` npm workspace (3 packages + 2 apps):**
+- **`web/shared` (`@harness/web-shared`) — the substrate core, the reusable/proven deliverable.** `tokens.css` = THE swappable skin (every colour/type/spacing a CSS variable, light+dark, `[data-theme]` wins over OS). `components.css` = token-only structure. Pure-logic core (framework-free, proven with `tsx --test` like every `app/*`): `nav.ts` (the RBAC nav model + `visibleNav()` absent-not-empty), `honest-state.ts` (`resolveViewState`/`renderMetric` — a failed/stale/can't-confirm read structurally CANNOT render `0`/`✓`), `answer-mode.ts` (NFR-OBS.012 pill; unstated mode → "unavailable", never "grounded"), `seam.ts` (the typed `DataSeam` — a thrown error → `error` read, authz-empty → `unknown`, never a false-healthy zero). Thin React renderers (`components.tsx`, `theme.tsx`).
+- **`web/rbac-bridge` (`@harness/rbac-bridge`) — the ONE seam into `app/rbac`.** Re-exports rbac's pg-free leaf modules (`store`/`can`/`catalog`) so the apps consume the SAME permission source of truth (AF-080 spirit), not a copy.
+- **`web/client` (:3100) + `web/admin` (:3200)** — the two Next.js App-Router apps (ADR-001 §7). Auth session (`lib/auth.ts` — seeded-dev cookie OR real `@supabase/ssr`, `lib/supabase-server.ts`), middleware auth gate, the `(shell)` layout mounting the shared `AppShell` with `CLIENT_NAV`/`ADMIN_NAV`, home (renders the live RBAC signal through the seam), `/ops` (honest-state tiles made visible), `/config` (aal2 step-up), a catch-all "render pending" placeholder.
+
+**Tests / typecheck:** `web/shared` **11/11** offline green (RBAC-agreement pairwise per role + every nav node ∈ CATALOG + honest-state exhaustive). `tsc --noEmit` clean across shared / rbac-bridge / client / admin.
+
+**Live verification (both apps booted + driven in-browser):**
+- **Auth gate:** unauth `GET /` → **307 → /login**; sign-in → RBAC shell; **sign-out clears session**; **aal2** — aal1 SA at `/config` gets the step-up, config content does NOT leak; aal2 renders it.
+- **RBAC nav absent-not-empty + UI≡`can()`:** Super Admin → **13** entries; Standard User → **1** (`/workspace`); Admin in the mgmt-plane app → **0** fleet entries. The load-bearing marquee, working end-to-end.
+- **Seam end-to-end:** the home tile renders the caller's effective nodes read THROUGH the seam from the real `@harness/rbac` — Super Admin shows **55 nodes granted** live.
+- **Honest-state visible on `/ops`:** genuine 0 → "0 / Live"; errored → "— / Unavailable"; not-permitted → "— / Can't confirm"; loading → "—" — never a fabricated healthy value.
+- **Theming:** light + dark both render (screenshots captured); dark is a pure token swap (OD-197 reskin-not-rebuild proof). **A11y:** landmarks (nav/banner/main), skip-link, labelled controls, status never colour-only (text+glyph), focus rings.
+
+**Integration friction solved (documented so it doesn't recur):** Next 16 / Turbopack resolves workspace members but NOT a `file:`-dep symlink whose realpath is outside the app tree, and does not honour `externalDir` for it → the fix is (a) the `web/rbac-bridge` workspace-member adapter + (b) `next.config` `turbopack.root` = the REPO root (ADR-011 single-repo) so `app/rbac/` is in-tree. `transpilePackages` for both TS-source packages.
+
+**Honest residuals (flagged, not silent):** ① the real `@supabase/ssr` session path is wired but NOT live-verified against a running Supabase this session — that live-auth close is ISSUE-013's (real OAuth, **OD-175**) + the per-deployment deploy is ISSUE-080/081's, exactly as ISSUE-087 §7 scopes it. The substrate ships **no new live DB adapter** (the seam calls rbac's InMemory reference model) → **R10 is N/A**. ② Next 16 deprecates the `middleware` filename (→ `proxy`) — a warning only; the gate is verified working; cosmetic rename is a trivial follow-up. ③ Per-surface **render** decomposition (a `to-issues` pass reframing each surface issue with a render sub-deliverable) is now owed since `087` landed (OD-197).
+
+**Tracker reconcile (Rule 0):** `087` frontmatter `ready → done` (+ full §10 evidence); BUILD-SCHEDULE Frontend-track SUBSTRATE-GATE box `[ ] → [x]`; `_backlog` roster `087 ✅ done (S78)`; OD-197 "Session 78 substrate landed" note; README build-row appended; GitHub #87 to CLOSE. **No other issue's state changed** (the substrate blocks/unblocks nothing in the backend waves — it opens the parallel Frontend lane). Committed to `main` (per repo convention; not pushed — operator pushes).
+
+**Next step:** **Checkpoint 5 stays OPEN** (backend). Two parallel fronts now: **(backend)** remaining Stage-5 members `038` · connectors `039`/`040`/`041` (dossiers current; live OAuth/webhook = onboarding, OD-172) · `064` (ready) · `083`, then Checkpoint 5's integration test → Stage 6 (R1). **(frontend, now unblocked)** the **walking skeleton** (auth → Ops on real data → User Management) + a `to-issues` render-decomposition pass; each surface's render is gated only on `087` (done) + its own backend signal. To run the apps: `cd web && npm install` then `npm run dev:client` (:3100) / `npm run dev:admin` (:3200); sign in as any role to see the RBAC shell. **Silo head `0033`; next free `0034`.** Live infra unchanged: `source ~/.ai-harness-secrets.env`.
+
+---
+
 ## Session 77 — 2026-07-08 — 🏭 **Stage-5 offline BATCH (9 members) built + adversarially verified + fixed + live-R10-closed — 6 issues DONE; 3 surfaces logic-built (render-pending); the FRONTEND-track gap found + specced.**
 
 **Environment:** 💻 FULL (Mac). Live steps used: migration `0033` applied LIVE (head `0032`→`0033`); 8 R10 live-adapter smokes replayed rolled-back vs the silo. Fan-out build (worktree-free — disjoint `app/<slug>` packages, so parallel-safe without isolation; migrations/shared-spec/trackers serialized by the orchestrator per the schedule's migration-chain lane rule).

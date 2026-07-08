@@ -1,0 +1,18 @@
+{
+  "name": "@harness/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-087 — the frontend substrate (UI analog of ISSUE-008). npm workspace holding the skin-swappable design-system core (web/shared) + the two Next.js App-Router apps the 13 surfaces render into: web/client (per-client deployment) + web/admin (the separate super-admin management plane, ADR-001 §7). Built skin-swappable per OD-197: design tokens as CSS variables + semantic components, no hardcoded styling in markup, so the operator's later HTML-dashboard retrofit is a reskin, not a rebuild.",
+  "workspaces": [
+    "shared",
+    "rbac-bridge",
+    "client",
+    "admin"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace @harness/web-shared",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:client": "npm run dev --workspace @harness/web-client",
+    "dev:admin": "npm run dev --workspace @harness/web-admin"
+  }
+}

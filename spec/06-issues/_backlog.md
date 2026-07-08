@@ -197,7 +197,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 
 | ID | Title | FR groups | Blocked-by |
 |---|---|---|---|
-| ISSUE-087 | Frontend substrate — Next.js app-shell (client + super-admin) that every surface renders into (UI analog of 008; RBAC nav reuses `can()` nodes; honest-state primitives; data-access seam) | surface-00 + all surface render hosts | 007, 013, 018 (all done → `ready`) |
+| ISSUE-087 ✅ done (S78) | Frontend substrate — Next.js app-shell (client + super-admin) that every surface renders into (UI analog of 008; RBAC nav reuses `can()` nodes; honest-state primitives; data-access seam) — `web/` workspace (shared design system + rbac-bridge + web/client + web/admin); 11/11 shared tests; both apps boot + typecheck; RBAC/aal2/honest-state/seam live-verified; skin-swappable per OD-197 | surface-00 + all surface render hosts | 007, 013, 018 (all done) |
 
 *(Frontend track, per [[OD-197]]: `087` substrate gate → walking skeleton → per-surface **render** layers, each gated on its own backend signal `done`. The per-surface render decomposition — reframing each surface issue with a render sub-deliverable, or minting render issues — is a `to-issues` pass owed once `087` lands.)*
 

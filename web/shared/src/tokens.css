@@ -1,0 +1,132 @@
+/*
+ * ISSUE-087 / OD-197 — the design tokens. THE SWAPPABLE SKIN.
+ *
+ * The binding OD-197 constraint: the default render layer is skin-swappable — every colour, type,
+ * spacing, radius and elevation value lives HERE as a CSS custom property, and every semantic
+ * component references `var(--…)` only. There is NO hardcoded hex/px styling in component markup.
+ * The operator's later HTML-dashboard retrofit swaps THIS FILE (the skin) and inherits the whole
+ * built structure (components, the data-access seam, RBAC gating, honest-state logic) unchanged —
+ * a reskin, not a rebuild. The expensive layer is built once; only the skin swaps.
+ *
+ * Two layers:
+ *   1. PRIMITIVE tokens (--c-*, --space-*, --text-*) — the raw palette/scale. A reskin replaces these.
+ *   2. SEMANTIC tokens (--color-bg, --color-fg, --status-*) — role-named, mapped onto primitives.
+ *      Components consume ONLY semantic tokens, so a primitive swap re-themes everything coherently.
+ *
+ * Theming: light is the :root default; dark is applied by `prefers-color-scheme: dark` AND by an
+ * explicit `[data-theme="dark"]` on <html> (the app's theme toggle stamps data-theme so the viewer's
+ * choice always wins over the OS preference). Every semantic token is defined in BOTH themes.
+ */
+
+:root {
+  /* ── PRIMITIVE: spacing scale (4px base) ── */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+
+  /* ── PRIMITIVE: radius / elevation ── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+  --shadow-2: 0 4px 8px rgba(16, 24, 40, 0.08), 0 8px 24px rgba(16, 24, 40, 0.12);
+
+  /* ── PRIMITIVE: type scale ── */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Menlo", "Cascadia Code", monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 650;
+
+  /* ── PRIMITIVE: palette (light) ── */
+  --c-white: #ffffff;
+  --c-slate-50: #f8fafc;
+  --c-slate-100: #f1f5f9;
+  --c-slate-200: #e2e8f0;
+  --c-slate-300: #cbd5e1;
+  --c-slate-500: #64748b;
+  --c-slate-700: #334155;
+  --c-slate-900: #0f172a;
+  --c-brand-500: #4f46e5;
+  --c-brand-600: #4338ca;
+  --c-green-600: #15803d;
+  --c-amber-600: #b45309;
+  --c-red-600: #b91c1c;
+  --c-blue-600: #1d4ed8;
+
+  /* ── SEMANTIC (light) — components consume only these ── */
+  --color-bg: var(--c-slate-50);
+  --color-surface: var(--c-white);
+  --color-surface-raised: var(--c-white);
+  --color-border: var(--c-slate-200);
+  --color-fg: var(--c-slate-900);
+  --color-fg-muted: var(--c-slate-500);
+  --color-fg-on-accent: var(--c-white);
+  --color-accent: var(--c-brand-500);
+  --color-accent-hover: var(--c-brand-600);
+  --color-focus-ring: var(--c-brand-500);
+  --color-nav-active-bg: var(--c-slate-100);
+
+  /* Honest-state status tones — NOTE: status is NEVER conveyed by colour alone (NFR-A11Y.001);
+     every status also carries a text label + icon glyph. These are the accents only. */
+  --status-ok-fg: var(--c-green-600);
+  --status-stale-fg: var(--c-amber-600);
+  --status-error-fg: var(--c-red-600);
+  --status-unknown-fg: var(--c-slate-500);
+  --status-info-fg: var(--c-blue-600);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #0b1120;
+    --color-surface: #111a2e;
+    --color-surface-raised: #16223c;
+    --color-border: #26334d;
+    --color-fg: #e8eefc;
+    --color-fg-muted: #9aa8c7;
+    --color-fg-on-accent: #ffffff;
+    --color-accent: #7c74f0;
+    --color-accent-hover: #9088f4;
+    --color-focus-ring: #9088f4;
+    --color-nav-active-bg: #1b2740;
+    --status-ok-fg: #4ade80;
+    --status-stale-fg: #fbbf24;
+    --status-error-fg: #f87171;
+    --status-unknown-fg: #9aa8c7;
+    --status-info-fg: #60a5fa;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Explicit dark selection (toggle wins over OS). */
+:root[data-theme="dark"] {
+  --color-bg: #0b1120;
+  --color-surface: #111a2e;
+  --color-surface-raised: #16223c;
+  --color-border: #26334d;
+  --color-fg: #e8eefc;
+  --color-fg-muted: #9aa8c7;
+  --color-fg-on-accent: #ffffff;
+  --color-accent: #7c74f0;
+  --color-accent-hover: #9088f4;
+  --color-focus-ring: #9088f4;
+  --color-nav-active-bg: #1b2740;
+  --status-ok-fg: #4ade80;
+  --status-stale-fg: #fbbf24;
+  --status-error-fg: #f87171;
+  --status-unknown-fg: #9aa8c7;
+  --status-info-fg: #60a5fa;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+}

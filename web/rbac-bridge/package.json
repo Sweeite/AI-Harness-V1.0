@@ -1,0 +1,9 @@
+{
+  "name": "@harness/rbac-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-087 — a thin workspace-internal adapter that re-exports the pg-free leaf modules of the real @harness/rbac backend package (app/rbac/), so the Next apps consume ONE source of truth for permissions (app/rbac's own can()/effectiveNodes/catalog — AF-080 spirit) rather than re-encoding them. Exists because Next/Turbopack resolves workspace members but not a file:-dep symlink whose realpath is outside the app tree; this bridge IS a workspace member, and externalDir permits its single relative import up into app/rbac.",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {}
+}

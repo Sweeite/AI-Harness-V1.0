@@ -2,7 +2,7 @@
 id: ISSUE-087
 title: Frontend substrate — Next.js app-shell (client deployment + super-admin) that every surface renders into
 epic: M — frontend
-status: ready
+status: done
 github: "#87"
 ---
 # ISSUE-087 — Frontend substrate (the UI analog of ISSUE-008)
@@ -84,8 +84,57 @@ Component/UI-state tests on the shell + the honest-state primitive; the RBAC-agr
 - **Live:** `npm run dev` serves the shell against a seeded Supabase; one live signal renders through the seam. The live per-deployment **deploy** is proven in ISSUE-080/081, not re-done here.
 - **Spike gate:** none.
 
-## 10. Evidence
-_(to be filled at build — component test counts, the RBAC-agreement test, the a11y audit, booted-shell screenshots in both themes.)_
+## 10. Evidence — BUILT + verified (Session 78, 2026-07-08, 💻 FULL)
+
+**Structure (skin-swappable per OD-197):** an `npm` workspace at `web/` with three packages —
+- **`web/shared` (`@harness/web-shared`)** — the substrate core: `tokens.css` (the SWAPPABLE skin — every
+  colour/type/spacing a CSS variable, light+dark, `[data-theme]` wins over OS), `components.css` (structural,
+  token-only), the pure-logic core (`nav.ts`, `honest-state.ts`, `answer-mode.ts`, `seam.ts`) + thin React
+  renderers (`components.tsx`, `theme.tsx`). No hardcoded styling in markup — dark-theme render is a pure token
+  swap (proven, see screenshots) = a reskin, not a rebuild.
+- **`web/rbac-bridge` (`@harness/rbac-bridge`)** — a workspace-internal adapter that re-exports the pg-free leaf
+  modules of the REAL `@harness/rbac` (`store`/`can`/`catalog`), so the apps consume the ONE source of truth for
+  permissions (AF-080 spirit). (Needed because Turbopack resolves workspace members but not a `file:` symlink
+  outside the tree; `next.config` sets `turbopack.root` to the repo so `app/rbac/` is in-tree per ADR-011.)
+- **`web/client` + `web/admin`** — the two Next.js (App Router, TS strict) apps (ADR-001 §7). Both boot, both
+  typecheck clean.
+
+**Tests / typecheck:** `web/shared` **11/11** offline tests green (`tsx --test`, the repo harness) — importing the
+REAL `@harness/rbac`, not a copy. `tsc --noEmit` clean across shared / rbac-bridge / client / admin.
+
+**§4 Definition-of-done — each item proven:**
+- **Both apps boot + `npm run dev` serves the authenticated shell:** client on :3100, admin on :3200 — booted +
+  driven this session.
+- **Auth split:** unauthenticated `GET /` → **307 → /login** (middleware gate); sign-in establishes the server
+  session → RBAC-scoped shell; **sign-out clears the session** (driven in-browser); **aal2 gate** — an aal1 Super
+  Admin at `/config` gets the **step-up prompt and the config content does NOT leak**; aal2 renders it.
+- **RBAC shell (load-bearing AC) — absent-not-empty + no second source of truth:** `nav.test.ts` proves the UI
+  nav-gate agrees with `can()` **pairwise for every seeded role**, and every nav node ∈ `app/rbac`'s `CATALOG`
+  (no invented permission). Live: Super Admin → **13** nav entries; Standard User → **1** (`/workspace` only);
+  Admin in the management-plane app → **0** fleet entries. The UI reads the SAME `PERMISSION_NODES` catalog.
+- **Honest-state primitives (never false-healthy, NFR-OBS.011 / OD-198 ③):** `honest-state.test.ts` proves no
+  non-ok read is ever `healthy=true` and an errored/can't-confirm metric renders `—`, never `0`/`✓`. Visible on
+  `/ops`: genuine 0 → "0 / Live"; errored → "— / Unavailable"; not-permitted → "— / Can't confirm"; a can't-confirm
+  read is visibly distinct from a genuine zero.
+- **Data-access seam calls a real `app/*` package end-to-end:** the home tile reads the caller's effective RBAC
+  nodes THROUGH the typed `DataSeam` from the real `@harness/rbac` — Super Admin renders **55 nodes granted** live.
+- **A11y baseline (NFR-A11Y.001):** accessibility tree shows semantic landmarks (`navigation`/`banner`/`main`),
+  a skip-link, labelled controls (`aria-label` on icon buttons), headings/regions; status is never colour-only
+  (every tone carries text + a glyph); single high-contrast `:focus-visible` ring; keyboard-navigable links/buttons.
+- **Theming + responsive:** light/dark both render (screenshots captured both themes); rail collapses < 768px.
+
+**Screenshots captured (both themes):** Super-Admin shell (13-entry sectioned rail, live 55-node signal) in light
+and dark; the honest-state `/ops` tiles; the Standard-User shell (1-entry rail — absent-not-empty proof).
+
+**Honest residual (flagged, not silent):** the shell boots against a **seeded-dev cookie session** (offline, the
+"see it" path the issue permits). The real `@supabase/ssr` server-session path is **wired** (`lib/supabase-server.ts`,
+activates when the deployment's Supabase env is present) but was **not live-verified against a running Supabase this
+session** — that live-auth close is ISSUE-013's residual (real OAuth, **OD-175**) + the per-deployment deploy is
+ISSUE-080/081's, exactly as this issue's §7 scopes it. The substrate introduces **no new live DB adapter** (the seam
+calls `app/rbac`'s InMemory reference model), so **R10 is N/A here** — no `src/supabase-store.ts` is shipped.
+
+**Deferred hygiene (trivial, non-blocking):** Next 16 deprecates the `middleware` filename in favour of `proxy`
+(a warning only — the auth gate is verified working); rename is a cosmetic follow-up.
 
 ---
 *Created session 77 (2026-07-08) per [[OD-197]] — the frontend-substrate gate the plan was missing. Opens the **Frontend track** (see BUILD-SCHEDULE.md). Each surface's **render** layer depends on this issue; the surface **logic** does not.*

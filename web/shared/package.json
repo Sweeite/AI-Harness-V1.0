@@ -1,0 +1,21 @@
+{
+  "name": "@harness/web-shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-087 substrate core — the skin-swappable design system + the load-bearing substrate logic every surface reuses: design tokens (CSS variables, the swappable skin), the RBAC-driven nav gate (reuses @harness/rbac's can()/nodes — no second source of truth, AF-080 spirit), the honest-state view-state logic (never-false-healthy, NFR-OBS.011), the answer-mode-pill seam (NFR-OBS.012), and the typed data-access seam surfaces call the app/* packages through. Pure-logic core is proven with tsx --test exactly like every other app/* package; the React components are thin token-only renderers over that logic.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/react": "^19.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
