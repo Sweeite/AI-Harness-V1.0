@@ -33,6 +33,7 @@ the issue(s) that claim it). It is the one file you read to see the whole plan.
 | **J** | Observability & ops surfaces (C7 + dashboards) | 074–079 |
 | **K** | Infrastructure & compliance (C10 + backup/DR) | 080–085 |
 | **L** | Config surfaces | 086 |
+| **M** | Frontend (Next.js app-shell + per-surface render — [[OD-197]]) | 087 |
 
 ---
 
@@ -191,6 +192,14 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ID | Title | FR groups | Blocked-by |
 |---|---|---|---|
 | ISSUE-086 | Config admin + config-audit-log surfaces | surface-01, surface-01b | 010, 077 |
+
+### Epic M — Frontend ([[OD-197]] — the render layer the 86-issue backlog under-scoped)
+
+| ID | Title | FR groups | Blocked-by |
+|---|---|---|---|
+| ISSUE-087 | Frontend substrate — Next.js app-shell (client + super-admin) that every surface renders into (UI analog of 008; RBAC nav reuses `can()` nodes; honest-state primitives; data-access seam) | surface-00 + all surface render hosts | 007, 013, 018 (all done → `ready`) |
+
+*(Frontend track, per [[OD-197]]: `087` substrate gate → walking skeleton → per-surface **render** layers, each gated on its own backend signal `done`. The per-surface render decomposition — reframing each surface issue with a render sub-deliverable, or minting render issues — is a `to-issues` pass owed once `087` lands.)*
 
 ---
 

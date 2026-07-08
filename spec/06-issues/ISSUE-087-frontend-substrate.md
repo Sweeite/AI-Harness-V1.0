@@ -1,7 +1,7 @@
 ---
 id: ISSUE-087
 title: Frontend substrate — Next.js app-shell (client deployment + super-admin) that every surface renders into
-epic: K — frontend
+epic: M — frontend
 status: ready
 github: "#87"
 ---
