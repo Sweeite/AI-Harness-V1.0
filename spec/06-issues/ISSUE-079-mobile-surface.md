@@ -2,7 +2,7 @@
 id: ISSUE-079
 title: Mobile surface (responsive/PWA + web-push)
 epic: J — observability
-status: ready
+status: in-progress
 github: "#79"
 ---
 

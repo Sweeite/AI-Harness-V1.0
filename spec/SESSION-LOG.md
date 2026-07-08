@@ -5,6 +5,34 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 77 — 2026-07-08 — 🏭 **Stage-5 offline BATCH (9 members) built + adversarially verified + fixed + live-R10-closed — 6 issues DONE; 3 surfaces logic-built (render-pending); the FRONTEND-track gap found + specced.**
+
+**Environment:** 💻 FULL (Mac). Live steps used: migration `0033` applied LIVE (head `0032`→`0033`); 8 R10 live-adapter smokes replayed rolled-back vs the silo. Fan-out build (worktree-free — disjoint `app/<slug>` packages, so parallel-safe without isolation; migrations/shared-spec/trackers serialized by the orchestrator per the schedule's migration-chain lane rule).
+
+**① Batch build (Workflow fan-out, 9 offline members):** `021` user-mgmt+RBAC-audit · `052` Inngest+DLQ · `058` rate+cost-ladder · `062` specialists+hard-limits · `065` agent-health · `068` proactivity-modes · `078` ops-dashboards · `079` mobile-surface · `086` config-surfaces. Each built its own `app/<slug>/` package (port + InMemory fake + `supabase-store` adapter + `check` non-drift guard + tests). **222 offline AC tests green + typecheck clean** across all 9.
+
+**② Adversarial verify (independent zero-context agent per package):** caught **2 BLOCKER + 7 MAJOR + 19 MINOR** — all the fake-passes-offline / live-diverges / fail-open class the offline suites can't see:
+- **BLOCKER `021`:** last-Super-Admin guard was **fail-open under READ COMMITTED** (two concurrent demotions of *different* SA rows both pass the count subquery → 0 SAs; write-skew, no row-lock overlap). The code comment wrongly claimed it was safe.
+- **BLOCKER `078`:** offboarding **two-person auth was fail-open** (executor could be an approver — dead compound check, missing the individual `executor≠approver` predicates) — on a hard-delete gate.
+- **MAJORs:** `062` live fail-open (untagged write tool defaulted to allowed), `068` audit-before-commit non-atomicity (#1) + uuid-FK drift, `079` never-false-healthy-on-empty + missing ownership predicate, `086` non-atomic batch + SECRET pre-screen.
+
+**③ Fix pass (regression-test-first, fail-safe):** all BLOCKER/MAJOR + cheap MINORs fixed, each with a test that reproduces the bug first (concurrency/advisory-lock, fail-closed classifier, txn-wrapped audit, empty-vs-denied distinction). **Post-fix 310 tests green** across the 9 + rbac.
+- **Cross-package #2 fix (orchestrator, hand-verified):** the `021` fix used a *different* advisory-lock key than `@harness/rbac` (the homed owner) — so a demotion via rbac + a deactivation via user-mgmt still wouldn't serialize. **Aligned user-mgmt to rbac's exact key** (`pg_advisory_xact_lock(hashtext('rbac:super_admin_guard'))`); the last SA can't be orphaned across the two packages now.
+
+**④ Migration `0033_push_subscriptions_owner_rls` (applied LIVE):** owner-scoped RLS (`user_id = auth.uid()`) + the universal aal2 baseline — **the silo aal2-coverage lint (from ISSUE-020) CAUGHT my first draft omitting aal2**; fixed. The other surface-read tables (task_queue/notifications/event_log/…) have the same default-deny-no-policy gap → owed to their **producer** issues (OD-198 ③).
+
+**⑤ R10 live smokes — ALL GREEN** (rolled back vs the silo): `021`/`052`/`058`/`062`/`065`/`068`/`078`/`079`. Two failures were **smoke-fixture bugs, not adapter bugs** (user-mgmt seeded an already-existing 'Super Admin' role; proactivity seeded a `profiles` row without its `auth.users` parent + NOT-NULL email) — fixed the fixtures (+ made them deterministic vs live-seeded rows) and re-ran green. `062` had no smoke → authored one (agent) + ran green. `086` smoke owed with its render layer.
+
+**⑥ FRONTEND-track gap (operator-surfaced, marquee):** the operator asked "does the plan factor in the screens?" — investigation found the plan specs **13 surfaces** (`spec/03-surfaces/`, signed off) + locks the stack (Next.js + Tailwind + shadcn/ui) but **never scheduled the app that renders them** (all `app/*` are headless). Resolved as **[[OD-197]]** (frontend = parallel vertical-slice track; logic/render split) + **[[ISSUE-087]]** (the frontend-substrate gate — the UI analog of `008`) + a BUILD-SCHEDULE **Frontend track** section. Operator decision: build ALL 13 to spec first, then retrofit his own HTML dashboard last (reskin **+** a fresh requirements pass for missing features — not a pure reskin). A **clickable surface-05 Ops-dashboard prototype** was shared (Artifact) as the "see it" proof.
+
+**⑦ Forks logged — [[OD-198]]** (batch-close forks; all fail-safe-shipped, several need reconcile). Notable: **③ human-path RLS gap** (task_queue/notifications/event_log RLS-enabled + no authenticated policy → surfaces return 0 rows live, fail-closed but false-healthy — owed to producer issues); ② `hard_limit_class` tool-tag home + mandatory memory-write seed; ④ config-registry-vs-FR autonomy-editability reconcile.
+
+**Tracker reconcile (Rule 0):** `021`/`052`/`058`/`062`/`065`/`068` frontmatter `ready → done` (+ §10 evidence); `078`/`079`/`086` `ready → in-progress` (logic-done, render-pending, OD-197); **`064` `blocked → ready`** (blocker `052` done); BUILD-SCHEDULE batch sub-bullet + migration-head note (0030→**0033**, next 0034) fixed; `_backlog` 6 rows marked done; README; SESSION-LOG; GitHub #21/#52/#58/#62/#65/#68 to CLOSE. Commits: `e8c8400` (banked build+fix, offline-green) + this reconcile commit.
+
+**Next step:** **Checkpoint 5 still OPEN.** Remaining Stage-5 members: `038` · connectors `039`/`040`/`041` (dossiers current; live OAuth/webhook close = onboarding, OD-172) · `064` (now ready) · `083` · plus the 3 surfaces' **render** layer (needs ISSUE-087 substrate first). Then Checkpoint 5's integration test → Stage 6 (R1). **Silo head `0033`; next free tag `0034`.** Live infra: `source ~/.ai-harness-secrets.env`; silo `$SILO_DB_URL`; psql `/opt/homebrew/opt/libpq/bin/psql`.
+
+---
+
 ## Session 76 — 2026-07-08 — 🔒 **Stage-5 BATCH `020` (RLS ENFORCEMENT) BUILT + live-verified — the #2-critical enforcing RLS on top of the 009 scaffold: visibility∩sensitivity∩Restricted∩aal2 + the harness mid-task authz re-check + the RLS/harness divergence signal.**
 
 **Environment:** 💻 FULL (Mac). Live steps used (migration `0031` applied LIVE, head `0030`→`0031`; R10 live capstone rolled back). Serial build (the gate `022` was built alone last session; `020` is the first batch member, chosen because it's Checkpoint 5's second named closing pillar + the hardest/#2-critical of the batch — R3).

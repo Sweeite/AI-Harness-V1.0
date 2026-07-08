@@ -2,7 +2,7 @@
 id: ISSUE-065
 title: Agent health / drift / dead-agent metrics + producer heartbeat (flag-never-auto-correct)
 epic: H — agent design
-status: ready
+status: done
 github: "#65"
 ---
 
@@ -158,3 +158,10 @@ score, and dead-agent flag — plus a producer liveness heartbeat, under the inv
 - **AF gate:** AF-118 is a blocking (RP-1) build-time SPIKE; AF-123 / AF-124 are EVAL fast-follows
   (the flag-only posture de-risks them) — their status in `feasibility-register.md` governs when each
   detection claim is trusted at launch (`observability.md` launch-gate rule).
+
+---
+## §10 Evidence — built + closed (session 77, 2026-07-08)
+- **Built** via the Stage-5 offline-batch fan-out (`app/agent-health/`): 20/20 offline AC tests green + typecheck clean + `check` non-drift guard.
+- **Adversarially verified** (independent zero-context agent); findings fixed **regression-test-first, fail-safe** (see [[OD-198]] for the batch-close forks; all fail-safe-shipped).
+- **R10 live-adapter smoke GREEN** against the real silo — `app/agent-health/results/live-smoke.sql` (rolled back). Proves the adapter's real SQL/casts/constraints vs the 0001+delta DDL (the fake-passes-offline / live-diverges class).
+- **status: ready → done.** GitHub closed. Full narrative + evidence: `spec/SESSION-LOG.md` (Session 77).

@@ -11,8 +11,13 @@
 begin;
 
 -- A throwaway actor profile (config_values.updated_by + access_audit.originating_user_id are uuid FKs).
-insert into public.profiles (id, active)
-values ('00000000-0000-0000-0000-0000000000ff', true)
+-- profiles.id FKs auth.users(id) and profiles.email is NOT NULL — seed the auth.users parent + email first.
+insert into auth.users (id, instance_id, aud, role, email)
+values ('00000000-0000-0000-0000-0000000000ff','00000000-0000-0000-0000-000000000000',
+        'authenticated','authenticated','__smoke068__@smoke.local')
+on conflict (id) do nothing;
+insert into public.profiles (id, email, active)
+values ('00000000-0000-0000-0000-0000000000ff', '__smoke068__@smoke.local', true)
 on conflict (id) do nothing;
 
 -- (1) proactive_suggestions.mode — insert then UPDATE the mode (persistMode). The enum backstops the value.

@@ -2,7 +2,7 @@
 id: ISSUE-064
 title: Execution plans + per-step failure-mode assignment
 epic: H — agent design
-status: blocked
+status: ready
 github: "#64"
 ---
 

@@ -2,7 +2,7 @@
 id: ISSUE-086
 title: Config admin + config-audit-log surfaces
 epic: L — config surfaces
-status: ready
+status: in-progress
 github: "#86"
 ---
 

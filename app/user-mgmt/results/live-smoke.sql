@@ -46,9 +46,18 @@ begin
     insert into profiles (id, email, name) values
       (v_sa, '__usr021_sa__@smoke.local','USR021 SA'),
       (v_target, '__usr021_tgt__@smoke.local','USR021 Target');
-    insert into roles (name, is_default, is_protected) values ('Super Admin', true, true) returning id into v_sa_role;
+    -- 'Super Admin' is a live-seeded, unique-named role — SELECT it (re-inserting collides on roles_name_key).
+    select id into v_sa_role from roles where name = 'Super Admin';
+    if v_sa_role is null then
+      insert into roles (name, is_default, is_protected) values ('Super Admin', true, true) returning id into v_sa_role;
+    end if;
     insert into roles (name, is_default, is_protected) values ('__usr021_std__', false, false) returning id into v_std_role;
     insert into user_roles (user_id, role_id, active) values (v_sa, v_sa_role, true), (v_target, v_std_role, true);
+    -- Make v_sa the SOLE active Super Admin so the last-SA guard test (4) is deterministic regardless of any
+    -- live-seeded SA users (this UPDATE rolls back with the whole script — no residue).
+    update user_roles ur set active = false
+      from roles r
+      where r.id = ur.role_id and r.name = 'Super Admin' and ur.user_id <> v_sa and ur.active;
     -- give the target's role one node so userPermissionNodes has something to resolve
     insert into role_permissions (role_id, permission_node) values (v_std_role, 'PERM-memory.read');
     raise notice 'PASS setup: users + roles + user_roles seeded (sa=% target=%)', v_sa, v_target;

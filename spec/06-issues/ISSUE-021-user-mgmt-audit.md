@@ -2,7 +2,7 @@
 id: ISSUE-021
 title: User management lifecycle + RBAC audit
 epic: B — identity & access
-status: ready
+status: done
 github: "#21"
 ---
 
@@ -79,3 +79,10 @@ Deliver the post-invite user-authorization lifecycle (assign/change role, deacti
 - Reactivation test: a previously-deactivated user holding a Restricted grant is reactivated and the grant is NOT auto-restored (AC-1.USR.002.2).
 - NFR-SEC.016 posture: a Restricted grant without a reason is rejected; a reason given on a non-Restricted sensitive mutation is written to `access_audit` (AC-NFR-SEC.016.1).
 - AF-081 must be GREEN (agent-path audit completeness) before sign-off; FR-1.AUD.003's C7 seam is a scope boundary, not a test here.
+
+---
+## §10 Evidence — built + closed (session 77, 2026-07-08)
+- **Built** via the Stage-5 offline-batch fan-out (`app/user-mgmt/`): 32/32 offline AC tests green + typecheck clean + `check` non-drift guard.
+- **Adversarially verified** (independent zero-context agent); findings fixed **regression-test-first, fail-safe** (see [[OD-198]] for the batch-close forks; all fail-safe-shipped).
+- **R10 live-adapter smoke GREEN** against the real silo — `app/user-mgmt/results/live-smoke.sql` (rolled back). Proves the adapter's real SQL/casts/constraints vs the 0001+delta DDL (the fake-passes-offline / live-diverges class).
+- **status: ready → done.** GitHub closed. Full narrative + evidence: `spec/SESSION-LOG.md` (Session 77).

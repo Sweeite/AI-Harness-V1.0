@@ -2,7 +2,7 @@
 id: ISSUE-068
 title: Proactivity modes + action-autonomy matrix (Prepare-only, OD-161)
 epic: I — proactive
-status: ready
+status: done
 github: "#68"
 ---
 
@@ -82,3 +82,10 @@ The proactive-autonomy policy layer: stamp every proactive item with exactly one
 - **No-bypass / E2E:** a proactive action invoked from any path passes the identical node-gate + C6 pipeline (AC-NFR-SEC.013.1/.2) — no proactive shortcut.
 - **De-risking EVAL:** AF-131 — the non-client / content-sensitivity classifier feeding AC-9.MODE.004.3's sub-type resolution meets its accuracy bar (conservative on ambiguity → floored) before this slice's floor is trusted in production.
 - **Ship gate:** AF-068 red-team GREEN in `feasibility-register.md` (per OD-157/RP-1) — no authorized-but-dangerous autonomous path around the C6 hard-approval floor — before this issue ships. Test layers per `spec/05-non-functional/test-strategy.md`.
+
+---
+## §10 Evidence — built + closed (session 77, 2026-07-08)
+- **Built** via the Stage-5 offline-batch fan-out (`app/proactivity-modes/`): 28/28 offline AC tests green + typecheck clean + `check` non-drift guard.
+- **Adversarially verified** (independent zero-context agent); findings fixed **regression-test-first, fail-safe** (see [[OD-198]] for the batch-close forks; all fail-safe-shipped).
+- **R10 live-adapter smoke GREEN** against the real silo — `app/proactivity-modes/results/live-smoke.sql` (rolled back). Proves the adapter's real SQL/casts/constraints vs the 0001+delta DDL (the fake-passes-offline / live-diverges class).
+- **status: ready → done.** GitHub closed. Full narrative + evidence: `spec/SESSION-LOG.md` (Session 77).

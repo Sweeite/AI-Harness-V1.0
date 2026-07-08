@@ -2,7 +2,7 @@
 id: ISSUE-062
 title: Eight specialist definitions + per-agent hard limits
 epic: H — agent design
-status: ready
+status: done
 github: "#62"
 ---
 
@@ -74,3 +74,10 @@ Define the eight canonical specialist agents (Research, Client, Campaign, Comms,
 ## 9. Verification (how DoD is proven)
 - Per spec/05-non-functional/test-strategy.md: unit + agent-definition-write tests for each SPC AC; the three reject-at-write invariants proven by negative tests at the registry save path (edit denied, not audited); routing-side assertions (Research-first, Insight-not-on-demand) as integration tests against the ISSUE-061 orchestrator.
 - **AC-NFR-SEC.004** posture must hold: no UI/API path grants a hard-limited capability to Comms/Finance or memory-write to a non-Memory agent. The `Verified` path for FR-8.SPC.003/004 requires the **AF-068** red-team battery (ISSUE-003) to be GREEN — it is the launch-blocking enforceability proof (RP-1); no test may achieve a hard-limited effect without an explicit, authorized, non-bypassable human step.
+
+---
+## §10 Evidence — built + closed (session 77, 2026-07-08)
+- **Built** via the Stage-5 offline-batch fan-out (`app/specialists/`): 32/32 offline AC tests green + typecheck clean + `check` non-drift guard.
+- **Adversarially verified** (independent zero-context agent); findings fixed **regression-test-first, fail-safe** (see [[OD-198]] for the batch-close forks; all fail-safe-shipped).
+- **R10 live-adapter smoke GREEN** against the real silo — `app/specialists/results/live-smoke.sql` (rolled back). Proves the adapter's real SQL/casts/constraints vs the 0001+delta DDL (the fake-passes-offline / live-diverges class).
+- **status: ready → done.** GitHub closed. Full narrative + evidence: `spec/SESSION-LOG.md` (Session 77).

@@ -2,7 +2,7 @@
 id: ISSUE-058
 title: Rate-limit guardrails + cost-ladder enforcement
 epic: G — guardrails
-status: ready
+status: done
 github: "#58"
 ---
 
@@ -75,3 +75,10 @@ Build the C6 rate-limit guardrail layer — the five configurable-never-unlimite
 - Per spec/05-non-functional/test-strategy.md: integration tests driving a stubbed C7 cost signal through each rung (soft/throttle/hard-kill) and asserting the C6 disposition + the `guardrail_log` `rate_limit`-class row (AC-NFR-COST.001.2/002.1/003.2); unit/property tests that the config validator rejects unlimited/zero-guard *and* an absurd-but-finite ceiling for each of the five caps (AC-6.RTL.001.1); a test that an irreversible/billed action at cap halts-and-escalates and is never placed on auto-retry (AC-6.RTL.003.2); and a decide/execute boundary test proving C6 emits a disposition C5 acts on while C6 never itself throttles/kills (AC-NFR-COST.004.1).
 - **AC-NFR-* postures owned here:** AC-NFR-COST.001–004/007 and AC-NFR-SEC.005.1 reach `Verified` via the build-time tests above (a synthetic spend series + a config-validation battery + a coverage-gap route test); the "never fail silently" (#3) invariant is proven by asserting every rung transition and cap breach writes a loud `guardrail_log` row, and the "never relaxes a hard limit" (#2) invariant by asserting no cost-rung path can mark or bypass a `hard_limit`.
 - **Gate:** the ladder mechanism is blocking-by-posture (locked ADR-003) and ships at launch; **AF-001 (ISSUE-001) must be GREEN** to anchor the default thresholds; AF-040/041 (threshold realism) are fast-follow behind the fail-safe round-up + this ladder (feasibility-register.md §C / cost.md launch-gate notes).
+
+---
+## §10 Evidence — built + closed (session 77, 2026-07-08)
+- **Built** via the Stage-5 offline-batch fan-out (`app/rate-cost-ladder/`): 30/30 offline AC tests green + typecheck clean + `check` non-drift guard.
+- **Adversarially verified** (independent zero-context agent); findings fixed **regression-test-first, fail-safe** (see [[OD-198]] for the batch-close forks; all fail-safe-shipped).
+- **R10 live-adapter smoke GREEN** against the real silo — `app/rate-cost-ladder/results/live-smoke.sql` (rolled back). Proves the adapter's real SQL/casts/constraints vs the 0001+delta DDL (the fake-passes-offline / live-diverges class).
+- **status: ready → done.** GitHub closed. Full narrative + evidence: `spec/SESSION-LOG.md` (Session 77).

@@ -2,7 +2,7 @@
 id: ISSUE-052
 title: Inngest execution engine + step retry + fan-out + DLQ
 epic: F — harness
-status: ready
+status: done
 github: "#52"
 ---
 
@@ -183,3 +183,10 @@ detection, and a human-only dead-letter queue that emits its own liveness heartb
   (#3) — a fan-out is never silently partial and an unattended DLQ is a loud, recorded condition. The
   AC→`Verified` path is the per-AC tests above passing green under the JOB FRs in
   `component-05-harness.md` and NFR-INF.011 in `infrastructure.md`.
+
+---
+## §10 Evidence — built + closed (session 77, 2026-07-08)
+- **Built** via the Stage-5 offline-batch fan-out (`app/inngest-dlq/`): 16/16 offline AC tests green + typecheck clean + `check` non-drift guard.
+- **Adversarially verified** (independent zero-context agent); findings fixed **regression-test-first, fail-safe** (see [[OD-198]] for the batch-close forks; all fail-safe-shipped).
+- **R10 live-adapter smoke GREEN** against the real silo — `app/inngest-dlq/results/live-smoke.sql` (rolled back). Proves the adapter's real SQL/casts/constraints vs the 0001+delta DDL (the fake-passes-offline / live-diverges class).
+- **status: ready → done.** GitHub closed. Full narrative + evidence: `spec/SESSION-LOG.md` (Session 77).

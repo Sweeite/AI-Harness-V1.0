@@ -75,7 +75,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-018 | Role model + permission matrix + `can()` gate | C1 ROLE, PERM | 009 |
 | ISSUE-019 ✅ **done** | Clearance + Restricted model — `app/rbac/src/clearance.ts` (four tiers + OD-186 per-role default seed + grant/revoke + review cadence + Restricted grants + never-auto-inject rule); 45 tests + LIVE capstone; independent verify caught 2 real defects (OD-186/OD-187), both fixed (session 70, 2026-07-06). The Stage-4 GATE. | C1 CLR, RST | 018 |
 | ISSUE-020 ✅ **done** | RLS enforcement — **DONE (session 76, 2026-07-08):** migration `0031` (LIVE, head 0031) — `user_visibility` helper + `roles.visibility_tiers` (OD-168), memories clearance predicate (visibility∩sensitivity∩Restricted, no client_slug), entities Internal-Org wall, RBAC-self read policies + grants, universal aal2 retrofit + CI aal2-lint. `app/rls-enforcement/` — FR-1.RLS.007 mid-task authz re-check + FR-1.RLS.008 divergence signal. silo 76/76 + rls-enforcement 12/12 + R10 live capstone GREEN (caught 2 real bugs). AF-076/079/080 realized. Dependent `024` → ready. GitHub #20 CLOSED. | C1 RLS.002/003/005/007/008 | 009, 019; RLS.007 → 003(spike) |
-| ISSUE-021 | User management lifecycle + RBAC audit (+ surface-02) | C1 USR, AUD | 018, 019 |
+| ISSUE-021 ✅ **done** (S77) | User management lifecycle + RBAC audit (+ surface-02) | C1 USR, AUD | 018, 019 |
 
 ### Epic C — Memory
 
@@ -126,7 +126,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-049 | Task graphs + idempotency keys + resume-from-incomplete-step | C5 GRP | 048 |
 | ISSUE-050 | Context envelope + full-envelope-per-step + compression + originals retention | C5 ENV | 048 |
 | ISSUE-051 | Three loops + config-extensible + catch-up dedup + failure heartbeat | C5 LOP | 048 |
-| ISSUE-052 | Inngest execution engine + step retry + fan-out + DLQ | C5 JOB | 049 |
+| ISSUE-052 ✅ **done** (S77) | Inngest execution engine + step retry + fan-out + DLQ | C5 JOB | 049 |
 | ISSUE-053 | Run pipeline — prompt-stack assembly + gates (RBAC/approval/anomaly) + memory injection + answer-mode + completion dual-record | C5 ASM | 043, 045, 048, 055, 056, 057, 061 |
 | ISSUE-054 | Execution optimisation (parallel DAG, scheduling, decomposition, pre-warm) | C5 OPT | 049, 052 |
 
@@ -137,7 +137,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-055 | Seven hard limits — code enforcement, un-overridable | C6 HRD | 011, 003(spike) |
 | ISSUE-056 | Approval tiers + mandatory-hard set + escalation/flagged workflow (+ surface-04 approval queue) | C6 APR, ESC | 048, 076 |
 | ISSUE-057 | Five pre-step anomaly checks (signal-not-gate, baseline learning) | C6 ANM | 011 |
-| ISSUE-058 | Rate-limit guardrails + cost-ladder enforcement | C6 RTL | 034, 074; ladder → 001(spike) |
+| ISSUE-058 ✅ **done** (S77) | Rate-limit guardrails + cost-ladder enforcement | C6 RTL | 034, 074; ladder → 001(spike) |
 | ISSUE-059 | Injection sanitization pipeline (4-step) + quarantine (retain+route-to-human) | C6 INJ | 011, 003(spike) |
 | ISSUE-060 | guardrail_log + no-silent-failure invariant + approval/anomaly learning | C6 LOG, FMM, OPT | 011 |
 
@@ -146,10 +146,10 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ID | Title | FR groups | Blocked-by |
 |---|---|---|---|
 | ISSUE-061 | Orchestrator + 7-step routing + agents registry | C8 ORC, REG | 042, 048 |
-| ISSUE-062 | Eight specialist definitions + per-agent hard limits (Comms never-sends, Finance never-transacts, Memory sole-writer) | C8 SPC | 061, 043 |
+| ISSUE-062 ✅ **done** (S77) | Eight specialist definitions + per-agent hard limits (Comms never-sends, Finance never-transacts, Memory sole-writer) | C8 SPC | 061, 043 |
 | ISSUE-063 | Per-agent memory scoping (retrieval filter) | C8 SCO | 062, 025 |
 | ISSUE-064 | Execution plans + per-step failure-mode assignment | C8 PLAN | 061, 052 |
-| ISSUE-065 | Agent health / drift / dead-agent (flag-never-auto-correct) + producer heartbeat | C8 HLTH | 061, 011 |
+| ISSUE-065 ✅ **done** (S77) | Agent health / drift / dead-agent (flag-never-auto-correct) + producer heartbeat | C8 HLTH | 061, 011 |
 | ISSUE-066 | Orchestrator learning + scope-aware result cache + cost-routing | C8 LRN, COST | 061, 074 |
 | ISSUE-067 | Agent builder surface | surface-09 (renders C8 REG/SPC/PLAN/HLTH) | 062, 064, 065 |
 
@@ -157,7 +157,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 
 | ID | Title | FR groups | Blocked-by |
 |---|---|---|---|
-| ISSUE-068 | Proactivity modes + action-autonomy matrix (Prepare-only, OD-161) | C9 MODE | 056 |
+| ISSUE-068 ✅ **done** (S77) | Proactivity modes + action-autonomy matrix (Prepare-only, OD-161) | C9 MODE | 056 |
 | ISSUE-069 | Seven proactive generators (each enable/disable + thresholded) | C9 PRO | 051, 025 |
 | ISSUE-070 | Suggestion lifecycle — persist/rank/explain/deliver/dismissal-learn (safety floor) | C9 SUG | 069, 068 |
 | ISSUE-071 | Cold-start phase ladder + proactive suppression | C9 CST | 030, 069 |
