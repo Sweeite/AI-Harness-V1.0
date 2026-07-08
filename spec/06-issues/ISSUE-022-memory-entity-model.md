@@ -2,7 +2,7 @@
 id: ISSUE-022
 title: Memory + entity model + sensitivity/visibility tagging
 epic: C — memory
-status: ready
+status: done
 github: "#22"
 ---
 
@@ -84,3 +84,12 @@ Stand up the C2 data foundation — the `memories` and `entities` tables, the en
 - **Unit tests** for the entity resolver (ENT.005) and the tag-assignment rules (TAG.001/002/003), including the never-auto-Restricted guard (AC-2.TAG.002.2) and the ambiguity path (AC-2.ENT.005.2).
 - **EVAL** (AF-082 → NFR-PERF.004): false-merge/false-split rates within threshold on the AF-082 mention set, ambiguous cases flagged not silently resolved (AC-NFR-PERF.004.1) — this is the `Verified` path for the resolution accuracy claim; a paper-only pass is not sufficient.
 - **Golden-rule check** (NFR-CMP.002): AC-NFR-CMP.002.1/.2 — inspected memory rows carry a `source_ref` and contain no verbatim source-file copy.
+
+## 10. Build evidence (✅ DONE — Session 75, 2026-07-08, 💻 FULL)
+Built serial + hardest-first (R3 — the gate is built alone; the 16-issue Stage-5 batch fans out only after this gate + Checkpoint 5). The `entities`/`memories` tables, the four enums, and the `(entity_ids, updated_at)` watermark index **already ship in the 0001 baseline (applied live)**, so this slice added only the deltas + the app logic — it did NOT re-author `create table` (that would collide; per the Stage-2 "verify-present, add deltas" rule).
+
+- **`app/memory/` package** (new — port + fake + live adapter, house pattern): `entity-types.ts` (the four enum domains + the 22 default `entity_types`, Internal-Org locked-last), `memory.ts` (content hash + ADR-004 §4 idempotency key), `store.ts` (`MemoryStore` port + `InMemoryMemoryStore` reference model + shared `validateMemoryRow`), `resolution.ts` (deterministic resolver — external_refs → name/type → create; ambiguity flagged, never guessed), `tags.ts` (visibility most-restrictive-default, never-auto-Restricted, orthogonal admit), `supabase-store.ts` (live pg adapter), `index.ts` (`check`: 0030 seed ≡ constant non-drift guard).
+- **Migrations (delta-only):** `0029_entities_internal_org_singleton` (partial-unique guard `on entities (is_internal_org) where is_internal_org` — the real DB singleton FR-2.ENT.003 mandated; the baseline had only a first-boot seed, no guard) + `0030_entity_types_config_seed` (CFG-entity_types → `config_values`). **Both applied LIVE (silo head 0028 → 0030);** discipline + RLS `check` green.
+- **Tests:** `memory.test.ts` **17/17** (one per §4 AC) + `eval-af082.test.ts` **AF-082 EVAL** (10/10 ground-truth cases: **false-merge=0**, unflagged-ambiguous=0, false-split=0) = **18/18 offline**, typecheck clean, `check` green. Silo `schema.test.ts` extended to 0030 (68/68).
+- **R10 live-adapter smoke** (`results/live-smoke.sql`, rolled back): **ALL ASSERTIONS PASSED** — proved the 0030 seed (22 incl. Internal Org), the 0029 singleton guard (a 2nd `is_internal_org=true` → `unique_violation`), `insertEntity` external_refs round-trip, `insertMemory` happy path, idempotency dedup (ON CONFLICT DO NOTHING no-op), the ≥1-entity CHECK, and the non-pointer confidence CHECK. **The smoke caught + fixed one real fake-vs-DB divergence** (validateMemoryRow was stricter than the shipped one-directional confidence CHECK — aligned; the pointer→source_ref rule kept as an app-level golden-rule guard).
+- **AF-082:** 🔴→🟡 — the deterministic resolver's mechanics are **seed-EVAL-proven** (zero false-merge, conservative split-not-merge, ambiguity flagged). The full at-scale EVAL over the AF-002 corpus stays the **onboarding fast-follow** (NFR-PERF.004 launch-gate = fast-follow, behind the FR-2.MNT.010 duplicate-cluster backstop). Live silo head **0030**; next free tag **0031**.

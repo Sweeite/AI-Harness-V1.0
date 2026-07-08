@@ -2,7 +2,7 @@
 id: ISSUE-023
 title: Embeddings + HNSW vector search
 epic: C — memory
-status: blocked
+status: ready
 github: "#23"
 ---
 

@@ -1,0 +1,21 @@
+{
+  "name": "@harness/memory",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-022 — the C2 memory data foundation: the entities + memories model, deterministic entity resolution (external_refs → normalised name/type → create-only-on-no-confident-match, ambiguity flagged not guessed — OD-033/FR-2.ENT.005), the Internal-Org singleton, and the two orthogonal write-time classification axes (visibility most-restrictive-default + sensitivity never-autonomously-Restricted, evaluated separately — FR-2.TAG.*). Port + in-memory fake reference model; supabase-store.ts is the live pg adapter authored to the schema.md §3 DDL. The DDL, the four enums, and the (entity_ids, updated_at) watermark index already ship in the 0001 baseline; this slice adds the 0029 Internal-Org singleton guard + the 0030 entity_types config seed + the resolution/tag logic the write path (ISSUE-024) and retrieval (ISSUE-025) build on. HNSW/embeddings = ISSUE-023; sole-writer path = ISSUE-024; Maturity = ISSUE-030.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

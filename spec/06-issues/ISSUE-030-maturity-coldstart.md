@@ -2,7 +2,7 @@
 id: ISSUE-030
 title: Maturity + cold-start gating signal
 epic: C — memory
-status: blocked
+status: ready
 github: "#30"
 ---
 

@@ -84,16 +84,16 @@ FR-1.USR.005,Grant/revoke sensitivity clearances,1,Approved,Must,L576;L448;L450,
 FR-1.AUD.001,Personal/Restricted access audited (both paths),1,Approved,Must,L456,n/a,n/a,audit-views(C7),access_audit;memories,AC-1.AUD.001.1;AC-1.AUD.001.2,,ISSUE-021,,
 FR-1.AUD.002,RBAC mutations audited,1,Approved,Must,L452,n/a,n/a,audit-views(C7),access_audit,AC-1.AUD.002.1,,ISSUE-021,,
 FR-1.AUD.003,Audit trail seam to C7,1,Approved,Should,seam,PERM-compliance.download_records,n/a,audit/compliance-views(C7),access_audit,AC-1.AUD.003.1,,ISSUE-021,,
-FR-2.MEM.001,Four memory types,2,Approved,Must,L1342-1349,n/a,n/a,memory-health-dashboard(P3),DATA-memories,AC-2.MEM.001.1;AC-2.MEM.001.2,n/a,ISSUE-022,,
-FR-2.MEM.002,Memory row schema,2,Approved,Must,L1440-1455,FR-2.WRT.001,n/a,memory-detail(P3),DATA-memories,AC-2.MEM.002.1;AC-2.MEM.002.2,n/a,ISSUE-022,,
-FR-2.ENT.001,Memory hangs off entities,2,Approved,Must,L1353-1356;L1394,n/a,n/a,entity-browser(P3),DATA-memories;DATA-entities,AC-2.ENT.001.1,n/a,ISSUE-022,,
-FR-2.ENT.002,Entity types per-deployment config,2,Approved,Must,L1353-1394;L1366,config-authority(C1),CFG-entity_types,entity-type-config(P3),DATA-entities,AC-2.ENT.002.1;AC-2.ENT.002.2,n/a,ISSUE-022,,
-FR-2.ENT.003,Internal Org entity walled off,2,Approved,Must,L1357-1363,C1-clearances,n/a,entity-browser(P3),DATA-entities;DATA-memories,AC-2.ENT.003.1;AC-2.ENT.003.2,n/a,ISSUE-022,,
-FR-2.ENT.004,Entity row schema,2,Approved,Must,L1429-1436,n/a,n/a,entity-detail(P3),DATA-entities,AC-2.ENT.004.1,n/a,ISSUE-022,,
-FR-2.ENT.005,Entity resolution deterministic,2,Approved,Must,L1353-1356;L1429-1436,service_role,entity-match-threshold(P2),entity-merge-queue(P3),DATA-entities,AC-2.ENT.005.1;AC-2.ENT.005.2,OD-033(resolved),ISSUE-022,,
-FR-2.TAG.001,Visibility axis with defaults,2,Approved,Must,L1400-1404;L1862-1866,n/a,n/a,memory-detail(P3),DATA-memories,AC-2.TAG.001.1,n/a,ISSUE-022,,
-FR-2.TAG.002,Writer assigns sensitivity; never Restricted,2,Approved,Must,L1418;FR-1.CLR.001,PERM-ingestion.review,n/a,ingestion-queue(P3),DATA-memories,AC-2.TAG.002.1;AC-2.TAG.002.2,n/a,ISSUE-022,,
-FR-2.TAG.003,Visibility and sensitivity orthogonal,2,Approved,Must,L1400-1402;L1864-1866,FR-1.CLR.006,n/a,n/a,DATA-memories,AC-2.TAG.003.1,n/a,ISSUE-022,,
+FR-2.MEM.001,Four memory types,2,Approved,Must,L1342-1349,n/a,n/a,memory-health-dashboard(P3),DATA-memories,AC-2.MEM.001.1;AC-2.MEM.001.2,n/a,ISSUE-022,,app/memory/src/memory.test.ts
+FR-2.MEM.002,Memory row schema,2,Approved,Must,L1440-1455,FR-2.WRT.001,n/a,memory-detail(P3),DATA-memories,AC-2.MEM.002.1;AC-2.MEM.002.2,n/a,ISSUE-022,,app/memory/src/memory.test.ts
+FR-2.ENT.001,Memory hangs off entities,2,Approved,Must,L1353-1356;L1394,n/a,n/a,entity-browser(P3),DATA-memories;DATA-entities,AC-2.ENT.001.1,n/a,ISSUE-022,,app/memory/src/memory.test.ts
+FR-2.ENT.002,Entity types per-deployment config,2,Approved,Must,L1353-1394;L1366,config-authority(C1),CFG-entity_types,entity-type-config(P3),DATA-entities,AC-2.ENT.002.1;AC-2.ENT.002.2,n/a,ISSUE-022,,app/memory/src/memory.test.ts
+FR-2.ENT.003,Internal Org entity walled off,2,Approved,Must,L1357-1363,C1-clearances,n/a,entity-browser(P3),DATA-entities;DATA-memories,AC-2.ENT.003.1;AC-2.ENT.003.2,n/a,ISSUE-022,,app/memory/src/memory.test.ts;app/memory/results/live-smoke.sql
+FR-2.ENT.004,Entity row schema,2,Approved,Must,L1429-1436,n/a,n/a,entity-detail(P3),DATA-entities,AC-2.ENT.004.1,n/a,ISSUE-022,,app/memory/src/memory.test.ts
+FR-2.ENT.005,Entity resolution deterministic,2,Approved,Must,L1353-1356;L1429-1436,service_role,entity-match-threshold(P2),entity-merge-queue(P3),DATA-entities,AC-2.ENT.005.1;AC-2.ENT.005.2,OD-033(resolved),ISSUE-022,,app/memory/src/memory.test.ts;app/memory/src/eval-af082.test.ts
+FR-2.TAG.001,Visibility axis with defaults,2,Approved,Must,L1400-1404;L1862-1866,n/a,n/a,memory-detail(P3),DATA-memories,AC-2.TAG.001.1,n/a,ISSUE-022,,app/memory/src/memory.test.ts
+FR-2.TAG.002,Writer assigns sensitivity; never Restricted,2,Approved,Must,L1418;FR-1.CLR.001,PERM-ingestion.review,n/a,ingestion-queue(P3),DATA-memories,AC-2.TAG.002.1;AC-2.TAG.002.2,n/a,ISSUE-022,,app/memory/src/memory.test.ts
+FR-2.TAG.003,Visibility and sensitivity orthogonal,2,Approved,Must,L1400-1402;L1864-1866,FR-1.CLR.006,n/a,n/a,DATA-memories,AC-2.TAG.003.1,n/a,ISSUE-022,,app/memory/src/memory.test.ts
 FR-2.ING.001,Filter 1 relevance,2,Approved,Must,L1569-1583;ADR-003,service_role,Haiku-gate+trust-window(P2),Haiku-decision-review-queue(P3),DATA-memories,AC-2.ING.001.1;AC-2.ING.001.2,OD-036(resolved),ISSUE-026,,
 FR-2.ING.002,Filter 2 sensitivity,2,Approved,Must,L1585-1601,service_role,n/a,ingestion-queue(P3),DATA-ingestion_queue;DATA-memories,AC-2.ING.002.1,n/a,ISSUE-026,,
 FR-2.ING.003,Ingestion queue review,2,Approved,Must,L1598-1601,PERM-ingestion.review,CFG-ingest_defer_resurface_days;CFG-review_escalation_days,UI-INGESTION-QUEUE,DATA-ingestion_queue;DATA-memories,AC-2.ING.003.1;AC-2.ING.003.2;AC-2.ING.003.3,n/a,ISSUE-026,,

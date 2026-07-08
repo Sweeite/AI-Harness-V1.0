@@ -24,7 +24,7 @@ const allDdl = stripComments(allSql);
 // ⚠️ MAINTENANCE TRIPWIRE — this list has gone stale 3× (sessions 71/72/73). APPEND every new migration
 // tag here in the SAME commit that adds the .sql + journal entry, or this test fails 1/N. The
 // journal≡disk assertion below is the self-maintaining backstop; this list additionally documents intent.
-test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010 Stage-3 + 0011-0020 Stage-4 + 0021-0023 Checkpoint-3-review + 0024-0026 session-73 backfill migrations are present and ordered", () => {
+test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010 Stage-3 + 0011-0020 Stage-4 + 0021-0023 Checkpoint-3-review + 0024-0026 session-73 backfill + 0027-0028 session-74 + 0029-0030 Stage-5 ISSUE-022 migrations are present and ordered", () => {
   assert.deepEqual(journal.entries.map((e) => e.tag), [
     "0001_baseline",
     "0001b_indexes",
@@ -57,6 +57,8 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0026_version_chain_lost_update_backstops", // session-73 Part-B — prompt_layers + tools chain/genesis unique indexes (transactional:false)
     "0027_profiles_invite_lifecycle", // OD-192 — profiles.revoked_at + bounced_at (invite lifecycle markers)
     "0028_task_queue_awaiting_approval_at", // logic-sweep held fix — task_queue.awaiting_approval_at (staleness clock)
+    "0029_entities_internal_org_singleton", // ISSUE-022 — entities Internal-Org partial-unique singleton guard (transactional:false)
+    "0030_entity_types_config_seed", // ISSUE-022 — entity_types config_values seed (CFG-entity_types)
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.
@@ -81,6 +83,9 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
   assert.equal(journal.entries.find((e) => e.tag === "0021_task_queue_append_only")!.transactional, true);
   assert.equal(journal.entries.find((e) => e.tag === "0022_dynamic_field_values_rls")!.transactional, true);
   assert.equal(journal.entries.find((e) => e.tag === "0023_realtime_publication")!.transactional, true);
+  // ISSUE-022: 0029 is transactional:false (CREATE UNIQUE INDEX CONCURRENTLY); 0030 is a transactional seed.
+  assert.equal(journal.entries.find((e) => e.tag === "0029_entities_internal_org_singleton")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0030_entity_types_config_seed")!.transactional, true);
 });
 
 test("every real migration passes the expand-contract discipline guardrails", () => {
