@@ -42,6 +42,7 @@
     { "tag": "0034_connector_disconnection_state", "file": "0034_connector_disconnection_state.sql", "transactional": true },
     { "tag": "0035_connector_disconnection_open_index", "file": "0035_connector_disconnection_open_index.sql", "transactional": false },
     { "tag": "0036_connector_disconnection_event_types", "file": "0036_connector_disconnection_event_types.sql", "transactional": false },
-    { "tag": "0037_plan_event_types", "file": "0037_plan_event_types.sql", "transactional": false }
+    { "tag": "0037_plan_event_types", "file": "0037_plan_event_types.sql", "transactional": false },
+    { "tag": "0038_embedding_event_types", "file": "0038_embedding_event_types.sql", "transactional": false }
   ]
 }

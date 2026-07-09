@@ -1,0 +1,21 @@
+{
+  "name": "@harness/embeddings",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-023 (C2 VEC) — the searchable-brain substrate retrieval (ISSUE-025) ranks over. Owns: (1) the embed-on-write STEP — embed content with the single configured model (CFG-embedding_model, default text-embedding-3-small / 1536 dims), validate the vector (dimension/degenerate/model), stamp embedding + embedding_model (FR-2.VEC.002); the commit/halt-on-failure wrapper is ISSUE-024's (FR-2.WRT.007) — this slice supplies the produce+validate the writer plugs in. (2) The RETRIEVAL-SESSION index-usage CONTRACT — the AF-019 fix: force the pgvector planner onto memories_embedding_hnsw under the RLS clearance predicate (ISSUE-002 measured the ~308x seqscan cliff real: 19.4s seqscan vs 63ms forced-index). ef_search from CFG (LIVE, 10-500, default 40) + hnsw.iterative_scan='relaxed_order' + set-local enable_seqscan handling, all scoped to the retrieval txn. Raise-not-drop posture (NFR-PERF.009). (3) The embedding-model change as a zero-downtime EXPAND-CONTRACT migration (FR-2.VEC.003) with the 100%-reconcile GATE that BLOCKS the contract/drop-old step on any shortfall and halts loud (never orphans a row). Port + in-memory reference fake; supabase-store.ts is the live pg adapter over the real memories table + pg_index + event_log. check = offline non-drift gate over the baseline HNSW index DDL (m=16, ef_construction=64) + the embedding columns + the CFG-ef_search bounds + the additive embedding event_type values (0038). The live AF-019 recall/latency LOAD proof runs in spikes/issue-023-hnsw-forcing (isolated 50k fixture, never the real memories) — flips AF-019 + sets the production ef_search.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
