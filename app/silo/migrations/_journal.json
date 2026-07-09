@@ -44,6 +44,7 @@
     { "tag": "0036_connector_disconnection_event_types", "file": "0036_connector_disconnection_event_types.sql", "transactional": false },
     { "tag": "0037_plan_event_types", "file": "0037_plan_event_types.sql", "transactional": false },
     { "tag": "0038_embedding_event_types", "file": "0038_embedding_event_types.sql", "transactional": false },
-    { "tag": "0039_memory_write_event_types", "file": "0039_memory_write_event_types.sql", "transactional": false }
+    { "tag": "0039_memory_write_event_types", "file": "0039_memory_write_event_types.sql", "transactional": false },
+    { "tag": "0040_maturity_recompute_event_type", "file": "0040_maturity_recompute_event_type.sql", "transactional": false }
   ]
 }

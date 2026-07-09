@@ -90,7 +90,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-027 | Maintenance lifecycle — decay/merge/supersede/expiry/erosion | C2 MNT(lifecycle) | 024 |
 | ISSUE-028 | Conflict quarantine + consolidation approval (+ surface-03 conflicts/consolidation) | C2 MNT(conflict/consol), WRT.002 | 024, 056 |
 | ISSUE-029 | Compliance erasure walk (memory-side transitive delete) | C2 MNT.017 | 024; → 082 |
-| ISSUE-030 | Maturity + cold-start gating signal | C2 MAT | 022 |
+| ISSUE-030 ✅ **done** | Maturity + cold-start gating signal — **DONE (session 83, 2026-07-10):** `app/maturity/` (port + fake + `supabase-store.ts` + check + **52/52** + tsc); fan-out-built → adversarial-verified (MAJOR + MINOR fixed). Per-entity + aggregate Maturity, the cold-start ONE-WAY LATCH (permanent at 80%, SQL OR-guard against re-arm), Retrieval Sufficiency → `[Building]`. Migration `0040` LIVE (head 0039→0040); **R10 smoke PASSED** (5 assertions — incl. the latch no-re-arm proven at the SQL level). AF-034 🔴 carried (EVAL, not a blocker). GitHub #30 CLOSED. | C2 MAT | 022 |
 | ISSUE-031 | Memory navigation surface | surface-11 (renders C2 RET/ENT/MNT) | 025, 027 |
 
 ### Epic D — Tool layer / connectors

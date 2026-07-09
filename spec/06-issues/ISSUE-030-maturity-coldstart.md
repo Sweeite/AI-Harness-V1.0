@@ -2,11 +2,29 @@
 id: ISSUE-030
 title: Maturity + cold-start gating signal
 epic: C — memory
-status: ready
+status: done
 github: "#30"
 ---
 
 # ISSUE-030 — Maturity + cold-start gating signal
+
+> **✅ BUILT + LIVE-VERIFIED — Session 83 (2026-07-10).** Package `app/maturity/` (@harness/maturity — port +
+> InMemory reference fake + `supabase-store.ts` live adapter + `check` gate + **52/52** tests + tsc clean). The
+> ADR-002 metrics spine: expected-slots config (5–8/type, slots.ts), per-entity + aggregate Maturity
+> (`filled/expected`, filled = ≥1 live memory; maturity.ts), the recompute orchestration (daily + on-write,
+> stamps `maturity_updated_at`; recompute.ts), the one-time cold-start **ONE-WAY LATCH** (permanent deactivation
+> at 80%, never re-arms; coldstart.ts) with a SQL-level OR-guard on the persisted latch so two interleaved
+> recomputes around a threshold dip can't clear a committed deactivation, and query-time Retrieval Sufficiency →
+> the `[Building]` flag (thin sufficiency AND touched-entity Maturity < proactive_threshold; sufficiency.ts).
+> Built via the Stage-6 fan-out workflow → independent adversarial-verify (2 findings: MAJOR + MINOR, fixed
+> regression-test-first, no BLOCKER). Migration `0040_maturity_recompute_event_type.sql` **applied LIVE** (silo
+> head `0039→0040`). **R10 live-adapter smoke PASSED** (`results/live-smoke.sql`, 5 assertions vs the real silo,
+> rolled back — the `setMaturity` UPDATE on numeric(4,3), the live-memory slot-fill read, **the cold-start latch
+> OR-guard proven at the SQL level (a stale `false` cannot clear a committed `true` — AC-2.MAT.002.1)**, the
+> config read, and the `maturity_recomputed` event via `::event_type`). All 5 CFG knobs already registered LIVE
+> (value seeding deferred to ISSUE-010, adapter degrades to registry defaults). **AF-034 🔴 carried** (EVAL —
+> does slot-fill Maturity predict usefulness + does the Sufficiency threshold cleanly separate `[Building]` from
+> `[Unknown]`; validated in the AF-002 real-corpus spike, NOT a sign-off blocker per §4/§9). GitHub #30 CLOSED.
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

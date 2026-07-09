@@ -1,0 +1,21 @@
+{
+  "name": "@harness/maturity",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-030 (C2 MAT) — the ADR-002 metrics spine. Owns: (1) the expected-knowledge-slots config shape per entity TYPE (5–8 operator-editable slots, the Maturity denominator) + the empty-slot list that seeds onboarding gap-questions (FR-2.MAT.001). (2) per-entity Maturity = filled slots / expected slots (binary slot-fill at v1 per ADR-002 — a slot is filled iff ≥1 LIVE, non-superseded/non-expired memory fills it), STORED on entities.maturity, recomputed on the daily slow loop AND on-memory-write for the touched entity (both stamp maturity_updated_at); the cheap avg(entities.maturity) aggregate rollup (no separate table) (FR-2.MAT.002). (3) the one-time cold-start MODE state machine keyed to the 20/50/80 cold_start thresholds — a ONE-WAY LATCH that deactivates permanently once the aggregate first crosses cold_start_full_threshold (80%) and never re-arms on a later dip; emits the mode/threshold signal for ISSUE-071 to consume (FR-2.MAT.002). (4) query-time Retrieval Sufficiency computed INLINE (never stored) that raises [Building] iff sufficiency is thin AND the primary entity's Maturity < proactive_threshold (50%), else a plain [Unknown] — the FR-2.RET.007 answer-mode seam C8 renders (FR-2.MAT.003). Port + in-memory reference fake; supabase-store.ts is the live pg adapter over entities (UPDATE maturity) + memories (read live) + config_values + event_log (loud maturity_recomputed observability, #3). check = offline non-drift gate over the entities.maturity columns + the CFG rows + the maturity_recomputed event_type. AF-034 (does slot-fill Maturity predict usefulness; does the Sufficiency threshold cleanly split [Building]/[Unknown]) is an EVAL flag validated in AF-002 — it does not block sign-off.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
