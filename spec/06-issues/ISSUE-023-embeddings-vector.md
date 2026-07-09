@@ -44,7 +44,7 @@ Make every memory searchable by vector: embed content on write with the single c
 ## 3. Implements (traceability spine — by ID, not restated)
 - **FRs:** FR-2.VEC.001, FR-2.VEC.002, FR-2.VEC.003 (component-02 Memory).
 - **NFRs:** NFR-PERF.001 (RLS hot-path budget the index must live within), NFR-PERF.002 (vector recall under the RLS predicate), NFR-PERF.009 (`ef_search` recall/latency dial).
-- **Rests on:** ADR-002 (Maturity/Retrieval substrate the searchable brain feeds); `standards/migration-discipline.md` (expand-contract); AF-019 (HNSW recall/latency under RLS — LOAD, 🔴/perf-open), AF-067 (live clearance predicate composes with pgvector on the hot path — the ISSUE-002 launch-gating spike), AF-002 (retrieval relevance corpus AF-019 shares).
+- **Rests on:** ADR-002 (Maturity/Retrieval substrate the searchable brain feeds); `standards/migration-discipline.md` (expand-contract); AF-019 (HNSW recall/latency under RLS — LOAD; 🟢 index-forcing + latency + completeness PROVEN S82, NN-ranking recall QUALITY → AF-002/ISSUE-025 real corpus), AF-067 (live clearance predicate composes with pgvector on the hot path — the ISSUE-002 launch-gating spike), AF-002 (retrieval relevance corpus AF-019 shares).
 
 ## 4. Definition of done (the `AC-*` IDs that must pass — text read in the FR)
 - AC-2.VEC.001.1

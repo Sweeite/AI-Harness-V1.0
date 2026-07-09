@@ -2,9 +2,16 @@
 id: ISSUE-025
 title: Retrieval + ranking + clearance-before-ranking + answer modes
 epic: C — memory
-status: blocked
+status: ready
 github: "#25"
 ---
+
+> **§7 cleared (Session 82):** both blockers are `done` — ISSUE-020 (S76) + ISSUE-023 (S82) — so this Stage-7 GATE is `ready`.
+> ⚠️ **R1 still governs the actual build-open:** Stage 7 opens only after **Checkpoint 6** is GREEN (`023` ✅ + `024` the sole-writer
+> commit path). `ready` here means the §7 dependencies are met, per the repo convention (this mirrors how `023` was flipped `ready`
+> in S75 while Checkpoint 5 was still open). AF-019 is 🟢 for index-forcing; the `ef_search` dial + retrieval-session contract this
+> slice consumes ship in `app/embeddings/src/retrieval-session.ts` (**`enable_seqscan=off` is a binding rule** — `iterative_scan`
+> alone does not force the index). NN-ranking recall QUALITY is an AF-002/this-issue fast-follow with a real-embedding corpus.
 
 # ISSUE-025 — Retrieval + ranking + clearance-before-ranking + answer modes
 
