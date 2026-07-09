@@ -2,11 +2,26 @@
 id: ISSUE-078
 title: Ops dashboards (single-deployment + super-admin fleet console)
 epic: J — observability
-status: in-progress
+status: done
 github: "#78"
 ---
 
 # ISSUE-078 — Ops dashboards (single-deployment + super-admin fleet console)
+
+> **✅ RENDER BUILT + live-verified (Session 81, 2026-07-09) → `done`** (logic was built + R10-smoked Session 77;
+> the render was the remaining sub-deliverable). **surface-05 Operations** rendered in `web/client`: the nine polled
+> panels (System/Failure/Connector/Memory Health · Event Log · DLQ · Cost · Guardrail Log · Self-Improvement), each
+> RBAC-gated (**absent-not-empty** — verified: Super Admin sees 9, a non-ops role's Ops nav is ABSENT and the direct
+> URL 404s), each with its own freshness + poll-cadence label, and **never-false-healthy** honest-state proven
+> in-browser (`?sim=error` renders "couldn't load"/"—" with **no** fabricated metric values; a genuine DLQ 0 renders
+> "0"; the Connector panel renders "stale as-of…"). Cost figures labelled **estimate** (ADR-003); no `client_slug`
+> (ADR-001 §3). **surface-06 Super-Admin fleet console** rendered in `web/admin`: the Fleet Health Grid (push-fed,
+> never a client pull — FR-7.MGM.003) with **frozen-≠-dead** and stale/unreachable rendered honestly, + the seven
+> RBAC-gated management sections. Light+dark (pure token swap). **No new live DB adapter in the render → R10 N/A**
+> (078's logic adapters were R10-smoked S77). **⚠️ Tracked residual [[OD-198]] ③:** on REAL authenticated data the
+> event_log/task_queue-derived panels read false-healthy 0-rows until producer-RLS lands — so 078 is **NOT claimed
+> live-verified on real data**; on this dev/seeded build honest-state shows it correctly (a banner states the residual
+> on the surface). Evidence: SESSION-LOG Session 81.
 
 > **🖼️ Render sub-deliverable — UNBLOCKED (session 80, [[OD-197]] `to-issues` pass).** This issue is `in-progress`
 > = **logic-done, render-pending** (the dashboard data/panel contract + honest-state signals were built + R10-smoked
