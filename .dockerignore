@@ -1,0 +1,9 @@
+# Keep the Docker build context lean (used by web/client + web/admin Dockerfiles; build context = repo root).
+# app/service deploys via Railpack, not Docker, so this does not affect it.
+**/node_modules
+**/.next
+.git
+.claude
+spikes
+**/results
+**/*.log
