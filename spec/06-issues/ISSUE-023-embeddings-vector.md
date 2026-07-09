@@ -2,11 +2,22 @@
 id: ISSUE-023
 title: Embeddings + HNSW vector search
 epic: C — memory
-status: ready
+status: done
 github: "#23"
 ---
 
 # ISSUE-023 — Embeddings + HNSW vector search
+
+> **✅ BUILT + LIVE-VERIFIED — Session 82 (2026-07-09).** Package `app/embeddings/` (port + InMemory fake + `supabase-store.ts`
+> + `check` + **44/44** tests, tsc clean). Adversarial-verified (1 BLOCKER + 3 MAJOR + 3 MINOR, all fixed regression-test-first).
+> Migration `0038_embedding_event_types.sql` **applied LIVE** to the silo (head `0037→0038`). **R10 live-adapter smoke PASSED**
+> (`results/live-smoke.sql`, 6 assertions vs the real silo, rolled back). **AF-019 GATE spike PASSED** (`spikes/issue-023-hnsw-forcing/`,
+> 50k clustered on the live silo, isolated `af019_` fixture, torn down): the retrieval-session contract FORCES the HNSW index
+> under the RLS clearance predicate — **contract 30.8 ms vs default 2178 ms seqscan (70.8×)** — the ISSUE-002 ~308× cliff RESOLVED;
+> `iterative_scan` alone insufficient → `enable_seqscan=off` is the necessary lever; completeness 10/10 all roles (no starvation);
+> p95 21.5 ms < 2 s. **AF-019 flipped 🟢** for index-forcing + latency + completeness. **Residual (→ AF-002 / ISSUE-025):** nearest-
+> neighbour RANKING recall is NOT measurable on synthetic vectors (distance concentration) — recall/relevance QUALITY at scale
+> awaits a real-embedding corpus; `ef_search` ships at the default 40 with the raise-not-drop lever ready. AF-067 was 🟢 (gate met).
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

@@ -1,0 +1,93 @@
+{
+  "verdict": "PASS",
+  "date": "2026-07-09",
+  "env": {
+    "serverVersion": "17.6",
+    "pgvector": "0.8.2"
+  },
+  "corpus": {
+    "memories": 50000,
+    "users": 20,
+    "roles": 6,
+    "entities": 200
+  },
+  "cliff": {
+    "heaviestRole": 6,
+    "plans": [
+      {
+        "mode": "default",
+        "execMs": 2178.013,
+        "usesSeqScan": true,
+        "usesIndex": false
+      },
+      {
+        "mode": "iterative_only",
+        "execMs": 2660.105,
+        "usesSeqScan": true,
+        "usesIndex": false
+      },
+      {
+        "mode": "contract",
+        "execMs": 30.751,
+        "usesSeqScan": false,
+        "usesIndex": true
+      }
+    ],
+    "speedupContractVsDefault": 70.827
+  },
+  "completeness": {
+    "rows": [
+      {
+        "role": 1,
+        "clearedRows": 20875,
+        "contractReturned": 10,
+        "expected": 10,
+        "full": true
+      },
+      {
+        "role": 2,
+        "clearedRows": 46568,
+        "contractReturned": 10,
+        "expected": 10,
+        "full": true
+      },
+      {
+        "role": 3,
+        "clearedRows": 46568,
+        "contractReturned": 10,
+        "expected": 10,
+        "full": true
+      },
+      {
+        "role": 4,
+        "clearedRows": 48822,
+        "contractReturned": 10,
+        "expected": 10,
+        "full": true
+      },
+      {
+        "role": 5,
+        "clearedRows": 20875,
+        "contractReturned": 10,
+        "expected": 10,
+        "full": true
+      },
+      {
+        "role": 6,
+        "clearedRows": 48822,
+        "contractReturned": 10,
+        "expected": 10,
+        "full": true
+      }
+    ],
+    "allFull": true
+  },
+  "p95": {
+    "n": 100,
+    "p50": 1.059,
+    "p95": 21.478,
+    "p99": 39.385,
+    "max": 39.385,
+    "passP95": true
+  }
+}

@@ -83,7 +83,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ID | Title | FR groups | Blocked-by |
 |---|---|---|---|
 | ISSUE-022 ✅ **done** | Memory + entity model + sensitivity/visibility tagging — **DONE (session 75, 2026-07-08):** `app/memory/` (port+fake+live adapter) — deterministic entity resolution (ambiguity flagged, never guessed), Internal-Org singleton, orthogonal visibility×sensitivity tags. Delta migrations `0029` (Internal-Org partial-unique guard) + `0030` (entity_types seed) applied LIVE (head 0030). 18/18 offline (17 AC + AF-082 EVAL: false-merge=0) + R10 live-smoke green (caught 1 fake-vs-DB divergence). AF-082 🟡 (seed-EVAL proven; at-scale = fast-follow). Committed `ab6e415`; GitHub #22 CLOSED. | C2 MEM, ENT, TAG | 008, 019 |
-| ISSUE-023 | Embeddings + HNSW vector search | C2 VEC | 022, 002(spike) |
+| ISSUE-023 ✅ **done** (S82) | Embeddings + HNSW vector search — AF-019 🟢 index-forcing GATE PASS (contract 30.8 ms vs 2178 ms seqscan, 70.8×; `enable_seqscan=off` the necessary lever; completeness 10/10; p95 21.5 ms). R10 smoke green; `0038` applied live. NN-ranking recall → AF-002/ISSUE-025 (real corpus). `app/embeddings/` · `spikes/issue-023-hnsw-forcing/` | C2 VEC | 022, 002(spike) |
 | ISSUE-024 | Memory write / sole-writer path (contradiction, confidence, validate-commit) | C2 WRT | 022, 020 |
 | ISSUE-025 | Retrieval + ranking + clearance-before-ranking + answer modes | C2 RET | 023, 020 |
 | ISSUE-026 | Ingestion filters + human queue (+ surface-03 ingestion) | C2 ING | 024, 026-dep-connectors(032) |

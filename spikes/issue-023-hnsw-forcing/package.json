@@ -1,0 +1,12 @@
+{
+  "name": "issue-023-hnsw-forcing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-023 / AF-019 LOAD spike — does the retrieval-session contract force the HNSW index under the RLS clearance predicate at 50k (resolving the ISSUE-002 ~308x seqscan cliff) + keep recall@10, and what production ef_search that implies. Isolated af019_ fixture; safe against the live silo.",
+  "type": "module",
+  "scripts": {
+    "spike": "tsx src/main.ts",
+    "spike:teardown": "tsx src/main.ts --teardown-only",
+    "typecheck": "tsc --noEmit"
+  }
+}

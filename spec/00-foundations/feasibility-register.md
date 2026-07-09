@@ -40,7 +40,7 @@ safety mechanism, not a problem.
 | AF-016 | Supabase Realtime: 200 (free) / 500 (pro) concurrent connections | L3134-3136 | 🟢 **VERIFIED** (soft quota) — see F7 |
 | AF-017 | Supabase Edge Functions 150s execution limit (the reason to use Inngest) | L2630 | 🟠 **STALE** — see F8 |
 | AF-018 | Inngest: no execution-time limit, step-level retries, DLQ, generous free tier | L2632-2662 | 🟢 **VERIFIED** (wording fixes) — see F9 |
-| AF-019 | pgvector HNSW maintains fast/accurate search at millions of vectors | L1477-1489 | 🟡 **HNSW verified; perf stays SPIKE/LOAD-open** — see F10. **↳ 2026-07-04 (ISSUE-002): planner-picks-seqscan-under-RLS cliff (~300×) now MEASURED real → hard requirement for ISSUE-023 to force index usage.** |
+| AF-019 | pgvector HNSW maintains fast/accurate search at millions of vectors | L1477-1489 | 🟢 **INDEX-FORCING + latency + completeness PASS 2026-07-09 (ISSUE-023, 50k clustered on the live silo, isolated af019_ fixture).** The ISSUE-023 retrieval-session contract (`hnsw.ef_search` + `hnsw.iterative_scan='relaxed_order'` + `enable_seqscan=off`, txn-scoped) **forces the HNSW index under the RLS clearance predicate: contract 30.8 ms vs default 2178 ms seqscan (70.8×)** — the ISSUE-002 ~308× cliff RESOLVED; `iterative_scan` alone is insufficient (still seqscan → `enable_seqscan=off` is the necessary lever, a binding rule for ISSUE-025). Completeness: all 6 roles return a full top-10 of cleared rows (no starvation). p95 21.5 ms < 2 s. **Residual (honest, → AF-002/ISSUE-025):** nearest-neighbour RANKING recall is NOT measurable on synthetic vectors (distance concentration → exact-vs-HNSW overlap is an artifact, measured 0 on runs 1–2); recall/relevance QUALITY at scale awaits a REAL-embedding corpus. `ef_search` ships at default 40 (adequate for latency+completeness) with the raise-not-drop lever ready. Evidence: `spikes/issue-023-hnsw-forcing/results/af-019-evidence.2026-07-09.md`. See F10. |
 | AF-020 | Railway native per-project GitHub auto-deploy + running `drizzle-kit migrate` on release behave as assumed (ADR-005 §1) | ADR-001 §6 | 🟢 **VERIFIED** (caveat) — see F11 |
 | AF-021 | Operator Railway can securely connect to a client-owned Supabase (hybrid model) | ADR-001 §5 | 🟢 **VERIFIED** (caveats) — see F12 |
 
@@ -106,6 +106,16 @@ Phase-1/2 rate-limit, token-lifecycle, and Realtime requirements.
   ms); the planner just won't pick it under the filter without help. **ISSUE-023 hard requirement:** force/guarantee
   index usage under the clearance predicate (partial indexes / cost tuning / `hnsw.iterative_scan` = relaxed) — this is
   no longer paper, it's a measured build blocker for the retrieval path.
+  **↳ RESOLVED (ISSUE-023 spike, 2026-07-09, 50k clustered on the live silo, isolated af019_ fixture):** the retrieval-
+  session contract (`hnsw.ef_search` + `hnsw.iterative_scan='relaxed_order'` + `enable_seqscan=off`, all `set local` =
+  txn-scoped) **forces the index — contract 30.8 ms (index) vs default 2178 ms (seqscan), 70.8×.** Key finding:
+  **`iterative_scan` alone is NOT enough** (the planner still seqscans) — `enable_seqscan=off` is the necessary lever
+  (a binding rule for ISSUE-025's retrieval session, codified in `app/embeddings/src/retrieval-session.ts`). Completeness:
+  all 6 roles return a full top-10 of *cleared* rows (the post-ANN clearance filter does not starve the result). p95
+  21.5 ms < 2 s. **The recall RANKING dimension of AF-019 ("accurate search") is NOT closed here** — synthetic vectors
+  suffer distance concentration (no recoverable NN ranking; exact-vs-HNSW overlap measured 0), so recall/relevance
+  QUALITY at scale is deferred to **AF-002 / ISSUE-025 with a real-embedding corpus**. Evidence:
+  `spikes/issue-023-hnsw-forcing/` → `results/af-019-evidence.2026-07-09.md`.
 - **F11 · AF-020 (Railway) — VERIFIED.** Per-service GitHub auto-deploy with **configurable trigger branch per
   environment** + optional "Wait for CI" → **supports the ADR-005 canary/release-train branch model** (corroborates
   AF-064). **Pre-Deploy Command** runs between build and cutover and **blocks deploy on failure** → `drizzle-kit
