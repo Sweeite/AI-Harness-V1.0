@@ -326,15 +326,28 @@ later stages. So screens land as their backends land.
   (a pure token swap = OD-197 reskin-not-rebuild), screenshots both themes. **Residual:** the real `@supabase/ssr` session
   path is wired but live-auth-verified in ISSUE-013 (OD-175) / deploy in 080/081 — the substrate ships no new live DB adapter,
   so **R10 is N/A**. GitHub #87 → CLOSED.
-- 🟢 **WALKING SKELETON** (right after `087`): the first clickable, testable path — **auth (surface-00) → Ops dashboard
-  (surface-05) on real data → User Management (surface-02)**. Their backends (`013`/`078`-logic/`021`-logic + `011`/`075`/`076`/`077`)
-  are built or landing in Stage 5. This is the "see it" milestone the operator asked for. *(A clickable surface-05
-  prototype was shared session 77 as the design proof.)*
-- 🟢 **PER-SURFACE RENDER** (each gated on its own backend signal `done`): surface-01/01b (`086`), surface-03 (`026`),
-  surface-04 (`056`), surface-06 (`078`), surface-07/08 + notif centre (`073`), surface-09 (`067`), surface-10 (`072`),
-  surface-11 (`031`), surface-12 mobile (`079`). **Owed (Rule 0, [[OD-197]]):** a `to-issues` pass reframes each surface
-  issue to carry a **render** sub-deliverable (or mints render issues) once `087` lands. Until then, Stage-5 surface
-  members (`021`/`078`/`079`/`086`) close as **logic-done, render-pending**, not full screens.
+- 🟢 **RENDER DECOMPOSITION — the `to-issues` pass (DONE session 80, per [[OD-197]]).** Each surface's React render is
+  now a grabbable issue, gated only on (a) `087` `done` + (b) its own backend signal `done` (the track's R1). Two
+  mechanisms: **(i)** surface issues whose scope already *is* the render (they built logic-done in Stage 5,
+  render-pending) — completed in place (`078`/`079`/`086`, each carrying a "render sub-deliverable UNBLOCKED" note);
+  **(ii)** new render issues (`088`/`089`/`090`) for the surfaces whose backend was headless logic with no surface issue.
+
+  **RENDER WAVE 1 — buildable NOW (backend `done`/logic-done + `087`):**
+  - [ ] **`088` — surface-00 auth screens** (login · 2FA · invite · re-auth · support queue; `web/client`) — gate `013`/`014`/`016`✅. *(live real-OAuth = OD-175 onboarding; build on the `087` dev-auth/`@supabase/ssr` seam.)* **[walking skeleton]**
+  - [ ] **`078` — surface-05 Ops + surface-06 super-admin fleet render** (in-progress → render UNBLOCKED) — gate `078`-logic + `011`/`075`/`076`/`077`✅. **[walking skeleton]** ⚠️ **[[OD-198]] ③** false-healthy 0-rows live until producer-RLS lands (dev/seeded fine).
+  - [ ] **`089` — surface-02 user management** (Users/Roles/Permissions matrix/Clearances/Reviews/Restricted; `web/client`) — gate `021`/`018`/`019`✅. **[walking skeleton]**
+  - [ ] **`090` — surface-04 approval queue** (live Approve/Reject/Modify + mandatory reason; `web/client`; Realtime) — gate `056`/`048`/`060`/`076`✅.
+  - [ ] **`086` — surface-01/01b config admin + audit render** (in-progress → render UNBLOCKED; `web/client`) — gate `086`-logic✅.
+  - [ ] **`079` — surface-12 mobile PWA render** (in-progress → render UNBLOCKED; six sub-surfaces + web-push; `web/client`) — gate `079`-logic✅.
+
+  **WALKING-SKELETON MILESTONE = `088` (auth) → `078` (Ops on real data) → `089` (User Management)** — the first
+  clickable, testable "see it" path the operator asked for; then deploy `web/client`+`web/admin` to Railway on the
+  **dev-auth** path (composes with `080`/`081`; live OAuth deferred to OD-175 onboarding). Wave-1 fan-out is batch-safe
+  once each backend is `done` (serialize shared `web/shared` token/component edits; each screen is a disjoint route).
+
+  **RENDER WAVE 2 — gated on an UNBUILT backend (build/complete as it lands, the track's R1):**
+  - **`067` — surface-09 agent builder** — `ready` NOW (backends `062`/`064`/`065`✅); build the issue (logic+render).
+  - surface-03 ingestion queue → `026` (Stage 7) · surface-07/08 dashboards + notif centre → `073` (Stage 10) · surface-10 commands → `072` (Stage 10) · surface-11 memory-nav → `031` (Stage 8). Each is its surface issue's render, landing as its backend lands.
 
 > **Fan-out note.** The substrate is serial (gate). Per-surface renders are batch-safe *once their backend is done* —
 > same collision rule as the backend batches (shared design-system/token files serialized; each surface's screen is a

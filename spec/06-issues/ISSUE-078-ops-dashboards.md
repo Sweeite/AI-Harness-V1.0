@@ -8,6 +8,18 @@ github: "#78"
 
 # ISSUE-078 — Ops dashboards (single-deployment + super-admin fleet console)
 
+> **🖼️ Render sub-deliverable — UNBLOCKED (session 80, [[OD-197]] `to-issues` pass).** This issue is `in-progress`
+> = **logic-done, render-pending** (the dashboard data/panel contract + honest-state signals were built + R10-smoked
+> session 77). The remaining work to close it is the **React render** of surface-05 (Ops, in `web/client`) + surface-06
+> (super-admin fleet, in `web/admin`), now that substrate `087` is `done`. Build: consume each panel's already-produced
+> signal through the `087` `DataSeam`; render the nine ops panels + the eight fleet sections per
+> `spec/03-surfaces/surface-05-dashboard-ops.md` + `surface-06-dashboard-super-admin.md`; per-panel RBAC gate
+> (absent-not-empty); **never-false-healthy** (a failed poll → "—"/"couldn't load", never "0"/"✓"/"$0"/green — the #3
+> cardinal-sin surface). **⚠️ carry [[OD-198]] ③** — panels ⑤/⑥/⑧ + the connector reads (task_queue/notifications/
+> event_log) can render **false-healthy 0-rows live** until the producer-RLS human-path policies land; dev/seeded is
+> fine, a real-data close needs OD-198 ③ reconciled. `status: done` when both surfaces render + pass their AC-7.VIEW.*
+> / AC-7.MGM.* + a11y + honest-state tests. (This surface issue *is* the render — no separate render issue minted.)
+
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the
 > FR and is read there (copying it would create a second source of truth that rots = Rule-0

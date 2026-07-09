@@ -33,7 +33,7 @@ the issue(s) that claim it). It is the one file you read to see the whole plan.
 | **J** | Observability & ops surfaces (C7 + dashboards) | 074–079 |
 | **K** | Infrastructure & compliance (C10 + backup/DR) | 080–085 |
 | **L** | Config surfaces | 086 |
-| **M** | Frontend (Next.js app-shell + per-surface render — [[OD-197]]) | 087 |
+| **M** | Frontend (Next.js app-shell + per-surface render — [[OD-197]]) | 087–090 (render decomposition, S80); surface renders also on 078/079/086/067 |
 
 ---
 
@@ -198,8 +198,11 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ID | Title | FR groups | Blocked-by |
 |---|---|---|---|
 | ISSUE-087 ✅ done (S78) | Frontend substrate — Next.js app-shell (client + super-admin) that every surface renders into (UI analog of 008; RBAC nav reuses `can()` nodes; honest-state primitives; data-access seam) — `web/` workspace (shared design system + rbac-bridge + web/client + web/admin); 11/11 shared tests; both apps boot + typecheck; RBAC/aal2/honest-state/seam live-verified; skin-swappable per OD-197 | surface-00 + all surface render hosts | 007, 013, 018 (all done) |
+| ISSUE-088 **ready** (render, S80) | Render surface-00 auth screens (login · 2FA · invite · re-auth · support queue) — `web/client` | surface-00 (renders C0 AUTH/REC/INV + C1 support) | 087, 013, 014, 016 (all done) |
+| ISSUE-089 **ready** (render, S80) | Render surface-02 user management (Users · Roles · Permissions matrix · Clearances · Reviews · Restricted) — `web/client` | surface-02 (renders C1 USR/ROLE/PERM/CLR/RST/AUD) | 087, 021, 018, 019 (all done) |
+| ISSUE-090 **ready** (render, S80) | Render surface-04 approval queue (live Approve/Reject/Modify + mandatory reason; Realtime) — `web/client` | surface-04 (renders C6 APR/ESC + C5 QUE + C7 RTP) | 087, 056, 048, 060, 076 (all done) |
 
-*(Frontend track, per [[OD-197]]: `087` substrate gate → walking skeleton → per-surface **render** layers, each gated on its own backend signal `done`. The per-surface render decomposition — reframing each surface issue with a render sub-deliverable, or minting render issues — is a `to-issues` pass owed once `087` lands.)*
+*(Frontend track, per [[OD-197]]: `087` substrate gate → walking skeleton → per-surface **render** layers, each gated on its own backend signal `done`. **✅ The `to-issues` render decomposition ran session 80** — RENDER WAVE 1 (buildable now): `088` (surface-00) · `089` (surface-02) · `090` (surface-04) minted, + `078` (surface-05/06) · `079` (surface-12) · `086` (surface-01/01b) reframed in place (their scope IS the render — a "render sub-deliverable UNBLOCKED" note added to each; they close to `done` when rendered). Walking skeleton = `088`→`078`→`089`. RENDER WAVE 2 (gated on unbuilt backend): `067` surface-09 (ready now) · surface-03→`026` · surface-07/08→`073` · surface-10→`072` · surface-11→`031`. Full schedule in BUILD-SCHEDULE Frontend track.)*
 
 ---
 

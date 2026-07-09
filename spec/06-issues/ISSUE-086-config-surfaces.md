@@ -8,6 +8,18 @@ github: "#86"
 
 # ISSUE-086 — Config admin + config-audit-log surfaces
 
+> **🖼️ Render sub-deliverable — UNBLOCKED (session 80, [[OD-197]] `to-issues` pass).** This issue is `in-progress`
+> = **logic-done, render-pending** (the config store/validation/audit backbone was built session 77 on ISSUE-010).
+> The remaining work to close it is the **React render** of surface-01 (Config Admin, `web/client`) + surface-01b
+> (Config Audit Log, `web/client`), now that substrate `087` is `done`. Per `spec/03-surfaces/surface-01-config-admin.md`
+> + `surface-01b-config-audit-log.md`: the 11-section sidebar-plus-content Config Admin with **per-section Save** +
+> the edit-class confirms (BOOT/REBUILD/SECRET) + the heavy cross-field validation + the `config_audit_log` append;
+> the read-only Audit-Log timeline + change-detail + **complete-or-loud** compliance export. RBAC: unpermitted sections
+> **omitted from the rail** (not shown-locked), no `PERM-config.*` → 404. **#3 honesty:** a failed audit-log load never
+> renders as "no changes ever" (distinguish new-deployment vs filtered-empty vs load-error); a partial config load never
+> overwrites good values with empty (Save disabled). `status: done` when both surfaces render + pass their ACs + a11y +
+> honest-state tests. (This surface issue *is* the render — no separate render issue minted.)
+
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the
 > FR and is read there (copying it would create a second source of truth that rots = Rule-0

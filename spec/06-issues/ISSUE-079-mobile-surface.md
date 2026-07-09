@@ -8,6 +8,18 @@ github: "#79"
 
 # ISSUE-079 — Mobile surface (responsive/PWA + web-push)
 
+> **🖼️ Render sub-deliverable — UNBLOCKED (session 80, [[OD-197]] `to-issues` pass).** This issue is `in-progress`
+> = **logic-done, render-pending** (the push-subscription store + web-push routing + the mobile data contract were
+> built + R10-smoked session 77; migration `0033` push_subscriptions RLS is live). The remaining work to close it is
+> the **PWA render** of surface-12 in `web/client` — the six sub-surfaces (Home · Approvals · Activity · Chat ·
+> Command-menu · Alerts), the fixed bottom tab bar, the honest Live/Reconnecting/Polling indicator, web-push
+> registration, and the two Realtime slots (Approvals + Alerts — mirror ISSUE-090's queue components). Per
+> `spec/03-surfaces/surface-12-mobile.md`: **no mobile back-door** (#2 — every action runs the identical C1 node-gate
+> + C6 pipeline as desktop; deep-management actions render an explicit "open on a wider display" notice, never a silent
+> omission); **no false-healthy on a phone** (#3 — a stale "all caught up" is the single most dangerous view; counts
+> show "—" not "0" on failure); the answer-mode pill reads "mode unknown", never silently "Cited". `status: done` when
+> the PWA renders + passes AC-7.VIEW.003.* + the Realtime-degradation + a11y tests. (This surface issue *is* the render.)
+
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the
 > FR and is read there (copying it would create a second source of truth that rots = Rule-0
