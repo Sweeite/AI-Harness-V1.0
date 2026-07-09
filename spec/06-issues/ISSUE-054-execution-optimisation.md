@@ -2,11 +2,26 @@
 id: ISSUE-054
 title: Execution optimisation — parallel DAG, smart scheduling, decomposition, pre-warm
 epic: F — harness
-status: ready
+status: done
 github: "#54"
 ---
 
 # ISSUE-054 — Execution optimisation (parallel DAG, scheduling, decomposition, pre-warm)
+
+> **✅ BUILT + VERIFIED — Session 83 (2026-07-10).** Package `app/execution-optimisation/`
+> (@harness/execution-optimisation — config-gated logic over injected ports; **NO live pg adapter → R10 N/A**;
+> **40/40** tests + tsc clean + `check` gate green). Built via the Stage-6 fan-out workflow → independent
+> adversarial-verify (4 findings: 2 MAJOR + 2 MINOR, all fixed regression-test-first). The four optimisations,
+> each per-deployment config-gated + degrading to the plain path when off: **decomposition** (plan.ts — bounds the
+> plan to `chain_depth_limit`, reject/trim not silent-truncate), **parallel DAG execution** (scheduler.ts —
+> OD-056 step-level approval semantics: an approval-gated step blocks itself + dependents, reversible siblings
+> proceed, no irreversible side effect outruns a pending approval), **smart scheduling** (smart-schedule.ts —
+> quiet-window deferral), **chained-task pre-warm** (prewarm.ts — read-only, discardable, OD-059 fresh-scope).
+> **AF-113 🟡 — OFFLINE-GREEN for small graphs** (simulate.ts exhaustively proves DAG-ordering + race-freedom +
+> approval-ordering over 1–3 concurrent disjoint-key steps); the **real-Inngest LOAD residual is OUTSTANDING**,
+> gating live enablement of `parallel_execution_enabled` (which ships OFF by default — the deployment default runs
+> the proven plain-sequential path). Honest residual, not faked. CFG `chained_task_prewarm_enabled` registered
+> (BOOT/bool, the other two flags shipped). No migration (label-only §5). GitHub #54 CLOSED.
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

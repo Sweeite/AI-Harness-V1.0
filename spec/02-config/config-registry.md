@@ -183,6 +183,7 @@ RBAC's tunable knob set is two values; roles/perms/clearances are Tier-1 records
 | `compression_threshold_tokens` | How long a task chain can get before older steps are summarised to save space | 8000 | LIVE | int tokens ≥ 1000 |
 | `parallel_execution_enabled` | Whether independent task steps may run at the same time (off for safety by default) | false | BOOT | bool (safety default; opt-in) |
 | `smart_scheduling_enabled` | Whether non-urgent tasks wait for quiet periods instead of running immediately | false | BOOT | bool |
+| `chained_task_prewarm_enabled` | Whether a chained follow-up task may start fetching its memory early, while the current task is still running (off for safety by default) | false | BOOT | bool (safety default; opt-in; read-only, discardable — FR-5.OPT.004 / ISSUE-054) |
 | `anomaly_check_cadence` | How often the safety check for unusual behaviour runs during a task | per-step | BOOT | enum {per-step, per-ai-call} |
 | `checkpoint_step_threshold` | How many steps the AI takes before pausing to check in on a long task | 4 | LIVE | int steps ≥ 1 |
 | `checkpoint_response_timeout_minutes` | How long a checked-in task waits for a human reply before timing out | 60 | LIVE | int minutes ≥ 1 |

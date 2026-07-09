@@ -129,7 +129,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-051 | Three loops + config-extensible + catch-up dedup + failure heartbeat | C5 LOP | 048 |
 | ISSUE-052 ✅ **done** (S77) | Inngest execution engine + step retry + fan-out + DLQ | C5 JOB | 049 |
 | ISSUE-053 | Run pipeline — prompt-stack assembly + gates (RBAC/approval/anomaly) + memory injection + answer-mode + completion dual-record | C5 ASM | 043, 045, 048, 055, 056, 057, 061 |
-| ISSUE-054 | Execution optimisation (parallel DAG, scheduling, decomposition, pre-warm) | C5 OPT | 049, 052 |
+| ISSUE-054 ✅ **done** | Execution optimisation — **DONE (session 83, 2026-07-10):** `app/execution-optimisation/` (config-gated logic over injected ports; **no live adapter → R10 N/A**; 40/40 + tsc + check); fan-out-built → adversarial-verified (2 MAJOR + 2 MINOR fixed). Decomposition + parallel-DAG (OD-056 step-level approval: no side-effect outruns a pending approval) + smart-scheduling + pre-warm, each flag-off-safe. **AF-113 🟡** (offline-GREEN small graphs via simulate.ts; real-Inngest LOAD residual gates live `parallel_execution_enabled`, ships OFF). CFG `chained_task_prewarm_enabled` registered. No migration. GitHub #54 CLOSED. | C5 OPT | 049, 052 |
 
 ### Epic G — Guardrails / safety
 

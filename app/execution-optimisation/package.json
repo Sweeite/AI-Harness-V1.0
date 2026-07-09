@@ -1,0 +1,21 @@
+{
+  "name": "@harness/execution-optimisation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-054 (C5 OPT) — the four additive throughput/latency optimisations layered on the already-built task-graph + Inngest engine, each per-deployment config-gated and none allowed to weaken approval or write-safety invariants. (1) Task decomposition (FR-5.OPT.003): an upfront planning step turns a complex-flagged task into an ordered, dependency-aware execution_plan written into the envelope BEFORE any side-effecting step runs, bound to chain_depth_limit at build (reject/trim, never silent truncate). (2) Parallel step execution over the dependency DAG (FR-5.OPT.001 / AF-113 / OD-056): independent steps scheduled concurrently while honouring step deps; an approval-gated step blocks itself + its dependents, independent reversible siblings proceed, and an irreversible step WAITS for any pending approval it should logically follow (no side effect outruns a pending approval, #2); shared_context/previous_outputs guarded against concurrent-write races via per-key concurrency (ADR-004). (3) Smart scheduling (FR-5.OPT.002): defer eligible non-urgent scheduled tasks to a quiet-queue window when the flag is on; plain cadence when off. (4) Chained-task pre-warm (FR-5.OPT.004 / OD-059): begin Task B's memory retrieval while Task A runs — READ-ONLY, discardable, under B's OWN fresh scope — discard if B never runs, no side effect. Port + in-memory reference fakes only (the DAG/envelope/queue stores are owned by ISSUE-049/050/052/053 and injected as ports); NO schema change (label-only §5), NO live adapter (config-gated logic over existing stores). check = offline non-drift gate over the three CFG flags + chain_depth_limit + the verify-present task_queue/task_graph_versions/execution_plans shapes the scheduler reads. AF-113 offline-proven for DAG-ordering + race-freedom + approval-ordering via a deterministic concurrency simulation (all interleavings, injected barriers); real-Inngest LOAD deferred.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

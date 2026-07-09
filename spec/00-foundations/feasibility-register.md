@@ -384,6 +384,18 @@ graph with concurrent siblings + a gated step; assert deterministic envelope sta
 write precedes the gate. **Relied on by:** FR-5.OPT.001. **Resolution dep:** OD-056 (if the ordering can't be
 made reliable, fall back to all-or-nothing gating).
 
+> **Status 🟡 — OFFLINE-GREEN for small graphs; live-LOAD residual OUTSTANDING (ISSUE-054, Session 83, 2026-07-10).**
+> `app/execution-optimisation/src/simulate.ts` + `simulate.test.ts` prove the three load-bearing properties by an
+> EXHAUSTIVE deterministic-interleaving simulation over small DAGs (1–3 concurrent disjoint-key steps): (1) the
+> scheduler honours the dependency DAG (a step never runs before its deps); (2) concurrent siblings never race on
+> `shared_context` / `previous_outputs` (disjoint-key writes only; a shared-key write serialises); (3) no
+> irreversible side effect fires ahead of a pending approval it should follow (OD-056 step-level semantics —
+> an approval-gated step blocks itself + dependents; independent reversible siblings proceed). What CANNOT be
+> proven offline: the SAME properties **under real Inngest fan-out + concurrency at scale** (the LOAD half). That
+> is a SPIKE/LOAD residual **gating live enablement of `parallel_execution_enabled`** — the flag ships **OFF by
+> default** (opt-in), so the deployment default runs the already-proven plain-sequential path (#2); the flag must
+> not be flipped on for a live deployment until the real-Inngest LOAD run is GREEN. Honest residual, not faked.
+
 **AF-114 — Inter-step compression fidelity (EVAL, build-time).** Compressing earlier step outputs into
 summaries between steps (L2608) must not silently drop **task-critical state a later step needs** — the chain
 must produce the same outcome compressed as uncompressed. **Method:** EVAL — run representative long chains
