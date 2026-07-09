@@ -152,7 +152,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-064 ✅ **done** (S80) | Execution plans — `app/execution-plans/` (19/19 + `check`); no store migration (verify-present in 0001), migration `0037` (plan event_types) **applied LIVE** + **R10 smoke PASSED**; [[OD-201]] logged (step_failure_mode drift, owed to 061). Closed under Checkpoint 5. GitHub #64 closed. | C8 PLAN | 061, 052 |
 | ISSUE-065 ✅ **done** (S77) | Agent health / drift / dead-agent (flag-never-auto-correct) + producer heartbeat | C8 HLTH | 061, 011 |
 | ISSUE-066 | Orchestrator learning + scope-aware result cache + cost-routing | C8 LRN, COST | 061, 074 |
-| ISSUE-067 | Agent builder surface | surface-09 (renders C8 REG/SPC/PLAN/HLTH) | 062, 064, 065 |
+| ISSUE-067 ✅ **done** | Agent builder surface — **DONE (session 83, 2026-07-10):** reject-at-write guard kernel (`web/agent-bridge/`, 37/37) + the five-section surface-09 render (`web/client/app/(shell)/agents/`) on the `087` dev-auth seam (web/shared 18/18, client tsc clean). Fan-out + focused-render built → independent adversarial-verify of the complete surface (1 MAJOR #3-false-healthy badge + 1 MAJOR Add-agent DoD gap + 3 MINOR, ALL fixed regression-test-first). Reject-at-write (SPC/SCO) + OD-080 authority + versioned-write + honest-state proven test + live-in-browser. R10 N/A (render, no new adapter). Residuals: [[OD-202]] server-side memory_scope twin + live tool gate (owed ISSUE-063). GitHub #67 CLOSED. | surface-09 (renders C8 REG/SPC/PLAN/HLTH) | 062, 064, 065 |
 
 ### Epic I — Proactive intelligence
 

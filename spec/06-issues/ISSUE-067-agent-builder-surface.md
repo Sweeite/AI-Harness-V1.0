@@ -2,9 +2,33 @@
 id: ISSUE-067
 title: Agent builder surface — fleet grid, per-agent Builder, orchestration & plan views
 epic: H — agent design
-status: ready
+status: done
 github: "#67"
 ---
+
+> **✅ BUILT + VERIFIED — Session 83 (2026-07-10).** The surface-09 agent-builder console: a reject-at-write GUARD
+> KERNEL (`web/agent-bridge/` — `evaluateBuilderSave` composing ISSUE-062's live fail-closed tool gate +
+> the `memory_scope` validator + empty-description/change_reason rejections; **37/37** tests + check + tsc) + the
+> five-section RENDER (`web/client/app/(shell)/agents/` — Fleet grid · Builder drawer · Version History · Orchestration
+> readout · Execution Plans; OD-138 layout) on the `087` dev-auth/seeded seam (**web/shared 18/18 · web/client tsc
+> clean**). Built via the Stage-6 fan-out (guard) + a focused render agent, then an **independent zero-context
+> adversarial-verify of the COMPLETE surface** (no BLOCKER; 1 MAJOR #3-false-healthy badge + 1 MAJOR DoD-AC gap +
+> 3 MINOR — ALL fixed regression-test-first): **M1** the primary health badge now renders NON-green whenever the
+> metric producer is stalled or the agent is dead (AC-8.HLTH.004.2/.003.2, locked by the pure `primaryHealthStale`
+> helper + 4 tests); **M2** the Add-agent affordance now exists (gated on `PERM-agents.edit_capability`, routes the
+> insert through the same guard with `descriptionRequired` — AC-8.REG.003.1 + REG.001.2, + 2 tests); **m4/m5** the
+> capability-change flag + `enabled` authority tightened. The reject-at-write invariants (SPC.003.3/.004.3/.005.2,
+> SCO.003.1) + OD-080 authority split (capability fields SA-only, dropped from the save projection not just greyed) +
+> versioned-write (mandatory change_reason → new immutable version) + honest-state (never-false-empty / stale-not-green)
+> are all proven by test + live in-browser. Live-verified: RBAC absent-not-empty (no `PERM-agents.view` → 404),
+> reject-at-write fires live, forbidden tool greyed-with-reason, Layer-1 read-through, human-only audited plan
+> rollback (OOS-030). **R10 is N/A** — a render slice on the dev-auth/seeded seam with no new live DB adapter (like
+> `078`/`089`). PERM-agents.* already minted (catalog, OD-137). **Residuals (tracked, fail-safe):** [[OD-202]] the
+> server-side `memory_scope` shape twin + the fail-closed live tool gate (`liveToolRows`) are the per-deployment
+> registry-write-API concern (§5 Phase 4/6; owed at ISSUE-063 when the scope column becomes load-bearing) — the
+> Builder is the first of §9's three defense-in-depth layers; and restore-time capability re-validation awaits the
+> version store carrying a config snapshot (demo history holds only already-validated configs + is authority-gated).
+> GitHub #67 CLOSED.
 
 # ISSUE-067 — Agent builder surface (surface-09 · UI-AGENT-BUILDER)
 

@@ -66,6 +66,9 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0035_connector_disconnection_open_index", // ISSUE-038 — open-disconnection partial-unique guard (CONCURRENTLY)
     "0036_connector_disconnection_event_types", // ISSUE-038 — 4 additive connector event_type values
     "0037_plan_event_types", // ISSUE-064 (session 79) — plan_outcome + plan_rollback event_type values
+    "0038_embedding_event_types", // ISSUE-023 (session 82) — embedding model-change / reembed / reconcile event_type values
+    "0039_memory_write_event_types", // ISSUE-024 (session 83) — memory_write superseded/conflict/embed_failed event_type values
+    "0040_maturity_recompute_event_type", // ISSUE-030 (session 83) — maturity_recomputed event_type value
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.

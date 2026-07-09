@@ -1,0 +1,19 @@
+{
+  "name": "@harness/agent-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-067 — the agent-domain bridge for surface-09 (UI-AGENT-BUILDER). Mirrors @harness/rbac-bridge: the ONLY place the web tier reaches into the real C8 backend packages, so the Builder consumes ONE source of truth for the load-bearing invariants (Rule 0 / AF-080 spirit) rather than re-encoding them. Re-exports the pg-free leaf modules of app/orchestrator (the agents registry write-path + MemoryScope + OD-080 authority gating + sole-agent warning, ISSUE-061), app/specialists (the reject-at-write hard-limit tool guard — Comms⊄send / Finance⊄transaction / only-Memory-writes, ISSUE-062 / AF-068), and app/execution-plans (the canonical step-failure-mode taxonomy — halt-and-escalate default, ISSUE-064). Adds the composed Builder save-guard (builder-guard.ts) that the surface-09 save path calls, proven with tsx --test exactly like every app/* package.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "tsx src/check.ts check"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
