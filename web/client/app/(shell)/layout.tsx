@@ -4,7 +4,7 @@
 // shared AppShell with the CLIENT_NAV. The nav renders absent-not-empty: only entries the caller's nodes
 // permit. Every client surface renders as a child route inside this shell.
 
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 
 import { AppShell, CLIENT_NAV, ThemeToggle, StatusBadge } from '@harness/web-shared';
@@ -12,6 +12,7 @@ import { AppShell, CLIENT_NAV, ThemeToggle, StatusBadge } from '@harness/web-sha
 import { getSession } from '../../lib/auth.ts';
 import { grantedNodesFor } from '../../lib/rbac-seam.ts';
 import { signOut } from '../actions.ts';
+import { ReauthPrompt } from './ReauthPrompt.tsx';
 
 export default async function ShellLayout({ children }: { children: ReactNode }): Promise<React.JSX.Element> {
   const session = await getSession();
@@ -42,6 +43,9 @@ export default async function ShellLayout({ children }: { children: ReactNode })
   return (
     <AppShell brand="Harness" entries={CLIENT_NAV} grantedNodes={grantedNodes} topbar={topbar}>
       {children}
+      <Suspense fallback={null}>
+        <ReauthPrompt />
+      </Suspense>
     </AppShell>
   );
 }

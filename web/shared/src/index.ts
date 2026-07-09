@@ -28,6 +28,7 @@ export {
   type SeamOutcome,
   type Clock,
 } from './seam.ts';
+export { readSeeded, simFrom, type Sim } from './seeded-read.ts';
 
 // ── React component layer (thin renderers) ──
 export {
@@ -39,5 +40,14 @@ export {
   MetricTile,
   StatusBadge,
   AnswerModePill,
+  PageHeader,
+  EmptyState,
+  SkeletonRows,
+  DataTable,
+  DescriptionList,
+  MetricRow,
+  Field,
+  type Column,
 } from './components.tsx';
+export { Tabs, Modal, Drawer, Disclosure, type TabDef } from './ui.tsx';
 export { ThemeToggle, applyTheme, type Theme } from './theme.tsx';

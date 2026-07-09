@@ -5,4 +5,13 @@
 // the product code is one repo; app/rbac/ lives alongside web/).
 export { InMemoryRbacStore } from '../../../app/rbac/src/store.ts';
 export { effectiveNodes, can, allowed } from '../../../app/rbac/src/can.ts';
-export { defaultMatrix, ROLES, CATALOG_NODES, type Role } from '../../../app/rbac/src/catalog.ts';
+export {
+  defaultMatrix,
+  ROLES,
+  CATALOG_NODES,
+  CATALOG,
+  THIRTEEN_CATEGORIES,
+  PROTECTED_ROLE,
+  type Role,
+  type CatalogNode,
+} from '../../../app/rbac/src/catalog.ts';

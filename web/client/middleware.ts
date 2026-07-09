@@ -5,7 +5,8 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login'];
+// Pre-auth surface-00 routes: /login (UI-LOGIN) and /setup (UI-INVITE-SETUP — the token is the gate).
+const PUBLIC_PATHS = ['/login', '/setup'];
 
 function hasSession(req: NextRequest): boolean {
   // Seeded-dev session cookie, OR a Supabase auth cookie (sb-...-auth-token) when configured.

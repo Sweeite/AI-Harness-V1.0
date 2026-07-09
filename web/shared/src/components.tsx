@@ -184,6 +184,118 @@ export function StatusBadge(props: { tone: ViewTone; label: string }): React.JSX
   );
 }
 
+// ── Presentational surface primitives (ISSUE-088/078/089) ─────────────────────────────────────────
+// All server-safe (no state); interactive primitives with state live in ui.tsx ('use client'). Every
+// one is a thin token-only renderer — no hardcoded styling, no permission/health logic of its own.
+
+export function PageHeader(props: { title: string; lead?: string; actions?: React.ReactNode }): React.JSX.Element {
+  return (
+    <div className="ah-row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="ah-pagehead">
+        <h1 className="ah-page-title" style={{ margin: 0 }}>{props.title}</h1>
+        {props.lead ? <p className="ah-page-lead" style={{ margin: 0 }}>{props.lead}</p> : null}
+      </div>
+      {props.actions ? <div className="ah-row">{props.actions}</div> : null}
+    </div>
+  );
+}
+
+/** An honest empty state (a GENUINE zero — its own copy, distinct from error/stale which use banners). */
+export function EmptyState(props: { message: string; glyph?: string; action?: React.ReactNode }): React.JSX.Element {
+  return (
+    <div className="ah-emptystate">
+      <div className="ah-emptystate-glyph" aria-hidden="true">{props.glyph ?? '◍'}</div>
+      <div>{props.message}</div>
+      {props.action ? <div style={{ marginTop: 'var(--space-3)' }}>{props.action}</div> : null}
+    </div>
+  );
+}
+
+/** Skeleton rows shown while loading — never a "0"/"✓" before data arrives (#3). */
+export function SkeletonRows(props: { count?: number }): React.JSX.Element {
+  const n = props.count ?? 4;
+  return (
+    <div role="status" aria-label="Loading" aria-busy="true">
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} className="ah-skeleton ah-skeleton-row" />
+      ))}
+    </div>
+  );
+}
+
+export interface Column<T> { key: string; header: string; cell: (row: T) => React.ReactNode; numeric?: boolean }
+
+/** A simple, accessible, horizontally-scrollable table. Presentational only. */
+export function DataTable<T>(props: {
+  columns: readonly Column<T>[];
+  rows: readonly T[];
+  rowKey: (row: T) => string;
+  onRowActivate?: (row: T) => void;
+  caption?: string;
+}): React.JSX.Element {
+  return (
+    <div className="ah-table-wrap">
+      <table className="ah-table">
+        {props.caption ? <caption className="ah-muted" style={{ padding: 'var(--space-2)' }}>{props.caption}</caption> : null}
+        <thead>
+          <tr>{props.columns.map((c) => <th key={c.key} scope="col">{c.header}</th>)}</tr>
+        </thead>
+        <tbody>
+          {props.rows.map((row) => (
+            <tr
+              key={props.rowKey(row)}
+              className={props.onRowActivate ? 'ah-row-clickable' : undefined}
+              onClick={props.onRowActivate ? () => props.onRowActivate!(row) : undefined}
+              tabIndex={props.onRowActivate ? 0 : undefined}
+              onKeyDown={props.onRowActivate ? (e) => { if (e.key === 'Enter') props.onRowActivate!(row); } : undefined}
+            >
+              {props.columns.map((c) => (
+                <td key={c.key} className={c.numeric ? 'ah-cell-num' : undefined}>{c.cell(row)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function DescriptionList(props: { items: Array<{ term: string; detail: React.ReactNode }> }): React.JSX.Element {
+  return (
+    <dl className="ah-dl">
+      {props.items.map((it, i) => (
+        <React.Fragment key={i}>
+          <dt>{it.term}</dt>
+          <dd>{it.detail}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
+
+export function MetricRow(props: { label: string; value: React.ReactNode }): React.JSX.Element {
+  return (
+    <div className="ah-metric-row">
+      <span className="ah-metric-k">{props.label}</span>
+      <span className="ah-metric-v">{props.value}</span>
+    </div>
+  );
+}
+
+/** A labelled form field wrapper (server-safe; the input itself is passed as children). */
+export function Field(props: { label: string; htmlFor?: string; hint?: string; error?: string; required?: boolean; children: React.ReactNode }): React.JSX.Element {
+  return (
+    <div className="ah-field">
+      <label className="ah-field-label" htmlFor={props.htmlFor}>
+        {props.label}{props.required ? <span aria-hidden="true"> *</span> : null}
+      </label>
+      {props.children}
+      {props.hint ? <span className="ah-field-hint">{props.hint}</span> : null}
+      {props.error ? <span className="ah-field-error"><span aria-hidden="true">▲</span>{props.error}</span> : null}
+    </div>
+  );
+}
+
 // ── AnswerModePill (NFR-OBS.012 seam) ────────────────────────────────────────────────────────────
 export function AnswerModePill(props: { mode: AnswerMode | null | undefined }): React.JSX.Element {
   const d = answerModeDescriptor(props.mode);

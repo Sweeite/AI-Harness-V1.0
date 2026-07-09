@@ -2,10 +2,22 @@
 id: ISSUE-088
 title: Render surface-00 auth screens (login · 2FA · invite-setup · re-auth · support queue)
 epic: M — frontend
-status: ready
+status: done
 github: "#88"
 ---
 # ISSUE-088 — Render surface-00 (the auth trust boundary screens)
+
+> **✅ BUILT + live-verified (Session 81, 2026-07-09) → `done`.** Rendered in `web/client` on the `087` dev-auth seam.
+> `/login` (UI-LOGIN: OAuth-primary + collapsed operator disclosure OD-105 + **fail-closed CAPTCHA** — submit
+> disabled with the exact copy when the widget fails + "Trouble signing in?" public insert-only support intake +
+> same-page **UI-2FA-CHALLENGE** step + every login error state) · `/setup` (UI-INVITE-SETUP valid/expired/invalid +
+> operator **UI-2FA-ENROLL** step, QR-fail→manual-secret) · **UI-REAUTH-PROMPT** modal/bottom-sheet (`?reauth=1`,
+> mounted in the shell) · `/support-requests` authenticated queue (overdue-`pending` pinned OD-106, status filter
+> chips, transitions gated on `PERM-support.resolve`). **Verified in-browser:** login→RBAC shell; support-queue
+> fetch-failure (`?sim=error`) renders an error **not** a false-empty list (#3); the queue nav entry is **absent**
+> for a caller without `PERM-support.view` and the direct URL **404s** (FR-1.PERM.006); setup token states; light+dark
+> (pure token swap); a11y (dialog/tablist roles, labelled controls, focus rings). **No new live DB adapter → R10 N/A**
+> (like `087`); real OAuth = OD-175 onboarding. Evidence: SESSION-LOG Session 81.
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build order that points into
 > the repo by ID*. It does **not** restate `AC-*` text — that lives in the surface spec + FR and is read there. A
