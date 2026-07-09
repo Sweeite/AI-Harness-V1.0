@@ -144,7 +144,8 @@ or assign each shared file to exactly one agent).
 
 **Migration-chain lane (durable — Rule 0, don't leave this in chat).** `app/silo/migrations/` + its
 **`_journal.json`** are a single shared chain; **two worktree agents must never each pick the next tag** —
-they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head: `0037_plan_event_types` (session 80, Checkpoint-5 close). Next free silo tag is `0038`.**
+they'd both grab `0003` and collide on `_journal.json`. **Applied-LIVE head: `0040_maturity_recompute_event_type` (session 83, Stage-6 batch close). Next free silo tag is `0041`.**
+*(Session-83 applied LIVE, silo head `0038`→`0040`: `0039_memory_write_event_types` [ISSUE-024 — memory_write superseded/conflict/embed_failed] + `0040_maturity_recompute_event_type` [ISSUE-030 — maturity_recomputed]. Both `transactional:false` additive event_type values; discipline-gate clean; R10-smoked green (024 + 030). Prior session-82 head `0038_embedding_event_types` [ISSUE-023]. Mgmt-plane chain unchanged at `0004`.)*
 *(Session-80 applied LIVE, silo head `0033`→`0037`: `0034_connector_disconnection_state` + `0035_connector_disconnection_open_index` + `0036_connector_disconnection_event_types` [ISSUE-038] + `0037_plan_event_types` [ISSUE-064]. Mgmt-plane chain applied LIVE `0003`→`0004`: `0004_offboarding_records` [ISSUE-083, hand-applied]. All R10-smoked green.)*
 *(Prior head note:* `0033_push_subscriptions_owner_rls` (session 77, ISSUE-079).*)* *(Session-76 added `0031_rls_enforcement` [ISSUE-020] + `0032_profiles_authenticated_grant` [ISSUE-013 fix]; session-77 added `0033_push_subscriptions_owner_rls` [ISSUE-079, owner-scoped + aal2] — all applied LIVE.)* *(Session-74 added `0027_profiles_invite_lifecycle` [OD-192 invite lifecycle] + `0028_task_queue_awaiting_approval_at`
 [logic-sweep staleness-clock fix], both applied LIVE. Session-75 added `0029_entities_internal_org_singleton` [ISSUE-022 — the entities
@@ -276,8 +277,28 @@ Gate everything. Not hands-off.
 ### Stage 6 — Embeddings
 - [x] 🟢 **GATE — `023` Embeddings + HNSW vector search ✅ DONE (session 82, 2026-07-09)** — clearance-filtered ANN search returns under budget. The retrieval-session contract (`ef_search` + `iterative_scan='relaxed_order'` + `enable_seqscan=off`, txn-scoped) FORCES the HNSW index under the RLS predicate: **contract 30.8 ms vs default 2178 ms seqscan (70.8×)** — the ISSUE-002 ~308× cliff resolved (AF-019 🟢; `iterative_scan` alone insufficient → `enable_seqscan=off` is the necessary lever). Completeness 10/10 all roles (no starvation); p95 21.5 ms < 2 s. R10 smoke green; migration `0038` applied live (silo head `0037→0038`). **Residual → AF-002/ISSUE-025:** NN-ranking recall needs a real-embedding corpus (synthetic distance concentration). `app/embeddings/` · `spikes/issue-023-hnsw-forcing/`.
 - 🟢 BATCH: [x] ✅ **`024` Memory write / sole-writer path (validate-commit)** 🔴 — **DONE (session 83, 2026-07-10):** `app/memory-write/` (port + fake + `supabase-store.ts` + check + **46/46** tests + tsc); adversarial-verified (1 MAJOR + 4 MINOR fixed regression-test-first); migration **`0039`** applied LIVE (head `0038→0039`); **R10 smoke PASSED** (8 assertions vs the silo). AF-063 🟢 (advisory-lock-alone boundary), AF-061/062 🟡 (mechanism proven; at-scale LOAD residual). The Checkpoint-6 sole-writer TOCTOU-closing commit. GitHub #24 CLOSED. · [x] ✅ **`030` Maturity + cold-start signal** — **DONE (session 83):** `app/maturity/` (port + fake + `supabase-store.ts` + check + **52/52** + tsc); fan-out-built → adversarial-verified (MAJOR + MINOR fixed). Per-entity + aggregate Maturity, the cold-start ONE-WAY LATCH (permanent at 80%, SQL OR-guard), Retrieval Sufficiency → `[Building]`. Migration **`0040`** LIVE (head `0039→0040`); **R10 smoke PASSED** (latch no-re-arm proven at the SQL level). AF-034 🔴 carried (EVAL, not a blocker). GitHub #30 CLOSED. · [x] ✅ **`054` Execution optimisation (parallel DAG)** — **DONE (session 83):** `app/execution-optimisation/` (config-gated logic, no live adapter → R10 N/A; 40/40 + check); fan-out-built → adversarial-verified (2 MAJOR + 2 MINOR fixed). AF-113 🟡 (offline-GREEN small graphs; real-Inngest LOAD residual gates live `parallel_execution_enabled`, ships OFF). CFG `chained_task_prewarm_enabled` registered. GitHub #54 CLOSED. · [x] ✅ **`067` Agent builder surface** — **DONE (session 83):** reject-at-write guard kernel (`web/agent-bridge/`, 37/37) + the five-section surface-09 render (`web/client/app/(shell)/agents/`) on the `087` dev-auth seam (web/shared 18/18, client tsc clean); independent adversarial-verify of the complete surface (1 MAJOR #3-false-healthy + 1 MAJOR Add-agent DoD gap + 3 MINOR, all fixed regression-test-first). Reject-at-write + OD-080 authority + versioned-write + honest-state proven. R10 N/A (render). Residual [[OD-202]] (server-side memory_scope twin, owed ISSUE-063). GitHub #67 CLOSED.
-- ◇ **CHECKPOINT 6:** `023` clearance-filtered search returns within budget; `024` the sole-writer
-  commit path closes the TOCTOU window and never loses a write (#1).
+- [x] ◇ ✅ **CHECKPOINT 6 — CLOSED (session 83, 2026-07-10) → STAGE 7 OPEN (R1).** Both written closing
+  conditions PROVEN (independently verified by a 4-perspective fan-out — integration/#1 · three-non-negotiables ·
+  whole-repo sweep · zero-context self-sufficiency, all PASS): **`023`** clearance-filtered HNSW search returns
+  within the AF-067 budget — the retrieval-session contract forces the index under the RLS predicate (30.8 ms vs
+  2178 ms seqscan, p95 21.5 ms < 2 s, all 6 roles full top-10 no starvation; **AF-019 🟢**, session 82); **`024`**
+  the sole-writer commit closes the TOCTOU window and **never loses a write (#1)** — the short advisory-locked txn
+  (sorted per-entity `pg_advisory_xact_lock` → mid-task authz re-check → watermark re-read + on-race reclassify →
+  idempotent `ON CONFLICT DO NOTHING` → CAS-supersede `WHERE superseded_by IS NULL`), proven by `commit.test.ts`
+  (chain-convergence `t←w1←w2` no lost-supersede · idempotent no-op no-duplicate · disjoint non-block · mid-task
+  halt quarantines) + the R10 live smoke. **The batch works as a group** — whole-repo offline sweep **1396 app /
+  0 fail** + web (shared 18 · agent-bridge 37 · client+admin tsc clean); the writer consumes 023's embed-or-halt,
+  030 reads live memories with the identical liveness predicate as the supersede chain, 054/067 don't touch the
+  memory path. **R7 three-non-negotiables re-checked:** #1 never-lose-knowledge (024 idempotency+CAS+watermark ·
+  embed-or-halt never stores a null/degenerate vector · 030 cold-start latch never re-arms via the SQL OR-guard ·
+  soft-supersedes-not-deletes / hard-quarantines-not-drops) · #2 never-do-what-it-shouldn't (024 mid-task-revocation
+  halt fail-closed at the commit boundary · 067 reject-at-write hard-limits + OD-080 capability-SA-only · 054 OD-056
+  no-side-effect-ahead-of-approval + all flags default OFF) · #3 never-fail-silently (loud event_types 0038/0039/0040 ·
+  067 stale-not-green never-false-healthy · 054 degrades-to-plain · every reconcile/latch/embed halt emits an event).
+  **Honest residuals carried (none block Stage 7):** AF-002 real-corpus NN-ranking recall (load-bearing for `025`'s
+  ranking quality) · AF-061/062 at-scale concurrency LOAD (024) · AF-113 real-Inngest LOAD (054) · AF-034 EVAL (030) ·
+  [[OD-202]] server-side memory_scope twin (067, owed 063) · OD-201 (owed 061 when read live). **Stage 7 (Retrieval,
+  gate `025`) may now open.**
 
 ### Stage 7 — Retrieval
 - 🟠 **GATE — `025` Retrieval + ranking + clearance-before-ranking + answer modes**  🔴 — clearance MUST filter *before* ranking, or it's a #2 leak.
