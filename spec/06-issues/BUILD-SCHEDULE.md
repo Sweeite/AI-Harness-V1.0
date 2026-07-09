@@ -333,17 +333,19 @@ later stages. So screens land as their backends land.
   **(ii)** new render issues (`088`/`089`/`090`) for the surfaces whose backend was headless logic with no surface issue.
 
   **RENDER WAVE 1 — buildable NOW (backend `done`/logic-done + `087`):**
-  - [ ] **`088` — surface-00 auth screens** (login · 2FA · invite · re-auth · support queue; `web/client`) — gate `013`/`014`/`016`✅. *(live real-OAuth = OD-175 onboarding; build on the `087` dev-auth/`@supabase/ssr` seam.)* **[walking skeleton]**
-  - [ ] **`078` — surface-05 Ops + surface-06 super-admin fleet render** (in-progress → render UNBLOCKED) — gate `078`-logic + `011`/`075`/`076`/`077`✅. **[walking skeleton]** ⚠️ **[[OD-198]] ③** false-healthy 0-rows live until producer-RLS lands (dev/seeded fine).
-  - [ ] **`089` — surface-02 user management** (Users/Roles/Permissions matrix/Clearances/Reviews/Restricted; `web/client`) — gate `021`/`018`/`019`✅. **[walking skeleton]**
+  - [x] ✅ **`088` — surface-00 auth screens** (login · 2FA · invite · re-auth · support queue; `web/client`) — **DONE (S81)**: rendered + live-verified (login→shell, fail-closed CAPTCHA, support-queue honest-state + RBAC 404, setup states, light+dark). No new adapter → R10 N/A. **[walking skeleton]**
+  - [x] ✅ **`078` — surface-05 Ops + surface-06 super-admin fleet render** — **DONE (S81)**: nine ops panels (`web/client`) + fleet console (`web/admin`), per-panel RBAC absent-not-empty, never-false-healthy proven (`?sim=error`), cost=estimate, frozen≠dead. Logic R10-smoked S77 → render R10 N/A. **[walking skeleton]** ⚠️ **[[OD-198]] ③** residual: NOT live-verified on real data (dev/seeded honest-state correct).
+  - [x] ✅ **`089` — surface-02 user management** (Users/Roles/Permissions matrix/Clearances/Reviews/Restricted; `web/client`) — **DONE (S81)**: six tabs, per-tab absent-not-empty, matrix of all 55 catalog nodes with optimistic-rollback, last-SA guard, honest-state roster, mandatory Restricted reason. No new adapter → R10 N/A. **[walking skeleton]**
   - [ ] **`090` — surface-04 approval queue** (live Approve/Reject/Modify + mandatory reason; `web/client`; Realtime) — gate `056`/`048`/`060`/`076`✅.
   - [ ] **`086` — surface-01/01b config admin + audit render** (in-progress → render UNBLOCKED; `web/client`) — gate `086`-logic✅.
   - [ ] **`079` — surface-12 mobile PWA render** (in-progress → render UNBLOCKED; six sub-surfaces + web-push; `web/client`) — gate `079`-logic✅.
 
-  **WALKING-SKELETON MILESTONE = `088` (auth) → `078` (Ops on real data) → `089` (User Management)** — the first
-  clickable, testable "see it" path the operator asked for; then deploy `web/client`+`web/admin` to Railway on the
-  **dev-auth** path (composes with `080`/`081`; live OAuth deferred to OD-175 onboarding). Wave-1 fan-out is batch-safe
-  once each backend is `done` (serialize shared `web/shared` token/component edits; each screen is a disjoint route).
+  **WALKING-SKELETON MILESTONE = `088` (auth) → `078` (Ops on real data) → `089` (User Management)** — ✅ **BUILT +
+  live-verified in-browser (Session 81, 2026-07-09).** The first clickable, human-testable "see it" path is live:
+  login→RBAC shell, the nine-panel Ops dashboard + fleet console with never-false-healthy honest-state, and the
+  six-tab Users-&-Access cockpit — all on the `087` dev-auth seam, RBAC absent-not-empty proven per role, light+dark.
+  **Next: deploy `web/client`+`web/admin` to Railway on the dev-auth path** (composes with `080`/`081`; live OAuth
+  deferred to OD-175 onboarding). Wave-1 fan-out was batch-safe (shared `web/shared` primitive edits serialized).
 
   **RENDER WAVE 2 — gated on an UNBUILT backend (build/complete as it lands, the track's R1):**
   - **`067` — surface-09 agent builder** — `ready` NOW (backends `062`/`064`/`065`✅); build the issue (logic+render).

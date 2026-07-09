@@ -2,10 +2,23 @@
 id: ISSUE-089
 title: Render surface-02 user management (Users · Roles · Permissions matrix · Clearances · Reviews · Restricted)
 epic: M — frontend
-status: ready
+status: done
 github: "#89"
 ---
 # ISSUE-089 — Render surface-02 (the access-control cockpit)
+
+> **✅ BUILT + live-verified (Session 81, 2026-07-09) → `done`.** Rendered in `web/client` — the six-tab "Users &
+> Access" cockpit on the `087` seam. **Verified in-browser:** Super Admin sees all six tabs (Users 6 · Roles ·
+> Permissions · Clearances · Reviews[overdue=1] · Restricted); **per-tab absent-not-empty** — Admin sees only Users
+> (Roles/Permissions/Clearances/Reviews/Restricted ABSENT); the **Permissions matrix renders the FULL real app/rbac
+> catalog** (all 55 nodes × 6 roles = 330 toggles, 14 category sections — AC-1.PERM.005.2, nothing hardcoded/omitted)
+> with **optimistic-with-rollback** proven (a simulated save failure reverts the cell + shows "Couldn't save that
+> change — retry"); the **last-Super-Admin guard** blocks deactivating the sole SA with a visible reason
+> (FR-1.ROLE.005); roster fetch-failure (`?sim=error`) renders an error **not** a false-empty roster (#3); the
+> Restricted grant **rejects an empty reason** ("A reason is required for Restricted access" — AC-1.RST.002.1);
+> the matrix shows the "needs a wider display" notice + read-only category list <768px; light+dark. RBAC is the REAL
+> catalog (no second source of truth); domain rows are SEEDED (dev-auth path — live app/user-mgmt adapter = OD-175).
+> **Mints no node, no migration → R10 N/A.** Evidence: SESSION-LOG Session 81.
 
 > **Self-sufficiency contract (read this first).** A *complete, precise build order that points into the repo by ID*;
 > it does **not** restate `AC-*` text (read it in the surface spec + FR). A zero-context builder must build to the DoD
