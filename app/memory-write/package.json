@@ -1,0 +1,21 @@
+{
+  "name": "@harness/memory-write",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-024 (C2 WRT) — the single, sole-writer memory write path. The Memory Agent's service_role writer: one Sonnet call unlocked (drafts one-or-more typed, entity-linked memories with source-typed confidence + golden-rule system_pointer), a pre-write contradiction check (no/soft/hard against the 3-5 most similar), embed-or-halt (wraps @harness/embeddings' embedForWrite — FR-2.WRT.007), then the ADR-004 optimistic validate-and-commit: a short txn under SORTED per-entity advisory locks (pg_advisory_xact_lock over sorted entity_ids) with a watermark re-check, idempotency-keyed insert (ON CONFLICT DO NOTHING), CAS-supersede on soft conflict (WHERE superseded_by IS NULL), hard-conflict quarantine into memory_conflicts + escalation clock, and the mid-task-revocation halt at the commit boundary (consumes @harness/rls-enforcement guardBoundary — FR-1.RLS.007). This makes memories/entities writable through EXACTLY ONE governed code path (the sole-writer invariant, FR-2.WRT.001) — every row created safely, exactly once, never on a stale or unauthorized snapshot. Port + in-memory reference fake; supabase-store.ts is the live pg adapter over the real memories/entities/memory_conflicts tables. check = offline non-drift gate over the memories constraints (unique idempotency_key, watermark index, cardinality/confidence CHECKs — verify-present), the WRT event_type values (0039), and the CFG keys (rate_limit_memory_writes_per_minute, memory_write_serialization). The Checkpoint-6 second closing condition: the sole-writer commit closes the TOCTOU window and never loses a write (#1).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -2,11 +2,32 @@
 id: ISSUE-024
 title: Memory write / sole-writer path
 epic: C — memory
-status: ready
+status: done
 github: "#24"
 ---
 
 # ISSUE-024 — Memory write / sole-writer path
+
+> **✅ BUILT + LIVE-VERIFIED — Session 83 (2026-07-10).** Package `app/memory-write/` (@harness/memory-write —
+> port + InMemory reference fake + `supabase-store.ts` live adapter + `check` non-drift gate + **46/46** tests,
+> tsc clean). The sole-writer path: one Sonnet call unlocked (drafts multiple typed, entity-linked memories with
+> source-typed confidence + golden-rule `system_pointer`), contradiction check (no/soft/hard against the
+> 3–5 similar the writer now genuinely SEES — M1 fix), embed-or-halt (wraps `@harness/embeddings`), then the
+> ADR-004 validate-and-commit: a short txn under SORTED per-entity advisory locks with a watermark re-check,
+> idempotency-keyed insert (ON CONFLICT DO NOTHING), CAS-supersede (WHERE superseded_by IS NULL), hard-conflict
+> quarantine into `memory_conflicts`, and the mid-task-revocation halt at the commit boundary (consumes
+> `@harness/rls-enforcement` — FR-1.RLS.007). **Adversarial-verified** (independent zero-context agent — 1 MAJOR
+> [writer was blind to priors → hard-conflict path disabled] + 4 MINOR [escalate atomicity, deleted-user FK,
+> Haiku-bound honesty, decisionStale comment], ALL fixed regression-test-first). Migration
+> `0039_memory_write_event_types.sql` **applied LIVE** (silo head `0038→0039`). **R10 live-adapter smoke PASSED**
+> (`results/live-smoke.sql`, 8 assertions vs the real silo, rolled back — advisory-lock cast, vector(1536) + all
+> enum casts, ON CONFLICT no-duplicate, CAS, `memory_conflicts` quarantine, all 5 `::event_type` writes, agent
+> access_audit). **The Checkpoint-6 second closing condition: the sole-writer commit closes the TOCTOU window and
+> never loses a write (#1).** **AF-063 🟢** (advisory-lock-alone correctness boundary realized). **AF-061 🟡 /
+> AF-062 🟡** — the concurrency MECHANISM is proven (unit interleavings + live-adapter SQL); the at-scale
+> no-livelock EVAL (AF-061) and the ~20-concurrent-deployment throughput/deadlock LOAD (AF-062) need a real
+> fan-out harness → carried as an honest LOAD residual (deadlock-freedom itself is proven by construction — sorted
+> acquisition). GitHub #24 CLOSED.
 
 > **Self-sufficiency contract (read this first).** This issue is a *complete, precise build
 > order that points into the repo by ID*. It does **not** restate `AC-*` text — that lives in the

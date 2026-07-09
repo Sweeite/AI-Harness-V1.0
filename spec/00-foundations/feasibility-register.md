@@ -162,9 +162,27 @@ Phase-1/2 rate-limit, token-lifecycle, and Realtime requirements.
 
 | ID | Assumption | Method | Status |
 |---|---|---|---|
-| AF-061 | The **optimistic validate-and-commit closes the TOCTOU window** (ADR-004 §3): running the Sonnet writer unlocked, then a short locked transaction that re-checks a per-entity watermark and re-runs only the cheap DB contradiction check on change, actually catches same-entity races **without livelock or excessive re-runs**. The whole correctness claim rests on this — it is the core thing that can only be proven by testing. | SPIKE+EVAL | 🔴 |
-| AF-062 | **Sorted per-entity Postgres advisory locks + short commit transactions don't bottleneck under fan-out at scale** (`L2115`, ~20 concurrent deployments), and multi-entity writes (locking 2–3 entities each, in sorted order) stay **deadlock-free** and contention-light. | LOAD | 🔴 |
-| AF-063 | **Inngest per-key concurrency serializes same-entity steps** as ADR-004 §2 assumes — and if it doesn't, the design **degrades safely** to "advisory lock alone" (the lock, not the queue, is the correctness boundary). | DOCS+SPIKE | 🔴 |
+| AF-061 | The **optimistic validate-and-commit closes the TOCTOU window** (ADR-004 §3): running the Sonnet writer unlocked, then a short locked transaction that re-checks a per-entity watermark and re-runs only the cheap DB contradiction check on change, actually catches same-entity races **without livelock or excessive re-runs**. The whole correctness claim rests on this — it is the core thing that can only be proven by testing. | SPIKE+EVAL | 🟡 |
+| AF-062 | **Sorted per-entity Postgres advisory locks + short commit transactions don't bottleneck under fan-out at scale** (`L2115`, ~20 concurrent deployments), and multi-entity writes (locking 2–3 entities each, in sorted order) stay **deadlock-free** and contention-light. | LOAD | 🟡 |
+| AF-063 | **Inngest per-key concurrency serializes same-entity steps** as ADR-004 §2 assumes — and if it doesn't, the design **degrades safely** to "advisory lock alone" (the lock, not the queue, is the correctness boundary). | DOCS+SPIKE | 🟢 |
+
+<!-- AF-061/062/063 — ISSUE-024 (Session 83, 2026-07-10, `app/memory-write/`). **AF-063 🔴→🟢:** the design's
+     fallback IS what was built — the Postgres advisory lock (not the Inngest queue) is the correctness boundary,
+     and the advisory-lock-alone path is proven correct (unit interleavings: same-entity serialize + disjoint
+     non-block, `commit.test.ts`; live-adapter smoke: `pg_advisory_xact_lock(hashtext(eid)::int8)` settable,
+     `app/memory-write/results/live-smoke.sql`). So Inngest per-key concurrency is now an OPTIMISATION, not a
+     correctness dependency — the AF's safe-degrade clause is realised. **AF-061 🔴→🟡:** the validate-and-commit
+     MECHANISM is proven — the watermark re-check + `WHERE superseded_by IS NULL` CAS + `unique(idempotency_key)`
+     together prevent lost-write/duplicate (any one alone suffices; `commit.test.ts` proves chain convergence
+     `t←w1←w2` and idempotent no-op under concurrent same-entity writes) and the live SQL executes against the
+     real schema (R10). What remains for GREEN: an at-scale EVAL that re-run counts stay bounded (no livelock)
+     under real fan-out — needs a load harness, deferred. **AF-062 🔴→🟡:** **deadlock-freedom is proven by
+     construction** (every txn acquires the sorted total order — `commit.test.ts` disjoint/serial cases + the smoke)
+     — the LOAD half (no bottleneck at ~20 concurrent deployments) needs a real concurrent-deployment load run,
+     deferred as an honest residual (not faked). The AC-2.WRT.006.* behaviours themselves PASS at the mechanism
+     level (unit + live-adapter); AF-061/062 carry only the at-scale LOAD/EVAL confidence, exactly like AF-082's
+     at-scale residual for ISSUE-022. -->
+
 
 ## F. Deploy / provisioning / version-skew feasibility (ADR-005 — verify by SPIKE / DOCS / EVAL)
 
