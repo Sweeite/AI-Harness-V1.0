@@ -5,7 +5,9 @@
 
 # build-phase (TypeScript / Node — ADR-009)
 node_modules/
-node_modules   # also match node_modules SYMLINKS (offline-test setup symlinks a sibling's node_modules; trailing-slash rule above only matches dirs)
+# also match node_modules SYMLINKS (offline-test setup symlinks a sibling's node_modules; the
+# trailing-slash rule above only matches directories, not symlink files):
+node_modules
 .env
 .env.local
 dist/
