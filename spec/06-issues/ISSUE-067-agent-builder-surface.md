@@ -2,7 +2,7 @@
 id: ISSUE-067
 title: Agent builder surface — fleet grid, per-agent Builder, orchestration & plan views
 epic: H — agent design
-status: blocked
+status: ready
 github: "#67"
 ---
 

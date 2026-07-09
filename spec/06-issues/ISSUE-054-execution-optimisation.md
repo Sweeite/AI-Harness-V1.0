@@ -2,7 +2,7 @@
 id: ISSUE-054
 title: Execution optimisation — parallel DAG, smart scheduling, decomposition, pre-warm
 epic: F — harness
-status: blocked
+status: ready
 github: "#54"
 ---
 
