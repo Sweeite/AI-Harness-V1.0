@@ -3,7 +3,7 @@
 -- WHY: ISSUE-023's model-change orchestration (FR-2.VEC.003) records LOUD observability to event_log (#3 — a REBUILD-
 -- class embedding-model change must never be a silent migration): phase transitions, re-embed progress, and — the
 -- load-bearing one — the reconcile-gate BLOCKED halt (a partial backfill refused before the destructive contract step).
--- event_type is a FIXED enum; these values are not in it, so a live event_log insert would throw '22P02 invalid input
+-- event_type is a FIXED enum and these values are not in it, so a live event_log insert would throw '22P02 invalid input
 -- value for enum event_type' (the fake-passes-offline / live-throws class R10 catches — the in-memory fake accepts any
 -- string, the DB does not). This adds them additively:
 --   • embedding_model_change     -- phase transitions + the read-switch/contract markers (payload: phase, new_model)
