@@ -2852,7 +2852,12 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-## OD-199 — How does Checkpoint 5 close over onboarding-gated connectors + render-pending surfaces? 🟡 OPEN (framed for the Checkpoint-5-close session; surfaced by the Session-78 handoff self-sufficiency test)
+## OD-199 — How does Checkpoint 5 close over onboarding-gated connectors + render-pending surfaces? 🟢 RESOLVED (Session 80, 2026-07-09 — operator ratified at the Checkpoint-5-close session)
+
+- **✅ DECISION (operator, Session 80, 2026-07-09):** **(A-defer) + close the surfaces as logic-done.** Checkpoint 5 closes on the **built** batch members; the connectors `039`/`040`/`041` are **deferred UNBUILT to onboarding** (they are onboarding-gated regardless — the operator has no GHL account and cannot exercise any connector live, OD-172 — so building offline-only logic now would not change the checkpoint's live-provability). The surfaces `078`/`079`/`086` close as **logic-done, render-pending** (render = Frontend track, [[OD-197]]); calling `078`/`079` *fully* live-verified additionally needs the [[OD-198]] ③ producer-RLS reconcile, which is carried forward, not a checkpoint blocker. **The rule going forward (R4/checkpoint-close):** a Stage checkpoint may tick when every *built* member passes its `AC-*` + the group integration test passes + every deferred arm (live vendor, render, onboarding spike) is *tracked, not silent* — matching the Stage-3/4 precedent. **Carried-forward residuals (tracked, NOT outstanding-unknowns):** connectors `039`/`040`/`041` offline logic + live arm (onboarding) · surfaces `078`/`079`/`086` render (Frontend track) · OD-198 ③ producer-RLS reconcile before the surfaces read live.
+- *(Original framing below — retained for the record.)*
+
+
 
 - **Surfaced by:** the pre-handoff self-sufficiency test (Session 78) — a zero-context agent tasked to "close Checkpoint 5" could resume the immediate builds (`038`→`064`→`083`) with **no guessing**, but found the *checkpoint-closing decision itself* is not written down crisply. Logged here so the close session opens with it framed (Rule 0), not rediscovering it.
 - **The question (two coupled parts):**

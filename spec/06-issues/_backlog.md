@@ -103,7 +103,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-035 | Write tools + seven hard limits at connector | C3 ACT | 032, 055 |
 | ISSUE-036 | Tool optimisation (confidence-gate, cache, batch, degrade) | C3 OPT | 032 |
 | ISSUE-037 | Trigger infra + liveness (watch re-arm, event-gap) | C3 TRIG | 032, 017 |
-| ISSUE-038 🔨 **in-progress** (S79, live-close pending) | Disconnection + recovery — `app/disconnection-recovery/` built + adversarially verified + fixed (23/23 + `check` + typecheck); migrations `0034`/`0035`/`0036` authored discipline+RLS-clean, NOT applied; [[OD-200]] logged. R10 live smoke + live migrations = morning pass. | C3 DSC | 033 |
+| ISSUE-038 ✅ **done** (S80) | Disconnection + recovery — `app/disconnection-recovery/` (23/23 + `check`); migrations `0034`/`0035`/`0036` **applied LIVE** (silo head →`0037`) + **R10 smoke PASSED**; [[OD-200]] logged (task_queue no `paused` — C5 coupling). Closed under Checkpoint 5. GitHub #38 closed. | C3 DSC | 033 |
 | ISSUE-039 | GHL connector instance | C3 OBS.001 (+GHL TOK/TRIG) | 033, 034, 037 |
 | ISSUE-040 | Google connector instance (Gmail/Drive/Calendar) | C3 OBS.002 | 033, 034, 037 |
 | ISSUE-041 | Slack connector instance | C3 OBS.003 | 033, 034, 037 |
@@ -149,7 +149,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-061 | Orchestrator + 7-step routing + agents registry | C8 ORC, REG | 042, 048 |
 | ISSUE-062 ✅ **done** (S77) | Eight specialist definitions + per-agent hard limits (Comms never-sends, Finance never-transacts, Memory sole-writer) | C8 SPC | 061, 043 |
 | ISSUE-063 | Per-agent memory scoping (retrieval filter) | C8 SCO | 062, 025 |
-| ISSUE-064 🔨 **in-progress** (S79, live-close pending) | Execution plans — `app/execution-plans/` built + adversarially verified + fixed (19/19 + `check` + typecheck); no store migration (verify-present in 0001), migration `0037` adds plan event_types; [[OD-201]] logged (step_failure_mode drift, owed to 061). R10 adapter smoke + `0037` apply = morning pass. | C8 PLAN | 061, 052 |
+| ISSUE-064 ✅ **done** (S80) | Execution plans — `app/execution-plans/` (19/19 + `check`); no store migration (verify-present in 0001), migration `0037` (plan event_types) **applied LIVE** + **R10 smoke PASSED**; [[OD-201]] logged (step_failure_mode drift, owed to 061). Closed under Checkpoint 5. GitHub #64 closed. | C8 PLAN | 061, 052 |
 | ISSUE-065 ✅ **done** (S77) | Agent health / drift / dead-agent (flag-never-auto-correct) + producer heartbeat | C8 HLTH | 061, 011 |
 | ISSUE-066 | Orchestrator learning + scope-aware result cache + cost-routing | C8 LRN, COST | 061, 074 |
 | ISSUE-067 | Agent builder surface | surface-09 (renders C8 REG/SPC/PLAN/HLTH) | 062, 064, 065 |
@@ -183,7 +183,7 @@ issue file). **Gate** = a launch-gating spike (ISSUE-00x) or build-time AF the i
 | ISSUE-080 | Release model — auto-deploy + canary/release-train gate + rollback-by-redeploy + version-skew alert | C10 DEP | 007 |
 | ISSUE-081 | Schema-migration propagation + per-deployment failure isolation | C10 MIG | 008, 080 |
 | ISSUE-082 | Individual right-to-erasure workflow (two-person auth, verify-before-done) | C10 DEL | 029, 021 |
-| ISSUE-083 🔨 **in-progress** (S79, live-close pending) | Offboarding — `app/offboarding/` built + adversarially verified + fixed (28/28 + `check` + typecheck); mgmt-plane migration `0004_offboarding_records` authored (hand-applied), NOT applied; live export/freeze/deprovision are injected seams (AF-132/133/135, onboarding). Verify caught 2 MAJOR + 2 MINOR + 2 self-caught live BLOCKERs — all fixed. R10 mgmt-adapter smoke + `0004` apply = morning pass. | C10 OFF | 012, 085 |
+| ISSUE-083 ✅ **done** (S80) | Offboarding — `app/offboarding/` (28/28 + `check`); mgmt-plane migration `0004_offboarding_records` **applied LIVE** (mgmt head →`0004`) + **R10 mgmt-adapter smoke PASSED** (NULL-permissive two-person `<>` CHECK live-verified); live export/freeze/deprovision are onboarding seams (AF-132/133/135). Closed under Checkpoint 5. GitHub #83 closed. | C10 OFF | 012, 085 |
 | ISSUE-084 | Retention configs + isolation (client_slug deleted) + residency + legal-review gate | C10 RET, ISO, LEG | 008, 010 |
 | ISSUE-085 | Backup & DR — hourly off-platform dump + restore rehearsal + backup-health push | ADR-008, NFR-DR | 012, 004(spike) |
 

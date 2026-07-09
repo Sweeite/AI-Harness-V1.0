@@ -61,6 +61,11 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0030_entity_types_config_seed", // ISSUE-022 — entity_types config_values seed (CFG-entity_types)
     "0031_rls_enforcement", // ISSUE-020 — user_visibility helper + memories/entities clearance predicate + universal aal2
     "0032_profiles_authenticated_grant", // ISSUE-013 fix — the missing profiles SELECT + column-scoped UPDATE(name) grant
+    "0033_push_subscriptions_owner_rls", // ISSUE-079 (session 77) — push_subscriptions owner-scoped RLS + aal2
+    "0034_connector_disconnection_state", // ISSUE-038 (session 79) — DSC durable substrate + paused-set + RLS default-deny
+    "0035_connector_disconnection_open_index", // ISSUE-038 — open-disconnection partial-unique guard (CONCURRENTLY)
+    "0036_connector_disconnection_event_types", // ISSUE-038 — 4 additive connector event_type values
+    "0037_plan_event_types", // ISSUE-064 (session 79) — plan_outcome + plan_rollback event_type values
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.

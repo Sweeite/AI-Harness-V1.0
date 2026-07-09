@@ -2,10 +2,12 @@
 id: ISSUE-064
 title: Execution plans + per-step failure-mode assignment
 epic: H — agent design
-status: in-progress
+status: done
 github: "#64"
 ---
 
+> **✅ DONE (Session 80, 2026-07-09 — operator-present live close):** silo migration `0037` applied LIVE (silo head → `0037`) + the **R10 live-adapter smoke `app/execution-plans/results/live-smoke.sql` PASSED** vs the real silo (rolled back — proved canonical `plan_body` persist, the `coalesce(max,0)+1` version + the unique(task_type_name, version) backstop, the `plan_outcome`/`plan_rollback` `event_type` values, and the atomic reinstating-version + rollback-audit append). No store migration (verify-present). Whole-repo offline sweep green (1213/0). Closed under Checkpoint 5. GitHub #64 closed.
+>
 > **Build status (Session 79, offline overnight):** `app/execution-plans/` built + adversarially verified + fixed — **19/19 offline tests + typecheck + `check` green**. **No new migration for the store** (`execution_plans` + `step_failure_mode` already ship in the 0001 baseline — verify-present, like ISSUE-022); the slice is the failure-mode assignment/depth/versioning **discipline layer** on top of ISSUE-061's plan structure. Adversarial verify (independent zero-context agent) caught **2 BLOCKER + 1 MAJOR + minors** — all fixed regression-test-first: ① the live attribution + rollback wrote `event_type` values not in the enum → **migration `0037`** adds `plan_outcome`/`plan_rollback` additively + a `check` gate (the fake-passes-offline/live-throws class); ② rollback was non-atomic → now the version-append + audit are ONE transaction (audit-or-nothing); ③ `saveVersion` now **canonicalizes + asserts `plan_body` at the write boundary** so the orchestrator's shorthand (`halt_escalate`/`skip`) can never reach the column (the [[OD-201]] drift, closed on write); + a wired `buildValidatedPlan` depth-gate entry + a uuid guard. `status: in-progress` (live-close pending: apply `0037` + run the R10 adapter smoke = operator's morning pass). Surfaced **[[OD-201]]** (orchestrator↔DB `step_failure_mode` taxonomy drift — the residual fix is a small change-controlled edit owed to ISSUE-061's `buildPlan`).
 
 # ISSUE-064 — Execution plans + per-step failure-mode assignment
