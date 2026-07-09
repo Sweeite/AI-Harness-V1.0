@@ -1,5 +1,14 @@
 # Deploying the frontend to Railway — the DEV-AUTH path (walking skeleton)
 
+> **✅ DEPLOYED (Session 81, 2026-07-09).** Both apps are live on the `adaptable-miracle` Railway project
+> (production env) as GitHub-connected services tracking `main`, built from the Dockerfiles below with a
+> per-service `RAILWAY_DOCKERFILE_PATH` variable (Root Directory = repo root):
+> - **web/client** → https://web-client-production-2397.up.railway.app
+> - **web/admin** → https://web-admin-production-c0bb.up.railway.app
+>
+> Verified live: `/login` 200 (seeded role picker), `/` + every protected route 307 (auth-gate), `_next`
+> static 200. The headless `app/service` health stub is unchanged. Real OAuth stays OD-175; OD-198 ③ carried.
+
 This deploys the two Next.js apps built for the walking skeleton (ISSUE-088/078/089) to Railway on the
 **dev-auth** path: no Supabase env, so the apps serve the seeded role-switch sign-in (the "see it" demo).
 Real OAuth is **OD-175** onboarding — deliberately not wired here. Composes with ISSUE-080/081 (the existing
