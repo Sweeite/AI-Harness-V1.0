@@ -132,36 +132,42 @@ export function LoginScreen(props: {
         </form>
       </Disclosure>
 
-      {/* Error-state previewer (dev only — lets the operator see every honest failure state live) */}
-      <details style={{ marginTop: 'var(--space-4)' }}>
-        <summary className="ah-muted">Preview login error states (demo)</summary>
-        <div className="ah-row" style={{ marginTop: 'var(--space-2)' }}>
-          {Object.keys(AUTH_COPY).map((k) => (
-            <button key={k} type="button" className="ah-chip" aria-pressed={errorKey === k} onClick={() => setErrorKey(errorKey === k ? null : k)}>{k}</button>
-          ))}
-        </div>
-      </details>
+      {/* Dev-auth affordances (the seeded role picker + honest-state previewer) render ONLY when there is
+          no live Supabase. The moment a deployment configures Supabase (OD-175 onboarding), props.live is
+          true and these disappear — the OAuth-primary + operator path above becomes the real, only sign-in. */}
+      {!props.live ? (
+        <>
+          <details style={{ marginTop: 'var(--space-4)' }}>
+            <summary className="ah-muted">Preview login error states (demo)</summary>
+            <div className="ah-row" style={{ marginTop: 'var(--space-2)' }}>
+              {Object.keys(AUTH_COPY).map((k) => (
+                <button key={k} type="button" className="ah-chip" aria-pressed={errorKey === k} onClick={() => setErrorKey(errorKey === k ? null : k)}>{k}</button>
+              ))}
+            </div>
+          </details>
 
-      <hr className="ah-divider" />
+          <hr className="ah-divider" />
 
-      {/* Seeded-dev role picker — the essential "watch the RBAC nav change per role" affordance */}
-      <div>
-        <div className="ah-dev-banner" style={{ marginBottom: 'var(--space-3)' }}>Dev session — seeded, no live DB. Pick a role to preview its RBAC-scoped shell.</div>
-        <div className="ah-role-grid">
-          {props.roles.map((role) => (
-            <form key={role} action={props.signInAs.bind(null, role, true)}>
-              <button type="submit" className="ah-btn" style={{ width: '100%', justifyContent: 'space-between' }}>
-                <span>Continue as {role}</span><span aria-hidden="true">→</span>
-              </button>
-            </form>
-          ))}
-          <form action={props.signInAs.bind(null, 'Super Admin', false)}>
-            <button type="submit" className="ah-btn" style={{ width: '100%' }}>
-              Super Admin — sign in <em>without</em> 2FA (to see the aal2 step-up gate)
-            </button>
-          </form>
-        </div>
-      </div>
+          {/* Seeded-dev role picker — the essential "watch the RBAC nav change per role" affordance */}
+          <div>
+            <div className="ah-dev-banner" style={{ marginBottom: 'var(--space-3)' }}>Dev session — seeded, no live DB. Pick a role to preview its RBAC-scoped shell.</div>
+            <div className="ah-role-grid">
+              {props.roles.map((role) => (
+                <form key={role} action={props.signInAs.bind(null, role, true)}>
+                  <button type="submit" className="ah-btn" style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <span>Continue as {role}</span><span aria-hidden="true">→</span>
+                  </button>
+                </form>
+              ))}
+              <form action={props.signInAs.bind(null, 'Super Admin', false)}>
+                <button type="submit" className="ah-btn" style={{ width: '100%' }}>
+                  Super Admin — sign in <em>without</em> 2FA (to see the aal2 step-up gate)
+                </button>
+              </form>
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {trouble ? <TroubleModal onClose={() => setTrouble(false)} submit={props.submitSupport} /> : null}
     </Card>
