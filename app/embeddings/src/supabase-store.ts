@@ -30,7 +30,7 @@ import {
   type VectorAdmin,
 } from './store.ts';
 import { applyRetrievalSession, EF_SEARCH_DEFAULT } from './retrieval-session.ts';
-import type { EmbeddingProvider } from './embed.ts';
+import { EmbeddingError, validateEmbedding, type EmbeddingProvider } from './embed.ts';
 
 export type QueryExec = <R extends pg.QueryResultRow>(text: string, params?: unknown[]) => Promise<{ rows: R[]; rowCount?: number | null }>;
 
@@ -69,6 +69,52 @@ export class SupabaseVectorAdmin implements VectorAdmin {
     }
   }
 
+  /** Run `fn` inside a real single-client transaction when a pool exists (pool.query would spread statements across
+   * connections, breaking atomicity); against the injected seam (tests) it emits begin/commit/rollback through the seam
+   * so the wrapping + on-error rollback are observable. Used by the destructive contract() promote. */
+  private async withTx<T>(fn: (exec: QueryExec) => Promise<T>): Promise<T> {
+    if (this.pool) {
+      const client = await this.pool.connect();
+      try {
+        await client.query('begin');
+        const bound: QueryExec = (text, params) => client.query(text, params);
+        const r = await fn(bound);
+        await client.query('commit');
+        return r;
+      } catch (e) {
+        await client.query('rollback').catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
+    }
+    await this.exec('begin');
+    try {
+      const r = await fn(this.exec);
+      await this.exec('commit');
+      return r;
+    } catch (e) {
+      await this.exec('rollback').catch(() => {});
+      throw e;
+    }
+  }
+
+  /** Whether the embedding_v2 column still exists (false once a model change has contracted). */
+  private async embeddingV2Exists(): Promise<boolean> {
+    const r = await this.exec<{ n: string }>(
+      `select count(*)::text as n from information_schema.columns where table_name = 'memories' and column_name = 'embedding_v2'`,
+    );
+    return Number(r.rows[0]!.n) > 0;
+  }
+
+  /** Count of ALL rows (live or not) still lacking a valid embedding_v2. The column swap in contract() re-adds the
+   * NOT NULL invariant, so EVERY row — not only live rows — must carry a v2 before the physical promote (a superset of
+   * the AC-2.VEC.003.2 live-only ship gate; a superseded row with a null v2 would violate NOT NULL after the rename). */
+  private async anyNullV2Count(): Promise<number> {
+    const r = await this.exec<{ c: string }>(`select count(*)::text as c from memories where embedding_v2 is null`);
+    return Number(r.rows[0]!.c);
+  }
+
   // ── AC-2.VEC.001.1 — the HNSW index + its documented parameters, read from the catalog. ─────────────────────
   async hnswIndexInfo(): Promise<HnswIndexInfo | null> {
     const res = await this.exec<{ name: string; method: string; reloptions: string[] | null; indexdef: string }>(
@@ -78,6 +124,7 @@ export class SupabaseVectorAdmin implements VectorAdmin {
          join pg_class t on t.oid = i.indrelid
          join pg_am am on am.oid = c.relam
         where t.relname = 'memories' and am.amname = 'hnsw'
+        order by (c.relname = 'memories_embedding_hnsw') desc, i.indisvalid desc, c.relname
         limit 1`,
     );
     const row = res.rows[0];
@@ -144,8 +191,18 @@ export class SupabaseVectorAdmin implements VectorAdmin {
 
   // ── model-change DDL (FR-2.VEC.003). expand/contract touch DDL; CONCURRENTLY runs outside a txn. ─────────────
   async expand(_newModel: string): Promise<void> {
-    // idempotent: the embedding_v2 column is the baseline slot; the v2 HNSW index is built CONCURRENTLY (no txn).
+    // idempotent: the embedding_v2 column is the baseline slot.
     await this.exec(`alter table memories add column if not exists embedding_v2 vector(1536)`);
+    // A prior CONCURRENTLY build that was interrupted leaves an INVALID index of this name; `if not exists` would then
+    // skip the rebuild and leave an unusable v2 index forever (the CIC-IF-NOT-EXISTS footgun). Drop an invalid one first.
+    await this.exec(`do $$
+      begin
+        if exists (select 1 from pg_class c join pg_index i on i.indexrelid = c.oid
+                   where c.relname = 'memories_embedding_v2_hnsw' and not i.indisvalid) then
+          execute 'drop index memories_embedding_v2_hnsw';
+        end if;
+      end $$`);
+    // the v2 HNSW index is built CONCURRENTLY (never inside a txn — expand runs on the pool, autocommit).
     await this.exec(
       `create index concurrently if not exists memories_embedding_v2_hnsw on memories using hnsw (embedding_v2 vector_cosine_ops) with (m = 16, ef_construction = 64)`,
     );
@@ -159,13 +216,30 @@ export class SupabaseVectorAdmin implements VectorAdmin {
     if (!provider || !contentOf) {
       throw new Error('embeddings: backfill requires an injected reEmbed provider + contentOf reader (onboarding wiring) — refusing to report a fake-done backfill');
     }
-    const rows = await this.exec<{ id: string }>(`select id::text as id from memories where ${LIVE_PRED} and embedding_v2 is null`);
+    // Re-embed EVERY row lacking a v2 (live AND superseded) — the contract column-swap re-adds NOT NULL, so every row
+    // must carry a v2 for the promote to hold. The reconcile gate still SHIPS on live rows only (AC-2.VEC.003.2).
+    const rows = await this.exec<{ id: string }>(`select id::text as id from memories where embedding_v2 is null`);
     let embedded = 0;
+    let skipped = 0;
     for (const { id } of rows.rows) {
       const content = await contentOf(id);
-      const vec = await provider.embed(content, newModel);
+      let vec: number[];
+      try {
+        vec = await provider.embed(content, newModel);
+        validateEmbedding(vec, newModel); // BLOCKER-fix: never write an unvalidated/degenerate v2 — it would pass the
+        // `is not null` gate, then contract drops the good embedding → silently unsearchable (#1/#3).
+      } catch (e) {
+        // Leave embedding_v2 NULL for this row → the reconcile gate BLOCKS contract (a live row) or anyNullV2 blocks the
+        // promote (a non-live row). Loud, never a bad vector written, never data lost (the old embedding is untouched).
+        skipped++;
+        await this.emitEvent(EVT_REEMBED_PROGRESS, `re-embed skipped for memory ${id} (left unsearchable-safe): ${e instanceof EmbeddingError ? e.kind : (e as Error).message}`, { memory_id: id, new_model: newModel, reason: e instanceof EmbeddingError ? e.kind : 'provider_failure' });
+        continue;
+      }
       await this.exec(`update memories set embedding_v2 = $1::vector where id = $2::uuid`, [`[${vec.join(',')}]`, id]);
       embedded++;
+    }
+    if (skipped > 0) {
+      await this.emitEvent(EVT_REEMBED_PROGRESS, `backfill left ${skipped} row(s) without a valid embedding_v2 — the reconcile gate will block the contract step`, { new_model: newModel, embedded, skipped });
     }
     return { embedded };
   }
@@ -177,19 +251,41 @@ export class SupabaseVectorAdmin implements VectorAdmin {
   }
 
   async contract(newModel: string): Promise<void> {
-    // DEFENSE IN DEPTH (#1): re-check the gate against the LIVE corpus before any destructive drop, even though
-    // runModelChange already gated. A destructive drop on an incomplete backfill orphans rows — forbidden.
+    // Idempotency guard (#7): if embedding_v2 is already gone, the change contracted on a prior run — a no-op, not a
+    // 42703 error. A re-invocation must not fail a legitimate retry nor re-drop the (now-only) embedding column.
+    if (!(await this.embeddingV2Exists())) {
+      await this.emitEvent(EVT_MODEL_CHANGE, `contract no-op — embedding_v2 already promoted (${newModel})`, { new_model: newModel, phase: 'contract', already_done: true });
+      return;
+    }
+
+    // DEFENSE IN DEPTH (#1): re-check the AC-2.VEC.003.2 gate against the LIVE corpus before any destructive drop, even
+    // though runModelChange already gated. A destructive drop on an incomplete backfill orphans a live row — forbidden.
     const status = await reconcileGate(this);
     if (!status.complete) {
       await this.emitEvent(EVT_RECONCILE_BLOCKED, `contract BLOCKED — reconcile incomplete (${status.validV2Rows}/${status.liveRows})`, { new_model: newModel, ...status });
       throw new ReconcileShortfallError(status);
     }
-    // expand-contract contract step: promote embedding_v2 → embedding, rebuild the index on the new column. Executed as
-    // discrete DDL; the old HNSW index is dropped only after the new column is in place (never a destructive in-place swap).
-    await this.exec(`alter table memories drop column embedding`);
-    await this.exec(`alter table memories rename column embedding_v2 to embedding`);
-    await this.exec(`alter index memories_embedding_v2_hnsw rename to memories_embedding_hnsw`);
-    await this.emitEvent(EVT_MODEL_CHANGE, `embedding model change contracted to ${newModel}`, { new_model: newModel, phase: 'contract' });
+    // The physical promote re-adds NOT NULL (baseline invariant), so EVERY row — including superseded rows — must carry
+    // a v2, not just live rows. A shortfall here means backfill did not cover the whole corpus; refuse the promote loud.
+    const nullV2 = await this.anyNullV2Count();
+    if (nullV2 > 0) {
+      await this.emitEvent(EVT_RECONCILE_BLOCKED, `contract BLOCKED — ${nullV2} row(s) (incl. non-live) still lack embedding_v2; the NOT NULL promote would fail`, { new_model: newModel, null_v2_rows: nullV2 });
+      throw new Error(`embeddings: contract BLOCKED — ${nullV2} row(s) still lack embedding_v2; backfill must cover the whole corpus before the promote re-adds NOT NULL (#1)`);
+    }
+
+    // expand-contract promote — ATOMIC (#4): drop-old → rename v2 → re-add NOT NULL (#3) → truthful provenance (#2) →
+    // rename index, all in ONE transaction so a crash mid-promote can never leave `memories` with no embedding column.
+    await this.withTx(async (tx) => {
+      await tx(`alter table memories drop column embedding`);
+      await tx(`alter table memories rename column embedding_v2 to embedding`);
+      await tx(`alter table memories alter column embedding set not null`); // restore the FR-2.WRT.007 null guard (#3-fix)
+      await tx(`update memories set embedding_model = $1 where embedding_model <> $1`, [newModel]); // provenance now truthful (#2-fix)
+      await tx(`alter index memories_embedding_v2_hnsw rename to memories_embedding_hnsw`);
+      await tx(
+        `insert into event_log (event_type, entity_ids, summary, payload, created_at) values ($1::event_type, array[]::uuid[], $2, $3::jsonb, now())`,
+        [EVT_MODEL_CHANGE, `embedding model change contracted to ${newModel}`, JSON.stringify({ new_model: newModel, phase: 'contract' })],
+      );
+    });
   }
 
   private async emitEvent(eventType: string, summary: string, payload: Record<string, unknown>): Promise<void> {
