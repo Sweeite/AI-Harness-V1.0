@@ -1,0 +1,21 @@
+{
+  "name": "@harness/retrieval",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-025 (C2 RET) — the memory READ path: the retrieval keystone Layer-3 injection (ISSUE-045), the run pipeline (ISSUE-053), agent scoping (ISSUE-063) and the proactive generators (ISSUE-069) all consume. Given a task it (1) extracts entities (FR-2.RET.001, reusing the ISSUE-022 resolution helper read-only), (2) runs dual search — an entity-scoped keyword arm + a top-~20 vector arm over the ISSUE-023 HNSW index at CFG-ef_search (FR-2.RET.002), (3) applies the uniform candidate filters (confidence>=0.7 / not-expired / not-superseded, both arms, system_pointer admitted) (FR-2.RET.003, OD-035), (4) runs the CLEARANCE + visibility filter BEFORE ranking — the #2-leak invariant: an out-of-clearance/out-of-scope memory is dropped before it is ever ranked, realising the 0031 memories_clearance_read RLS predicate in code for the service_role agent path (which bypasses RLS) and as the retrieval mechanism on the human path (RLS backstops it), plus the optional OD-081 agent memory_scope narrowing (FR-2.RET.004), (5) ranks by the LIVE compound ranking_weights with OD-169 [0,1] normalisation (recency half-life / confidence / Jaccard entity-match / cosine->[0,1]) + procedural boost, trims to CFG-memories_injected_per_task (FR-2.RET.005), (6) injects as a type-tagged Business Context section with Restricted-NEVER-auto-injected (FR-2.RET.006, FR-1.RST.003), and (7) emits the answer-mode / Retrieval-Sufficiency [Building] signals (FR-2.RET.007, reusing @harness/maturity computeSufficiency; C8 renders the pill). Port + in-memory reference fake; supabase-store.ts is the live pg adapter over memories/entities that applies the ISSUE-023 retrieval-session index-usage contract before the vector top-k and writes the memory_read observability + access_audit sensitive-candidate rows. check = offline non-drift gate over the CFG rows this slice reads + the answer_mode enum + the clearance-tier constants (read-path only: no migration, verify-present). Ships GREEN carrying AF-002 (real-embedding NN-ranking recall) as the load-bearing fast-follow quality residual; AF-067/AF-019 are 🟢.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
