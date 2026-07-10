@@ -2,7 +2,7 @@
 id: ISSUE-026
 title: Ingestion filters + human review queue
 epic: C — memory
-status: ready
+status: in-progress
 github: "#26"
 ---
 
