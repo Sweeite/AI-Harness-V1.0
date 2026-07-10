@@ -20,7 +20,7 @@ import type { MaturityConfig } from '../../maturity/src/store.ts';
 import { DEFAULT_COLD_START_BASIC, DEFAULT_COLD_START_FULL } from '../../maturity/src/store.ts';
 import { computeSufficiency, type RetrievalSignal, type SufficiencyResult } from '../../maturity/src/sufficiency.ts';
 import { extractEntities, type TaskMention } from './extract.ts';
-import { applyCandidateFilters, type CandidateFilterCtx } from './candidate-filters.ts';
+import { applyCandidateFilters, isSystemPointer, type CandidateFilterCtx } from './candidate-filters.ts';
 import { clearanceVerdict, type Requester, type EntityTypeLookup } from './clearance.ts';
 import { rankAndTrim, type RankedMemory } from './rank.ts';
 import { injectBusinessContext, type BusinessContext } from './inject.ts';
@@ -70,11 +70,12 @@ export interface RetrievalResult {
 
 const VECTOR_TOP_K_DEFAULT = 20;
 
-/** A union candidate under assembly (before it becomes a RetrievalCandidate with a known similarity). */
+/** A union candidate under assembly. `similarity` is `undefined` until resolved, then a cosine number, or `null` when
+ *  the store genuinely produced NO vector score for it (→ 0 on the vector-similarity rank term, OD-169). */
 interface UnionEntry {
   memory: MemoryRow;
   via: 'keyword' | 'vector' | 'both';
-  similarity?: number;
+  similarity?: number | null;
 }
 
 /** Build the dual-search union: keyword ∪ vector, deduped by id, via-merged; a keyword-only row's similarity is filled
@@ -99,10 +100,11 @@ async function dualSearchUnion(store: RetrievalStore, req: RetrievalRequest, ent
   const missing = [...byId.values()].filter((e) => e.similarity === undefined).map((e) => e.memory.id);
   if (missing.length > 0) {
     const sims = await store.similarityOf(missing, req.queryEmbedding);
-    for (const e of byId.values()) if (e.similarity === undefined) e.similarity = sims.get(e.memory.id) ?? 0;
+    // a keyword-only id the store cannot score → null (0 on the vector term, OD-169), NOT 0 (which is cosine-orthogonal → 0.5).
+    for (const e of byId.values()) if (e.similarity === undefined) e.similarity = sims.has(e.memory.id) ? sims.get(e.memory.id)! : null;
   }
 
-  const candidates: RetrievalCandidate[] = [...byId.values()].map((e) => ({ memory: e.memory, via: e.via, similarity: e.similarity ?? 0 }));
+  const candidates: RetrievalCandidate[] = [...byId.values()].map((e) => ({ memory: e.memory, via: e.via, similarity: e.similarity ?? null }));
   return { candidates, keyword: kw.length, vector: vec.length };
 }
 
@@ -157,11 +159,14 @@ export async function retrieve(store: RetrievalStore, req: RetrievalRequest): Pr
   const context = injectBusinessContext(ranked);
 
   // 7. sufficiency signals (FR-2.RET.007). relevance = normalised vector-similarity; confidence = the memory's
-  //    confidence (a system_pointer's is authoritative → 1.0). Surfaced = the injected set.
-  const surfaced: RetrievalSignal[] = ranked.map((r) => ({
-    relevance: r.vectorSimilarity,
-    confidence: r.candidate.memory.confidence ?? 1,
-  }));
+  //    confidence. Surfaced = the injected set, EXCLUDING system_pointers: a pointer is UNSCORED (rank.ts treats it so
+  //    too), and a null confidence coerced to a high value would inflate max(relevance×confidence) into a false
+  //    "sufficient" that suppresses a warranted [Building] on an immature entity (#3 — err toward the honest [Building],
+  //    never over-state adequacy). A query whose only surfaced memory is a pointer therefore reads thin → [Building]
+  //    when the entity is immature, which is correct ("we hold a pointer, not yet asserted knowledge").
+  const surfaced: RetrievalSignal[] = ranked
+    .filter((r) => !isSystemPointer(r.candidate.memory))
+    .map((r) => ({ relevance: r.vectorSimilarity, confidence: r.candidate.memory.confidence ?? 0 }));
   const primaryMaturity = primaryEntityId === null ? null : await store.entityMaturity(primaryEntityId);
   const sufficiencyCfg: MaturityConfig = {
     expectedSlots: {},
@@ -199,8 +204,10 @@ export async function retrieve(store: RetrievalStore, req: RetrievalRequest): Pr
       droppedRestrictedAtInject: context.droppedRestricted,
     },
   });
+  const actorType = req.requester.path === 'human' ? 'user' : 'agent';
   for (const c of sensitiveToAudit) {
     await store.appendSensitiveAudit({
+      actorType,
       actorIdentity: req.actorIdentity,
       originatingUserId: req.originatingUserId,
       memoryId: c.memory.id,

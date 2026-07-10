@@ -23,12 +23,21 @@ test('entity-match — Jaccard overlap of task entities vs candidate entity_ids'
   assert.equal(entityMatchScore(new Set(['a']), []), 0, 'empty candidate side → 0');
 });
 
-test('vector-similarity — (cosine+1)/2 clamped to [0,1]', () => {
+test('vector-similarity — (cosine+1)/2 clamped to [0,1]; null (no vector score) → 0 on the term (OD-169)', () => {
   assert.equal(vectorSimilarityScore(1), 1);
-  assert.equal(vectorSimilarityScore(0), 0.5);
+  assert.equal(vectorSimilarityScore(0), 0.5, 'genuine orthogonal cosine 0 → 0.5');
   assert.equal(vectorSimilarityScore(-1), 0);
   assert.equal(vectorSimilarityScore(2), 1, 'clamp above');
   assert.equal(vectorSimilarityScore(-2), 0, 'clamp below');
+  assert.equal(vectorSimilarityScore(null), 0, 'NO vector score → 0 on the term, NOT the neutral 0.5');
+});
+
+test('a keyword-only candidate with no vector score scores 0 on the vector term (not the neutral 0.5)', () => {
+  const now = '2026-07-10T00:00:00.000Z';
+  const ctx = { taskEntityIds: new Set<string>(['e1']), nowIso: now, config: DEFAULT_RETRIEVAL_CONFIG };
+  const noScore: RetrievalCandidate = { memory: mkMemory({ id: 'ns', entity_ids: ['e1'], confidence: 0.8, created_at: now }), via: 'keyword', similarity: null };
+  const [scored] = scoreCandidates([noScore], ctx);
+  assert.equal(scored!.vectorSimilarity, 0, 'null similarity → 0 on the term');
 });
 
 function cand(m: Parameters<typeof mkMemory>[0], similarity: number): RetrievalCandidate {

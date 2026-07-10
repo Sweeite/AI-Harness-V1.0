@@ -102,6 +102,41 @@ test('AC-2.RET.006.1 — Restricted is audited but NEVER auto-injected, even for
   assert.equal(res.counts.sensitiveAudited, 1, 'the restricted candidate access WAS audited (FR-1.AUD.001)');
   assert.equal(store.sensitiveAudits.length, 1);
   assert.equal(store.sensitiveAudits[0]!.memoryId, 'r');
+  assert.equal(store.sensitiveAudits[0]!.actorType, 'user', 'human path audits as actor_type user, not a blanket system');
+});
+
+test('audit actor_type reflects the agent path', async () => {
+  const store = new InMemoryRetrievalStore();
+  store.seedEntities([acme]);
+  store.seedMemories([mkMemory({ id: 'p', entity_ids: ['e1'], embedding: axisVector(0), sensitivity: 'personal', confidence: 0.9 })]);
+  const agent: Requester = { path: 'agent', aal2: true, visibility: ['global', 'team', 'private'], clearances: [{ tier: 'personal', entityTypeScope: null }], restricted: [] };
+  await retrieve(store, baseReq({ requester: agent }));
+  assert.equal(store.sensitiveAudits[0]!.actorType, 'agent');
+});
+
+test('sufficiency — a thin query whose ONLY surfaced memory is a system_pointer still raises [Building] on an immature entity (pointer excluded from the sufficiency signal, #3)', async () => {
+  const store = new InMemoryRetrievalStore();
+  store.seedEntities([mkEntity({ id: 'e1', type: 'client', name: 'Acme Corp', maturity: 0.3 })]); // immature < 50%
+  // a weak-relatedness system_pointer (cosine ~0.24 → vectorSim ~0.62). If its null confidence were coerced to 1.0 it
+  // would score 0.62 ≥ 0.6 → false 'sufficient' and suppress [Building]. Excluded from the signal → thin → [Building].
+  const probe = axisVector(0);
+  const weak = probe.map((v, i) => (i === 0 ? 0.24 : i === 1 ? Math.sqrt(1 - 0.24 * 0.24) : 0));
+  store.seedMemories([mkMemory({ id: 'ptr', source: 'system_pointer', confidence: null, entity_ids: ['e1'], embedding: weak })]);
+  const res = await retrieve(store, baseReq({ queryEmbedding: probe }));
+  assert.equal(res.sufficiency.building, true, 'pointer does not falsely satisfy sufficiency → [Building] stands');
+  assert.equal(res.sufficiency.verdict, 'building');
+});
+
+test('raw arms — the fake keyword arm returns superseded/expired rows RAW; the pipeline is the sole filter', async () => {
+  const store = new InMemoryRetrievalStore();
+  store.seedEntities([acme]);
+  const superseded = mkMemory({ id: 'stale', entity_ids: ['e1'], embedding: axisVector(7), superseded_by: 'x', confidence: 0.99 });
+  store.seedMemories([superseded, mkMemory({ id: 'live', entity_ids: ['e1'], embedding: axisVector(7), confidence: 0.8 })]);
+  // the arm itself returns the superseded row (raw); the pipeline drops it so it never reaches the ranked/injected set.
+  const raw = await store.keywordArm({ entityIds: ['e1'], queryEmbedding: axisVector(0), vectorTopK: 20, efSearch: 40 });
+  assert.ok(raw.some((m) => m.id === 'stale'), 'the arm is raw (returns the superseded row)');
+  const res = await retrieve(store, baseReq());
+  assert.ok(!res.ranked.some((r) => r.candidate.memory.id === 'stale'), 'the pipeline candidate-filter drops it before ranking');
 });
 
 test('AC-2.RET.007.1 — thin retrieval on a low-Maturity entity raises [Building]', async () => {

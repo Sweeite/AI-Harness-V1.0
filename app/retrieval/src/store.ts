@@ -4,10 +4,16 @@
 // live pg adapter (supabase-store.ts) must match 1:1 (proven by the R10 smoke).
 //
 // The port is deliberately THIN — it returns RAW candidates (both arms) + the entity-type lookup + the observability
-// sinks. It does NOT apply clearance: the clearance-before-ranking filter (clearance.ts) runs IN-PROCESS over the port's
-// output, because the agent service_role path bypasses RLS and retrieval must be the authoritative filter (FR-2.RET.004).
-// The two arms return everything the SQL predicates (entity membership / vector top-k / candidate filters) admit; the
-// #2 clearance gate is the pipeline's job, never the store's.
+// sinks. It applies NEITHER clearance NOR the candidate filters:
+//   • clearance (FR-2.RET.004, the #2 gate) runs IN-PROCESS over the port's output — the agent service_role path
+//     bypasses RLS, so retrieval must be the authoritative clearance filter, never the store.
+//   • the candidate filters (FR-2.RET.003 — confidence floor / expiry / superseded) are ALSO the pipeline's job, applied
+//     UNIFORMLY to the union with the request's injected `nowIso` + the live CFG floor (candidate-filters.ts). The arms
+//     therefore push NOTHING down: the keyword arm returns raw entity-overlap rows, the vector arm the raw cosine top-k.
+//     This is a deliberate SINGLE-SOURCE-OF-TRUTH choice (R10): pushing an expiry/floor predicate into the SQL arm would
+//     re-introduce a second clock/threshold that could disagree with the pipeline's — a fake-vs-live divergence. One
+//     filter, one clock, one floor: the pipeline. (The keyword set is entity-scoped + small, so the handful of extra
+//     superseded/expired rows the pipeline then drops cost nothing.)
 
 import type { MemoryRow, EntityRow } from '../../memory/src/store.ts';
 
@@ -17,9 +23,11 @@ import type { MemoryRow, EntityRow } from '../../memory/src/store.ts';
 export interface RetrievalCandidate {
   memory: MemoryRow;
   via: 'keyword' | 'vector' | 'both';
-  /** cosine similarity to the query embedding, in [-1,1]. Present for every union candidate (the store computes it for
-   *  the whole union against the probe — the vector arm returns it natively, the keyword-only rows are scored by id). */
-  similarity: number;
+  /** cosine similarity to the query embedding, in [-1,1] — or `null` when the store could NOT produce a vector score
+   *  for this candidate (a keyword-only row similarityOf omits, or a degenerate embedding). Per OD-169 a candidate with
+   *  no vector score contributes 0 on the vector-similarity term (rank.ts) — distinct from a genuine cosine 0
+   *  (orthogonal), which maps to 0.5. The vector arm always returns a number; only the keyword-only fill can be null. */
+  similarity: number | null;
 }
 
 /** What the two search arms need: the resolved entity ids (keyword scope) + the task's query embedding (vector probe). */
@@ -44,6 +52,9 @@ export interface RetrievalEventSample {
 /** One access_audit row for a Personal/Restricted candidate the requester was cleared to see (FR-1.AUD.001 sink,
  *  ISSUE-021 owns the table). audit_type = 'sensitive_view'. */
 export interface SensitiveAccessAudit {
+  /** actor_type (access_audit enum: user|agent|system) — the human path records 'user' fidelity, the agent
+   *  service_role path 'agent'; NEVER a blanket 'system' (which would erase who saw a Personal/Restricted candidate). */
+  actorType: 'user' | 'agent' | 'system';
   actorIdentity: string;
   originatingUserId: string;
   memoryId: string;
@@ -56,13 +67,12 @@ export interface RetrievalStore {
   /** The entity snapshot the FR-2.RET.001 extraction resolves task mentions against (READ-ONLY — retrieval never
    *  creates an entity). The live adapter reads the entities table; the fake returns its seed. */
   resolutionSnapshot(): Promise<EntityRow[]>;
-  /** The KEYWORD arm: memories whose entity_ids intersect the query's entityIds, with the FR-2.RET.003 candidate
-   *  predicates PUSHED DOWN to SQL where cheap (the pipeline re-applies them uniformly regardless — defence in depth).
-   *  Returns raw rows (NO clearance filter — the pipeline owns #2). Empty entityIds → empty result. */
+  /** The KEYWORD arm: memories whose entity_ids intersect the query's entityIds. Returns RAW rows — NO candidate
+   *  filter, NO clearance filter (both are the pipeline's uniform job). Empty entityIds → empty result. */
   keywordArm(q: DualSearchQuery): Promise<MemoryRow[]>;
-  /** The VECTOR arm: the top-k memories by cosine over the ISSUE-023 HNSW index at ef_search, under the retrieval-
+  /** The VECTOR arm: the raw top-k memories by cosine over the ISSUE-023 HNSW index at ef_search, under the retrieval-
    *  session index-usage contract (supabase-store applies retrievalSessionSql before the `order by embedding <=> $probe`
-   *  query). Returns rows + their cosine similarity. NO clearance filter (pipeline owns #2). */
+   *  query). Returns rows + their cosine similarity. NO candidate filter, NO clearance filter (pipeline owns both). */
   vectorArm(q: DualSearchQuery): Promise<Array<{ memory: MemoryRow; similarity: number }>>;
   /** cosine similarity (in [-1,1]) of each named memory to the query probe — used to score keyword-only candidates the
    *  vector arm did not return (so every union candidate has a vector-similarity signal for ranking). */
@@ -95,11 +105,12 @@ export function cosineSimilarity(a: readonly number[], b: readonly number[]): nu
 }
 
 // ── In-memory reference fake ──────────────────────────────────────────────────────────────────────────────
-/** The fake holds a memory + entity snapshot and computes the two arms in-process, EXACTLY as the SQL does:
- *   • keyword arm = rows sharing >=1 entity id with the query, candidate-filtered.
- *   • vector arm  = top-k by cosine over ALL rows (the HNSW analogue), candidate-filtered.
- *  It applies the candidate filters (FR-2.RET.003) so it mirrors the pushed-down SQL, but NEVER clearance (the
- *  pipeline owns that). This makes a green offline suite predict live behaviour (R10). */
+/** The fake holds a memory + entity snapshot and computes the two arms in-process, EXACTLY as the live SQL does — RAW:
+ *   • keyword arm = rows sharing >=1 entity id with the query (no candidate filter).
+ *   • vector arm  = the top-k by cosine over ALL rows (the HNSW analogue; no candidate filter).
+ *  Neither arm applies the candidate filters OR clearance — both are the pipeline's uniform job (single source of
+ *  truth). The fake returning exactly what the live SQL returns at the arm boundary is what makes a green offline
+ *  suite predict live behaviour (R10). */
 export class InMemoryRetrievalStore implements RetrievalStore {
   readonly readEvents: RetrievalEventSample[] = [];
   readonly sensitiveAudits: SensitiveAccessAudit[] = [];

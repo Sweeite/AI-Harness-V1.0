@@ -143,17 +143,12 @@ export class SupabaseRetrievalStore implements RetrievalStore {
 
   async keywordArm(q: DualSearchQuery): Promise<MemoryRow[]> {
     if (q.entityIds.length === 0) return [];
-    // entity_ids && $1 = array overlap (the memories_entity_ids_gin index serves this). Candidate predicates are
-    // pushed down for cheapness; the pipeline re-applies them uniformly (defence in depth), so a drift can't leak a
-    // stale row. system_pointer (confidence null) is admitted here via the OR, mirroring OD-035.
-    const { rows } = await this.exec<MemoryDbRow>(
-      `select ${MEMORY_COLS} from memories
-        where entity_ids && $1
-          and superseded_by is null
-          and (expires_at is null or expires_at > $2)
-          and (source = 'system_pointer' or confidence >= $3)`,
-      [q.entityIds, new Date().toISOString(), 0], // floor 0 here; the pipeline applies the REAL CFG floor uniformly
-    );
+    // entity_ids && $1 = array overlap (the memories_entity_ids_gin index serves this). RAW — no candidate-filter
+    // push-down: the pipeline is the SINGLE candidate-filter authority (candidate-filters.ts with the request's nowIso +
+    // the live CFG floor). Pushing an expiry/floor predicate here would introduce a second clock/threshold that could
+    // disagree with the pipeline's — a fake-vs-live divergence (R10). The keyword set is entity-scoped + small, so
+    // returning the few extra superseded/expired rows the pipeline then drops costs nothing.
+    const { rows } = await this.exec<MemoryDbRow>(`select ${MEMORY_COLS} from memories where entity_ids && $1`, [q.entityIds]);
     return rows.map(toMemoryRow);
   }
 
@@ -218,8 +213,8 @@ export class SupabaseRetrievalStore implements RetrievalStore {
   async appendSensitiveAudit(a: SensitiveAccessAudit): Promise<void> {
     await this.exec(
       `insert into public.access_audit (audit_type, actor_identity, actor_type, action, originating_user_id, reason, path_context)
-       values ($1, $2, 'system', 'retrieval_candidate', $3, $4, $5)`,
-      [AUDIT_SENSITIVE_VIEW, a.actorIdentity, a.originatingUserId, `${a.sensitivity} memory ${a.memoryId} surfaced as a retrieval candidate`, a.pathContext],
+       values ($1, $2, $3, 'retrieval_candidate', $4, $5, $6)`,
+      [AUDIT_SENSITIVE_VIEW, a.actorIdentity, a.actorType, a.originatingUserId, `${a.sensitivity} memory ${a.memoryId} surfaced as a retrieval candidate`, a.pathContext],
     );
   }
 }

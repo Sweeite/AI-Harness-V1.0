@@ -49,8 +49,11 @@ export function entityMatchScore(taskEntityIds: ReadonlySet<string>, candidateEn
   return union === 0 ? 0 : inter / union;
 }
 
-/** vector-similarity signal = (cosine + 1)/2, clamped to [0,1] (a cosine is in [-1,1]; guard float drift). */
-export function vectorSimilarityScore(cosine: number): number {
+/** vector-similarity signal = (cosine + 1)/2, clamped to [0,1] (a cosine is in [-1,1]; guard float drift). A `null`
+ *  cosine means the store produced NO vector score → 0 on this term (OD-169: "or 0 on this term, symmetric to
+ *  entity-match"), distinct from a genuine cosine 0 (orthogonal) which maps to 0.5. */
+export function vectorSimilarityScore(cosine: number | null): number {
+  if (cosine === null) return 0;
   return Math.min(1, Math.max(0, (cosine + 1) / 2));
 }
 

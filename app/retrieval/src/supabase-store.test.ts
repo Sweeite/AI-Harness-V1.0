@@ -39,13 +39,11 @@ test('keywordArm — empty entityIds short-circuits (no query)', async () => {
   assert.equal(calls.length, 0, 'no SQL issued for an empty keyword scope');
 });
 
-test('keywordArm — array-overlap predicate + candidate push-down; maps the row', async () => {
+test('keywordArm — array-overlap predicate; maps the row (numeric confidence + pgvector)', async () => {
   const { exec, calls } = fakeExec((t) => (/from memories/.test(t) ? [dbMemory()] : []));
   const store = new SupabaseRetrievalStore('postgres://x?sslmode=disable', exec);
   const rows = await store.keywordArm({ entityIds: ['e1'], queryEmbedding: [1, 0], vectorTopK: 20, efSearch: 40 });
   assert.match(calls[0]!.text, /entity_ids && \$1/);
-  assert.match(calls[0]!.text, /superseded_by is null/);
-  assert.match(calls[0]!.text, /source = 'system_pointer' or confidence >=/);
   assert.equal(rows[0]!.confidence, 0.9, 'numeric confidence parsed');
   assert.deepEqual(rows[0]!.embedding, [1, 0, 0], 'pgvector string parsed');
 });
@@ -72,11 +70,22 @@ test('appendReadEvent — writes event_type memory_read to event_log', async () 
   assert.equal(calls[0]!.params[0], EVT_MEMORY_READ);
 });
 
-test('appendSensitiveAudit — writes audit_type sensitive_view to access_audit', async () => {
+test('appendSensitiveAudit — writes audit_type sensitive_view + the actor_type through (not a blanket system)', async () => {
   const { exec, calls } = fakeExec(() => []);
   const store = new SupabaseRetrievalStore('postgres://x?sslmode=disable', exec);
-  await store.appendSensitiveAudit({ actorIdentity: 'agent:x', originatingUserId: 'u1', memoryId: 'm1', entityIds: ['e1'], sensitivity: 'restricted', pathContext: null });
+  await store.appendSensitiveAudit({ actorType: 'user', actorIdentity: 'human:austin', originatingUserId: 'u1', memoryId: 'm1', entityIds: ['e1'], sensitivity: 'restricted', pathContext: null });
   assert.match(calls[0]!.text, /insert into public\.access_audit/);
   assert.equal(calls[0]!.params[0], AUDIT_SENSITIVE_VIEW);
-  assert.equal(calls[0]!.params[2], 'u1', 'originating_user_id attributed');
+  assert.equal(calls[0]!.params[2], 'user', 'actor_type reflects the human path (not hardcoded system)');
+  assert.equal(calls[0]!.params[3], 'u1', 'originating_user_id attributed');
+});
+
+test('keywordArm SQL is RAW (no candidate/expiry push-down) — single-clock, fake==live at the arm boundary', async () => {
+  const { exec, calls } = fakeExec((t) => (/from memories/.test(t) ? [dbMemory()] : []));
+  const store = new SupabaseRetrievalStore('postgres://x?sslmode=disable', exec);
+  await store.keywordArm({ entityIds: ['e1'], queryEmbedding: [1, 0], vectorTopK: 20, efSearch: 40 });
+  assert.match(calls[0]!.text, /where entity_ids && \$1/);
+  // no WHERE-clause candidate predicates (the SELECT list naturally contains the column NAMES; assert against predicates).
+  assert.doesNotMatch(calls[0]!.text, /superseded_by is null|expires_at >|expires_at is null|confidence >=/, 'no candidate/expiry/floor push-down (pipeline owns it)');
+  assert.equal(calls[0]!.params.length, 1, 'only the entityIds param — no wall-clock, no floor');
 });
