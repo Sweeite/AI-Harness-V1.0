@@ -2,9 +2,11 @@
 id: ISSUE-066
 title: Orchestrator learning + scope-aware result cache + cost-routing
 epic: H — agent design
-status: in-progress
+status: done
 github: "#66"
 ---
+
+> **✅ DONE (Session 85, 2026-07-10).** `app/learning-cache-cost/` — **33/33 · check green · R10 batch smoke PASS** (migration `0043` LIVE, head `0043`). Routing-learning + scope-aware result cache + cost-tier (feed-not-enforce). Adversarial-verify: 3 MINOR/NIT (cache `put` non-atomic → per-key advisory-lock txn, ADR-004; planOutcomes-vs-064-vocab MINOR carried, blocked on ISSUE-064's landed model). GitHub #66 CLOSED.
 
 # ISSUE-066 — Orchestrator learning + scope-aware result cache + cost-routing
 

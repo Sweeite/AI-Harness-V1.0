@@ -2,9 +2,11 @@
 id: ISSUE-026
 title: Ingestion filters + human review queue
 epic: C — memory
-status: in-progress
+status: done
 github: "#26"
 ---
+
+> **✅ DONE (Session 85, 2026-07-10).** `app/ingestion/` — **59/59 · check green · R10 batch smoke PASS** (migration `0041` LIVE, head `0043`). Two filters + human queue (log-every-decision, no silent exit) + three pipelines + the **no-backdoor invariant in code** (store exposes no memory-insert; the sole-writer gate refuses any un-gated route). Adversarial-verify: **1 BLOCKER + 2 MAJOR** fixed regression-test-first (Include/ingest marked items done on a non-committed write → lost #1/#3 → terminal only on commit, else held-for-retry + loud). Carries AF-043 (Filter-1 trust-window) + LIVE Haiku classifiers at deploy. GitHub #26 CLOSED.
 
 # ISSUE-026 — Ingestion filters + human review queue
 

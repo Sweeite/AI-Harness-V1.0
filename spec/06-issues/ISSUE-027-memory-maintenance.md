@@ -2,9 +2,11 @@
 id: ISSUE-027
 title: Memory maintenance lifecycle — decay / merge / supersede / expiry / erosion
 epic: C — memory
-status: in-progress
+status: done
 github: "#27"
 ---
+
+> **✅ DONE (Session 85, 2026-07-10).** `app/memory-maintenance/` — **40/40 · check green · R10 batch smoke PASS** (migration `0042` LIVE, head `0043`). Decay/merge/supersede/expiry/erosion + cadence scheduler (logs every run, #3). Adversarial-verify: **2 MAJOR** fixed (the under-review freeze was decay-only → supersede+merge could mutate memories under active human review, #2/#1 → both freeze contested slots; live under-review query was `pending`-only → now `state in ('pending','escalated')`). GitHub #27 CLOSED.
 
 # ISSUE-027 — Memory maintenance lifecycle — decay / merge / supersede / expiry / erosion
 
