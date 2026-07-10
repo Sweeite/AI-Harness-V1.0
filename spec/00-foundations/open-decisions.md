@@ -2904,7 +2904,7 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-## OD-203 — Model-call SDK layer: Vercel AI SDK (design-doc primary) vs direct `@anthropic-ai/sdk` + `openai` (ADR-009 implicit) 🟡 OPEN (surfaced by operator recall in a status review, 2026-07-10)
+## OD-203 — Model-call SDK layer: Vercel AI SDK (design-doc primary) vs direct `@anthropic-ai/sdk` + `openai` (ADR-009 implicit) 🟢 RESOLVED → ADR-012 (operator chose the Vercel AI SDK, 2026-07-10)
 
 - **Surfaced by:** operator recall during a status review — *"were we not using the Vercel AI SDK for the AI agent?"* A repo check (Rule 0) confirmed a genuine, unreconciled drift between the design doc and the locked stack ADR.
 - **The discrepancy (both cited):**
@@ -2916,7 +2916,8 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
   - **(A) Adopt the Vercel AI SDK** as the design doc intended (primary unified interface + Anthropic SDK alongside for Claude-only features). Keeps per-task model routing out-of-the-box; amend ADR-009 to name it.
   - **(B) Ratify the direct SDKs** (`@anthropic-ai/sdk` + `openai`) that ADR-009 implicitly chose and the cost spike already used. One fewer dependency, simpler; supersede design-doc L51 explicitly and note the routing abstraction is built in-house.
 - **Recommendation:** 🟡 operator's call. Lean **(A) Vercel AI SDK** *iff* first-class per-task model routing / provider-swap flexibility is wanted out-of-the-box (it is the design-doc intent and directly serves the cost-ladder routing); otherwise **(B)** is simpler and already proven in the ISSUE-001 spike. **Decide before the first real model-client adapter is wired** (likely at ISSUE-053 run-pipeline assembly or the orchestrator's live path, whichever lands first). Whichever wins: amend ADR-009 to name it and annotate design-doc L51 as reconciled.
-- **Status:** 🟡 OPEN — owed before the first real model-client adapter is built (ISSUE-053 / orchestrator live path). Blocks nothing built to date (all model calls are behind ports/fakes). Note: the ADR-009 **language** decision (TypeScript on Node) stands regardless — only the model-call **SDK layer** is under review.
+- **Resolution (2026-07-10, operator):** chose **(A) — the Vercel AI SDK** (design-doc intent). The model-call layer is the **Vercel AI SDK as the primary unified interface + the Anthropic SDK alongside** for Claude-specific features (extended thinking, citations); `openai` is retained for **embeddings** only. Reason: per-task model routing / provider-swap as a first-class abstraction is load-bearing for the C8 orchestrator routing + the cost ladder, and adopting it now (before any real model adapter exists) costs nothing already shipped. Recorded via change-control as **[[ADR-012]]**, which supersedes the **model-call SDK-layer portion of ADR-009 only** (ADR-009's TypeScript/Node language decision is unchanged). The ISSUE-001 cost spike's direct-SDK usage is historical/throwaway and left as-is (AF-001 economics unchanged — the AI SDK is a thin layer over the same provider APIs). **Verification owed (not yet proven):** when the first real model-client adapter is built (ISSUE-053 / orchestrator live path), confirm the AI SDK cleanly expresses the Anthropic-specific escape-hatch calls + the cost-ladder model-downgrade routing (flagged in ADR-012; no new AF minted).
+- **Status:** 🟢 RESOLVED → ADR-012. Unblocks the model-client adapter target for ISSUE-053 / the orchestrator live path.
 
 ---
 
