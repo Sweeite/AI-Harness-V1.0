@@ -2,7 +2,7 @@
 id: ISSUE-028
 title: Conflict quarantine + consolidation approval
 epic: C — memory
-status: blocked
+status: ready
 github: "#28"
 ---
 

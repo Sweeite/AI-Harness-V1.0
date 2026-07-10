@@ -2,9 +2,25 @@
 id: ISSUE-025
 title: Retrieval + ranking + clearance-before-ranking + answer modes
 epic: C — memory
-status: ready
+status: done
 github: "#25"
 ---
+
+> **✅ DONE (Session 84, 2026-07-10).** Built `app/retrieval/` (`@harness/retrieval`) — the Stage-7 GATE. **54/54 offline
+> tests · typecheck clean · `check` gate green (read-path only, no migration) · R10 live-adapter smoke 13/13 PASS vs the
+> live silo (rolled back, silo verified clean).** Pipeline in the one #2-safe order: entity extraction (FR-2.RET.001,
+> read-only resolution reuse) → dual search keyword∪vector (FR-2.RET.002) → uniform candidate filters + system_pointer
+> admission (FR-2.RET.003, OD-035) → **clearance-BEFORE-ranking (FR-2.RET.004)** realising the live `0031
+> memories_clearance_read` predicate in code (the agent service_role path bypasses RLS → retrieval is the authoritative
+> #2 filter) + OD-081 agent-scope narrowing → OD-169 ranking (recency half-life / Jaccard / cosine→[0,1] / procedural
+> boost) + top-N (FR-2.RET.005) → Restricted-never-auto-inject hard guard (FR-2.RET.006) → sufficiency/[Building]
+> signals reusing `@harness/maturity` (FR-2.RET.007). **5-lens adversarial-verify fan-out: clearance-leak lens EMPTY**
+> (no out-of-clearance memory reaches any output); 1 MAJOR (keyword-arm two-clock R10 divergence → both arms now RAW,
+> pipeline is the single candidate-filter authority) + 3 MINOR/NIT (OD-169 no-score→0 · pointer excluded from
+> sufficiency · audit actor_type from path), all fixed regression-test-first. **Ship gates 🟢 AF-067 + 🟢 AF-019;
+> carries 🔴 AF-002 (real-corpus NN-ranking recall) as the load-bearing fast-follow quality residual.** Evidence:
+> `app/retrieval/results/r10-evidence.2026-07-10.md`. GitHub #25 CLOSED. **Checkpoint 7 stays OPEN** (closes after the
+> Stage-7 batch + integration test).
 
 > **§7 cleared (Session 82):** both blockers are `done` — ISSUE-020 (S76) + ISSUE-023 (S82) — so this Stage-7 GATE is `ready`.
 > ⚠️ **R1 still governs the actual build-open:** Stage 7 opens only after **Checkpoint 6** is GREEN (`023` ✅ + `024` the sole-writer

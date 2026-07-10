@@ -2,7 +2,7 @@
 id: ISSUE-029
 title: Compliance erasure walk (memory-side transitive delete)
 epic: C — memory
-status: blocked
+status: ready
 github: "#29"
 ---
 

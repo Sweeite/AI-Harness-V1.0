@@ -2,7 +2,7 @@
 id: ISSUE-027
 title: Memory maintenance lifecycle — decay / merge / supersede / expiry / erosion
 epic: C — memory
-status: blocked
+status: ready
 github: "#27"
 ---
 

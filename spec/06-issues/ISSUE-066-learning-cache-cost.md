@@ -2,7 +2,7 @@
 id: ISSUE-066
 title: Orchestrator learning + scope-aware result cache + cost-routing
 epic: H — agent design
-status: blocked
+status: ready
 github: "#66"
 ---
 
