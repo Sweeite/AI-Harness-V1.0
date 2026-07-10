@@ -7,6 +7,13 @@
   spec effort but was **never written to a file with an ID** (Rule-0 gap, caught building ISSUE-001).
 - **Affects:** every build issue (ISSUE-001–086); the language of all harness/connector/RLS/loop
   code; the SDKs used for vendor calls in the ISSUE-001 cost spike.
+- **⚠️ Contested (2026-07-10) — see [[OD-203]] (OPEN):** the design doc (`design-doc-v4.md` L51)
+  named the **Vercel AI SDK** as the *primary* model-call layer (Anthropic SDK alongside); this
+  ADR's Decision below chose the direct `@anthropic-ai/sdk` + `openai` SDKs and dropped the Vercel
+  AI SDK without reconciliation. The **language decision (TypeScript on Node) stands regardless** —
+  only the **model-call SDK layer** is under review. Nothing built to date commits to either choice
+  (all model calls are behind ports/fakes; the sole real dependency is the ISSUE-001 spike). Resolve
+  OD-203 before the first real model-client adapter is wired, then update this ADR's Decision to match.
 
 ## Context
 
