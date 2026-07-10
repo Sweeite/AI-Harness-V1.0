@@ -9,6 +9,18 @@ import { runSupersedeSafetyNet } from './supersede.ts';
 const NOW = Date.parse('2026-07-10');
 const T = (daysAgo: number) => new Date(NOW - daysAgo * 24 * 60 * 60 * 1000).toISOString();
 
+test('freeze — a slot with a memory under active human review is NOT superseded (#2 gate bypass / #1 contested drift)', async () => {
+  const store = new InMemoryMaintenanceStore();
+  const older = InMemoryMaintenanceStore.memory({ type: 'semantic', content: 'budget is $10k', entity_ids: ['e1'], content_hash: 'h-old', created_at: T(5) });
+  const newer = InMemoryMaintenanceStore.memory({ type: 'semantic', content: 'budget is $25k', entity_ids: ['e1'], content_hash: 'h-new', created_at: T(1) });
+  store.seedMemories([older, newer]);
+  store.seedUnderReview([older.id]); // a human is resolving a conflict touching this slot
+  const res = await runSupersedeSafetyNet(store, NOW);
+  assert.deepEqual(res.supersededIds, [], 'the contested slot is left untouched for the human');
+  const all = await store.listMemories();
+  assert.equal(all.find((m) => m.id === older.id)!.superseded_by, null, 'the under-review memory is NOT superseded');
+});
+
 test('AC-2.MNT.006.1 — a contradiction missed at write time is caught daily: the older memory is superseded, chain intact', async () => {
   const store = new InMemoryMaintenanceStore();
   const older = InMemoryMaintenanceStore.memory({ type: 'semantic', content: 'budget is $10k', entity_ids: ['e1'], content_hash: 'h-old', created_at: T(5) });

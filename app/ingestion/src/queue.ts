@@ -153,6 +153,21 @@ export class IngestionQueue {
       provenance: { relevance: 'passed', sensitivity: 'included', includedBy: input.reviewer },
     });
 
+    // #1/#3 — the row becomes terminal 'included' ONLY when the sole writer actually COMMITTED. A non-commit
+    // (deferred_rate_limited / halted_embed_failure) must NEVER mark the item done: the candidate would be silently
+    // lost + unrecoverable. On a non-commit the row stays ACTIONABLE (unchanged) so a re-Include (or auto-retry)
+    // re-attempts the write, and the deferral is surfaced LOUDLY (never a silent no-op). The reviewer's Include intent
+    // is preserved, not consumed.
+    if (outcome.kind !== 'committed') {
+      await this.deps.observ.filterDecision({
+        filter: 'sensitivity',
+        verdict: 'include_write_deferred',
+        reason: outcome.reason,
+        targetEntityId: row.target_entity_id,
+      });
+      return { row, outcome };
+    }
+
     const at = input.nowIso ?? new Date().toISOString();
     const updated = await this.deps.store.transition(row.id, {
       state: 'included',
@@ -172,6 +187,22 @@ export class IngestionQueue {
       tier: input.tier,
     });
     return { row: updated, outcome };
+  }
+
+  /** A clean item whose sole-writer write did NOT commit (rate-limited / embed halt) — HELD in the queue (state=pending)
+   *  for retry, never lost (#1). Used by ingestCandidate so a deferred clean write is not falsely reported 'written'. */
+  async holdForRetry(input: ShadowRetainInput & { reason: string }): Promise<QueueRow> {
+    const row = await this.deps.store.enqueue({
+      content: input.content,
+      source_ref: input.sourceRef,
+      flag_reason: 'write_deferred',
+      suggested_tier: null,
+      target_entity_id: input.targetEntityId,
+      state: 'pending',
+      created_at: input.createdAt,
+    });
+    await this.deps.observ.filterDecision({ filter: 'sensitivity', verdict: 'write_deferred', reason: input.reason, targetEntityId: input.targetEntityId });
+    return row;
   }
 
   /** Exclude: discard permanently, reason logged (who/when/why) — the memory is never written (AC-2.ING.003.1). */

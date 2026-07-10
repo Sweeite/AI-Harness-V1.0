@@ -32,7 +32,8 @@ export type IngestResult =
   | { kind: 'dropped'; reason: string } // Filter 1 live-discard (post-graduation): no write, no Sonnet cost
   | { kind: 'shadow_retained'; row: QueueRow } // Filter 1 would-drop retained during the trust window (never lost)
   | { kind: 'held'; row: QueueRow } // Filter 2 flagged → held in the queue for a human (never auto-written)
-  | { kind: 'written'; outcome: WriteOutcome }; // clean → routed through the sole writer
+  | { kind: 'written'; outcome: WriteOutcome } // clean → routed through the sole writer AND the write COMMITTED
+  | { kind: 'write_incomplete'; outcome: WriteOutcome; row: QueueRow }; // clean, but the write did NOT commit → HELD for retry (never lost, #1)
 
 /** Run one candidate through the standard write flow. The ONLY memory-producing branch is the clean-pass route through
  *  the no-backdoor gate; every other branch drops, retains, or holds — nothing reaches `memories` un-gated (#2). */
@@ -84,6 +85,19 @@ export async function ingestCandidate(event: CandidateEvent, ctx: IngestContext,
     task: ctx.task,
     provenance: { relevance: 'passed', sensitivity: 'clean' },
   });
+  // #1/#3 — only report 'written' when the sole writer actually COMMITTED. A deferred_rate_limited / halted_embed_failure
+  // outcome means NOTHING reached `memories`; the clean item must not be reported written (and thereby lost). Hold it in
+  // the queue for retry so a rate-limited or embed-failed chunk survives and re-attempts (never a silent loss).
+  if (outcome.kind !== 'committed') {
+    const row = await deps.queue.holdForRetry({
+      content: event.content,
+      sourceRef: event.sourceRef,
+      targetEntityId: event.targetEntityId ?? null,
+      createdAt: ctx.createdAt,
+      reason: outcome.reason,
+    });
+    return { kind: 'write_incomplete', outcome, row };
+  }
   return { kind: 'written', outcome };
 }
 

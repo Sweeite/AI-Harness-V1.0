@@ -11,6 +11,19 @@ const CFG = DEFAULT_MAINTENANCE_CONFIG;
 const NOW = Date.parse('2026-07-10');
 const T = (daysAgo: number) => new Date(NOW - daysAgo * 24 * 60 * 60 * 1000).toISOString();
 
+test('freeze — a memory under active human review is NOT merged/superseded (its live twin is left alone too)', async () => {
+  const store = new InMemoryMaintenanceStore();
+  const a = InMemoryMaintenanceStore.memory({ type: 'semantic', content: 'client is in Austin', entity_ids: ['e1'], sensitivity: 'standard', created_at: T(10) });
+  const b = InMemoryMaintenanceStore.memory({ type: 'semantic', content: 'client based in Austin TX', entity_ids: ['e1'], sensitivity: 'standard', created_at: T(3) });
+  store.seedMemories([a, b]);
+  store.seedUnderReview([a.id]); // a is contested — a human is resolving it
+  const res = await runMerge(store, CFG, NOW);
+  assert.equal(res.merged.length, 0, 'no merge while the slot is under review');
+  const all = await store.listMemories();
+  assert.equal(all.find((m) => m.id === a.id)!.superseded_by, null, 'the contested memory is untouched');
+  assert.equal(all.find((m) => m.id === b.id)!.superseded_by, null, 'its live twin is not mutated either');
+});
+
 test('AC-2.MNT.005.1 — two ≥0.92-similar Standard memories collapse into one richer memory (evidence preserved via the chain)', async () => {
   const store = new InMemoryMaintenanceStore();
   const a = InMemoryMaintenanceStore.memory({ type: 'semantic', content: 'client is in Austin', entity_ids: ['e1'], sensitivity: 'standard', created_at: T(10) });

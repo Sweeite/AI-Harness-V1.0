@@ -36,6 +36,11 @@ function slotKey(m: MemoryRow): string {
  */
 export async function runSupersedeSafetyNet(store: MaintenanceStore, nowMs: number, judge: ContradictionJudge = DEFAULT_JUDGE): Promise<SupersedeRunResult> {
   const memories = await store.listMemories();
+  // Freeze against active human review (#2 gate bypass / #1 contested-knowledge drift): a slot with a memory in an
+  // unresolved conflict is being decided BY A HUMAN — the automated safety-net must not supersede or quarantine within
+  // it until they resolve it. Skipping the whole slot (not just the one member) is deliberate: superseding the OTHER
+  // member of a contested pair is the same drift.
+  const underReview = await store.underReviewMemoryIds();
   const nowIso = new Date(nowMs).toISOString();
   const live = memories.filter((m) => isLiveMemory(m, nowMs));
 
@@ -53,6 +58,8 @@ export async function runSupersedeSafetyNet(store: MaintenanceStore, nowMs: numb
     // distinct content only — an exact duplicate is idempotency's job, not a contradiction.
     const distinct = dedupeByContentHash(group);
     if (distinct.length < 2) continue;
+    // FREEZE: skip the whole slot if any member is under active human review (never mutate contested knowledge).
+    if (distinct.some((m) => underReview.has(m.id))) continue;
     // newest survives; sort ascending by created_at so the last is the survivor.
     distinct.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
     const survivor = distinct[distinct.length - 1]!;

@@ -95,19 +95,36 @@ export class SupabaseCacheStore implements CacheStore {
   }
 
   async put(entry: CacheEntry): Promise<void> {
-    // Replace any entry on the SAME scope-aware key, then insert (the scope-aware upsert). Done in one statement pair
-    // so a concurrent reader never sees zero rows for a live key it just held.
-    await this.exec(
-      `delete from agent_result_cache
-        where agent_id = $1 and memory_version = $2
-          and scope_entity_ids @> $3::uuid[] and scope_entity_ids <@ $3::uuid[]`,
-      [entry.agent_id, entry.memory_version, [...entry.scope_entity_ids]],
-    );
-    await this.exec(
-      `insert into agent_result_cache (agent_id, scope_entity_ids, memory_version, output, expires_at, created_at)
-       values ($1, $2::uuid[], $3, $4::jsonb, $5::timestamptz, $6::timestamptz)`,
-      [entry.agent_id, [...entry.scope_entity_ids], entry.memory_version, JSON.stringify(entry.output), entry.expires_at, entry.created_at],
-    );
+    // Scope-aware upsert: replace any entry on the SAME scope-aware key, then insert. The DELETE+INSERT must be ATOMIC
+    // per key — under READ COMMITTED two concurrent puts for one key would both DELETE (see nothing), both INSERT, and
+    // leave TWO rows for a single scope-aware key. There is no natural unique constraint (the key is a SET over an array
+    // column, not order-stable), so we serialize per key with a transaction-scoped ADVISORY LOCK (the house ADR-004
+    // pattern): concurrent puts for the same (agent, version, scope-set) queue instead of racing. Keyed on a stable hash
+    // of agent_id + memory_version + the SORTED scope ids (sorted → order-independent, matching find()'s set-equality).
+    const lockKey = `lrn-cache:${entry.agent_id}:${entry.memory_version}:${[...entry.scope_entity_ids].sort().join(',')}`;
+    const client = this.pool ? await this.pool.connect() : null;
+    const exec: QueryExec = client ? ((t, p) => client.query(t as string, p) as any) : this.exec;
+    try {
+      if (client) await client.query('begin');
+      await exec(`select pg_advisory_xact_lock(hashtextextended($1, 0))`, [lockKey]);
+      await exec(
+        `delete from agent_result_cache
+          where agent_id = $1 and memory_version = $2
+            and scope_entity_ids @> $3::uuid[] and scope_entity_ids <@ $3::uuid[]`,
+        [entry.agent_id, entry.memory_version, [...entry.scope_entity_ids]],
+      );
+      await exec(
+        `insert into agent_result_cache (agent_id, scope_entity_ids, memory_version, output, expires_at, created_at)
+         values ($1, $2::uuid[], $3, $4::jsonb, $5::timestamptz, $6::timestamptz)`,
+        [entry.agent_id, [...entry.scope_entity_ids], entry.memory_version, JSON.stringify(entry.output), entry.expires_at, entry.created_at],
+      );
+      if (client) await client.query('commit');
+    } catch (e) {
+      if (client) await client.query('rollback').catch(() => {});
+      throw e;
+    } finally {
+      client?.release();
+    }
   }
 
   async invalidateIntersecting(writtenEntityIds: readonly string[]): Promise<string[]> {

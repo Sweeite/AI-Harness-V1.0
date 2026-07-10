@@ -16,7 +16,10 @@ test('runCheck: no schema/config drift — the gate is GREEN now (findings empty
   assert.deepEqual(findings, [], `unexpected memory-maintenance check drift: ${findings.map((f) => `[${f.gate}] ${f.message}`).join('; ')}`);
 });
 
-test('runCheck: the pending set is EXACTLY the four additive maintenance event_type values', () => {
+test('runCheck: the four additive maintenance event_type values are now REGISTERED (migration 0042 authored) → pending empty', () => {
   const { pending } = runCheck();
-  assert.deepEqual([...pending].sort(), [...MAINTENANCE_EVENT_TYPES].sort(), 'a forgotten additive registration would surface here');
+  // Migration 0042_memory_maintenance_event_types.sql (Session 85) registers all four values, so none is pending; the
+  // constant is still the single source of truth the check reads them from (a forgotten one would resurface here).
+  assert.deepEqual([...pending].sort(), [], 'all four values are in the migration corpus (0042) — none pending');
+  assert.equal(MAINTENANCE_EVENT_TYPES.length, 4, 'the constant still declares exactly the four values');
 });

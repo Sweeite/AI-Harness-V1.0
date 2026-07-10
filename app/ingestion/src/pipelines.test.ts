@@ -26,6 +26,20 @@ test('AC-2.ING.006.1: Pipeline 1 creates entities WITH external_refs and never c
   }
 });
 
+// ── #1/#3 regression — a clean chunk whose write does NOT commit is HELD for retry, never reported 'written' ────
+test('Pipeline 2: a rate-limited writer yields write_incomplete (held for retry), NOT written — the chunk is not lost', async () => {
+  const s = makeStack({}, () => ({ kind: 'deferred_rate_limited', reason: 'CFG-rate_limit_memory_writes_per_minute reached' }));
+  const report = await runPipeline2(
+    { text: 'Acme is a growth-plan retainer client with a Q3 renewal in negotiation.', sourceRef: 'doc:1', targetEntityId: 'ent-1', entityRefs: ['ent-1'] },
+    { task: taskAuthz() },
+    s.deps,
+  );
+  assert.equal(report.written, 0, 'nothing is reported written — the write did not commit');
+  assert.ok(report.writeIncomplete >= 1, 'the deferred chunk is surfaced as write_incomplete (honest, #3)');
+  const held = (await s.store.listActionable()).filter((r) => r.flag_reason === 'write_deferred');
+  assert.ok(held.length >= 1, 'the deferred clean chunk is held in the queue for retry (never lost, #1)');
+});
+
 // ── AC-2.ING.007.1 — Pipeline 2 chunks at the configured size, passes both filters, stores via the writer ──────
 test('chunkText splits at the configured size with overlap', () => {
   const text = Array.from({ length: 25 }, (_, i) => `w${i}`).join(' ');

@@ -67,9 +67,10 @@ export interface DocumentInput {
 export interface Pipeline2Report {
   chunks: number;
   chunkSizeTokens: number;
-  written: number;
-  held: number;
-  dropped: number;
+  written: number; // clean chunks whose sole-writer write COMMITTED
+  held: number; // Filter-2 flagged chunks awaiting a human decision
+  dropped: number; // Filter-1 live-discards (no write)
+  writeIncomplete: number; // clean chunks whose write deferred/halted → HELD for retry (never lost, #1) — surfaced, not buried in `dropped`
   results: IngestResult[];
   /** The mandatory human verification pass ran after storage (FR-2.ING.007 happy path). */
   verificationPassRun: boolean;
@@ -99,6 +100,7 @@ export async function runPipeline2(doc: DocumentInput, ctx: IngestContext, deps:
   let written = 0;
   let held = 0;
   let dropped = 0;
+  let writeIncomplete = 0;
   for (const chunk of chunks) {
     const event: CandidateEvent = {
       content: chunk,
@@ -110,9 +112,10 @@ export async function runPipeline2(doc: DocumentInput, ctx: IngestContext, deps:
     results.push(res);
     if (res.kind === 'written') written++;
     else if (res.kind === 'held') held++;
+    else if (res.kind === 'write_incomplete') writeIncomplete++;
     else dropped++;
   }
-  return { chunks: chunks.length, chunkSizeTokens: size, written, held, dropped, results, verificationPassRun: true };
+  return { chunks: chunks.length, chunkSizeTokens: size, written, held, dropped, writeIncomplete, results, verificationPassRun: true };
 }
 
 // ── Pipeline 3: tacit-knowledge interviews (three structured sessions) ────────────────────────────────────────────

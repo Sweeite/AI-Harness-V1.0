@@ -67,8 +67,12 @@ export function mergeCandidate(a: MemoryRow, b: MemoryRow, cfg: MaintenanceConfi
  */
 export async function runMerge(store: MaintenanceStore, cfg: MaintenanceConfig, nowMs: number): Promise<MergeRunResult> {
   const memories = await store.listMemories();
+  // Freeze against active human review: never merge/supersede a memory that is in an unresolved conflict (#2 gate
+  // bypass / #1 contested-knowledge drift) — a human is deciding it. Excluded from the live candidate set entirely, so
+  // it is not a merge partner either (merging its still-live twin would mutate the contested slot).
+  const underReview = await store.underReviewMemoryIds();
   const nowIso = new Date(nowMs).toISOString();
-  const live = memories.filter((m) => isLiveMemory(m, nowMs));
+  const live = memories.filter((m) => isLiveMemory(m, nowMs) && !underReview.has(m.id));
   const consumed = new Set<string>();
 
   const merged: Array<{ mergedId: string; sourceIds: string[] }> = [];

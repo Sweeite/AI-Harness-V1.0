@@ -31,6 +31,33 @@ test('AC-2.ING.003.1: an Exclude with no reason is refused (a logged decision mu
   await assert.rejects(() => s.queue.exclude({ queueId: row.id, reviewer: 'admin-7', reason: '  ' }), QueueDecisionError);
 });
 
+// ── #1/#3 regression — Include must NOT mark terminal when the sole writer did not commit ──────────────────────
+test('Include with a deferred (rate-limited) write does NOT mark the row included — it stays actionable for retry (#1)', async () => {
+  const s = makeStack({}, () => ({ kind: 'deferred_rate_limited', reason: 'CFG-rate_limit_memory_writes_per_minute reached' }));
+  const row = await seedFlagged(s);
+  const { row: after, outcome } = await s.queue.include({ queueId: row.id, tier: 'confidential', reviewer: 'admin-7', task: taskAuthz(), nowIso: '2026-07-10T00:00:00.000Z' });
+  assert.equal(outcome.kind, 'deferred_rate_limited', 'the non-commit outcome is surfaced to the caller');
+  assert.equal(after.state, 'pending', 'the row is NOT terminal — the candidate is not lost');
+  assert.equal(s.store.audits.some((a) => a.action === 'include'), false, 'no include audit was written for a non-commit');
+  assert.ok(s.observ.filterDecisions.some((d) => d.verdict === 'include_write_deferred'), 'the deferral is surfaced loudly (#3)');
+});
+
+test('Include with an embed-halt write also stays actionable (never silently consumed)', async () => {
+  const s = makeStack({}, () => ({ kind: 'halted_embed_failure', reason: 'draft 0 embed failed', failedDraftIndex: 0 }));
+  const row = await seedFlagged(s);
+  const { row: after } = await s.queue.include({ queueId: row.id, tier: 'confidential', reviewer: 'admin-7', task: taskAuthz() });
+  assert.equal(after.state, 'pending');
+});
+
+test('Include that COMMITS marks the row included + writes the include audit (the happy path still holds)', async () => {
+  const s = makeStack(); // default gate commits
+  const row = await seedFlagged(s);
+  const { row: after, outcome } = await s.queue.include({ queueId: row.id, tier: 'confidential', reviewer: 'admin-7', task: taskAuthz(), nowIso: '2026-07-10T00:00:00.000Z' });
+  assert.equal(outcome.kind, 'committed');
+  assert.equal(after.state, 'included');
+  assert.ok(s.store.audits.some((a) => a.action === 'include'));
+});
+
 // ── AC-2.ING.003.2 — a queued item leaves the queue ONLY via a logged Include/Exclude/Defer ─────────────────────
 test('AC-2.ING.003.2: a terminal (excluded) row cannot be silently re-decided — the only exit was the logged decision', async () => {
   const s = makeStack();

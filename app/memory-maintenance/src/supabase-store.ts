@@ -156,8 +156,12 @@ export class SupabaseMaintenanceStore implements MaintenanceStore {
     return rows.map(toQueueRow);
   }
   async underReviewMemoryIds(): Promise<Set<string>> {
-    // The live memories currently referenced by a PENDING hard-conflict (memory_conflicts) — frozen against decay.
-    const { rows } = await this.exec<{ conflicting_memory_ids: string[] }>(`select conflicting_memory_ids from memory_conflicts where state = 'pending'`);
+    // The live memories currently referenced by an UNRESOLVED conflict (memory_conflicts) — frozen against every
+    // automated mutation. Both 'pending' AND 'escalated' are under active human review (mem_review_state becomes
+    // 'resolved' only when a human closes it); an escalated conflict is MORE contested, not less, so excluding it would
+    // let the daily jobs decay/supersede/merge a memory precisely while a human is still deciding it (#2 gate bypass /
+    // #1 contested-knowledge drift). Only a 'resolved' conflict releases the freeze.
+    const { rows } = await this.exec<{ conflicting_memory_ids: string[] }>(`select conflicting_memory_ids from memory_conflicts where state in ('pending','escalated')`);
     const out = new Set<string>();
     for (const r of rows) for (const id of r.conflicting_memory_ids ?? []) out.add(id);
     return out;
