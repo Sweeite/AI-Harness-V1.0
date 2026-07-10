@@ -5,6 +5,24 @@ next session reads the top entry to know exactly where to resume.
 
 ---
 
+## Session 84 — 2026-07-10 — 🌩️📋 **STATUS REVIEW + CHANGE-CONTROL: caught an unreconciled stack drift → logged OD-203 → operator resolved it → ADR-012 supersedes the model-call SDK-layer portion of ADR-009 (Vercel AI SDK primary).**
+
+**Environment:** 🌩️ CLOUD (offline-safe: spec/doc edits + git only; no live infra). A status-review conversation, not a build session.
+
+**What happened:** answering "what's built / is this really a business-brain foundation / what's the tech stack," a repo check (Rule 0) surfaced a genuine **silent drift**: the design doc (`design-doc-v4.md` L51) named the **Vercel AI SDK** as the *primary* model-call layer, but **ADR-009** (Accepted) had quietly chosen the direct `@anthropic-ai/sdk` + `openai` SDKs and dropped it with no OD/OOS/supersede note. Nothing built to date commits to either choice — all model calls are behind injected ports + in-memory fakes; the only real SDK dependency is the throwaway ISSUE-001 cost spike.
+
+**Change-control trail (two PRs, both to `main`):**
+1. **OD-203 logged** (🟡 OPEN, both options + recommendation) + a "Contested" banner on ADR-009. **PR #91 → merged** (`ead5597`).
+2. **Operator chose (A) the Vercel AI SDK.** Per change-control (Accepted ADRs are immutable → supersede, don't rewrite): **authored [[ADR-012]]** (Vercel AI SDK primary unified interface + Anthropic SDK alongside for Claude-specific features; `openai` retained for embeddings) which **supersedes the SDK-layer portion of ADR-009 ONLY** — ADR-009's TypeScript/Node **language decision is unchanged**. Updated ADR-009's banner → "amended by ADR-012 🟢", the ADR index README (ADR-012 row + ADR-009 annotation), and **OD-203 → 🟢 RESOLVED**. *(This second PR carries these edits.)*
+
+**Verification owed (paper-not-proven, flagged in ADR-012, no new AF minted):** when the first real model-client adapter is built (**ISSUE-053** / orchestrator live path), confirm the AI SDK cleanly expresses (a) Anthropic-specific extended-thinking/citation calls via the escape hatch and (b) the cost-ladder model-downgrade routing.
+
+**Build status UNCHANGED:** still Stage-6 done / Checkpoint 6 closed / **Stage 7 (Retrieval, gate `025`) open, not entered.** No issue frontmatter, BUILD-SCHEDULE box, or GitHub-mirror state changed — this session touched only foundations (ADR/OD/index/log). Concurrent session was mid-flight on another branch; this branch was restarted fresh from `main` after PR #91 merged (no stacking on merged history). **Next step unchanged:** build Stage-7 gate `025` (clearance-before-ranking), now targeting the Vercel AI SDK model layer.
+
+**Note for the next session — the `open-decisions.md` "Next OD number" marker is at OD-204;** if a concurrent session also logged an OD this session, expect a one-line marker conflict at merge (trivial renumber).
+
+---
+
 ## Session 83 — 2026-07-10 — 🌙🖥️ **AUTONOMOUS OVERNIGHT: STAGE-6 BATCH BUILT + CLOSED → CHECKPOINT 6 CLOSED → STAGE 7 OPEN (not entered). All four batch members `024`/`030`/`054`/`067` `done` via a parallel fan-out workflow + a serial live/tracker pass. Migrations `0039`/`0040` applied LIVE (silo head `0038→0040`); R10 smokes green (024, 030); 054/067 R10 N/A. Checkpoint 6 verified by a 4-perspective fan-out (integration/#1 · R7 · sweep 1396/0 · self-sufficiency) — all PASS.**
 
 **Environment:** 💻 FULL (Mac), operator asleep, **live activity explicitly authorized**. Pattern: a fan-out **Workflow** built the three unstarted offline members (`030`/`054`/`067`) in parallel (build → independent adversarial-verify → fix), while the orchestrator built the Checkpoint-6 crux `024` by hand and kept ALL shared-spec / migration-chain / live / tracker / commit steps **serial** (the three invariants the schedule says never to fan out). A second fan-out ran the Checkpoint-6 verification (4 independent perspectives); the checkpoint TICK stayed with the orchestrator (fanning out the gate/checkpoint is how silent drift slips in).
