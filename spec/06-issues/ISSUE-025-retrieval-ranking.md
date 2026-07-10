@@ -6,7 +6,7 @@ status: done
 github: "#25"
 ---
 
-> **✅ DONE (Session 84, 2026-07-10).** Built `app/retrieval/` (`@harness/retrieval`) — the Stage-7 GATE. **54/54 offline
+> **✅ DONE (Session 85, 2026-07-10).** Built `app/retrieval/` (`@harness/retrieval`) — the Stage-7 GATE. **54/54 offline
 > tests · typecheck clean · `check` gate green (read-path only, no migration) · R10 live-adapter smoke 13/13 PASS vs the
 > live silo (rolled back, silo verified clean).** Pipeline in the one #2-safe order: entity extraction (FR-2.RET.001,
 > read-only resolution reuse) → dual search keyword∪vector (FR-2.RET.002) → uniform candidate filters + system_pointer
