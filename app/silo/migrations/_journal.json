@@ -1,50 +1,237 @@
 {
   "version": "1",
   "dialect": "postgresql",
-  "note": "Ordered manifest for the migrate runner (src/migrate.ts). 0001a-d together ARE 'migration 0001' per spec/04-data-model/migrations.md — split only to honour the CONCURRENTLY non-transactional rule (0001b) and the extensions->types->tables->indexes->RLS->seed ordering (migrations.md L17-48). `transactional:false` => the runner applies with autocommit (no BEGIN/COMMIT wrapper), required for CREATE INDEX CONCURRENTLY.",
+  "note": "Ordered manifest for the migrate runner (src/migrate.ts). 0001a-d together ARE 'migration 0001' per spec/04-data-model/migrations.md \u2014 split only to honour the CONCURRENTLY non-transactional rule (0001b) and the extensions->types->tables->indexes->RLS->seed ordering (migrations.md L17-48). `transactional:false` => the runner applies with autocommit (no BEGIN/COMMIT wrapper), required for CREATE INDEX CONCURRENTLY.",
   "entries": [
-    { "tag": "0001_baseline", "file": "0001_baseline.sql", "transactional": true },
-    { "tag": "0001b_indexes", "file": "0001b_indexes.sql", "transactional": false },
-    { "tag": "0001c_rls", "file": "0001c_rls.sql", "transactional": true },
-    { "tag": "0001d_seed", "file": "0001d_seed.sql", "transactional": true },
-    { "tag": "0002_rls_scaffold", "file": "0002_rls_scaffold.sql", "transactional": true },
-    { "tag": "0003_config_values_rls", "file": "0003_config_values_rls.sql", "transactional": true },
-    { "tag": "0004_prompt_version_discipline", "file": "0004_prompt_version_discipline.sql", "transactional": true },
-    { "tag": "0005_retention_prune_whitelist", "file": "0005_retention_prune_whitelist.sql", "transactional": true },
-    { "tag": "0006_profiles_owner_rls", "file": "0006_profiles_owner_rls.sql", "transactional": true },
-    { "tag": "0007_stage3_event_types", "file": "0007_stage3_event_types.sql", "transactional": false },
-    { "tag": "0008_connector_runtime_triggers", "file": "0008_connector_runtime_triggers.sql", "transactional": true },
-    { "tag": "0009_guardrails_append_only", "file": "0009_guardrails_append_only.sql", "transactional": true },
-    { "tag": "0010_guardrail_escalation_nullfix", "file": "0010_guardrail_escalation_nullfix.sql", "transactional": true },
-    { "tag": "0011_stage4_event_types", "file": "0011_stage4_event_types.sql", "transactional": false },
-    { "tag": "0012_rate_limit_deferred", "file": "0012_rate_limit_deferred.sql", "transactional": true },
-    { "tag": "0013_task_graph_versions_append_only", "file": "0013_task_graph_versions_append_only.sql", "transactional": true },
-    { "tag": "0014_support_requests_rls", "file": "0014_support_requests_rls.sql", "transactional": true },
-    { "tag": "0015_guardrail_redacted_at", "file": "0015_guardrail_redacted_at.sql", "transactional": true },
-    { "tag": "0016_agents_version_discipline", "file": "0016_agents_version_discipline.sql", "transactional": true },
-    { "tag": "0017_stage4_indexes", "file": "0017_stage4_indexes.sql", "transactional": false },
-    { "tag": "0018_trigger_event_types", "file": "0018_trigger_event_types.sql", "transactional": false },
-    { "tag": "0019_connector_trigger_state", "file": "0019_connector_trigger_state.sql", "transactional": true },
-    { "tag": "0020_connector_trigger_indexes", "file": "0020_connector_trigger_indexes.sql", "transactional": false },
-    { "tag": "0021_task_queue_append_only", "file": "0021_task_queue_append_only.sql", "transactional": true },
-    { "tag": "0022_dynamic_field_values_rls", "file": "0022_dynamic_field_values_rls.sql", "transactional": true },
-    { "tag": "0023_realtime_publication", "file": "0023_realtime_publication.sql", "transactional": true },
-    { "tag": "0024_webhook_event_types", "file": "0024_webhook_event_types.sql", "transactional": false },
-    { "tag": "0025_agents_version_chain_unique", "file": "0025_agents_version_chain_unique.sql", "transactional": false },
-    { "tag": "0026_version_chain_lost_update_backstops", "file": "0026_version_chain_lost_update_backstops.sql", "transactional": false },
-    { "tag": "0027_profiles_invite_lifecycle", "file": "0027_profiles_invite_lifecycle.sql", "transactional": true },
-    { "tag": "0028_task_queue_awaiting_approval_at", "file": "0028_task_queue_awaiting_approval_at.sql", "transactional": true },
-    { "tag": "0029_entities_internal_org_singleton", "file": "0029_entities_internal_org_singleton.sql", "transactional": false },
-    { "tag": "0030_entity_types_config_seed", "file": "0030_entity_types_config_seed.sql", "transactional": true },
-    { "tag": "0031_rls_enforcement", "file": "0031_rls_enforcement.sql", "transactional": true },
-    { "tag": "0032_profiles_authenticated_grant", "file": "0032_profiles_authenticated_grant.sql", "transactional": true },
-    { "tag": "0033_push_subscriptions_owner_rls", "file": "0033_push_subscriptions_owner_rls.sql", "transactional": true },
-    { "tag": "0034_connector_disconnection_state", "file": "0034_connector_disconnection_state.sql", "transactional": true },
-    { "tag": "0035_connector_disconnection_open_index", "file": "0035_connector_disconnection_open_index.sql", "transactional": false },
-    { "tag": "0036_connector_disconnection_event_types", "file": "0036_connector_disconnection_event_types.sql", "transactional": false },
-    { "tag": "0037_plan_event_types", "file": "0037_plan_event_types.sql", "transactional": false },
-    { "tag": "0038_embedding_event_types", "file": "0038_embedding_event_types.sql", "transactional": false },
-    { "tag": "0039_memory_write_event_types", "file": "0039_memory_write_event_types.sql", "transactional": false },
-    { "tag": "0040_maturity_recompute_event_type", "file": "0040_maturity_recompute_event_type.sql", "transactional": false }
+    {
+      "tag": "0001_baseline",
+      "file": "0001_baseline.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0001b_indexes",
+      "file": "0001b_indexes.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0001c_rls",
+      "file": "0001c_rls.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0001d_seed",
+      "file": "0001d_seed.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0002_rls_scaffold",
+      "file": "0002_rls_scaffold.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0003_config_values_rls",
+      "file": "0003_config_values_rls.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0004_prompt_version_discipline",
+      "file": "0004_prompt_version_discipline.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0005_retention_prune_whitelist",
+      "file": "0005_retention_prune_whitelist.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0006_profiles_owner_rls",
+      "file": "0006_profiles_owner_rls.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0007_stage3_event_types",
+      "file": "0007_stage3_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0008_connector_runtime_triggers",
+      "file": "0008_connector_runtime_triggers.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0009_guardrails_append_only",
+      "file": "0009_guardrails_append_only.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0010_guardrail_escalation_nullfix",
+      "file": "0010_guardrail_escalation_nullfix.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0011_stage4_event_types",
+      "file": "0011_stage4_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0012_rate_limit_deferred",
+      "file": "0012_rate_limit_deferred.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0013_task_graph_versions_append_only",
+      "file": "0013_task_graph_versions_append_only.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0014_support_requests_rls",
+      "file": "0014_support_requests_rls.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0015_guardrail_redacted_at",
+      "file": "0015_guardrail_redacted_at.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0016_agents_version_discipline",
+      "file": "0016_agents_version_discipline.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0017_stage4_indexes",
+      "file": "0017_stage4_indexes.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0018_trigger_event_types",
+      "file": "0018_trigger_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0019_connector_trigger_state",
+      "file": "0019_connector_trigger_state.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0020_connector_trigger_indexes",
+      "file": "0020_connector_trigger_indexes.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0021_task_queue_append_only",
+      "file": "0021_task_queue_append_only.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0022_dynamic_field_values_rls",
+      "file": "0022_dynamic_field_values_rls.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0023_realtime_publication",
+      "file": "0023_realtime_publication.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0024_webhook_event_types",
+      "file": "0024_webhook_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0025_agents_version_chain_unique",
+      "file": "0025_agents_version_chain_unique.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0026_version_chain_lost_update_backstops",
+      "file": "0026_version_chain_lost_update_backstops.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0027_profiles_invite_lifecycle",
+      "file": "0027_profiles_invite_lifecycle.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0028_task_queue_awaiting_approval_at",
+      "file": "0028_task_queue_awaiting_approval_at.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0029_entities_internal_org_singleton",
+      "file": "0029_entities_internal_org_singleton.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0030_entity_types_config_seed",
+      "file": "0030_entity_types_config_seed.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0031_rls_enforcement",
+      "file": "0031_rls_enforcement.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0032_profiles_authenticated_grant",
+      "file": "0032_profiles_authenticated_grant.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0033_push_subscriptions_owner_rls",
+      "file": "0033_push_subscriptions_owner_rls.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0034_connector_disconnection_state",
+      "file": "0034_connector_disconnection_state.sql",
+      "transactional": true
+    },
+    {
+      "tag": "0035_connector_disconnection_open_index",
+      "file": "0035_connector_disconnection_open_index.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0036_connector_disconnection_event_types",
+      "file": "0036_connector_disconnection_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0037_plan_event_types",
+      "file": "0037_plan_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0038_embedding_event_types",
+      "file": "0038_embedding_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0039_memory_write_event_types",
+      "file": "0039_memory_write_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0040_maturity_recompute_event_type",
+      "file": "0040_maturity_recompute_event_type.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0041_ingestion_event_types",
+      "file": "0041_ingestion_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0042_memory_maintenance_event_types",
+      "file": "0042_memory_maintenance_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0043_learning_cost_event_types",
+      "file": "0043_learning_cost_event_types.sql",
+      "transactional": false
+    }
   ]
 }

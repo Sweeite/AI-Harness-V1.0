@@ -2,7 +2,7 @@
 --
 -- WHY: ISSUE-027's scheduled + on-signal maintenance jobs record LOUD observability to event_log (#3 — a decay/merge/
 -- supersede/expiry job run, a confidence change, a raised dashboard task, and each mutation must never be silent). The
--- live adapter (app/memory-maintenance/supabase-store.ts) writes these four values; event_type is a FIXED enum and they
+-- live adapter (app/memory-maintenance/supabase-store.ts) writes these four values. event_type is a FIXED enum and they
 -- are not in it, so a live event_log insert would throw '22P02 invalid input value for enum event_type' (the
 -- fake-passes-offline / live-throws class R10 and the offline check gate catch). Added additively:
 --   memory_maintenance_run      -- one per job run (payload jsonb: job, window, counts, missed flag)

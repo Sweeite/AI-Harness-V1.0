@@ -2,7 +2,7 @@
 --
 -- WHY: ISSUE-066 closes the orchestrator feedback loop and records LOUD observability to event_log (#3 — a cost-tier
 -- choice, the C7 cost-shape, a learning adjustment, a routing mismatch, and every cache hit/miss/invalidation must be
--- observable + reversible). The live adapter (app/learning-cache-cost/supabase-store.ts) writes these seven values;
+-- observable + reversible). The live adapter (app/learning-cache-cost/supabase-store.ts) writes these seven values —
 -- event_type is a FIXED enum and they are not in it, so a live event_log insert would throw '22P02 invalid input value
 -- for enum event_type' (the fake-passes-offline / live-throws class R10 and the offline check gate catch). Added
 -- additively:
@@ -14,7 +14,7 @@
 --   agent_cache_miss          -- LRN.003.3 (cold / expired / uncertain -> miss-on-uncertainty)
 --   agent_cache_invalidated   -- LRN.003.2, scope-aware write-triggered invalidation
 --
--- The routing_outcome value the learning slice READS is written by the orchestrator (ISSUE-061), not here; and the
+-- The routing_outcome value the learning slice READS is written by the orchestrator (ISSUE-061), not here. And the
 -- cost_threshold_breach alert is an alert_type, not an event_type.
 --
 -- transactional:false -- ALTER TYPE ... ADD VALUE cannot run inside a txn block. IF NOT EXISTS makes it idempotent and
