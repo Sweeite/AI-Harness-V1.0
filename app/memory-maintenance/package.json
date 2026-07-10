@@ -1,0 +1,21 @@
+{
+  "name": "@harness/memory-maintenance",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-027 (C2 MNT) — the scheduled + on-signal memory-maintenance lifecycle that keeps the business brain healthy over time, running OVER the already-written memory graph (ISSUE-022 schema, ISSUE-024 sole-writer path). It owns: (1) the confidence lifecycle (FR-2.MNT.001) — signal→delta movement with a [floor,1.0] clamp + the never-decay-human_verified / freeze-under-review rules; (2) the daily soft-decay job (FR-2.MNT.002) that drifts stale low-confidence rows toward CFG-confidence_floor and NEVER deletes; (3) amber-zone + bulk-drop alerts (FR-2.MNT.003) that fire BEFORE a memory falls below the 0.7 retrieval floor; (4) the hard-expiry retrieval-exclusion contract (FR-2.MNT.004); (5) the weekly merge (FR-2.MNT.005 — collapse ≥0.92-similar same-entity/same-tier rows, supersede >3-months-apart pairs, SKIP/queue Personal to ISSUE-028) and weekly summarise (FR-2.MNT.007 — episodic→semantic with the retained evidence layer); (6) the daily supersede safety-net (FR-2.MNT.006) catching write-time-missed contradictions via the CAS superseded_by chain, routing hard conflicts to the ISSUE-028 quarantine; (7) the erosion scans — daily coverage (FR-2.MNT.009), weekly structural (FR-2.MNT.010 — orphans / null-invalid embeddings / stuck ingestion-queue items), monthly + on-use relevance (FR-2.MNT.011); (8) embedding-cache validation (FR-2.MNT.013 — re-embed only on content_hash change); (9) the feedback loop (FR-2.MNT.016 — usage/human-correction signals logged with who/when/why, human direct-writes at 1.0 via the sole writer); and (10) the cadence scheduler (FR-2.MNT.015) that LOGS EVERY RUN (time/outcome/records-affected), alerts LOUD on failure, and holds producer liveness (NFR-OBS.005 — a stopped producer reads stale, never green). All memory mutations are NON-DESTRUCTIVE and flow through the single governed maintenance write port (setConfidence / CAS-supersede / governed derived insert — never a delete): decay-never-deletes is the NFR-DR.008 durability posture, and erasure (MNT.017, ISSUE-029) is the ONLY sanctioned destructive path (out of scope here). Port + in-memory reference fake; supabase-store.ts is the live pg adapter over memories/entities/ingestion_queue that emits the job-run / confidence-change / alert / maintenance-task records into event_log. check = offline non-drift gate over the CFG rows this slice reads + the schema columns it mutates + the additive maintenance event_type values (pending the orchestrator's migration — see migrationNeeded).",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

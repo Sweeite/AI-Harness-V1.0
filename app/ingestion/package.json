@@ -1,0 +1,21 @@
+{
+  "name": "@harness/ingestion",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-026 (C2 ING) — the ingestion GATE between candidate knowledge and the memory write path. Two filters + a human review queue + three pipelines + the ordered init sequence, all fronting the ISSUE-024 sole writer. (1) Filter 1 (relevance / selective-writing Haiku gate, ADR-003): drops non-save-worthy events before any Sonnet cost — with a trust-window SHADOW-RETAIN mode (a would-drop is written state=shadow_dropped, never lost, AC-2.ING.001.2) until AF-043 goes GREEN, then live-discard with a >=5%/min-20-weekly sampled audit run that is never silently skipped (AC-2.ING.001.3). (2) Filter 2 (sensitivity classify, ADR-003): clean standard content proceeds to the writer with an auto tier; flagged content (personal/financial/legal/HR/founder-private) is HELD in ingestion_queue, never auto-written (AC-2.ING.002.1 / FR-2.ING.004). (3) The human queue: Include (confirm/override tier -> hand to the sole writer) / Exclude (discard, reason logged, who/when/why) / Defer (deferred_until = now + ingest_defer_resurface_days, auto-resurface) — queue EXIT only via a logged decision (AC-2.ING.003.2), un-actioned past review_escalation_days -> escalated, never silently held (AC-2.ING.003.3). HR content is Exclude-by-default unless hr_content_enabled (BOOT, legal-gate; AC-2.ING.005 / NFR-CMP.010). (4) Three pipelines (structured points-not-copies with external_refs / documents chunked at chunk_size_tokens through both filters / interviews verified before confidence 1.0), all routing through the standard write flow. (5) The seven-step ordered init sequence with the mandatory verification pass (bumps verified memories to confidence 1.0 / human_verified) + the persistent incomplete-verification warning. THE NO-BACKDOOR INVARIANT is the #2 safety core, enforced in CODE: the only path to memories is the injected sole-writer gate, which REFUSES any route missing its relevance+sensitivity provenance or a flagged item's explicit human Include (FR-2.ING.010). Port + in-memory reference fake; supabase-store.ts is the live pg adapter over ingestion_queue/entities/access_audit/event_log. check = offline non-drift gate over the ingestion_state enum, the ingestion_queue columns, the sensitivity_tier vocabulary, and the CFG rows this slice reads.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

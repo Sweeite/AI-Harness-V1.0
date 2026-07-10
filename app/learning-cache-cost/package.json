@@ -1,0 +1,21 @@
+{
+  "name": "@harness/learning-cache-cost",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ISSUE-066 (C8 LRN/COST) — the orchestrator feedback loop sitting on top of ISSUE-061's seven-step router. Three slices sharing the plan-build hot path: (1) COST — map task complexity → a cost tier (single / two-agent / full chain), prefer the cheapest satisfying tier capped at chain_depth_limit (COST.001), treat orchestrator_confidence_threshold as the cost/quality dial that diverts under-specified tasks to clarification BEFORE an expensive chain (COST.002, reusing the ORC.006 path — not redefining it), and emit the expected per-route call profile (ADR-003 §4: 1 orchestrator decision call + 1 per specialist + exactly 1 Sonnet wrapped in ≤3 Haiku per memory-write) to event_log for C7 to meter — C8 FEEDS, never meters or enforces the ladder (COST.003, OD-068 boundary); per-task-type cost carried from the first task, re-rank/HyDE off by default (NFR-COST.010). (2) LRN.003 — scope-aware agent_result_cache: keyed on (agent_id, in-scope entity ids, their memory version), served only within the per-agent-type cache_time_window, WRITE-TRIGGERED invalidation on the Memory Agent's commit (any in-scope-entity write drops intersecting entries — never a stale hit, #1/OD-076), and miss-on-uncertainty when scope/version can't be confirmed or a write hits a read-class but not the keyed id (blind-spot-fails-safe, NFR-PERF.012). (3) LRN.001/002 — refine routing scoring from tracked execution_plan outcomes as an OBSERVABLE + REVERSIBLE adjustment, and detect consistently-rerouted task types → a description-update suggestion (data fix, never code) that bumps agent_health_metrics.routing_mismatch_count. Port + in-memory reference fake; supabase-store.ts is the live pg adapter over agent_result_cache + agent_health_metrics + execution_plans + event_log. check = offline non-drift gate over the tables/columns + the CFG rows + the additive LRN/COST event_type values (the one class this slice cannot self-register — pending a serial ALTER TYPE migration). Ships GREEN behind the safe posture (OD-076); AF-125 (cache staleness safety), AF-126 (learning improves routing), AF-121 (mismatch signal), AF-122 (confidence calibration) are fast-follow EVAL/SPIKE, none launch-gating.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/index.ts check",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
