@@ -22,6 +22,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 import {
   Layer2Classification,
@@ -367,4 +369,28 @@ test('AC-4.TSK.003.1 — a task-template edit follows version-on-change + mandat
 test('check gate — dynamic_field_values + prompt_layers baseline shapes present; no own migration shipped', () => {
   const findings = runCheck(SILO_MIGRATIONS);
   assert.deepEqual(findings, [], `check gate found drift: ${JSON.stringify(findings, null, 2)}`);
+});
+
+// REGRESSION (Session 86 latent drift): the no-own-migration gate must key off THIS slice's package slug,
+// NOT the "0044" issue number as a migration prefix. Migration numbers are sequential and unrelated to issue
+// numbers — 0044_conflict_consolidation_event_types.sql is ISSUE-028's, not this slice's — so a same-numbered
+// unrelated migration must NOT trigger the gate, while a genuinely slug-named stray still MUST.
+test('check gate — no-own-migration keys off package slug, not the issue-number prefix', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'plc-migrations-'));
+  try {
+    // Decoys: an unrelated migration that happens to be numbered 0044 (ISSUE-028's real one), plus another
+    // sequential number. Neither is authored by this slice → the gate must stay silent.
+    writeFileSync(join(dir, '0044_conflict_consolidation_event_types.sql'), '-- ISSUE-028, not this slice\n');
+    writeFileSync(join(dir, '0047_some_other_slice.sql'), '-- unrelated\n');
+    const clean = runCheck(dir).filter((f) => f.gate === 'no-own-migration');
+    assert.deepEqual(clean, [], `no-own-migration false-positived on an unrelated migration: ${JSON.stringify(clean)}`);
+
+    // Positive control: a migration carrying this slice's slug is a real violation and MUST be caught.
+    writeFileSync(join(dir, '0048_prompt_layer_context_stray.sql'), '-- this slice must not ship this\n');
+    const dirty = runCheck(dir).filter((f) => f.gate === 'no-own-migration');
+    assert.equal(dirty.length, 1, `expected the slug-named stray to trip the gate, got: ${JSON.stringify(dirty)}`);
+    assert.match(dirty[0]?.message ?? '', /0048_prompt_layer_context_stray\.sql/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
