@@ -89,3 +89,13 @@ export {
   type BuilderRejectCode,
   type ToolPickerOption,
 } from './builder-guard.ts';
+
+// ── The pure UI-logic layer (save gate + OD-080 authority projection + honest-health helper). ───────────
+export {
+  evaluateStagedSave,
+  builderAuthority,
+  CAPABILITY_LOCKED_AFFORDANCE,
+  primaryHealthStale,
+  type BuilderAuthority,
+  type StagedBuilderEdit,
+} from './builder-ui.ts';

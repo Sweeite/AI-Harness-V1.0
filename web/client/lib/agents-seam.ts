@@ -7,29 +7,31 @@
 //
 // The Builder's save path calls evaluateStagedSave/evaluateBuilderSave — it does NOT re-implement the reject logic.
 
-// The composed reject-at-write guard kernel (the front gate the save path calls).
+// Import agent-bridge BY NAME (@harness/agent-bridge), exactly like rbac-seam imports @harness/rbac-bridge — this
+// is what makes Turbopack's production build apply transpilePackages and resolve the bridge's relative app/* imports
+// (a RELATIVE subpath import — ../../agent-bridge/src/... — bypasses transpilePackages, so the app/* leaf .ts failed
+// to resolve in the Railway `next build`; it worked locally only under the looser dev resolution). The bridge's
+// index.ts re-exports only the pg-FREE leaf modules, so the browser bundle stays pg-free.
 export {
   evaluateBuilderSave,
   validateMemoryScope,
   toolPickerOptions,
   BUILDER_REJECT_CODES,
-} from '../../agent-bridge/src/builder-guard.ts';
+  // The pure UI-logic layer (the save gate + the OD-080 authority projection the render locks fields with).
+  evaluateStagedSave,
+  builderAuthority,
+  CAPABILITY_LOCKED_AFFORDANCE,
+  primaryHealthStale,
+} from '@harness/agent-bridge';
 export type {
   BuilderSaveInput,
   BuilderSaveVerdict,
   BuilderRejectCode,
   ToolPickerOption,
   ScopeValidation,
-} from '../../agent-bridge/src/builder-guard.ts';
-
-// The pure UI-logic layer (the save gate + the OD-080 authority projection the render locks fields with).
-export {
-  evaluateStagedSave,
-  builderAuthority,
-  CAPABILITY_LOCKED_AFFORDANCE,
-  primaryHealthStale,
-} from '../../agent-bridge/src/builder-ui.ts';
-export type { BuilderAuthority, StagedBuilderEdit } from '../../agent-bridge/src/builder-ui.ts';
+  BuilderAuthority,
+  StagedBuilderEdit,
+} from '@harness/agent-bridge';
 
 // The tool classifier (id → forbidden class) used by the greyed picker + the save-time deny (one source, OD-140).
 export { InMemoryToolClassifier } from '../../../app/specialists/src/store.ts';
