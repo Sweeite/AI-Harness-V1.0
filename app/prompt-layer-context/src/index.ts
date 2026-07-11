@@ -116,10 +116,13 @@ export function runCheck(migrationsDir: string = SILO_MIGRATIONS): Finding[] {
     }
   }
 
-  // (3) This slice must NOT ship a migration of its own (HARD PROHIBITION — fan-out isolation). Assert no
-  //     0044_* migration file exists (a stray one is corruption of the shared migration corpus).
+  // (3) This slice must NOT ship a migration of its own (HARD PROHIBITION — fan-out isolation). A migration
+  //     authored by this slice would carry its package slug (prompt-layer-context / promptlayer); a stray one
+  //     is corruption of the shared migration corpus. Detect by that slug ONLY — NOT by numeric prefix:
+  //     migration numbers are sequential and unrelated to issue numbers (e.g. 0044_conflict_consolidation_
+  //     event_types.sql belongs to ISSUE-028, not this ISSUE-044 slice), so a "0044" prefix means nothing here.
   try {
-    const stray = readdirSync(migrationsDir).filter((f) => /^0044[_-]/.test(f) || /prompt_layer_context/i.test(f));
+    const stray = readdirSync(migrationsDir).filter((f) => /prompt[_-]?layer[_-]?context|promptlayer/i.test(f));
     if (stray.length > 0) {
       findings.push({ gate: 'no-own-migration', message: `ISSUE-044 ships NO migration but found: ${stray.join(', ')}` });
     }
