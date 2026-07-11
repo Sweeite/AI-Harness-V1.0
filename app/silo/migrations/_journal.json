@@ -232,6 +232,11 @@
       "tag": "0043_learning_cost_event_types",
       "file": "0043_learning_cost_event_types.sql",
       "transactional": false
+    },
+    {
+      "tag": "0044_conflict_consolidation_event_types",
+      "file": "0044_conflict_consolidation_event_types.sql",
+      "transactional": false
     }
   ]
 }

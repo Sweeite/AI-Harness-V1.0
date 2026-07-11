@@ -183,7 +183,11 @@ Phase-1/2 rate-limit, token-lifecycle, and Realtime requirements.
      — the LOAD half (no bottleneck at ~20 concurrent deployments) needs a real concurrent-deployment load run,
      deferred as an honest residual (not faked). The AC-2.WRT.006.* behaviours themselves PASS at the mechanism
      level (unit + live-adapter); AF-061/062 carry only the at-scale LOAD/EVAL confidence, exactly like AF-082's
-     at-scale residual for ISSUE-022. -->
+     at-scale residual for ISSUE-022.
+     **ISSUE-028 (Session 86) CONSUMES AF-061 (status unchanged 🟡):** the hard-conflict quarantine branch it extends
+     relies on a hard conflict surfaced at the writer's commit-boundary re-check landing in `memory_conflicts` (not
+     swallowed) — the mechanism ISSUE-024 realises (R10-proven) + which 028's resolution/escalation/render layer sits
+     on top of. 028 adds no spike; the at-scale no-livelock EVAL residual is unchanged. -->
 
 
 ## F. Deploy / provisioning / version-skew feasibility (ADR-005 — verify by SPIKE / DOCS / EVAL)

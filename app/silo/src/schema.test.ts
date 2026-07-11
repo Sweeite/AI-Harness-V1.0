@@ -69,6 +69,10 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0038_embedding_event_types", // ISSUE-023 (session 82) — embedding model-change / reembed / reconcile event_type values
     "0039_memory_write_event_types", // ISSUE-024 (session 83) — memory_write superseded/conflict/embed_failed event_type values
     "0040_maturity_recompute_event_type", // ISSUE-030 (session 83) — maturity_recomputed event_type value
+    "0041_ingestion_event_types", // ISSUE-026 (session 85) — ingestion_filtered event_type value
+    "0042_memory_maintenance_event_types", // ISSUE-027 (session 85) — 4 maintenance event_type values
+    "0043_learning_cost_event_types", // ISSUE-066 (session 85) — 7 routing/cache event_type values
+    "0044_conflict_consolidation_event_types", // ISSUE-028 (session 86) — 3 conflict/consolidation event_type values
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.

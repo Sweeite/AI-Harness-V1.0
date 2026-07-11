@@ -2,9 +2,11 @@
 id: ISSUE-028
 title: Conflict quarantine + consolidation approval
 epic: C — memory
-status: ready
+status: done
 github: "#28"
 ---
+
+> **✅ DONE (Session 86, 2026-07-11).** `app/conflict-consolidation/` (`@harness/conflict-consolidation`) — **51/51 · typecheck clean · check green · R10 live smoke 15/15 PASS** vs the live silo (one txn, rolled back; silo verified clean after). Migration **`0044` applied LIVE** (head `0043→0044`; 3 additive event_type values verified present). The FR-2.MNT.008 five-rule priority resolver (pure) + the three reviewer actions (Keep-new CAS-supersede / Keep-existing discard / Keep-both live+note) each routed through the sole writer (ADR-004 — never a direct insert; re-embeds the held draft, which 024 dropped at quarantine) with a writer non-commit surfacing loudly (`write_incomplete`, never a false close, #3) + the Personal-tier consolidation gate/queue (skip-by-default) + approve/reject + the two-queue escalation sweep (server-owned `escalated_at`, reuses baseline `approval_queue_stale`). Independent adversarial-verify (zero-context): **no BLOCKER**; **1 MAJOR + 4 MINOR + 1 NIT** all fixed regression-test-first — MAJOR: the Personal gate took a pre-reduced scalar tier → a mixed {personal,restricted} set reduced to `restricted` slipped past `=== 'personal'` (#2) → **now gates on the full per-candidate tier set (any Personal OR Restricted member; #2 wins over the FR's literal Personal-only scope)**; MINORs: rule-2 now genuinely fires for a held `system_of_record` candidate (code matches the FR, no comment-only interpretation) + same-source guard tightened; fake `getConsolidationSources` now mirrors the live `superseded_by is null` filter (R10 parity); approve now blocks on a partial/unresolvable source set server-side (#2, not UI-only); Keep-existing persists an outcome-shaped resolution (audit honesty). AF-061 🟡 consumed (a hard conflict at the commit-boundary re-check lands in this quarantine; unchanged). GitHub #28 CLOSED. Leaf — blocks nothing.
 
 # ISSUE-028 — Conflict quarantine + consolidation approval
 
