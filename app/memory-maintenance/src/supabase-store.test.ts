@@ -48,6 +48,19 @@ test('insertDerivedMemory casts the vector + entity_ids and is idempotency-keyed
   assert.match(ins.text, /on conflict \(idempotency_key\) do nothing/);
   assert.match(ins.text, /\$3::vector/);
   assert.match(ins.text, /\$5::uuid\[\]/);
+  // OD-204: the provenance edge is persisted queryably (migration 0045) so ISSUE-029's erasure walk can reach this row.
+  assert.match(ins.text, /derived_from/, 'the insert writes the derived_from column');
+  assert.match(ins.text, /\$15::uuid\[\]/, 'derived_from cast as uuid[]');
+  assert.deepEqual(ins.params[14], ['a', 'b'], 'a merge/summary row persists its source ids');
+});
+
+test('insertDerivedMemory writes derived_from = null for a directly-written (non-derived) row (feedback path)', async () => {
+  const { exec, calls } = fakeExec((t) => (/insert into memories/.test(t) ? [{ id: 'gen-2' }] : []));
+  const store = new SupabaseMaintenanceStore(exec);
+  const row = InMemoryMaintenanceStore.memory({ type: 'semantic', content: 'human write', entity_ids: ['e1'], embedding: new Array(1536).fill(0.03) });
+  await store.insertDerivedMemory(row, []); // feedback.ts passes [] — a direct write, not a derivation
+  const ins = calls.find((c) => /insert into memories/.test(c.text))!;
+  assert.equal(ins.params[14], null, 'an empty source set stores null (not a derived row), not {}');
 });
 
 test('the observability sinks write event_log with the correct additive event_type casts', async () => {

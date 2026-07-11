@@ -630,6 +630,17 @@ merged row + a log sink; assert every leg cleared + the verification catches an 
 on by:** C2 AC-2.MNT.017.5, C10 AC-10.DEL.003.4. Gates the *#1/#2 no-residue claim* of the erasure path. **Surfaced
 by:** the C10 verification gate (finding M1). Adjacent to but distinct from AF-134 (recall of *finding* the data) —
 this is completeness of *deleting* it.
+**→ 🟢 GREEN 2026-07-11 (ISSUE-029, Session 87):** the spike `app/memory-erasure/results/af-137-completeness-spike.ts`
+plants residue in EVERY leg (a live row, an older superseded-chain row, a merge-collapsed row, a summary derived from
+an erased episodic cluster, embeddings, event_log + guardrail_log sink rows, the backup-purge flag) and runs the
+erasure composing the **real** C7 module (`app/log-retention` `eraseEventLogSubject`/`eraseGuardrailLogSubject`) + the
+**real** backup-DR receive-leg (`app/backup-dr` `receivePurgeFlag`) behind the injected ports — the exact live wiring.
+**21 assertions across 3 runs pass:** (RUN1) every leg cleared + `done`; (RUN2) an injected C7-sink failure is CAUGHT →
+`done:false` + escalated + the tombstone records the partial, never a false done; (RUN3) an injected half-applied
+memory delete is caught by an INDEPENDENT (non-delete-set-scoped) residue re-read. The memory-side hard-delete is
+additionally R10-proven against the live silo (`results/live-smoke.ts`). The derived-row leg rests on the OD-204
+`memories.derived_from` edge being populated by ISSUE-027 on every derived path — now enforced + R10-proven (so the
+cross-slice trust is verified, not assumed). Gates AC-2.MNT.017.5 CLEARED.
 
 ### Block V — Phase 5 (NFR / mobile)
 

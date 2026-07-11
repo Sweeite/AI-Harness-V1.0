@@ -2,9 +2,26 @@
 id: ISSUE-029
 title: Compliance erasure walk (memory-side transitive delete)
 epic: C — memory
-status: ready
+status: done
 github: "#29"
 ---
+
+> **✅ DONE (Session 87).** Built `app/memory-erasure/` (`@harness/memory-erasure`; port + InMemory fake +
+> `supabase-store.ts` + `check` + **47/47** tests, tsc clean). The one sanctioned destructive path: gate (Super-Admin +
+> `PERM-memory.delete` + erasure-specific confirm, fail-closed BEFORE any read) → target resolution → transitive walk
+> (full `superseded_by` chain both directions + the OD-204 `derived_from` edge to merge/summary rows) → per-row
+> classification (derived → delete; single-entity target → delete; multi-entity primary → retain+scrub AC-NFR-CMP.005.2;
+> **other-subject rows reached via a shared consolidation-supersede → EXCLUDE + un-supersede live, never delete**) →
+> the sole `delete from memories` primitive + embeddings → immutable `access_audit` tombstone → **raise** the
+> NFR-DR.009 backup-purge flag (injected `BackupPurgePort` → app/backup-dr) + **trigger** the C7 log-sink redaction
+> (injected `LogRedactionPort` → app/log-retention) → **verified-complete-or-fails-loud** per leg incl. an
+> INDEPENDENT (non-delete-set-scoped) residue re-read (AC-2.MNT.017.5). **AF-137 GREEN** (residue-planting spike, 21
+> assertions, 3 runs — full-clear · injected C7 failure · injected delete residue, composing the real C7 + backup-DR
+> modules). **OD-204 RESOLVED** (migration 0045 `memories.derived_from` + 027 persists it). **Migrations 0045/0046
+> applied LIVE**; R10 live smoke **16/16 PASS** (rolled back) incl. the over-erasure-safe consolidation scenario.
+> Adversarial-verified by 3 independent zero-context lenses (1 BLOCKER + 2 MAJOR + MINOR/NITs, all fixed
+> regression-test-first). **Unblocks ISSUE-082** (C10 two-person right-to-erasure). Evidence: SESSION-LOG Session 87;
+> `results/af-137-completeness-spike.ts`; `results/live-smoke.ts`.
 
 # ISSUE-029 — Compliance erasure walk (memory-side transitive delete)
 
@@ -62,7 +79,7 @@ Build the C2 memory-side compliance-erasure mechanism — the one sanctioned des
 
 ## 7. Dependencies
 - **Blocked-by:** ISSUE-024 (Memory write / sole-writer path — erasure runs through the C2 sole-writer path and depends on the provenance refs the write/merge/supersede flow populates: the `superseded_by` chain, merge-collapsed rows FR-2.MNT.005, summary provenance FR-2.MNT.007). Not a spike.
-  - **⚠️ OPEN — resolve FIRST (OD-204):** the merge/summary **"derived_from" provenance edge this walk needs is NOT persisted queryably** as built — `memories` has only `superseded_by`; ISSUE-027's `insertDerivedMemory(row, derivedFrom)` writes `derivedFrom` to an `event_log` payload only, not to a `memories` column or link table. Step 3(b) of §8 (reach summary/merge rows via provenance refs) therefore has nothing to walk. **See [[OD-204]]** — the recommended path is a delta migration `0045` adding a `derived_from` edge + persisting it in 027's adapter, settled before designing the transitive walk. Do NOT assume the provenance edge exists until this is resolved.
+  - **✅ RESOLVED (OD-204, Session 87):** the merge/summary `derived_from` provenance edge is now persisted queryably — migration **0045** adds `memories.derived_from uuid[]` (+ GIN index) and ISSUE-027's `insertDerivedMemory` writes it on every derived path (the InMemory fake already tracked it; offline/live parity holds). The transitive walk queries `derived_from && ARRAY[<erased ids>]`. Proven live (R10 [2b]/[3]). **See [[OD-204]] (🟢 resolved).**
 - **Blocks:** ISSUE-082 (C10 individual right-to-erasure workflow — two-person auth, verify-before-done — which *calls* this C2 mechanism via FR-10.DEL.003 and verifies its completeness return via AC-10.DEL.003.4).
 
 ## 8. Build order within the slice

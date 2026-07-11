@@ -145,6 +145,13 @@ export function runCheck(migrationsDir: string = SILO_MIGRATIONS, configRegistry
     if (!inBaselineEnum && !addedAdditively) pending.push(evt);
   }
 
+  // 5. OD-204: insertDerivedMemory now persists memories.derived_from (migration 0045) so ISSUE-029's compliance-erasure
+  //    walk can reach a derived row from its source ids. It is added additively (not in baseline) → scan the whole
+  //    corpus; a live insert of a column that doesn't exist would throw (the fake-passes / live-throws class).
+  if (baseline && !/add column if not exists derived_from uuid\[\]/.test(corpus)) {
+    findings.push({ gate: 'memories-derived_from', message: 'memories.derived_from uuid[] not found in the migration corpus — insertDerivedMemory writes it (OD-204 / migration 0045)' });
+  }
+
   report(findings, pending);
   return { findings, pending };
 }
