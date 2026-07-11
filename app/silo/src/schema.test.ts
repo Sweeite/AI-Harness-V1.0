@@ -75,6 +75,8 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0044_conflict_consolidation_event_types", // ISSUE-028 (session 86) — 3 conflict/consolidation event_type values
     "0045_memories_derived_from", // OD-204 (session 87) — memories.derived_from provenance edge + GIN (transactional:true)
     "0046_memory_erasure_event_types", // ISSUE-029 (session 87) — 2 erasure event_type values (transactional:false)
+    "0047_deletion_workflow_event_types", // ISSUE-082 (session 88) — 9 deletion-workflow event_type values (transactional:false)
+    "0048_deletion_requests_distinctness_contract", // ISSUE-082 (session 88) — contract migration: fix baseline deletion_requests distinctness CHECKs to be NULL-tolerant (transactional:true)
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.
@@ -109,6 +111,10 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
   // in a txn; ADD COLUMN + COMMENT are autocommit-safe); 0046 is transactional:false (ALTER TYPE ADD VALUE).
   assert.equal(journal.entries.find((e) => e.tag === "0045_memories_derived_from")!.transactional, false);
   assert.equal(journal.entries.find((e) => e.tag === "0046_memory_erasure_event_types")!.transactional, false);
+  // ISSUE-082 (session 88): 0047 is transactional:false (ALTER TYPE ADD VALUE cannot run in a txn); 0048 is
+  // transactional:true (plain ALTER TABLE DROP/ADD CONSTRAINT).
+  assert.equal(journal.entries.find((e) => e.tag === "0047_deletion_workflow_event_types")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0048_deletion_requests_distinctness_contract")!.transactional, true);
 });
 
 test("0032 (ISSUE-013 fix): profiles gets the missing authenticated SELECT + column-scoped UPDATE(name) grant", () => {

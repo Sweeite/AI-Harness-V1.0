@@ -597,7 +597,15 @@ unproven assumption: the probabilistic sweep has high enough recall that a human
 personal data un-erased (#2), across name variants + identifiers. **Method:** EVAL (labelled corpus with known
 person-mentions incl. variants/aliases; measure recall of the sweep; the floor's compliance safety depends on
 high recall + human review). **Relied on by:** FR-10.DEL.002/004. Gates the *#2 erasure-completeness claim*.
-**Surfaced by:** C10 drafting (OD-092).
+**Surfaced by:** C10 drafting (OD-092). **🟡→🟢 build-time EVAL GREEN (Session 88, ISSUE-082):**
+`app/compliance-erasure/results/af-134-recall-eval.ts` — the recall-oriented `expandSearchTerms` (full name + each
+part + initials variants JSmith/J Smith/John S + identifiers) recalls **100% (6/6) of literal surface-form** mentions
+over a planted corpus; paraphrase/pronoun-only mentions (semantic-only) are **surfaced as an explicit residual review
+burden, never claimed found** (AC-10.DEL.002.3 — the un-found risk is stated, not hidden) + **never auto-actioned**
+(AC-10.DEL.002.2). The keyword floor is proven complete for literal mentions; the semantic-embedding arm is the
+load-bearing recall improvement (shared with the retrieval seam) tracked separately. The redaction itself uses a
+**narrow** term set (full name + identifiers only) so a third party's bare "John" in a retained row is never over-scrubbed
+(#1). 🟢 for the keyword floor; the at-scale semantic-recall improvement remains an onboarding fast-follow.
 
 **AF-135 — Deployment-freeze propagation completeness (SPIKE, build-time).** FR-10.OFF.004 freezes a deployment
 (`status=frozen`) and the C5 dispatch layer must block **every** path that would write/run — Inngest jobs, triggers,

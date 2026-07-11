@@ -2,9 +2,31 @@
 id: ISSUE-082
 title: Individual right-to-erasure workflow (two-person auth, verify-before-done)
 epic: K — infra & compliance
-status: ready
+status: done
 github: "#82"
 ---
+
+> **DONE (Session 88, 2026-07-11).** `app/compliance-erasure/` (`@harness/compliance-erasure`; port + InMemory fakes +
+> `supabase-store.ts` + `check` + **46/46** tests, tsc clean). The C10 request-to-audit workflow wrapping ISSUE-029's
+> C2 `eraseTarget` — Admin deletion queue + derived escalation sweep (FR-10.DEL.001); two-class identification
+> (deterministic `entity_ids[]` vs recall-oriented name-in-content, surfaced-for-confirmation, never auto-actioned —
+> FR-10.DEL.002 / **AF-134 EVAL green**, 100% literal recall, paraphrase misses surfaced as residual review burden);
+> **two-person authorisation as a perm-checked, persisted, two-step handshake** (`authorizeRequest` +
+> `secondAuthorizeRequest`, execute READS persisted authorisers — a single admin can't fabricate a second; two-person
+> unconditional, DB-mandated — FR-10.DEL.006 / NFR-SEC.015); frozen-deployment guard fail-closed (FR-10.DEL.007);
+> de-link of the target from **every** surviving memory incl. non-Personal business records C2's Personal-remit skips,
+> narrow-term `[REDACTED]` content scrub via the sole-writer (FR-10.DEL.003/004); connector_deletion_flags raise/track/
+> escalate/fail-closed (FR-10.DEL.006(a)); and the **verify-before-done ALLOWLIST** gate (every C2 leg complete except
+> `scrub_pending`=owed / `escalation_emit`=failed; empty/unknown/failed/blocked → hold + escalate, no done-audit —
+> AC-10.DEL.003.4); immutable `access_audit` deletion record fail-closed (FR-10.DEL.005). Migration **`0047`** (9
+> additive lifecycle `event_type` values) + **`0048` contract** (fixed a latent 0001 baseline bug: the
+> `deletion_requests` distinctness CHECKs rejected the all-null intake insert — `is distinct from` is FALSE for
+> both-null — discovered by R10). **3-lens adversarial verify: 1 BLOCKER (two-person self-satisfiable) + 2 MAJOR
+> (denylist verify-gate; redaction over-scrubs third parties) + ~7 MINOR/NIT, all fixed regression-test-first.**
+> Migrations `0047`+`0048` applied LIVE (silo head `0046→0048`); **R10 live smoke 15/15 PASS** (rolled back, silo clean).
+> Logged **OD-206** (deletion_requests records subject as `target_user_id` only — audit-tombstone is the entity-level
+> proof; ship-as-is). AF-137 consumed at the verify-before-done boundary. GitHub #82 CLOSED. **`082` is a leaf (blocks
+> nothing); all Stage-7 issues now done → Checkpoint 7 ready for its integration test.**
 
 > **Unblocked (Session 87):** ISSUE-029 (the C2 memory-side transitive-delete mechanism this workflow calls via
 > FR-10.DEL.003) is `done` — `app/memory-erasure/` exposes `eraseTarget(deps, target, authz)` returning an

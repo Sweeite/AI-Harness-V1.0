@@ -982,10 +982,12 @@ create table deletion_requests (
   executed_at          timestamptz,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now(),
-  -- AC-10.DEL.006.2 two-person auth. `is distinct from` is NULL-safe: allows pre-fill nulls, rejects same-person.
-  check (second_authoriser_id is distinct from authorized_by),
-  check (executor_id is distinct from authorized_by
-         and executor_id is distinct from second_authoriser_id),
+  -- AC-10.DEL.006.2 two-person auth. NULL-tolerant distinctness (migration 0048, ISSUE-082): rejects a same-person
+  -- collision but ALLOWS the pre-fill NULLs of intake / partial authorisation. (`is distinct from` returns FALSE for
+  -- BOTH-null, which wrongly rejected the all-null intake row -- the 0001 baseline bug 0048 fixes.)
+  check (second_authoriser_id is null or authorized_by is null or second_authoriser_id <> authorized_by),
+  check ((executor_id is null or authorized_by is null or executor_id <> authorized_by)
+         and (executor_id is null or second_authoriser_id is null or executor_id <> second_authoriser_id)),
   -- and at execution, all three roles must be filled by three DISTINCT people (the guarantee, DB-enforced)
   check (status <> 'executed'
          or (authorized_by is not null and second_authoriser_id is not null and executor_id is not null))

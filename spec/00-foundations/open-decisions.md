@@ -2947,7 +2947,18 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-<!-- Next OD number: OD-206 -->
+## OD-206 — `deletion_requests` records the erasure subject only as `target_user_id` (→ profiles); a non-platform-user data subject (the common case) has no queue-row field to record the target 🟡 OPEN (surfaced building ISSUE-082, Session 88, 2026-07-11)
+
+- **Surfaced by:** Session 88, building ISSUE-082 (the C10 right-to-erasure workflow). The C2 erasure mechanism (ISSUE-029 `eraseTarget`) operates on an **`entity_id`** (`memories.entity_ids[]` / `entities.id`). But the `deletion_requests` queue table (schema §14 / `0001_baseline.sql` L641–660) records the subject **only** as `target_user_id uuid references profiles(id)` — a *platform user* (auth.users). There is **no profiles↔entities link** and **no `target_entity_id` column** on `deletion_requests`. So for the common case — an individual right-to-erasure request for a **data subject who is a client's contact/customer, not a platform login** — the queue row cannot record *who* is being erased (AC-10.DEL.001.1 requires "target recorded"), and the workflow must resolve the target entity_id out-of-band.
+- **What shipped (fail-safe, no migration — honours the issue's "consumes the DDL, does not redefine it"):** ISSUE-082 builds under the no-schema-change interpretation — the workflow accepts a **resolved `targetEntityId`** (the caller/UI resolves an identifier → entity via C2 entity resolution, mirroring FR-10.DEL.002's precondition "the target resolves to an entity_id") and passes it to `eraseTarget`; `deletion_requests.target_user_id` is persisted **when the subject is also a platform user** (staff self-erasure), else null; the **immutable `access_audit` tombstone** (`target_entity_id`, written by C2) is the authoritative entity-level *proof of what was erased*. The `deletion_requests` row is the request/authorisation tracker (requester / two-person auth / status), not the erasure-proof of record.
+- **The decision to ratify:** is the audit-tombstone-as-entity-proof sufficient, or does `deletion_requests` need a first-class **`target_entity_id uuid references entities(id)`** column (+ a `target_descriptor text` for a free-text subject that hasn't yet resolved to an entity) so the queue row itself records the non-user subject for AC-10.DEL.001.1 / the Phase-3 queue surface?
+- **Options:** (A) **defer, ship as-is** — `target_user_id` for user-subjects + the `access_audit` tombstone (`target_entity_id`) as the erasure proof; the workflow resolves + carries the entity_id in-flight. Zero migration. (B) add `deletion_requests.target_entity_id` (+ optional `target_descriptor`) in a future delta migration so the queue row records the resolved subject entity directly (better for the Phase-3 queue render + querying "was entity X ever erasure-requested").
+- **Recommendation:** 🟡 (A) for now — it is correct + fail-safe (the erasure runs against the right entity_id; the immutable proof records the entity; nothing is lost or mis-targeted), and honours the issue's no-migration build order. Revisit (B) at the **Phase-3 deletion-queue surface** pass, where the render/query need for a queue-row target field actually lands. Low urgency; no #1/#2/#3 exposure (the erasure itself is entity-correct + audited).
+- **Status:** 🟡 OPEN (operator ratification / Phase-3 revisit). No code change pending; behaviour is entity-correct + audited as shipped.
+
+---
+
+<!-- Next OD number: OD-207 -->
 
 
 

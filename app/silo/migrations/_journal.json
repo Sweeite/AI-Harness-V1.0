@@ -247,6 +247,16 @@
       "tag": "0046_memory_erasure_event_types",
       "file": "0046_memory_erasure_event_types.sql",
       "transactional": false
+    },
+    {
+      "tag": "0047_deletion_workflow_event_types",
+      "file": "0047_deletion_workflow_event_types.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0048_deletion_requests_distinctness_contract",
+      "file": "0048_deletion_requests_distinctness_contract.sql",
+      "transactional": true
     }
   ]
 }
