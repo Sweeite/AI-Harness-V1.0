@@ -13,20 +13,14 @@ const here = dirname(fileURLToPath(import.meta.url)); // web/client
 const repoRoot = resolve(here, '..', '..'); // → repo root
 
 const nextConfig: NextConfig = {
-  // Every TS-source package the app pulls in must be transpiled by Next (they are raw .ts, not pre-built), and
-  // — like @harness/rbac-bridge re-exporting app/rbac — the agent Builder's @harness/agent-bridge re-exports leaf
-  // modules from app/orchestrator, app/specialists, and app/execution-plans by relative import. Those leaf app/*
-  // packages must be transpiled too or a production `next build` (Turbopack) can't resolve their .ts source
-  // (agent-bridge was omitted → the surface-09 build broke since ISSUE-067). turbopack.root = repo root puts
-  // app/* in-tree so the relative imports resolve.
-  transpilePackages: [
-    '@harness/web-shared',
-    '@harness/rbac-bridge',
-    '@harness/agent-bridge',
-    '@harness/orchestrator',
-    '@harness/specialists',
-    '@harness/execution-plans',
-  ],
+  // TS-source packages Next must transpile (they are raw .ts, not pre-built). Each is a web/ WORKSPACE MEMBER that
+  // web-client declares as a dependency, so it resolves by name and Railway's builder includes it (and the app/*
+  // leaf modules it re-exports by relative import) in the deploy closure. @harness/agent-bridge (surface-09's
+  // Builder guard) mirrors @harness/rbac-bridge exactly: it re-exports pg-free leaf modules from app/orchestrator,
+  // app/specialists, app/execution-plans — those transpile via the bridge (turbopack.root = repo root puts app/*
+  // in-tree). agent-bridge was NOT a workspace member before, so the production build couldn't resolve its app/*
+  // .ts source → the surface-09 build broke on Railway since ISSUE-067 (worked locally where the full repo is present).
+  transpilePackages: ['@harness/web-shared', '@harness/rbac-bridge', '@harness/agent-bridge'],
   turbopack: {
     root: repoRoot,
   },

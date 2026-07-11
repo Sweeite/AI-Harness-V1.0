@@ -6,6 +6,7 @@
   "workspaces": [
     "shared",
     "rbac-bridge",
+    "agent-bridge",
     "client",
     "admin"
   ],
