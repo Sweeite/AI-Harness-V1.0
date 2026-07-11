@@ -73,6 +73,8 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
     "0042_memory_maintenance_event_types", // ISSUE-027 (session 85) — 4 maintenance event_type values
     "0043_learning_cost_event_types", // ISSUE-066 (session 85) — 7 routing/cache event_type values
     "0044_conflict_consolidation_event_types", // ISSUE-028 (session 86) — 3 conflict/consolidation event_type values
+    "0045_memories_derived_from", // OD-204 (session 87) — memories.derived_from provenance edge + GIN (transactional:true)
+    "0046_memory_erasure_event_types", // ISSUE-029 (session 87) — 2 erasure event_type values (transactional:false)
   ]);
   // Self-maintaining backstop so this test can't silently drift from the on-disk migrations again: the
   // journal's tag list must exactly equal the sorted .sql files present in the migrations dir.
@@ -103,6 +105,10 @@ test("journal + files load: the 0001a-d baseline + 0002-0005 Stage-2 + 0006-0010
   // ISSUE-020: 0031 is a transactional DDL migration (helper + policies, no CONCURRENTLY / no enum-add).
   assert.equal(journal.entries.find((e) => e.tag === "0031_rls_enforcement")!.transactional, true);
   assert.equal(journal.entries.find((e) => e.tag === "0032_profiles_authenticated_grant")!.transactional, true);
+  // OD-204 / ISSUE-029 (session 87): 0045 is transactional:false (its GIN index builds CONCURRENTLY, which cannot run
+  // in a txn; ADD COLUMN + COMMENT are autocommit-safe); 0046 is transactional:false (ALTER TYPE ADD VALUE).
+  assert.equal(journal.entries.find((e) => e.tag === "0045_memories_derived_from")!.transactional, false);
+  assert.equal(journal.entries.find((e) => e.tag === "0046_memory_erasure_event_types")!.transactional, false);
 });
 
 test("0032 (ISSUE-013 fix): profiles gets the missing authenticated SELECT + column-scoped UPDATE(name) grant", () => {

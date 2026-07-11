@@ -2,9 +2,14 @@
 id: ISSUE-082
 title: Individual right-to-erasure workflow (two-person auth, verify-before-done)
 epic: K — infra & compliance
-status: blocked
+status: ready
 github: "#82"
 ---
+
+> **Unblocked (Session 87):** ISSUE-029 (the C2 memory-side transitive-delete mechanism this workflow calls via
+> FR-10.DEL.003) is `done` — `app/memory-erasure/` exposes `eraseTarget(deps, target, authz)` returning an
+> `ErasureReport` whose `done` field is the completeness verdict this workflow verifies before writing its audit-done
+> record (AC-10.DEL.003.4). Other blocker `021` is also done. §7 met → `ready`.
 
 # ISSUE-082 — Individual right-to-erasure workflow (two-person auth, verify-before-done)
 

@@ -237,6 +237,16 @@
       "tag": "0044_conflict_consolidation_event_types",
       "file": "0044_conflict_consolidation_event_types.sql",
       "transactional": false
+    },
+    {
+      "tag": "0045_memories_derived_from",
+      "file": "0045_memories_derived_from.sql",
+      "transactional": false
+    },
+    {
+      "tag": "0046_memory_erasure_event_types",
+      "file": "0046_memory_erasure_event_types.sql",
+      "transactional": false
     }
   ]
 }

@@ -422,6 +422,7 @@ create table memories (
   content_hash   text not null,                         -- idempotency component
   idempotency_key text not null,                        -- hash(source_ref, sorted entity_ids, content_hash) — ADR-004 §4
   expires_at     timestamptz,
+  derived_from   uuid[],                                -- OD-204 (migration 0045): source memory ids a merge/summary row was derived from (FR-2.MNT.005/007); null = directly written. GIN-indexed; walked by ISSUE-029 compliance erasure (FR-2.MNT.017)
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
   check (cardinality(entity_ids) >= 1),

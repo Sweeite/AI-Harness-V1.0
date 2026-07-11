@@ -182,9 +182,12 @@ export class SupabaseMaintenanceStore implements MaintenanceStore {
 
   async insertDerivedMemory(row: MemoryRow, derivedFrom: string[]): Promise<{ inserted: boolean; id: string }> {
     validateMemoryRow(row); // same shape gate the fake applies — offline + live reject identical rows
+    // OD-204: persist the derived_from provenance edge queryably (migration 0045) so ISSUE-029's compliance-erasure
+    // walk can reach this derived row from its source ids (FR-2.MNT.017 / AC-2.MNT.017.3). null = not a derived row.
+    const derivedFromParam = derivedFrom.length > 0 ? derivedFrom : null;
     const { rows } = await this.exec<{ id: string }>(
-      `insert into memories (${MEMORY_COLS})
-       values (gen_random_uuid(), $1, $2, $3::vector, $4, $5::uuid[], $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
+      `insert into memories (${MEMORY_COLS}, derived_from)
+       values (gen_random_uuid(), $1, $2, $3::vector, $4, $5::uuid[], $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now(), $15::uuid[])
        on conflict (idempotency_key) do nothing
        returning id`,
       [
@@ -202,6 +205,7 @@ export class SupabaseMaintenanceStore implements MaintenanceStore {
         row.content_hash,
         row.idempotency_key,
         row.expires_at,
+        derivedFromParam,
       ],
     );
     if (rows.length === 0) {
