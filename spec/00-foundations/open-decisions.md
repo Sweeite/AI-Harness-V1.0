@@ -2921,7 +2921,32 @@ doesn't re-open ADR-007 over a finding that was checked and found to be a misrea
 
 ---
 
-<!-- Next OD number: OD-204 -->
+## OD-204 — ISSUE-029 transitive erasure has no queryable derived-row provenance to walk (merge/summary "derived_from" is written only to `event_log`, not to `memories`) 🔴 OPEN — BLOCKS the ISSUE-029 design
+
+- **Surfaced by:** Session 86, building toward ISSUE-029 (compliance erasure walk); confirmed by the Session-86 self-sufficiency test.
+- **The problem:** ISSUE-029 §5/§7/§8 assume the transitive walk can follow **provenance refs** from an erased Personal memory to the **merge-collapsed rows** (FR-2.MNT.005) and **episodic→semantic summary rows** (FR-2.MNT.007) derived from it — so Personal data cannot survive re-tagged inside a derived row (AC-2.MNT.017.3, AC-NFR-CMP.005.2). **But that linkage is NOT persisted queryably.** The `memories` baseline (0001) has only `superseded_by` (the CAS chain) — there is **no `derived_from` / `source_memory_ids` column and no derivation link-table**. ISSUE-027's `insertDerivedMemory(row, derivedFrom)` (`app/memory-maintenance/src/supabase-store.ts` L183-214) drops `derivedFrom` into an **`event_log` emit payload only** (`{ kind:'derived_insert', derived_from:[…] }`), which is append-only observability, **not** a queryable provenance edge. So as built, the erasure walk cannot reach a summary/merge row from its source ids.
+- **Why it matters (#1/#2):** without a walkable provenance edge, an erasure that hard-deletes a Personal source row could leave its content **surviving inside a merged/summary row re-tagged Standard/Confidential** — the exact residue AC-2.MNT.017.3 forbids and AF-137 must disprove. This is a #1 (knowledge not fully erased) + #2 (Personal data broadened past its erasure) hole.
+- **Options:**
+  - **(A) Add a queryable provenance edge (delta migration `0045`)** — a `derived_from uuid[]` column on `memories` (or a `memory_derivations(derived_id, source_id)` link table), backfilled by ISSUE-027's `insertDerivedMemory` going forward. The erasure walk then queries it directly. Cleanest; ISSUE-027 already computes `derivedFrom` — it just isn't stored. Requires a small change to 027's live adapter to persist it + a migration.
+  - **(B) Reconstruct provenance from `event_log`** — the `derived_insert` payloads carry `derived_from`. The walk could scan `event_log` for them. Avoids a schema change but couples erasure completeness to an append-only observability sink (fragile, redaction-conflicting since the same erasure REDACTS `event_log` — a self-referential ordering hazard), and event_log rows can be pruned/retained separately. Not recommended.
+  - **(C) Re-scope ISSUE-029** to erase only the `superseded_by` chain + primary rows and DEFER derived-row erasure until provenance exists — narrows AC-2.MNT.017.3 coverage; likely unacceptable for a compliance-erasure guarantee.
+- **Recommendation:** 🟡 **(A)** — persist the provenance edge (migration `0045` + a one-line change to ISSUE-027's `insertDerivedMemory`), then build the walk against it. Settle this FIRST in the ISSUE-029 chat, before designing the transitive walk. Note this is a build-order dependency discovered mid-build, not a locked-decision change.
+- **Status:** 🔴 OPEN. Blocks: the ISSUE-029 transitive-walk design + AF-137. ISSUE-029 §7 should carry a pointer to this OD (it currently asserts the provenance refs exist with no caveat).
+
+---
+
+## OD-205 — ISSUE-028 consolidation gate withholds Restricted-tier candidates too, not just Personal (a #2-motivated broadening of FR-2.MNT.014's literal scope) 🟡 needs operator ratification (already shipped fail-safe)
+
+- **Surfaced by:** Session 86, the ISSUE-028 adversarial-verify MAJOR fix. FR-2.MNT.014 names **Personal**-tier as the tier excluded from auto-consolidation. The verifier found the original gate took a pre-reduced scalar `tier` and tested `=== 'personal'`, so a mixed `{personal, restricted}` candidate set reduced to its max (`restricted`) **slipped past the gate** and would auto-consolidate Personal data — a #2 hole.
+- **The fix shipped (`app/conflict-consolidation/src/consolidation.ts`):** the gate now sees the **full per-candidate tier set** and withholds a set containing **any Personal OR Restricted** row. Restricted-gating goes **beyond FR-2.MNT.014's literal Personal-only wording**, justified by the #2 invariant ("never broaden the exposure of the most sensitive tiers") — which CLAUDE.md says wins over scope when they conflict. Auto-folding a Restricted memory into a broader/more-injected memory is strictly at least as severe as the Personal case, and nothing in the spec authorizes it; withholding it for human approval is the fail-safe default (it never loses knowledge, only requires a cleared human to approve).
+- **The decision to ratify:** is gating Restricted-too correct, or should ISSUE-027's merge/summarise jobs be confirmed to **never propose a Restricted-tier consolidation** in the first place (making the extra gate a harmless belt-and-braces)? Either way ISSUE-028's behaviour is fail-safe; this OD records the deviation from the FR's literal scope so it has a tracked ID (Rule 0), since ISSUE-028 is already `done`.
+- **Options:** (A) ratify the Restricted-too gate as the intended #2 posture (annotate FR-2.MNT.014 that Restricted is covered by the #2 invariant); (B) confirm 027 never proposes a Restricted consolidation and downgrade the extra gate to defensive-only (no behaviour change either way).
+- **Recommendation:** 🟡 (A) — the fail-safe gate is correct and costs nothing (a Restricted consolidation, if ever proposed, simply requires human approval). Low urgency; 028 is `done` and is a leaf.
+- **Status:** 🟡 OPEN (operator ratification). No code change pending; behaviour is fail-safe as shipped.
+
+---
+
+<!-- Next OD number: OD-206 -->
 
 
 
